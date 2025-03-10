@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Agent Demo（SSE版）</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    .container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+    .chat-history { height: 500px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; overflow-y: auto; margin-bottom: 20px; }
+    .message { margin-bottom: 16px; padding: 12px; border-radius: 8px; max-width: 70%; }
+    .user-message { background-color: #e6f7ff; margin-left: auto; }
+    .assistant-message { background-color: #f5f5f5; }
+    .typing-indicator { display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc; border-radius: 50%; border-top-color: #333; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .input-area { display: flex; gap: 10px; }
+    #prompt-input { flex: 1; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px; }
+    #send-btn, #abort-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    #send-btn { background-color: #1890ff; color: white; }
+    #abort-btn { background-color: #ff4d4f; color: white; }
+    .status { margin-top: 10px; font-size: 14px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="chat-history" id="chatHistory"></div>
+    <div class="input-area">
+      <input type="text" id="prompt-input" placeholder="请输入消息...">
+      <button id="send-btn">发送</button>
+      <button id="abort-btn" disabled>中断</button>
+    </div>
+    <div class="status" id="status">就绪</div>
+  </div>
+
+  <script>
+    // 核心状态管理
+    const state = {
+      sessionId: localStorage.getItem('aiAgentSessionId') || Date.now().toString(),
+      abortController: null,
+      retryCount: 0,
+      maxRetries: 5,
+      lastEventId: 0,
+      currentAssistantMsg: null,
+      isStreaming: false
+    };
+
+    // 初始化：加载历史会话
+    init();
+
+    // 事件监听
+    document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('abort-btn').addEventListener('click', abortStream);
+    document.getElementById('prompt-input').addEventListener('keydown', (e) => e.key === 'Enter' && sendMessage());
+
+    // 初始化函数
+    async function init() {
+      localStorage.setItem('aiAgentSessionId', state.sessionId);
+      const res = await fetch(`http://localhost:3001/api/session/${state.sessionId}`);
+      const session = await res.json();
+      session.messages.forEach(msg => renderMessage(msg.role, msg.content));
+      updateStatus(`已加载会话：${state.sessionId}`);
+    }
+
+    // 发送消息核心逻辑
+    async function sendMessage() {
+      const prompt = document.getElementById('prompt-input').value.trim();
+      if (!prompt || state.isStreaming) return;
+
+      // 重置状态
+      state.retryCount = 0;
+      state.lastEventId = 0;
+      state.abortController = new AbortController();
+
+      // 渲染用户消息
+      renderMessage('user', prompt);
+      document.getElementById('prompt-input').value = '';
+
+      // 创建助手消息容器
+      state.currentAssistantMsg = document.createElement('div');
+      state.currentAssistantMsg.className = 'message assistant-message';
+      state.currentAssistantMsg.innerHTML = '<span class="typing-indicator"></span>';
+      document.getElementById('chatHistory').appendChild(state.currentAssistantMsg);
+
+      // 更新UI状态
+      state.isStreaming = true;
+      document.getElementById('send-btn').disabled = true;
+      document.getElementById('abort-btn').disabled = false;
+      updateStatus('正在思考...');
+
+      // 发起流式请求（首次或重连）
+      await fetchStream(prompt);
+    }
+
+    // 流式请求核心（支持重连）
+    async function fetchStream(prompt) {
+      try {
+        const headers = {
+          'Content-Type': 'application/json',
+          'Last-Event-ID': state.lastEventId.toString() // 断点续传关键
+        };
+
+        const res = await fetch('http://localhost:3001/api/chat-stream', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ prompt, sessionId: state.sessionId }),
+          signal: state.abortController.signal
+        });
+
+        if (!res.ok) throw new Error(`HTTP错误：${res.status}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = ''; // 处理粘包/半包的缓冲区
+
+        // 循环读取流
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // 解码并拼接缓冲区
+          buffer += decoder.decode(value, { stream: true });
+          // 解析SSE消息（核心：按\n\n分割）
+          const messages = buffer.split('\n\n');
+          buffer = messages.pop() || ''; // 剩余未完成的部分放回缓冲区
+
+          // 处理每条完整消息
+          for (const msg of messages) {
+            if (!msg.trim()) continue;
+            console.log('接收数据块:', msg);
+            parseSSEMessage(msg);
+          }
+        }
+
+        // 正常结束后重置重连次数
+        state.retryCount = 0;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          updateStatus('已中断');
+          state.currentAssistantMsg.innerHTML = state.currentAssistantMsg.innerHTML.replace('<span class="typing-indicator"></span>', '（已中断）');
+          cleanup();
+          return;
+        }
+
+        // 异常重连逻辑
+        state.retryCount++;
+        if (state.retryCount > state.maxRetries) {
+          updateStatus(`重连失败（已尝试${state.maxRetries}次）`);
+          state.currentAssistantMsg.innerHTML = state.currentAssistantMsg.innerHTML.replace('<span class="typing-indicator"></span>', '（网络异常，发送失败）');
+          cleanup();
+          return;
+        }
+
+        // 指数退避重连（带随机抖动）
+        const delay = Math.min(1000 * Math.pow(2, state.retryCount) + Math.random() * 500, 10000);
+        updateStatus(`连接中断，${delay}ms后重连（第${state.retryCount}/${state.maxRetries}次）`);
+
+        setTimeout(() => fetchStream(prompt), delay);
+      }
+    }
+
+    // 解析SSE消息
+    function parseSSEMessage(msg) {
+      const lines = msg.split('\n');
+      let data = null;
+      let eventId = null;
+
+      // 按SSE格式解析：data: ... / id: ...
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          data = JSON.parse(line.slice(6));
+        } else if (line.startsWith('id: ')) {
+          eventId = parseInt(line.slice(4));
+        }
+      }
+
+      if (!data || !eventId) return;
+
+      // 更新最后事件ID（断点续传关键）
+      state.lastEventId = eventId;
+
+      // 处理不同类型的消息
+      switch (data.type) {
+        case 'content':
+          // 移除打字机图标，拼接内容（打字机效果核心）
+          state.currentAssistantMsg.innerHTML = state.currentAssistantMsg.innerHTML.replace('<span class="typing-indicator"></span>', '') + data.content;
+          // 滚动到底部
+          document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
+          break;
+        case 'complete':
+          updateStatus('就绪');
+          cleanup();
+          break;
+      }
+    }
+
+    // 中断流式请求
+    function abortStream() {
+      if (state.abortController) {
+        state.abortController.abort();
+      }
+    }
+
+    // 清理状态
+    function cleanup() {
+      state.isStreaming = false;
+      state.abortController = null;
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('abort-btn').disabled = true;
+      state.currentAssistantMsg = null;
+    }
+
+    // 渲染消息
+    function renderMessage(role, content) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+      msgDiv.textContent = content;
+      document.getElementById('chatHistory').appendChild(msgDiv);
+      document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
+    }
+
+    // 更新状态
+    function updateStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+  </script>
+</body>
+</html>
