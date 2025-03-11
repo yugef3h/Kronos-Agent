@@ -5,6 +5,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// npm 地址：
+// eventsource-parser：https://www.npmjs.com/package/eventsource-parser
+// @microsoft/fetch-event-source：https://www.npmjs.com/package/@microsoft/fetch-event-source
+//https://github.com/streamich/react-use/blob/master/docs/useSSE.md
+// 核心定位：前者解决 SSE 消息解析（粘包 / 半包），后者增强原生EventSource（支持 POST、自定义 Header、中断、重连），是 AI 场景下的「黄金组合」。
+
 // 模拟对话存储（生产环境替换为Redis）
 const sessions = new Map();
 
@@ -18,6 +24,7 @@ async function* generateStream(prompt, sessionId, lastEventId = 0) {
   const aiReply = `你好！你刚才问的是："${prompt}"。这是一个流式响应的Demo，支持断线重连和上下文记忆。当前会话ID：${sessionId}。`;
   const tokens = aiReply.split(''); // 模拟Token拆分
 
+  // `event:MyMessageType\n` 可以自定义事件类型，前端通过 eventSource.addEventListener('MyMessageType', handler) 监听
   // 断点续传：从lastEventId开始发送
   for (let i = lastEventId; i < tokens.length; i++) {
     const eventId = i + 1;
@@ -50,7 +57,7 @@ app.post('/api/chat-stream', async (req, res) => {
   const lastEventId = req.headers['last-event-id'] ? parseInt(req.headers['last-event-id']) : 0;
 
   // 核心响应头（必须）
-  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // 禁用Nginx缓冲
@@ -74,3 +81,6 @@ const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`后端服务运行在：http://localhost:${PORT}`);
 });
+
+
+// TODO：如何断开更优雅，因为服务端的断开可能导致重连，靠前端断开吗？寻求最佳实践

@@ -90,6 +90,7 @@
       await fetchStream(prompt);
     }
 
+    // 当然 new EventSource().onmessage 也可以实现基本的SSE，但不支持POST和断点续传，且在网络异常时重连机制不够灵活
     // 流式请求核心（支持重连）
     async function fetchStream(prompt) {
       try {
