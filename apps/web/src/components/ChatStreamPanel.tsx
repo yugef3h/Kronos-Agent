@@ -140,6 +140,17 @@ export const ChatStreamPanel = () => {
     }
   };
 
+  const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (event.key === 'Enter' && canSend) {
+      event.preventDefault();
+      void sendPrompt();
+    }
+  };
+
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
       <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
@@ -181,6 +192,7 @@ export const ChatStreamPanel = () => {
           <input
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={handlePromptKeyDown}
             className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-accent transition focus:ring"
             placeholder="输入一个你想调试的提示词"
           />
