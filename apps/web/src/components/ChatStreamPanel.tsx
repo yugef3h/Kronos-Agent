@@ -72,6 +72,10 @@ export const ChatStreamPanel = () => {
               toolName: payload.toolName,
               timestamp: payload.timestamp,
             });
+
+            if (payload.message.includes('LangChain stream failed')) {
+              console.warn(`[ChatStreamPanel] ${payload.message}`);
+            }
           }
 
           if (payload.type === 'content') {

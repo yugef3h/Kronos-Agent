@@ -48,16 +48,24 @@ export async function* streamChat(params: {
         eventId,
       })}\nid: ${eventId}\n\n`;
     }
-  } catch {
+  } catch (error) {
     assistantText = '';
-    eventId = 0;
+
+    const fallbackReason =
+      error instanceof Error && error.message.trim().length > 0
+        ? error.message.slice(0, 180)
+        : 'unknown upstream error';
+
+    console.warn(
+      `[streamChat] LangChain fallback enabled for session ${sessionId}. reason: ${fallbackReason}`,
+    );
 
     eventId += 1;
     yield `data: ${JSON.stringify({
       type: 'timeline',
       stage: 'reason',
       status: 'info',
-      message: 'LangChain stream failed, fallback mock response is enabled.',
+      message: `LangChain stream failed, fallback mock response is enabled. reason: ${fallbackReason}`,
       sessionId,
       eventId,
       timestamp: Date.now(),
