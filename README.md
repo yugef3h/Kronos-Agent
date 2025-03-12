@@ -33,6 +33,8 @@ npm install
 npm run dev
 ```
 
+服务端需要先配置环境变量：复制 `apps/server/.env.example` 为 `apps/server/.env`，并填写 JWT 与豆包模型参数。
+
 访问:
 
 - 前端: http://localhost:5173
@@ -43,6 +45,14 @@ npm run dev
 - SSE Chat Stream（支持流式 Token 展示）
 - Sampling Inspector（温度 / Top-P 参数对概率分布影响）
 - Attention Heatmap（注意力矩阵可视化占位，后续接真实链路）
+
+## 安全与模型接入
+
+- API 路由统一启用 JWT Bearer 鉴权。
+- LangChain.js 通过 OpenAI 兼容接口接入豆包模型。
+- 未配置豆包环境变量时，后端会自动回退到 mock stream，便于本地 UI 调试。
+
+开发态 JWT 自动签发流程见 `docs/JWT_DEV_TOKEN.md`。
 
 ## 下一步规划（LangChain 接入）
 

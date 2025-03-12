@@ -1,6 +1,6 @@
 import { getSession } from '../domain/sessionStore.js';
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+import { streamLangChainReply } from './langchainChatService.js';
+import { streamMockReply } from './mockReplyService.js';
 
 export async function* streamChat(params: {
   prompt: string;
@@ -12,22 +12,48 @@ export async function* streamChat(params: {
 
   session.messages.push({ role: 'user', content: prompt });
 
-  const assistantText = `You asked: ${prompt}. This stream is from the new modular server architecture.`;
-  const tokens = assistantText.split('');
+  const history = session.messages.slice(-8, -1);
+  let assistantText = '';
+  let eventId = 0;
 
-  for (let i = lastEventId; i < tokens.length; i += 1) {
-    const eventId = i + 1;
-    yield `data: ${JSON.stringify({
-      type: 'content',
-      content: tokens[i],
-      sessionId,
-      eventId,
-    })}\nid: ${eventId}\n\n`;
+  try {
+    for await (const token of streamLangChainReply({ prompt, history })) {
+      eventId += 1;
+      assistantText += token;
 
-    await sleep(35);
+      if (eventId <= lastEventId) {
+        continue;
+      }
+
+      yield `data: ${JSON.stringify({
+        type: 'content',
+        content: token,
+        sessionId,
+        eventId,
+      })}\nid: ${eventId}\n\n`;
+    }
+  } catch {
+    assistantText = '';
+    eventId = 0;
+
+    for await (const token of streamMockReply(prompt)) {
+      eventId += 1;
+      assistantText += token;
+
+      if (eventId <= lastEventId) {
+        continue;
+      }
+
+      yield `data: ${JSON.stringify({
+        type: 'content',
+        content: token,
+        sessionId,
+        eventId,
+      })}\nid: ${eventId}\n\n`;
+    }
   }
 
-  const completeId = tokens.length + 1;
+  const completeId = eventId + 1;
   yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
 
   session.messages.push({ role: 'assistant', content: assistantText });

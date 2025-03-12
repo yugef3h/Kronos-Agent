@@ -1,19 +1,47 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { apiUrl } from '../lib/api';
+import { apiUrl, requestDevToken } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk } from '../types/chat';
 
 export const ChatStreamPanel = () => {
-  const { sessionId } = usePlaygroundStore();
+  const { sessionId, authToken, setAuthToken } = usePlaygroundStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [tokenMessage, setTokenMessage] = useState('');
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
 
+  const generateDevToken = useCallback(async () => {
+    setIsGeneratingToken(true);
+    setTokenMessage('');
+
+    try {
+      const data = await requestDevToken();
+      setAuthToken(data.token);
+      setTokenMessage(`测试 JWT 已自动签发（有效期 ${data.expiresIn}）`);
+    } catch {
+      setTokenMessage('自动签发失败，请确认 server 已启动且为非生产环境');
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  }, [setAuthToken]);
+
+  useEffect(() => {
+    if (!authToken) {
+      void generateDevToken();
+    }
+  }, [authToken, generateDevToken]);
+
   const sendPrompt = async () => {
     if (!canSend) return;
+
+    if (!authToken) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'JWT token is required before sending requests.' }]);
+      return;
+    }
 
     const controller = new AbortController();
     const userPrompt = prompt.trim();
@@ -27,6 +55,7 @@ export const ChatStreamPanel = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ prompt: userPrompt, sessionId }),
         signal: controller.signal,
@@ -85,6 +114,20 @@ export const ChatStreamPanel = () => {
 
       <div className="mt-4 flex gap-3">
         <input
+          value={authToken}
+          onChange={(event) => setAuthToken(event.target.value)}
+          className="w-56 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-accent transition focus:ring"
+          placeholder="JWT will be auto-generated"
+        />
+        <button
+          type="button"
+          onClick={() => void generateDevToken()}
+          disabled={isGeneratingToken}
+          className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isGeneratingToken ? '生成中...' : '生成测试 JWT'}
+        </button>
+        <input
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-accent transition focus:ring"
@@ -99,6 +142,7 @@ export const ChatStreamPanel = () => {
           {isStreaming ? 'Streaming...' : 'Send'}
         </button>
       </div>
+      {tokenMessage && <p className="mt-2 text-xs text-slate-600">{tokenMessage}</p>}
     </section>
   );
 };

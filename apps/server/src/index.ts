@@ -1,20 +1,36 @@
 import cors from 'cors';
 import express from 'express';
+import { env } from './config/env.js';
+import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { chatRoutes } from './routes/chatRoutes.js';
+import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: env.ALLOWED_ORIGIN,
+  }),
+);
 app.use(express.json());
 
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true, service: 'kronos-server' });
 });
 
-app.use('/api', chatRoutes);
+app.get('/api/dev/token', (_req, res) => {
+  if (!isDevTokenRouteEnabled(process.env.NODE_ENV)) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
 
-const PORT = Number(process.env.PORT || 3001);
+  res.json(createDevToken(env.JWT_SECRET));
+});
+
+app.use('/api', authenticateJwt, chatRoutes);
+
+const PORT = env.PORT;
 
 app.listen(PORT, () => {
-  console.log(`kronos server running on http://localhost:${PORT}`);
+  console.warn(`kronos server running on http://localhost:${PORT}`);
 });

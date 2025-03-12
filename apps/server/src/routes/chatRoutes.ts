@@ -32,11 +32,15 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
     lastEventId,
   });
 
-  for await (const chunk of stream) {
-    response.write(chunk);
-  }
+  try {
+    for await (const chunk of stream) {
+      response.write(chunk);
+    }
 
-  response.end();
+    response.end();
+  } catch {
+    response.end();
+  }
 });
 
 chatRoutes.get('/session/:sessionId', (request: Request, response: Response) => {
