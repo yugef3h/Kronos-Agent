@@ -1,0 +1,35 @@
+{
+  "name": "@kronos/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "echo \"TODO: add eslint\""
+  },
+  "dependencies": {
+    "@microsoft/fetch-event-source": "^2.0.1",
+    "@tanstack/react-query": "^5.75.5",
+    "clsx": "^2.1.1",
+    "d3": "^7.9.0",
+    "echarts": "^5.6.0",
+    "framer-motion": "^12.7.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.0",
+    "zod": "^3.24.2",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.18"
+  }
+}

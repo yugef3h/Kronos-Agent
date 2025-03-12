@@ -1,1 +1,7 @@
 node_modules/
+Draft.md
+apps/*/dist/
+apps/web/.vite/
+*.tsbuildinfo
+.env
+.env.*

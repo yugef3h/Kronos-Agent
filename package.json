@@ -1,16 +1,24 @@
 {
-  "name": "llm-frontend",
-  "version": "1.0.0",
-  "main": "app.js",
+  "name": "kronos-agent",
+  "version": "0.2.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently \"npm run dev --workspace @kronos/server\" \"npm run dev --workspace @kronos/web\"",
+    "dev:web": "npm run dev --workspace @kronos/web",
+    "dev:server": "npm run dev --workspace @kronos/server",
+    "build": "npm run build --workspace @kronos/core && npm run build --workspace @kronos/server && npm run build --workspace @kronos/web",
+    "test": "echo \"Tests are not wired yet\"",
+    "lint": "npm run lint --workspace @kronos/web"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "description": "",
+  "license": "Apache-2.0",
+  "description": "LLM Insight Playground with LangChain-ready architecture",
   "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "concurrently": "^9.1.2"
   }
 }

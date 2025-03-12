@@ -1,0 +1,13 @@
+{
+  "name": "@kronos/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"@kronos/core is source-only for now\""
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

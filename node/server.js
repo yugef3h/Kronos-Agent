@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Kronos-Agent Contributors
+
 // 初始化：npm init -y && npm i express cors
 const express = require('express');
 const cors = require('cors');
