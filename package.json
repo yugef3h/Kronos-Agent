@@ -7,6 +7,7 @@
     "dev:web": "npm run dev --workspace @kronos/web",
     "dev:server": "npm run dev --workspace @kronos/server",
     "build": "npm run build --workspace @kronos/core && npm run build --workspace @kronos/server && npm run build --workspace @kronos/web",
+    "cd": "node scripts/git-commit-date.mjs",
     "test": "echo \"Tests are not wired yet\"",
     "lint": "npm run lint --workspace @kronos/web"
   },
