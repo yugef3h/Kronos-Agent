@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
+import { resolveJwtVerify } from '../utils/jwtInterop.js';
 
 export const authenticateJwt = (request: Request, response: Response, next: NextFunction) => {
   if (request.method === 'OPTIONS') {
@@ -18,7 +19,8 @@ export const authenticateJwt = (request: Request, response: Response, next: Next
   const token = authorizationHeader.slice('Bearer '.length);
 
   try {
-    jwt.verify(token, env.JWT_SECRET);
+    const verify = resolveJwtVerify(jwt);
+    verify(token, env.JWT_SECRET);
     next();
   } catch {
     response.status(401).json({ error: 'Invalid JWT token' });

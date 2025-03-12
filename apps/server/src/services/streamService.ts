@@ -17,17 +17,33 @@ export async function* streamChat(params: {
   let eventId = 0;
 
   try {
-    for await (const token of streamLangChainReply({ prompt, history })) {
+    for await (const event of streamLangChainReply({ prompt, history })) {
       eventId += 1;
-      assistantText += token;
 
       if (eventId <= lastEventId) {
         continue;
       }
 
+      if (event.type === 'timeline') {
+        yield `data: ${JSON.stringify({
+          type: 'timeline',
+          stage: event.stage,
+          status: event.status,
+          message: event.message,
+          toolName: event.toolName,
+          timestamp: event.timestamp,
+          sessionId,
+          eventId,
+        })}\nid: ${eventId}\n\n`;
+
+        continue;
+      }
+
+      assistantText += event.content;
+
       yield `data: ${JSON.stringify({
         type: 'content',
-        content: token,
+        content: event.content,
         sessionId,
         eventId,
       })}\nid: ${eventId}\n\n`;
@@ -35,6 +51,17 @@ export async function* streamChat(params: {
   } catch {
     assistantText = '';
     eventId = 0;
+
+    eventId += 1;
+    yield `data: ${JSON.stringify({
+      type: 'timeline',
+      stage: 'reason',
+      status: 'info',
+      message: 'LangChain stream failed, fallback mock response is enabled.',
+      sessionId,
+      eventId,
+      timestamp: Date.now(),
+    })}\nid: ${eventId}\n\n`;
 
     for await (const token of streamMockReply(prompt)) {
       eventId += 1;

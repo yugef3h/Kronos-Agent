@@ -1,4 +1,5 @@
 import * as jwt from 'jsonwebtoken';
+import { resolveJwtSign } from '../utils/jwtInterop.js';
 
 export type DevTokenPayload = {
   token: string;
@@ -7,7 +8,8 @@ export type DevTokenPayload = {
 };
 
 export const createDevToken = (jwtSecret: string): DevTokenPayload => {
-  const token = jwt.sign({ sub: 'dev-user', role: 'tester' }, jwtSecret, {
+  const sign = resolveJwtSign(jwt);
+  const token = sign({ sub: 'dev-user', role: 'tester' }, jwtSecret, {
     algorithm: 'HS256',
     expiresIn: '7d',
   });

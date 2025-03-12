@@ -5,7 +5,7 @@ import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk } from '../types/chat';
 
 export const ChatStreamPanel = () => {
-  const { sessionId, authToken, setAuthToken } = usePlaygroundStore();
+  const { sessionId, authToken, setAuthToken, appendTimelineEvent, clearTimelineEvents } = usePlaygroundStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -46,6 +46,7 @@ export const ChatStreamPanel = () => {
     const controller = new AbortController();
     const userPrompt = prompt.trim();
 
+    clearTimelineEvents();
     setPrompt('');
     setMessages((prev) => [...prev, { role: 'user', content: userPrompt }, { role: 'assistant', content: '' }]);
     setIsStreaming(true);
@@ -62,7 +63,18 @@ export const ChatStreamPanel = () => {
         onmessage(event) {
           const payload = JSON.parse(event.data) as StreamChunk;
 
-          if (payload.type === 'content' && payload.content) {
+          if (payload.type === 'timeline') {
+            appendTimelineEvent({
+              eventId: payload.eventId,
+              stage: payload.stage,
+              status: payload.status,
+              message: payload.message,
+              toolName: payload.toolName,
+              timestamp: payload.timestamp,
+            });
+          }
+
+          if (payload.type === 'content') {
             setMessages((prev) => {
               const draft = [...prev];
               const last = draft[draft.length - 1];

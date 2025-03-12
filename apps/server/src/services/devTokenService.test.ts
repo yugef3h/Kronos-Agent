@@ -1,6 +1,20 @@
 import * as jwt from 'jsonwebtoken';
 import { createDevToken, isDevTokenRouteEnabled } from './devTokenService';
 
+const getJwtVerify = (): typeof jwt.verify => {
+  const verify = (jwt as unknown as { verify?: typeof jwt.verify }).verify;
+  if (typeof verify === 'function') {
+    return verify;
+  }
+
+  const defaultVerify = (jwt as unknown as { default?: { verify?: typeof jwt.verify } }).default?.verify;
+  if (typeof defaultVerify === 'function') {
+    return defaultVerify;
+  }
+
+  throw new TypeError('jsonwebtoken.verify is not available');
+};
+
 describe('devTokenService', () => {
   it('should create a verifiable HS256 bearer token', () => {
     const jwtSecret = 'unit-test-secret-1234567890';
@@ -9,7 +23,8 @@ describe('devTokenService', () => {
     expect(result.tokenType).toBe('Bearer');
     expect(result.expiresIn).toBe('7d');
 
-    const payload = jwt.verify(result.token, jwtSecret) as jwt.JwtPayload;
+    const verify = getJwtVerify();
+    const payload = verify(result.token, jwtSecret) as jwt.JwtPayload;
 
     expect(payload.sub).toBe('dev-user');
     expect(payload.role).toBe('tester');
