@@ -1,4 +1,4 @@
-import * as jwt from 'jsonwebtoken';
+import type * as jwt from 'jsonwebtoken';
 
 type JwtModuleShape = {
   sign?: typeof jwt.sign;
