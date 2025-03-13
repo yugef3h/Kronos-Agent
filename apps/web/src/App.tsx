@@ -5,7 +5,6 @@ import { ChatStreamPanel } from './components/ChatStreamPanel';
 import { MemorySummaryPanel } from './components/MemorySummaryPanel';
 import { SamplingInspector } from './components/SamplingInspector';
 import { TokenEmbeddingPanel } from './components/TokenEmbeddingPanel';
-import { ToolInvocationPanel } from './components/ToolInvocationPanel';
 
 const App = () => {
   return (
@@ -36,7 +35,6 @@ const App = () => {
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
         <MemorySummaryPanel />
         <AgentOrchestratorPanel />
-        <ToolInvocationPanel />
       </section>
     </main>
   );

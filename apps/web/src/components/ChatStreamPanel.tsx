@@ -2,10 +2,17 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { apiUrl, requestDevToken } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
-import type { ChatMessage, StreamChunk } from '../types/chat';
+import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
 
 export const ChatStreamPanel = () => {
-  const { sessionId, authToken, setAuthToken, appendTimelineEvent, clearTimelineEvents } = usePlaygroundStore();
+  const {
+    sessionId,
+    authToken,
+    timelineEvents,
+    setAuthToken,
+    appendTimelineEvent,
+    clearTimelineEvents,
+  } = usePlaygroundStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -15,8 +22,26 @@ export const ChatStreamPanel = () => {
   const activeRequestIdRef = useRef(0);
   const activeControllerRef = useRef<AbortController | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  const timelineBodyRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
+
+  const stageToneMap: Record<TimelineEvent['stage'], string> = {
+    plan: 'bg-indigo-100 text-indigo-700',
+    tool: 'bg-cyan-100 text-cyan-700',
+    reason: 'bg-emerald-100 text-emerald-700',
+  };
+
+  const statusToneMap: Record<TimelineEvent['status'], string> = {
+    start: 'bg-amber-100 text-amber-700',
+    end: 'bg-lime-100 text-lime-700',
+    info: 'bg-slate-200 text-slate-700',
+  };
+
+  const currentTimelineEvent = useMemo(
+    () => timelineEvents[timelineEvents.length - 1],
+    [timelineEvents],
+  );
 
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
@@ -47,6 +72,17 @@ export const ChatStreamPanel = () => {
 
     messageListElement.scrollTop = messageListElement.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    const timelineBodyElement = timelineBodyRef.current;
+    if (!timelineBodyElement) {
+      return;
+    }
+
+    // 高度跟随内容实时变化，避免固定高度导致信息被截断或留白。
+    timelineBodyElement.style.height = 'auto';
+    timelineBodyElement.style.height = `${timelineBodyElement.scrollHeight}px`;
+  }, [currentTimelineEvent, isStreaming]);
 
   const sendPrompt = async () => {
     if (!canSend) return;
@@ -214,6 +250,40 @@ export const ChatStreamPanel = () => {
           >
             {isStreaming ? 'Streaming...' : 'Send'}
           </button>
+        </div>
+
+        <div className="rounded-2xl border border-cyan-200/70 bg-gradient-to-r from-cyan-50 via-sky-50 to-white p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">🧠</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Agent Thinking Flow</p>
+            </div>
+            <span
+              className={`h-2 w-2 rounded-full ${isStreaming ? 'animate-pulse bg-emerald-500' : 'bg-slate-300'}`}
+              aria-hidden
+            />
+          </div>
+
+          <div ref={timelineBodyRef} className="mt-2 space-y-2 pr-1 text-xs transition-[height] duration-200">
+            {!currentTimelineEvent && (
+              <p className="rounded-lg border border-dashed border-slate-300 bg-white/70 px-2 py-1.5 text-slate-500">
+                暂无当前思考状态。发送提示词后，这里会实时更新 Agent 当前步骤。
+              </p>
+            )}
+
+            {currentTimelineEvent && (
+              <article key={currentTimelineEvent.eventId} className="rounded-xl border border-cyan-100 bg-white/85 px-2.5 py-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded px-1.5 py-0.5 uppercase ${stageToneMap[currentTimelineEvent.stage]}`}>{currentTimelineEvent.stage}</span>
+                  <span className={`rounded px-1.5 py-0.5 uppercase ${statusToneMap[currentTimelineEvent.status]}`}>{currentTimelineEvent.status}</span>
+                  {currentTimelineEvent.toolName && (
+                    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-violet-700">{currentTimelineEvent.toolName}</span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-slate-700">{currentTimelineEvent.message}</p>
+              </article>
+            )}
+          </div>
         </div>
       </div>
       {tokenMessage && <p className="mt-2 text-xs text-slate-600">{tokenMessage}</p>}
