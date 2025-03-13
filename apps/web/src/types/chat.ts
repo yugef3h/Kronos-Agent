@@ -3,6 +3,9 @@ export type TimelineEvent = {
   status: 'start' | 'end' | 'info';
   message: string;
   toolName?: string;
+  toolInput?: string;
+  toolOutput?: string;
+  toolError?: string;
   timestamp: number;
   eventId: number;
 };
@@ -28,6 +31,9 @@ type TimelineChunk = {
   status: TimelineEvent['status'];
   message: string;
   toolName?: string;
+  toolInput?: string;
+  toolOutput?: string;
+  toolError?: string;
   timestamp: number;
 };
 

@@ -4,8 +4,8 @@ import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
 import type { Message } from '../domain/sessionStore.js';
 import { env } from '../config/env.js';
-import { selectToolNamesFromPrompt } from './toolSelector.js';
 import { normalizeStreamDelta } from './streamDelta.js';
+import { extractModelToolCalls } from './toolCallExtractor.js';
 
 type TimelineEvent = {
   type: 'timeline';
@@ -13,6 +13,9 @@ type TimelineEvent = {
   status: 'start' | 'end' | 'info';
   message: string;
   toolName?: string;
+  toolInput?: string;
+  toolOutput?: string;
+  toolError?: string;
   timestamp: number;
 };
 
@@ -80,19 +83,48 @@ const toolRegistry = {
   attention_probe: attentionProbeTool,
 };
 
+const toolEnabledModel = chatModel.bindTools([tokenEstimatorTool, attentionProbeTool], {
+  tool_choice: 'auto',
+});
+
 const createTimelineEvent = (
   stage: 'plan' | 'tool' | 'reason',
   status: 'start' | 'end' | 'info',
   message: string,
   toolName?: string,
+  toolInput?: string,
+  toolOutput?: string,
+  toolError?: string,
 ): TimelineEvent => ({
   type: 'timeline',
   stage,
   status,
   message,
   toolName,
+  toolInput,
+  toolOutput,
+  toolError,
   timestamp: Date.now(),
 });
+
+const safeStringify = (value: unknown): string => {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const normalizeToolInput = (args: unknown, fallbackPrompt: string): { text: string } => {
+  if (typeof args === 'object' && args !== null) {
+    const maybeText = (args as { text?: unknown }).text;
+    if (typeof maybeText === 'string' && maybeText.trim().length > 0) {
+      return { text: maybeText };
+    }
+  }
+
+  return { text: fallbackPrompt };
+};
 
 const readChunkText = (content: unknown): string => {
   if (typeof content === 'string') {
@@ -123,34 +155,81 @@ export async function* streamLangChainReply(params: {
   prompt: string;
   history: Message[];
 }): AsyncGenerator<LangChainStreamEvent> {
-  yield createTimelineEvent('plan', 'start', 'Planner started analyzing prompt intent.');
+  yield createTimelineEvent('plan', 'start', '规划器开始分析当前提示词意图。');
 
-  const selectedToolNames = selectToolNamesFromPrompt(params.prompt);
+  const planningMessages = [
+    ...params.history.map(toLangChainMessage),
+    new HumanMessage(params.prompt),
+  ];
+
+  const planningResult = await toolEnabledModel.invoke(planningMessages);
+  const modelToolCalls = extractModelToolCalls(planningResult);
 
   yield createTimelineEvent(
     'plan',
     'info',
-    selectedToolNames.length > 0
-      ? `Planner selected tools: ${selectedToolNames.join(', ')}`
-      : 'Planner selected no tools, proceeding directly to model reasoning.',
+    modelToolCalls.length > 0
+      ? `模型决策调用工具：${modelToolCalls.map((item) => item.name).join('、')}`
+      : '模型决策为无工具调用，直接进入推理阶段。',
   );
 
   const toolOutputs: string[] = [];
 
-  for (const toolName of selectedToolNames) {
-    const selectedTool = toolRegistry[toolName as keyof typeof toolRegistry];
+  for (const toolCall of modelToolCalls) {
+    const selectedTool = toolRegistry[toolCall.name as keyof typeof toolRegistry];
 
     if (!selectedTool) {
+      yield createTimelineEvent(
+        'tool',
+        'info',
+        `模型尝试调用未知工具 ${toolCall.name}，已跳过。`,
+        toolCall.name,
+      );
       continue;
     }
 
-    yield createTimelineEvent('tool', 'start', `${toolName} execution started.`, toolName);
-    const output = await selectedTool.invoke({ text: params.prompt });
-    toolOutputs.push(`${toolName}: ${output}`);
-    yield createTimelineEvent('tool', 'end', `${toolName} execution finished.`, toolName);
+    const normalizedInput = normalizeToolInput(toolCall.args, params.prompt);
+    const serializedInput = safeStringify(normalizedInput);
+
+    yield createTimelineEvent(
+      'tool',
+      'start',
+      `工具 ${toolCall.name} 开始执行。`,
+      toolCall.name,
+      serializedInput,
+    );
+
+    try {
+      const output = await selectedTool.invoke(normalizedInput);
+      const serializedOutput = safeStringify(output);
+      toolOutputs.push(`${toolCall.name}: ${serializedOutput}`);
+      yield createTimelineEvent(
+        'tool',
+        'end',
+        `工具 ${toolCall.name} 执行完成。`,
+        toolCall.name,
+        serializedInput,
+        serializedOutput,
+      );
+    } catch (error) {
+      const toolError =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : 'tool execution failed';
+
+      yield createTimelineEvent(
+        'tool',
+        'end',
+        `工具 ${toolCall.name} 执行失败。`,
+        toolCall.name,
+        serializedInput,
+        undefined,
+        toolError,
+      );
+    }
   }
 
-  yield createTimelineEvent('reason', 'start', 'Reasoner started streaming response.');
+  yield createTimelineEvent('reason', 'start', '推理器开始生成流式响应。');
 
   const messages = [
     ...params.history.map(toLangChainMessage),
@@ -181,5 +260,5 @@ export async function* streamLangChainReply(params: {
     }
   }
 
-  yield createTimelineEvent('reason', 'end', 'Reasoner finished streaming response.');
+  yield createTimelineEvent('reason', 'end', '推理器已完成流式响应。');
 }

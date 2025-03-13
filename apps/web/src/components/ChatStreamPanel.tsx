@@ -38,6 +38,23 @@ export const ChatStreamPanel = () => {
     info: 'bg-slate-200 text-slate-700',
   };
 
+  const stageLabelMap: Record<TimelineEvent['stage'], string> = {
+    plan: '规划',
+    tool: '工具',
+    reason: '推理',
+  };
+
+  const statusLabelMap: Record<TimelineEvent['status'], string> = {
+    start: '开始',
+    end: '完成',
+    info: '信息',
+  };
+
+  const toolLabelMap: Record<string, string> = {
+    token_estimator: 'Token 估算器',
+    attention_probe: '注意力探针',
+  };
+
   const currentTimelineEvent = useMemo(
     () => timelineEvents[timelineEvents.length - 1],
     [timelineEvents],
@@ -136,10 +153,13 @@ export const ChatStreamPanel = () => {
               status: payload.status,
               message: payload.message,
               toolName: payload.toolName,
+              toolInput: payload.toolInput,
+              toolOutput: payload.toolOutput,
+              toolError: payload.toolError,
               timestamp: payload.timestamp,
             });
 
-            if (payload.message.includes('LangChain stream failed')) {
+            if (payload.message.includes('LangChain 流式响应失败')) {
               console.warn(`[ChatStreamPanel] ${payload.message}`);
             }
           }
@@ -274,10 +294,10 @@ export const ChatStreamPanel = () => {
             {currentTimelineEvent && (
               <article key={currentTimelineEvent.eventId} className="rounded-xl border border-cyan-100 bg-white/85 px-2.5 py-2">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className={`rounded px-1.5 py-0.5 uppercase ${stageToneMap[currentTimelineEvent.stage]}`}>{currentTimelineEvent.stage}</span>
-                  <span className={`rounded px-1.5 py-0.5 uppercase ${statusToneMap[currentTimelineEvent.status]}`}>{currentTimelineEvent.status}</span>
+                  <span className={`rounded px-1.5 py-0.5 ${stageToneMap[currentTimelineEvent.stage]}`}>{stageLabelMap[currentTimelineEvent.stage]}</span>
+                  <span className={`rounded px-1.5 py-0.5 ${statusToneMap[currentTimelineEvent.status]}`}>{statusLabelMap[currentTimelineEvent.status]}</span>
                   {currentTimelineEvent.toolName && (
-                    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-violet-700">{currentTimelineEvent.toolName}</span>
+                    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-violet-700">{toolLabelMap[currentTimelineEvent.toolName] ?? currentTimelineEvent.toolName}</span>
                   )}
                 </div>
                 <p className="mt-1.5 text-slate-700">{currentTimelineEvent.message}</p>

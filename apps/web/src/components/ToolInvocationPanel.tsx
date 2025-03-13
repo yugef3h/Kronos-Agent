@@ -19,6 +19,9 @@ export const ToolInvocationPanel = () => {
               {event.toolName && <span className="rounded bg-emerald-100 px-1.5 py-0.5">{event.toolName}</span>}
             </div>
             <p className="mt-1 text-slate-700">{event.message}</p>
+            {event.toolInput && <p className="mt-1 text-slate-500">input: {event.toolInput}</p>}
+            {event.toolOutput && <p className="mt-1 text-slate-500">output: {event.toolOutput}</p>}
+            {event.toolError && <p className="mt-1 text-rose-600">error: {event.toolError}</p>}
           </article>
         ))}
       </div>
