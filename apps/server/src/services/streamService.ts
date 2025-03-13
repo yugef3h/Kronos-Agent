@@ -1,4 +1,4 @@
-import { getSession } from '../domain/sessionStore.js';
+import { getSession, persistSession } from '../domain/sessionStore.js';
 import { streamLangChainReply } from './langchainChatService.js';
 import { createMemoryPlan } from './memoryOrchestrator.js';
 import { streamMockReply } from './mockReplyService.js';
@@ -127,4 +127,7 @@ export async function* streamChat(params: {
 
   session.messages.push({ role: 'assistant', content: assistantText });
   session.lastId = completeId;
+
+  // 每轮对话结束后异步写盘，保证服务重启后历史可恢复
+  void persistSession(sessionId, session);
 }

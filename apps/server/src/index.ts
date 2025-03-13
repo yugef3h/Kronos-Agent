@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { env } from './config/env.js';
+import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { chatRoutes } from './routes/chatRoutes.js';
 import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
@@ -28,6 +29,9 @@ app.get('/api/dev/token', (_req, res) => {
 });
 
 app.use('/api', authenticateJwt, chatRoutes);
+
+// 启动前加载持久化 session（ESM 顶层 await）
+await initSessionStore();
 
 const PORT = env.PORT;
 

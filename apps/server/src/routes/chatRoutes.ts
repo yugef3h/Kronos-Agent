@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
-import { getSessionSnapshot } from '../domain/sessionStore.js';
+import { getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 
@@ -55,6 +55,14 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
 chatRoutes.get('/session/:sessionId', (request: Request, response: Response) => {
   const sessionId = String(request.params.sessionId || '');
   response.json(getSessionSnapshot(sessionId));
+});
+
+chatRoutes.get('/sessions/recent', async (request: Request, response: Response) => {
+  const limitParam = Number(request.query.limit || 10);
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(Math.floor(limitParam), 1), 50) : 10;
+
+  const items = await listRecentDialogues(limit);
+  response.json({ items });
 });
 
 chatRoutes.post('/token-embedding/analyze', async (request: Request, response: Response) => {

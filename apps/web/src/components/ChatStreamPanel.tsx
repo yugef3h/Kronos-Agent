@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { apiUrl, requestDevToken, requestSessionSnapshot } from '../lib/api';
+import { apiUrl, requestDevToken, requestRecentSessions, requestSessionSnapshot } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
 
@@ -11,6 +11,13 @@ type MemoryLiveMetrics = {
   budgetTokensEstimate: number;
   summaryTriggerMessageCount: number;
   isSummaryThresholdReached: boolean;
+};
+
+type RecentDialogueItem = {
+  id: string;
+  sessionId: string;
+  updatedAt: number;
+  userContent: string;
 };
 
 export const ChatStreamPanel = () => {
@@ -28,6 +35,9 @@ export const ChatStreamPanel = () => {
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [tokenMessage, setTokenMessage] = useState('');
   const [isMemoryStrategyOpen, setIsMemoryStrategyOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
   const [memoryMetrics, setMemoryMetrics] = useState<MemoryLiveMetrics>({
     messageCount: 0,
     conversationTokensEstimate: 0,
@@ -41,6 +51,11 @@ export const ChatStreamPanel = () => {
   const activeControllerRef = useRef<AbortController | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const timelineBodyRef = useRef<HTMLDivElement | null>(null);
+  const historyPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const formatTimestamp = useCallback((timestamp: number) => {
+    return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
+  }, []);
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
 
@@ -95,6 +110,36 @@ export const ChatStreamPanel = () => {
     }
   }, [authToken, sessionId]);
 
+  const refreshRecentSessions = useCallback(async () => {
+    if (!authToken) {
+      return;
+    }
+
+    setIsHistoryLoading(true);
+    try {
+      const response = await requestRecentSessions({ authToken, limit: 10 });
+      setRecentDialogues(response.items);
+    } catch {
+      setRecentDialogues([]);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [authToken]);
+
+  const hydrateSessionMessages = useCallback(async () => {
+    if (!authToken) {
+      return;
+    }
+
+    try {
+      const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+      setMessages(snapshot.messages);
+      setMemoryMetrics(snapshot.memoryMetrics);
+    } catch {
+      // 刷新回显失败时保留当前页状态，不阻断继续提问。
+    }
+  }, [authToken, sessionId]);
+
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
     setTokenMessage('');
@@ -115,6 +160,10 @@ export const ChatStreamPanel = () => {
       void generateDevToken();
     }
   }, [authToken, generateDevToken]);
+
+  useEffect(() => {
+    void hydrateSessionMessages();
+  }, [hydrateSessionMessages]);
 
   useEffect(() => {
     void refreshMemoryMetrics();
@@ -153,6 +202,24 @@ export const ChatStreamPanel = () => {
     timelineBodyElement.style.height = 'auto';
     timelineBodyElement.style.height = `${timelineBodyElement.scrollHeight}px`;
   }, [currentTimelineEvent, isStreaming]);
+
+  useEffect(() => {
+    if (!isHistoryOpen) {
+      return;
+    }
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!historyPanelRef.current?.contains(target)) {
+        setIsHistoryOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+    };
+  }, [isHistoryOpen]);
 
   const sendPrompt = async () => {
     if (!canSend) return;
@@ -270,9 +337,47 @@ export const ChatStreamPanel = () => {
     }
   };
 
+  const toggleHistoryPanel = () => {
+    const nextOpen = !isHistoryOpen;
+    setIsHistoryOpen(nextOpen);
+
+    if (nextOpen) {
+      void refreshRecentSessions();
+    }
+  };
+
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
-      <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
+      <div className="relative flex items-start justify-between gap-3">
+        <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
+        <div ref={historyPanelRef} className="relative">
+          <button
+            type="button"
+            onClick={toggleHistoryPanel}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            历史对话
+          </button>
+          {isHistoryOpen && (
+            <div className="absolute right-0 top-9 z-30 w-[26rem] max-w-[85vw] rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="mb-1 px-2 text-xs font-semibold text-slate-600">最近 10 条历史对话</div>
+              <div className="max-h-80 space-y-2 overflow-auto pr-1">
+                {isHistoryLoading && <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">读取中...</p>}
+                {!isHistoryLoading && recentDialogues.length === 0 && (
+                  <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">暂无本地缓存对话</p>
+                )}
+                {!isHistoryLoading && recentDialogues.map((item) => (
+                  <article key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-2 transition hover:border-cyan-200 hover:bg-cyan-50/40">
+                    <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
+                    <div className="mt-1"></div>
+                    <p className="line-clamp-1 text-xs text-slate-700" title={item.userContent || '（无用户输入）'}>{item.userContent || '（无用户输入）'}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       <p className="mt-1 text-sm text-slate-600">模拟 LangChain 输出流，后续可接真实 Agent 链路。</p>
 
       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -351,7 +456,7 @@ export const ChatStreamPanel = () => {
             onClick={sendPrompt}
             className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isStreaming ? 'Streaming...' : 'Send'}
+            {isStreaming ? '思考中...' : '发消息'}
           </button>
         </div>
 
@@ -392,8 +497,14 @@ export const ChatStreamPanel = () => {
       {tokenMessage && <p className="mt-2 text-xs text-slate-600">{tokenMessage}</p>}
 
       {isMemoryStrategyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4"
+          onClick={() => setIsMemoryStrategyOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-display text-lg text-ink">Memory 策略说明</h3>
               <button
