@@ -347,7 +347,7 @@ export const ChatStreamPanel = () => {
   };
 
   return (
-    <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
+    <section className="relative rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
       <div className="relative flex items-start justify-between gap-3">
         <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
         <div ref={historyPanelRef} className="relative">
@@ -498,11 +498,11 @@ export const ChatStreamPanel = () => {
 
       {isMemoryStrategyOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4"
+          className="absolute inset-0 z-50 flex justify-center bg-slate-900/45 px-4"
           onClick={() => setIsMemoryStrategyOpen(false)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+            className="absolute top-[10%] w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
