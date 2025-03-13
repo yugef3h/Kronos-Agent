@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { apiUrl, requestDevToken } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
@@ -11,6 +11,9 @@ export const ChatStreamPanel = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [tokenMessage, setTokenMessage] = useState('');
+  // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
+  const activeRequestIdRef = useRef(0);
+  const activeControllerRef = useRef<AbortController | null>(null);
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
 
@@ -43,7 +46,15 @@ export const ChatStreamPanel = () => {
       return;
     }
 
+    const requestId = activeRequestIdRef.current + 1;
+    activeRequestIdRef.current = requestId;
+
+    // 发起新请求前先终止旧流，保证同一时刻只有一个有效 SSE 流。
+    activeControllerRef.current?.abort();
     const controller = new AbortController();
+    activeControllerRef.current = controller;
+    // 某些传输层在重连时会重放事件，按 eventId 去重可避免重复渲染。
+    let lastSeenEventId = 0;
     const userPrompt = prompt.trim();
 
     clearTimelineEvents();
@@ -61,7 +72,16 @@ export const ChatStreamPanel = () => {
         body: JSON.stringify({ prompt: userPrompt, sessionId }),
         signal: controller.signal,
         onmessage(event) {
+          if (requestId !== activeRequestIdRef.current) {
+            return;
+          }
+
           const payload = JSON.parse(event.data) as StreamChunk;
+
+          if (payload.eventId <= lastSeenEventId) {
+            return;
+          }
+          lastSeenEventId = payload.eventId;
 
           if (payload.type === 'timeline') {
             appendTimelineEvent({
@@ -83,25 +103,36 @@ export const ChatStreamPanel = () => {
               const draft = [...prev];
               const last = draft[draft.length - 1];
               if (!last || last.role !== 'assistant') return draft;
-              last.content += payload.content;
-              return draft;
+              return [...draft.slice(0, -1), { ...last, content: `${last.content}${payload.content}` }];
             });
           }
 
           if (payload.type === 'complete') {
-            setIsStreaming(false);
+            if (requestId === activeRequestIdRef.current) {
+              setIsStreaming(false);
+              activeControllerRef.current = null;
+            }
           }
         },
         onerror(error) {
-          setIsStreaming(false);
+          if (requestId === activeRequestIdRef.current) {
+            setIsStreaming(false);
+            activeControllerRef.current = null;
+          }
           throw error;
         },
         onclose() {
-          setIsStreaming(false);
+          if (requestId === activeRequestIdRef.current) {
+            setIsStreaming(false);
+            activeControllerRef.current = null;
+          }
         },
       });
     } catch {
-      setIsStreaming(false);
+      if (requestId === activeRequestIdRef.current) {
+        setIsStreaming(false);
+        activeControllerRef.current = null;
+      }
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: 'stream interrupted, please retry.' },

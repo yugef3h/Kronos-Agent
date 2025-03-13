@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { Message } from '../domain/sessionStore.js';
 import { env } from '../config/env.js';
 import { selectToolNamesFromPrompt } from './toolSelector.js';
+import { normalizeStreamDelta } from './streamDelta.js';
 
 type TimelineEvent = {
   type: 'timeline';
@@ -162,9 +163,16 @@ export async function* streamLangChainReply(params: {
   ];
 
   const stream = await chatModel.stream(messages);
+  let previousChunkText = '';
 
   for await (const chunk of stream) {
-    const content = readChunkText(chunk.content);
+    const rawContent = readChunkText(chunk.content);
+    const content = normalizeStreamDelta(previousChunkText, rawContent);
+
+    if (rawContent.length > 0) {
+      previousChunkText = rawContent;
+    }
+
     if (content.length > 0) {
       yield {
         type: 'content',
