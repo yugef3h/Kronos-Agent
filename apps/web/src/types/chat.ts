@@ -42,4 +42,5 @@ export type StreamChunk = ContentChunk | CompleteChunk | TimelineChunk;
 export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: number;
 };

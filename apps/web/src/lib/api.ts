@@ -9,7 +9,7 @@ export type DevTokenResponse = {
 };
 
 export type SessionSnapshotResponse = {
-	messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+	messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp?: number }>;
 	memorySummary: string;
 	memorySummaryUpdatedAt: number | null;
 	lastId: number;

@@ -12,6 +12,7 @@ import {
 export type Message = {
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: number;
 };
 
 export type Session = {
@@ -33,6 +34,19 @@ const _dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(_dirname, '../../data/sessions');
 
 const sessions = new Map<string, Session>();
+
+const normalizeSession = (session: Session, baseTimestamp: number): Session => {
+  const normalizedMessages = session.messages.map((message, index) => ({
+    ...message,
+    timestamp: typeof message.timestamp === 'number' ? message.timestamp : baseTimestamp + index,
+  }));
+
+  return {
+    ...session,
+    messages: normalizedMessages,
+  };
+};
+
 const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentDialogueItem[]> => {
   await mkdir(DATA_DIR, { recursive: true });
   const files = await readdir(DATA_DIR);
@@ -44,7 +58,7 @@ const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentD
 
       try {
         const [raw, fileStat] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
-        const session = JSON.parse(raw) as Session;
+        const session = normalizeSession(JSON.parse(raw) as Session, fileStat.mtimeMs);
         const sessionId = file.slice(0, -5);
         for (let index = session.messages.length - 1; index >= 0; index -= 1) {
           const message = session.messages[index];
@@ -79,7 +93,9 @@ const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentD
 export const persistSession = async (sessionId: string, session: Session): Promise<void> => {
   try {
     await mkdir(DATA_DIR, { recursive: true });
-    await writeFile(join(DATA_DIR, `${sessionId}.json`), JSON.stringify(session), 'utf-8');
+    const normalizedSession = normalizeSession(session, Date.now());
+    session.messages = normalizedSession.messages;
+    await writeFile(join(DATA_DIR, `${sessionId}.json`), JSON.stringify(normalizedSession), 'utf-8');
   } catch (err) {
     console.warn(`[sessionStore] 持久化 session ${sessionId} 失败:`, err);
   }
@@ -99,8 +115,8 @@ export const initSessionStore = async (): Promise<void> => {
       if (!file.endsWith('.json')) continue;
       const sessionId = file.slice(0, -5);
       try {
-        const raw = await readFile(join(DATA_DIR, file), 'utf-8');
-        const data = JSON.parse(raw) as Session;
+        const [raw, fileStat] = await Promise.all([readFile(join(DATA_DIR, file), 'utf-8'), stat(join(DATA_DIR, file))]);
+        const data = normalizeSession(JSON.parse(raw) as Session, fileStat.mtimeMs);
         sessions.set(sessionId, data);
         loaded += 1;
       } catch {

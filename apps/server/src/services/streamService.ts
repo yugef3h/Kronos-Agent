@@ -10,8 +10,9 @@ export async function* streamChat(params: {
 }) {
   const { prompt, sessionId, lastEventId } = params;
   const session = getSession(sessionId);
+  const userMessageTimestamp = Date.now();
 
-  session.messages.push({ role: 'user', content: prompt });
+  session.messages.push({ role: 'user', content: prompt, timestamp: userMessageTimestamp });
   let assistantText = '';
   let eventId = 0;
 
@@ -125,7 +126,7 @@ export async function* streamChat(params: {
   const completeId = eventId + 1;
   yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
 
-  session.messages.push({ role: 'assistant', content: assistantText });
+  session.messages.push({ role: 'assistant', content: assistantText, timestamp: Date.now() });
   session.lastId = completeId;
 
   // 每轮对话结束后异步写盘，保证服务重启后历史可恢复
