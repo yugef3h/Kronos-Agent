@@ -8,6 +8,21 @@ export type DevTokenResponse = {
 	expiresIn: string;
 };
 
+export type SessionSnapshotResponse = {
+	messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+	memorySummary: string;
+	memorySummaryUpdatedAt: number | null;
+	lastId: number;
+	memoryMetrics: {
+		messageCount: number;
+		conversationTokensEstimate: number;
+		summaryTokensEstimate: number;
+		budgetTokensEstimate: number;
+		summaryTriggerMessageCount: number;
+		isSummaryThresholdReached: boolean;
+	};
+};
+
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	const response = await fetch(apiUrl('/api/dev/token'));
 
@@ -16,4 +31,21 @@ export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	}
 
 	return (await response.json()) as DevTokenResponse;
+};
+
+export const requestSessionSnapshot = async (params: {
+	sessionId: string;
+	authToken: string;
+}): Promise<SessionSnapshotResponse> => {
+	const response = await fetch(apiUrl(`/api/session/${params.sessionId}`), {
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request session snapshot');
+	}
+
+	return (await response.json()) as SessionSnapshotResponse;
 };

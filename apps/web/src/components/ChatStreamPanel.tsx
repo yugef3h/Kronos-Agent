@@ -1,8 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { apiUrl, requestDevToken } from '../lib/api';
+import { apiUrl, requestDevToken, requestSessionSnapshot } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
+
+type MemoryLiveMetrics = {
+  messageCount: number;
+  conversationTokensEstimate: number;
+  summaryTokensEstimate: number;
+  budgetTokensEstimate: number;
+  summaryTriggerMessageCount: number;
+  isSummaryThresholdReached: boolean;
+};
 
 export const ChatStreamPanel = () => {
   const {
@@ -18,6 +27,15 @@ export const ChatStreamPanel = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [tokenMessage, setTokenMessage] = useState('');
+  const [isMemoryStrategyOpen, setIsMemoryStrategyOpen] = useState(false);
+  const [memoryMetrics, setMemoryMetrics] = useState<MemoryLiveMetrics>({
+    messageCount: 0,
+    conversationTokensEstimate: 0,
+    summaryTokensEstimate: 0,
+    budgetTokensEstimate: 0,
+    summaryTriggerMessageCount: 12,
+    isSummaryThresholdReached: false,
+  });
   // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
   const activeRequestIdRef = useRef(0);
   const activeControllerRef = useRef<AbortController | null>(null);
@@ -60,6 +78,23 @@ export const ChatStreamPanel = () => {
     [timelineEvents],
   );
 
+  const latestTimelineEventId = useMemo(() => {
+    return timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1]?.eventId || 0 : 0;
+  }, [timelineEvents]);
+
+  const refreshMemoryMetrics = useCallback(async () => {
+    if (!authToken) {
+      return;
+    }
+
+    try {
+      const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+      setMemoryMetrics(snapshot.memoryMetrics);
+    } catch {
+      // 会话指标请求失败时保持当前显示，不中断主对话流。
+    }
+  }, [authToken, sessionId]);
+
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
     setTokenMessage('');
@@ -80,6 +115,24 @@ export const ChatStreamPanel = () => {
       void generateDevToken();
     }
   }, [authToken, generateDevToken]);
+
+  useEffect(() => {
+    void refreshMemoryMetrics();
+  }, [refreshMemoryMetrics, latestTimelineEventId]);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshMemoryMetrics();
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isStreaming, refreshMemoryMetrics]);
 
   useEffect(() => {
     const messageListElement = messageListRef.current;
@@ -222,6 +275,36 @@ export const ChatStreamPanel = () => {
       <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
       <p className="mt-1 text-sm text-slate-600">模拟 LangChain 输出流，后续可接真实 Agent 链路。</p>
 
+      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Memory Realtime Metrics</p>
+          <button
+            type="button"
+            aria-label="查看 memory 策略说明"
+            onClick={() => setIsMemoryStrategyOpen(true)}
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold text-slate-700 transition hover:bg-slate-100"
+          >
+            i
+          </button>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700 md:grid-cols-3">
+          <div className="rounded-lg bg-white px-2 py-1.5">消息数: {memoryMetrics.messageCount}</div>
+          <div className="rounded-lg bg-white px-2 py-1.5">会话 token(est): {memoryMetrics.conversationTokensEstimate}</div>
+          <div className="rounded-lg bg-white px-2 py-1.5">摘要 token(est): {memoryMetrics.summaryTokensEstimate}</div>
+          <div className="rounded-lg bg-white px-2 py-1.5">输入预算(est): {memoryMetrics.budgetTokensEstimate}</div>
+          <div className="rounded-lg bg-white px-2 py-1.5">摘要阈值: {memoryMetrics.summaryTriggerMessageCount} 条</div>
+          <div
+            className={`rounded-lg px-2 py-1.5 ${
+              memoryMetrics.isSummaryThresholdReached
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            阈值状态: {memoryMetrics.isSummaryThresholdReached ? '已达到' : '未达到'}
+          </div>
+        </div>
+      </div>
+
       <div ref={messageListRef} className="mt-4 max-h-72 space-y-3 overflow-auto rounded-xl border border-slate-200 p-3">
         {messages.length === 0 && <p className="text-sm text-slate-500">Start a prompt to see token streaming.</p>}
         {messages.map((message, index) => (
@@ -307,6 +390,28 @@ export const ChatStreamPanel = () => {
         </div>
       </div>
       {tokenMessage && <p className="mt-2 text-xs text-slate-600">{tokenMessage}</p>}
+
+      {isMemoryStrategyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display text-lg text-ink">Memory 策略说明</h3>
+              <button
+                type="button"
+                onClick={() => setIsMemoryStrategyOpen(false)}
+                className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-50"
+              >
+                关闭
+              </button>
+            </div>
+            <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-700">
+              <p>1. 滚动摘要: 会话消息达到阈值后，系统将较旧历史压缩到 summary，减少每轮传入模型的上下文长度。</p>
+              <p>2. 预算编排: 每轮请求根据输入预算动态裁剪 history，优先保留最近轮次，避免接近窗口上限导致卡顿。</p>
+              <p>3. 透明可观测: 本面板实时显示消息数、token 估算、阈值状态，便于你调试 40% 上下文拐点前后的性能变化。</p>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

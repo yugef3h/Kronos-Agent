@@ -1,5 +1,6 @@
 import { getSession } from '../domain/sessionStore.js';
 import { streamLangChainReply } from './langchainChatService.js';
+import { createMemoryPlan } from './memoryOrchestrator.js';
 import { streamMockReply } from './mockReplyService.js';
 
 export async function* streamChat(params: {
@@ -11,13 +12,43 @@ export async function* streamChat(params: {
   const session = getSession(sessionId);
 
   session.messages.push({ role: 'user', content: prompt });
-
-  const history = session.messages.slice(-8, -1);
   let assistantText = '';
   let eventId = 0;
 
+  const memoryPlan = createMemoryPlan({
+    prompt,
+    messages: session.messages.slice(0, -1),
+    memoryState: {
+      summary: session.memorySummary,
+      summaryUpdatedAt: session.memorySummaryUpdatedAt,
+    },
+  });
+
+  session.memorySummary = memoryPlan.memorySummary;
+
+  if (memoryPlan.summaryUpdated) {
+    session.memorySummaryUpdatedAt = Date.now();
+  }
+
+  eventId += 1;
+  if (eventId > lastEventId) {
+    yield `data: ${JSON.stringify({
+      type: 'timeline',
+      stage: 'plan',
+      status: 'info',
+      message: `记忆编排完成：history≈${memoryPlan.diagnostics.historyTokensEstimate} tokens，summary≈${memoryPlan.diagnostics.summaryTokensEstimate} tokens，输入预算≈${memoryPlan.diagnostics.budgetTokensEstimate} tokens。`,
+      sessionId,
+      eventId,
+      timestamp: Date.now(),
+    })}\nid: ${eventId}\n\n`;
+  }
+
   try {
-    for await (const event of streamLangChainReply({ prompt, history })) {
+    for await (const event of streamLangChainReply({
+      prompt,
+      history: memoryPlan.history,
+      memorySummary: memoryPlan.memorySummary,
+    })) {
       eventId += 1;
 
       if (eventId <= lastEventId) {

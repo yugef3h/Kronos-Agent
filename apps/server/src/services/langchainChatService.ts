@@ -154,10 +154,14 @@ const readChunkText = (content: unknown): string => {
 export async function* streamLangChainReply(params: {
   prompt: string;
   history: Message[];
+  memorySummary?: string;
 }): AsyncGenerator<LangChainStreamEvent> {
   yield createTimelineEvent('plan', 'start', '规划器开始分析当前提示词意图。');
 
   const planningMessages = [
+    ...(params.memorySummary && params.memorySummary.trim().length > 0
+      ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
+      : []),
     ...params.history.map(toLangChainMessage),
     new HumanMessage(params.prompt),
   ];
@@ -238,6 +242,9 @@ export async function* streamLangChainReply(params: {
         ? `Tool observations:\n${toolOutputs.join('\n')}`
         : 'No tools were used for this request.',
     ),
+    ...(params.memorySummary && params.memorySummary.trim().length > 0
+      ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
+      : []),
     new HumanMessage(params.prompt),
   ];
 

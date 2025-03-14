@@ -82,3 +82,39 @@
 1. “40%上下文卡顿”可以当成工程预警线，但不要当硬规则。
 2. 行业主流不是单一长窗口，而是“缓存 + 摘要 + 检索 + 预算编排”的组合拳。
 3. 你这个项目当前最值得先做的是：滚动摘要记忆 + token 预算编排 + 缓存友好前缀，这三项能最快降低延迟和 token 成本。
+
+---
+
+## 本项目已实现配置（2025-03）
+
+已在服务端落地如下 memory 策略配置：
+
+- SUMMARY_TRIGGER_MESSAGE_COUNT = 12
+- RECENT_MESSAGES_TO_KEEP = 8
+- CONTEXT_WINDOW_TOKENS = 32000
+- INPUT_BUDGET_RATIO = 0.6
+- RESERVED_OUTPUT_TOKENS = 1200
+- APPROX_TOKEN_PER_CHAR = 1 / 3.8
+
+实现效果：
+
+1. 会话消息达到阈值后自动触发滚动摘要。
+2. 每轮请求按 token 预算动态裁剪历史消息，优先保留最近轮次。
+3. SSE 轨迹中可看到 memory 编排诊断信息（history/summary/budget 估算 token）。
+
+## 页面改造说明（SSE Chat Stream）
+
+SSE Chat Stream 模块已增加 Memory Realtime Metrics，实时显示：
+
+1. 消息数量
+2. 会话 token 消耗估算
+3. 摘要 token 消耗估算
+4. 输入预算估算
+5. 摘要阈值
+6. 阈值状态（已达到/未达到）
+
+并新增提示图标 i，点击后打开弹窗，说明完整 memory 策略：
+
+1. 滚动摘要如何触发
+2. 预算编排如何裁剪历史
+3. 为什么这套策略可以缓解长上下文在 40% 附近的卡顿问题

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2026 Kronos-Agent Contributors
+// Copyright (c) 2025 Kronos-Agent Contributors
 
 /**
  * 前端版缩放点积注意力实现

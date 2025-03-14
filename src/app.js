@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2026 Kronos-Agent Contributors
+// Copyright (c) 2025 Kronos-Agent Contributors
 
 // 1. 引入最新Transformers.js v4
 import { pipeline, AutoTokenizer } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.4/+esm';
