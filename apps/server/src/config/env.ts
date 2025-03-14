@@ -9,6 +9,7 @@ const envSchema = z.object({
   DOUBAO_API_KEY: z.string().min(1),
   DOUBAO_BASE_URL: z.string().url(),
   DOUBAO_MODEL: z.string().min(1),
+  DOUBAO_EMBEDDING_MODEL: z.string().optional(),
   ALLOWED_ORIGIN: z.string().default('http://localhost:5173'),
 });
 

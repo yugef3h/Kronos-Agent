@@ -45,12 +45,18 @@ npm run dev
 - SSE Chat Stream（支持流式 Token 展示）
 - Sampling Inspector（温度 / Top-P 参数对概率分布影响）
 - Attention Heatmap（注意力矩阵可视化占位，后续接真实链路）
+- Token/Embedding Visualizer（token IDs + 向量 2D 投影）
 
 ## 安全与模型接入
 
 - API 路由统一启用 JWT Bearer 鉴权。
 - LangChain.js 通过 OpenAI 兼容接口接入豆包模型。
 - 未配置豆包环境变量时，后端会自动回退到 mock stream，便于本地 UI 调试。
+- Token/Embedding 分析接口：`POST /api/token-embedding/analyze`。
+- Token/Embedding 支持 `projectionMethod(random/pca/umap)`、对比分词器、对比 Embedding 模型，并返回 Token 重叠率与邻域一致率。
+- Token/Embedding 面板支持主模型→对比模型位移箭头热力层，用于直观看 Chunk 表征漂移。
+- Token/Embedding 面板支持 Top-K 最大漂移 Chunk 列表，点击可高亮对应位移箭头。
+- Top-K 选中项会在主模型与对比模型双图同步高亮对应点，便于演示对比路径与落点。
 
 开发态 JWT 自动签发流程见 `docs/JWT_DEV_TOKEN.md`。
 

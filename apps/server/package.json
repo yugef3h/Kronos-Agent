@@ -15,7 +15,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "js-tiktoken": "^1.0.21",
     "jsonwebtoken": "^9.0.2",
+    "umap-js": "^1.4.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
