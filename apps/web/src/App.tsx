@@ -27,14 +27,15 @@ const App = () => {
         <TokenEmbeddingPanel />
       </section>
 
-      <section className="mt-4 grid gap-4 lg:grid-cols-2">
+      {/* <section className="mt-4 grid gap-4 lg:grid-cols-2">
         <AttentionHeatmap />
         <SamplingInspector />
-      </section>
+      </section> */}
 
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
         <MemorySummaryPanel />
         <AgentOrchestratorPanel />
+        <SamplingInspector />
       </section>
     </main>
   );
