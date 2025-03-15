@@ -21,13 +21,25 @@ type RecentDialogueItem = {
 };
 
 type PromptQuickAction = {
-  key: 'file' | 'image' | 'translate';
+  key: 'file' | 'image' | 'translate' | 'takeout';
   label: string;
+};
+
+const getLatestUserQuestion = (chatMessages: ChatMessage[]): string => {
+  for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
+    const message = chatMessages[index];
+    if (message.role === 'user' && message.content.trim()) {
+      return message.content;
+    }
+  }
+
+  return '';
 };
 
 export const ChatStreamPanel = () => {
   const PROMPT_MAX_HEIGHT = 300;
   const promptQuickActions: PromptQuickAction[] = [
+    { key: 'takeout', label: '外卖' },
     { key: 'file', label: '文件' },
     { key: 'image', label: '图像' },
     { key: 'translate', label: '翻译' },
@@ -37,6 +49,7 @@ export const ChatStreamPanel = () => {
     authToken,
     timelineEvents,
     setAuthToken,
+    setLatestUserQuestion,
     appendTimelineEvent,
     clearTimelineEvents,
   } = usePlaygroundStore();
@@ -158,11 +171,12 @@ export const ChatStreamPanel = () => {
     try {
       const snapshot = await requestSessionSnapshot({ sessionId, authToken });
       setMessages(snapshot.messages);
+      setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
       setMemoryMetrics(snapshot.memoryMetrics);
     } catch {
       // 刷新回显失败时保留当前页状态，不阻断继续提问。
     }
-  }, [authToken, sessionId]);
+  }, [authToken, sessionId, setLatestUserQuestion]);
 
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
@@ -270,6 +284,7 @@ export const ChatStreamPanel = () => {
 
     clearTimelineEvents();
     setPrompt('');
+    setLatestUserQuestion(userPrompt);
     setMessages((prev) => [...prev, { role: 'user', content: userPrompt }, { role: 'assistant', content: '' }]);
     setIsStreaming(true);
 
@@ -529,6 +544,14 @@ export const ChatStreamPanel = () => {
                         <path d="M5 13c2.5-1.3 4.7-3.5 6-6" />
                         <path d="m14 17 3-8 3 8" />
                         <path d="M15.2 14h3.6" />
+                      </svg>
+                    )}
+                    {action.key === 'takeout' && (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4 11h16" />
+                        <path d="M6 11v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6" />
+                        <path d="M9 11V7a3 3 0 0 1 6 0v4" />
+                        <path d="M10 15h4" />
                       </svg>
                     )}
                     <span>{action.label}</span>

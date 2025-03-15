@@ -1,465 +1,368 @@
-import { useMemo, useState } from 'react';
-import { apiUrl } from '../lib/api';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
-type TokenRow = {
+type TokenKind = 'high-frequency' | 'chinese' | 'english' | 'symbol';
+
+type ParsedToken = {
   index: number;
-  tokenId: number;
-  tokenText: string;
-  start: number;
-  end: number;
+  id: number;
+  text: string;
+  displayText: string;
+  probability: number;
+  kind: TokenKind;
 };
 
-type ProjectionPoint = {
-  label: string;
-  chunkText: string;
-  x: number;
-  y: number;
-  norm: number;
+const MAX_CONTEXT_TOKENS = 8192;
+const ATTENTION_TOKEN_LIMIT = 24;
+const HIGH_FREQUENCY_PATTERNS = [/\bLLM\b/i, /\bAI\b/i, /\bGPT\b/i, /transformer/i, /agent/i, /token/i];
+const SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT = [
+  '当然 new EventSource().onmessage 也可以实现基本的 SSE，但不支持 POST 和断点续传，且在网络异常时重连机制不够灵活。',
+  '推荐使用 fetch + ReadableStream + AbortController 方案，实现流式读取、指数退避重连和 Last-Event-ID 续传。',
+  '同时在前端维护 sessionId 与 isStreaming 状态，避免并发请求导致响应乱序。',
+].join('\n');
+
+const TOKEN_KIND_STYLE: Record<TokenKind, string> = {
+  'high-frequency': 'border-orange-200 bg-orange-50 text-orange-700',
+  chinese: 'border-slate-300 bg-white text-slate-900',
+  english: 'border-blue-200 bg-blue-50 text-blue-700',
+  symbol: 'border-slate-200 bg-slate-100 text-slate-500',
 };
 
-type NormalizedProjectionPoint = ProjectionPoint & {
-  nx: number;
-  ny: number;
+const getDisplayTokenText = (text: string): string => {
+  return text.replace(/ /g, '␠').replace(/\n/g, '↵').replace(/\t/g, '⇥') || '∅';
 };
 
-type DisplacementPoint = {
-  label: string;
-  chunkText: string;
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
-  delta: number;
-  intensity: number;
+const isHighFrequencyToken = (text: string): boolean => {
+  return HIGH_FREQUENCY_PATTERNS.some((pattern) => pattern.test(text.trim()));
 };
 
-type AnalyzeResponse = {
-  tokenizer: string;
-  embeddingModel: string;
-  embeddingSource: 'doubao' | 'fallback';
-  projectionMethod: 'random' | 'pca' | 'umap';
-  tokenCount: number;
-  chunkCount: number;
-  tokens: TokenRow[];
-  projection: ProjectionPoint[];
-  comparison: {
-    secondaryTokenizer: string;
-    secondaryEmbeddingModel: string;
-    secondaryEmbeddingSource: 'doubao' | 'fallback';
-    secondaryTokenCount: number;
-    secondaryTokens: TokenRow[];
-    secondaryProjection: ProjectionPoint[];
-    tokenOverlapRatio: number;
-    neighborhoodAgreement: number;
-  };
+const classifyTokenKind = (text: string): TokenKind => {
+  if (isHighFrequencyToken(text)) {
+    return 'high-frequency';
+  }
+
+  if (/[\u4e00-\u9fff]/.test(text)) {
+    return 'chinese';
+  }
+
+  if (/[A-Za-z]/.test(text)) {
+    return 'english';
+  }
+
+  return 'symbol';
 };
 
-const PROJECTION_LABEL_MAP: Record<'random' | 'pca' | 'umap', string> = {
-  random: '随机投影 (random)',
-  pca: '主成分分析 (pca)',
-  umap: '流形降维 (umap)',
+const buildPseudoProbabilities = (tokenIds: number[]): number[] => {
+  const raw = tokenIds.map((tokenId, index) => {
+    const value = Math.abs(Math.sin(tokenId * 12.9898 + (index + 1) * 78.233));
+    return value + 0.001;
+  });
+
+  const total = raw.reduce((acc, value) => acc + value, 0) || 1;
+  return raw.map((value) => value / total);
 };
 
-const TOKENIZER_LABEL_MAP: Record<'cl100k_base' | 'p50k_base', string> = {
-  cl100k_base: 'cl100k_base（通用）',
-  p50k_base: 'p50k_base（代码偏向）',
+const uniqueChars = (text: string): Set<string> => new Set(Array.from(text));
+
+const tokenSemanticSimilarity = (left: ParsedToken, right: ParsedToken): number => {
+  const leftChars = uniqueChars(left.text.toLowerCase());
+  const rightChars = uniqueChars(right.text.toLowerCase());
+
+  let intersection = 0;
+  for (const char of leftChars) {
+    if (rightChars.has(char)) {
+      intersection += 1;
+    }
+  }
+
+  const union = Math.max(1, leftChars.size + rightChars.size - intersection);
+  return intersection / union;
 };
 
-const EMBEDDING_SOURCE_LABEL_MAP: Record<'doubao' | 'fallback', string> = {
-  doubao: '豆包向量服务 (doubao)',
-  fallback: '本地回退向量 (fallback)',
-};
-
-const normalizePoint = (values: number[]): number[] => {
-  const min = Math.min(...values);
+const softmax = (values: number[]): number[] => {
   const max = Math.max(...values);
-  const span = max - min || 1;
-  return values.map((value) => (value - min) / span);
+  const exps = values.map((value) => Math.exp(value - max));
+  const sum = exps.reduce((acc, value) => acc + value, 0) || 1;
+  return exps.map((value) => value / sum);
 };
 
-const getArrowColor = (intensity: number): string => {
-  if (intensity > 0.75) {
-    return '#dc2626';
-  }
+const buildAttentionMatrix = (tokens: ParsedToken[]): number[][] => {
+  // 前端模拟注意力: 结合因果掩码、位置衰减和 token 语义相似度，生成可解释热力图。
+  return tokens.map((queryToken, queryIndex) => {
+    const logits = tokens.map((keyToken, keyIndex) => {
+      if (keyIndex > queryIndex) {
+        return Number.NEGATIVE_INFINITY;
+      }
 
-  if (intensity > 0.5) {
-    return '#ea580c';
-  }
+      const distanceBias = Math.exp(-(queryIndex - keyIndex) / 6);
+      const semanticBias = tokenSemanticSimilarity(queryToken, keyToken);
+      const typeBias = queryToken.kind === keyToken.kind ? 0.12 : 0;
+      const hotBias = keyToken.kind === 'high-frequency' ? 0.1 : 0;
+      return 1.7 * distanceBias + 1.2 * semanticBias + typeBias + hotBias;
+    });
 
-  if (intensity > 0.25) {
-    return '#ca8a04';
-  }
+    const validValues = logits.map((value) => (Number.isFinite(value) ? value : -1e9));
+    const weights = softmax(validValues);
 
-  return '#16a34a';
-};
+    return weights.map((weight, index) => {
+      if (index > queryIndex) {
+        return 0;
+      }
 
-const normalizeProjectionPoints = (projection: ProjectionPoint[]): NormalizedProjectionPoint[] => {
-  // 将不同投影结果归一化到 [0,1] 区间，便于在同一画布稳定展示。
-  const xs = normalizePoint(projection.map((item) => item.x));
-  const ys = normalizePoint(projection.map((item) => item.y));
-
-  return projection.map((item, index) => ({
-    ...item,
-    nx: xs[index],
-    ny: ys[index],
-  }));
+      return Number(weight.toFixed(4));
+    });
+  });
 };
 
 export const TokenEmbeddingPanel = () => {
-  const { authToken } = usePlaygroundStore();
-  const [sourceText, setSourceText] = useState('LLM embedding helps cluster semantically similar chunks.');
-  const [chunkSize, setChunkSize] = useState(160);
-  const [projectionMethod, setProjectionMethod] = useState<'random' | 'pca' | 'umap'>('pca');
-  const [secondaryTokenizer, setSecondaryTokenizer] = useState<'cl100k_base' | 'p50k_base'>('p50k_base');
-  const [secondaryEmbeddingModel, setSecondaryEmbeddingModel] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const latestUserQuestion = usePlaygroundStore((state) => state.latestUserQuestion);
+  const [inputText, setInputText] = useState('基于Transformer的LLM在长上下文场景下会变笨。');
+  const [isSseTemplateMode, setIsSseTemplateMode] = useState(true);
+  const [tokens, setTokens] = useState<ParsedToken[]>([]);
   const [errorText, setErrorText] = useState('');
-  const [activeTokenRange, setActiveTokenRange] = useState<{ start: number; end: number } | null>(null);
-  const [isDiffOverlayEnabled, setIsDiffOverlayEnabled] = useState(true);
-  const [activeDisplacementLabel, setActiveDisplacementLabel] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [selectedTokenIndex, setSelectedTokenIndex] = useState(0);
+  const [isParsing, setIsParsing] = useState(false);
 
-  const points = useMemo(() => {
-    if (!result || result.projection.length === 0) {
+  const activeInputText = isSseTemplateMode
+    ? (latestUserQuestion.trim() || SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT)
+    : inputText;
+
+  const attentionTokens = useMemo(() => tokens.slice(0, ATTENTION_TOKEN_LIMIT), [tokens]);
+
+  const attentionMatrix = useMemo(() => {
+    if (attentionTokens.length === 0) {
       return [];
     }
 
-    return normalizeProjectionPoints(result.projection);
-  }, [result]);
+    return buildAttentionMatrix(attentionTokens);
+  }, [attentionTokens]);
 
-  const secondaryPoints = useMemo(() => {
-    if (!result || result.comparison.secondaryProjection.length === 0) {
+  const contextUsageRatio = useMemo(() => {
+    return Number(((tokens.length / MAX_CONTEXT_TOKENS) * 100).toFixed(2));
+  }, [tokens]);
+
+  const selectedAssociations = useMemo(() => {
+    if (!attentionMatrix.length || selectedTokenIndex >= attentionMatrix.length) {
       return [];
     }
 
-    return normalizeProjectionPoints(result.comparison.secondaryProjection);
-  }, [result]);
-
-  const displacementPoints = useMemo(() => {
-    if (!points.length || !secondaryPoints.length) {
-      return [];
-    }
-
-    // 计算每个 chunk 在主/对比投影平面中的位移向量。
-    const items: Array<Omit<DisplacementPoint, 'intensity'>> = points.map((point, index) => {
-      const target = secondaryPoints[index];
-      const dx = (target?.nx ?? point.nx) - point.nx;
-      const dy = (target?.ny ?? point.ny) - point.ny;
-      return {
-        label: point.label,
-        chunkText: point.chunkText,
-        fromX: point.nx,
-        fromY: point.ny,
-        toX: target?.nx ?? point.nx,
-        toY: target?.ny ?? point.ny,
-        delta: Math.sqrt(dx * dx + dy * dy),
-      };
-    });
-
-    // 按最大位移归一化强度，用于热力颜色编码。
-    const maxDelta = Math.max(...items.map((item) => item.delta), 1);
-    return items.map((item) => ({
-      ...item,
-      intensity: item.delta / maxDelta,
-    }));
-  }, [points, secondaryPoints]);
-
-  const diffSummary = useMemo(() => {
-    if (!displacementPoints.length) {
-      return null;
-    }
-
-    const maxDelta = Math.max(...displacementPoints.map((item) => item.delta));
-    const avgDelta =
-      displacementPoints.reduce((acc, item) => acc + item.delta, 0) /
-      Math.max(1, displacementPoints.length);
-
-    return {
-      maxDelta: Number(maxDelta.toFixed(4)),
-      avgDelta: Number(avgDelta.toFixed(4)),
-    };
-  }, [displacementPoints]);
-
-  const topDisplacementPoints = useMemo(() => {
-    return [...displacementPoints]
-      .sort((left, right) => right.delta - left.delta)
+    const row = attentionMatrix[selectedTokenIndex];
+    return row
+      .map((score, index) => ({
+        index,
+        token: attentionTokens[index],
+        score,
+      }))
+      .filter((item) => item.index <= selectedTokenIndex)
+      .sort((left, right) => right.score - left.score)
       .slice(0, 5);
-  }, [displacementPoints]);
+  }, [attentionMatrix, attentionTokens, selectedTokenIndex]);
 
-  const highlightedSource = useMemo(() => {
-    if (!activeTokenRange) {
-      return null;
-    }
+  const parseTokens = useCallback(async (sourceText?: string) => {
+    const trimmed = (sourceText ?? activeInputText).trim();
 
-    const start = Math.max(0, activeTokenRange.start);
-    const end = Math.min(sourceText.length, Math.max(start, activeTokenRange.end));
-
-    return {
-      before: sourceText.slice(0, start),
-      highlight: sourceText.slice(start, end),
-      after: sourceText.slice(end),
-    };
-  }, [activeTokenRange, sourceText]);
-
-  const runAnalyze = async () => {
-    if (!authToken) {
-      setErrorText('请先输入 JWT 再分析 Token/Embedding。');
+    if (!trimmed) {
+      setErrorText('请输入要解析的文本。');
+      setTokens([]);
       return;
     }
 
-    setIsLoading(true);
-    setErrorText('');
-
     try {
-      const response = await fetch(apiUrl('/api/token-embedding/analyze'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          text: sourceText,
-          maxChunkSize: chunkSize,
-          projectionMethod,
-          secondaryTokenizer,
-          secondaryEmbeddingModel: secondaryEmbeddingModel || undefined,
-        }),
+      setIsParsing(true);
+      const tokenizer = await import('gpt-tokenizer');
+      const tokenIds = Array.from(tokenizer.encode(trimmed));
+      const probabilities = buildPseudoProbabilities(tokenIds);
+
+      const nextTokens: ParsedToken[] = tokenIds.map((id, index) => {
+        const tokenText = tokenizer.decode([id]);
+        return {
+          index,
+          id,
+          text: tokenText,
+          displayText: getDisplayTokenText(tokenText),
+          probability: probabilities[index],
+          kind: classifyTokenKind(tokenText),
+        };
       });
 
-      if (!response.ok) {
-        throw new Error('analysis request failed');
-      }
-
-      const data = (await response.json()) as AnalyzeResponse;
-      setResult(data);
-      setActiveTokenRange(null);
-      setActiveDisplacementLabel(null);
+      setTokens(nextTokens);
+      setSelectedTokenIndex((previousIndex) =>
+        Math.min(previousIndex, Math.max(0, nextTokens.length - 1)),
+      );
+      setErrorText('');
     } catch {
-      setErrorText('Token/Embedding 分析失败，请检查模型配置或 JWT。');
+      setErrorText('Token 解析失败，请检查输入内容。');
+      setTokens([]);
     } finally {
-      setIsLoading(false);
+      setIsParsing(false);
     }
-  };
+  }, [activeInputText]);
+
+  useEffect(() => {
+    if (!isSseTemplateMode) {
+      return;
+    }
+
+    void parseTokens(activeInputText);
+  }, [activeInputText, isSseTemplateMode, parseTokens]);
 
   return (
-    <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
-      <h2 className="font-display text-lg text-ink">Token 与 Embedding 调试面板</h2>
-      <p className="mt-1 text-sm text-slate-600">LangChain.js 接口 + Token IDs + 向量二维投影（MVP）。</p>
-
-      <textarea
-        value={sourceText}
-        onChange={(event) => setSourceText(event.target.value)}
-        className="mt-3 min-h-24 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none ring-accent transition focus:ring"
-      />
-
-      <div className="mt-3 grid gap-3 text-xs text-slate-700 md:grid-cols-2">
-        <div className="flex items-center gap-2">
-          <span>投影方法</span>
-          <select
-            value={projectionMethod}
-            onChange={(event) => setProjectionMethod(event.target.value as 'random' | 'pca' | 'umap')}
-            className="rounded border border-slate-300 px-2 py-1"
+    <section className="rounded-2xl bg-white/85 p-5 shadow-sm backdrop-blur">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h2 className="font-display text-lg text-ink">Token 切分与注意力关联可视化</h2>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={() => setIsSseTemplateMode((prev) => !prev)}
+            className={`relative inline-flex h-7 w-14 items-center rounded-full border px-1 transition ${
+              isSseTemplateMode
+                ? 'border-cyan-300 bg-cyan-500/90'
+                : 'border-slate-300 bg-slate-300/90'
+            }`}
+            aria-pressed={isSseTemplateMode}
+            aria-label="切换 SSE 模版输入"
+            title={isSseTemplateMode ? '已开启：默认使用 SSE Chat Stream 最新问题' : '已关闭：可自定义输入'}
           >
-            <option value="random">{PROJECTION_LABEL_MAP.random}</option>
-            <option value="pca">{PROJECTION_LABEL_MAP.pca}</option>
-            <option value="umap">{PROJECTION_LABEL_MAP.umap}</option>
-          </select>
+            <span
+              className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition ${
+                isSseTemplateMode ? 'translate-x-7' : 'translate-x-0'
+              }`}
+            />
+          </button>
+          <p className="text-[11px] leading-4 text-slate-500">
+            开启: 跟随左侧最新问题 | 关闭: 使用自定义输入
+          </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <span>对比分词器</span>
-          <select
-            value={secondaryTokenizer}
-            onChange={(event) => setSecondaryTokenizer(event.target.value as 'cl100k_base' | 'p50k_base')}
-            className="rounded border border-slate-300 px-2 py-1"
-          >
-            <option value="cl100k_base">{TOKENIZER_LABEL_MAP.cl100k_base}</option>
-            <option value="p50k_base">{TOKENIZER_LABEL_MAP.p50k_base}</option>
-          </select>
-        </div>
-
-        <label className="flex items-center gap-2 md:col-span-2">
-          <span>对比 Embedding 模型</span>
-          <input
-            value={secondaryEmbeddingModel}
-            onChange={(event) => setSecondaryEmbeddingModel(event.target.value)}
-            placeholder="可选，不填则复用主模型"
-            className="w-full rounded border border-slate-300 px-2 py-1"
-          />
-        </label>
       </div>
+      <p className="mt-1 text-sm text-slate-600">纯前端实时渲染：第一步看 Token 切分，核心步看注意力关联。</p>
+      <p className="mt-1 text-xs text-slate-500">
+        输入模式：{isSseTemplateMode ? 'SSE Chat Stream 最新问题（默认）' : '自定义文本'}
+      </p>
 
-      <div className="mt-3 flex items-center gap-3 text-xs text-slate-700">
-        <span>分块大小: {chunkSize}</span>
-        <input
-          type="range"
-          min={80}
-          max={320}
-          step={20}
-          value={chunkSize}
-          onChange={(event) => setChunkSize(Number(event.target.value))}
-          className="w-48"
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <textarea
+          value={activeInputText}
+          onChange={(event) => setInputText(event.target.value)}
+          disabled={isSseTemplateMode}
+          className="min-h-28 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none ring-cyan-300 transition focus:ring disabled:cursor-not-allowed disabled:bg-slate-50"
+          placeholder="关闭右上角开关后可输入自定义文本"
         />
         <button
           type="button"
-          onClick={runAnalyze}
-          disabled={isLoading}
-          className="rounded-lg bg-accent px-3 py-1.5 text-white disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => void parseTokens()}
+          disabled={isParsing}
+          className="h-fit rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? '分析中...' : '开始分析'}
+          {isParsing ? '解析中...' : '解析 Token'}
         </button>
       </div>
 
       {errorText && <p className="mt-2 text-xs text-rose-600">{errorText}</p>}
 
-      {result && (
-        <>
-          <div className="mt-3 grid gap-2 text-xs text-slate-700 md:grid-cols-4">
-            <div className="rounded bg-slate-100 px-2 py-1">分词器: {TOKENIZER_LABEL_MAP[result.tokenizer as 'cl100k_base' | 'p50k_base'] || result.tokenizer}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">Token 数量: {result.tokenCount}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">Chunk 数量: {result.chunkCount}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">Embedding 来源: {EMBEDDING_SOURCE_LABEL_MAP[result.embeddingSource]}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">投影方法: {PROJECTION_LABEL_MAP[result.projectionMethod]}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">Token 重叠率: {result.comparison.tokenOverlapRatio}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">邻域一致率: {result.comparison.neighborhoodAgreement}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">对比 Token 数: {result.comparison.secondaryTokenCount}</div>
-            {diffSummary && <div className="rounded bg-slate-100 px-2 py-1">平均位移: {diffSummary.avgDelta}</div>}
-            {diffSummary && <div className="rounded bg-slate-100 px-2 py-1">最大位移: {diffSummary.maxDelta}</div>}
-          </div>
+      <div className="mt-3 grid gap-2 text-xs text-slate-700 md:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">总 Token 数: {tokens.length}</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">上下文占用模拟: {contextUsageRatio}% / 8K</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">注意力热力图: {Math.min(tokens.length, ATTENTION_TOKEN_LIMIT)} 个 Token</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">Tokenizer: gpt-tokenizer (cl100k_base)</div>
+      </div>
 
-          <label className="mt-3 inline-flex items-center gap-2 text-xs text-slate-700">
-            <input
-              type="checkbox"
-              checked={isDiffOverlayEnabled}
-              onChange={(event) => setIsDiffOverlayEnabled(event.target.checked)}
-            />
-            显示位移热力层（主模型 → 对比模型）
-          </label>
+      <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2">
+        <div className="flex flex-wrap gap-2">
+          {tokens.map((token) => (
+            <button
+              key={`${token.index}-${token.id}`}
+              type="button"
+              onClick={() => setSelectedTokenIndex(token.index)}
+              className={`min-w-[90px] rounded-xl border px-2 py-1 text-left text-xs transition hover:-translate-y-0.5 ${TOKEN_KIND_STYLE[token.kind]} ${
+                selectedTokenIndex === token.index ? 'ring-2 ring-cyan-300' : ''
+              }`}
+              title={`token_${token.index}`}
+            >
+              <p className="truncate font-medium">{token.displayText}</p>
+              <p className="text-[11px] opacity-80">ID: {token.id}</p>
+              <p className="text-[11px] opacity-80">P: {(token.probability * 100).toFixed(2)}%</p>
+            </button>
+          ))}
+        </div>
+      </div>
 
-          <div className="mt-3 rounded-xl border border-slate-200 p-2">
-            <p className="text-xs text-slate-600">Top-K 漂移最大 Chunk</p>
-            <div className="mt-2 space-y-1 text-xs text-slate-700">
-              {topDisplacementPoints.map((point, index) => (
+      {tokens.length > ATTENTION_TOKEN_LIMIT && (
+        <p className="mt-2 text-xs text-amber-700">
+          为保证前端实时渲染性能，注意力热力图仅展示前 {ATTENTION_TOKEN_LIMIT} 个 Token。
+        </p>
+      )}
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.6fr)]">
+        <div className="rounded-xl border border-slate-200 p-2">
+          <p className="mb-2 text-xs text-slate-500">核心步: 注意力关联热力图（行: Query，列: Key）</p>
+          <div
+            className="grid gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${Math.max(1, attentionTokens.length)}, minmax(0, 1fr))`,
+            }}
+          >
+            {attentionMatrix.flatMap((row, queryIndex) =>
+              row.map((value, keyIndex) => (
                 <button
-                  key={`drift_${point.label}`}
+                  key={`${queryIndex}-${keyIndex}`}
                   type="button"
-                  onClick={() =>
-                    setActiveDisplacementLabel((current) => (current === point.label ? null : point.label))
-                  }
-                  className={`block w-full rounded px-2 py-1 text-left ${
-                    activeDisplacementLabel === point.label
-                      ? 'bg-amber-100 ring-1 ring-amber-300'
-                      : 'bg-slate-50 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="font-medium">#{index + 1} {point.label}</span>
-                  <span className="ml-2 text-slate-500">位移: {point.delta.toFixed(4)}</span>
-                  <span className="ml-2 text-slate-500">{point.chunkText.slice(0, 56)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs leading-6 text-slate-700">
-            {highlightedSource ? (
-              <>
-                <span>{highlightedSource.before}</span>
-                <mark className="rounded bg-amber-200 px-1">{highlightedSource.highlight || ' '}</mark>
-                <span>{highlightedSource.after}</span>
-              </>
-            ) : (
-              <span>{sourceText}</span>
+                  onClick={() => setSelectedTokenIndex(queryIndex)}
+                  className="aspect-square rounded-md border border-slate-100"
+                  style={{
+                    backgroundColor: `rgba(14, 116, 144, ${Math.min(1, value * 2.2)})`,
+                  }}
+                  title={`q${queryIndex}(${attentionTokens[queryIndex]?.displayText}) -> k${keyIndex}(${attentionTokens[keyIndex]?.displayText}): ${value.toFixed(4)}`}
+                />
+              )),
             )}
           </div>
+        </div>
 
-          <div className="mt-3 max-h-40 overflow-auto rounded-xl border border-slate-200 p-2 text-xs">
-            {result.tokens.slice(0, 80).map((token) => (
-              <button
-                key={token.index}
-                type="button"
-                onClick={() => setActiveTokenRange({ start: token.start, end: token.end })}
-                className="mr-1 mb-1 inline-block rounded bg-cyan-50 px-1.5 py-0.5 text-left hover:bg-cyan-100"
-              >
-                #{token.tokenId}:{token.tokenText.replace(/\n/g, '↵')}
-              </button>
+        <div className="rounded-xl border border-slate-200 p-2 text-xs">
+          <p className="font-semibold text-slate-700">当前 Query Token: #{selectedTokenIndex}</p>
+          <p className="mt-1 rounded bg-slate-100 px-2 py-1 text-slate-700">
+            {attentionTokens[selectedTokenIndex]?.displayText || '未选择'}
+          </p>
+
+          <p className="mt-2 text-slate-500">Top 注意力关联</p>
+          <div className="mt-1 space-y-1">
+            {selectedAssociations.map((item) => (
+              <div key={item.index} className="rounded border border-slate-100 bg-slate-50 px-2 py-1">
+                <p className="truncate text-slate-700">
+                  k{item.index}: {item.token.displayText}
+                </p>
+                <p className="text-[11px] text-slate-500">score: {item.score.toFixed(4)}</p>
+              </div>
             ))}
           </div>
+        </div>
+      </div>
 
-          <div className="mt-2 max-h-32 overflow-auto rounded-xl border border-slate-200 p-2 text-xs">
-            {result.comparison.secondaryTokens.slice(0, 80).map((token) => (
-              <span key={token.index} className="mr-1 mb-1 inline-block rounded bg-indigo-50 px-1.5 py-0.5">
-                #{token.tokenId}:{token.tokenText.replace(/\n/g, '↵')}
-              </span>
+      <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2 text-xs">
+        <p className="mb-2 text-slate-500">Token 详情（ID / 概率 / 类型）</p>
+        <table className="w-full table-fixed border-collapse">
+          <thead>
+            <tr className="text-left text-slate-500">
+              <th className="w-16 py-1">序号</th>
+              <th className="w-24 py-1">ID</th>
+              <th className="w-24 py-1">概率</th>
+              <th className="w-28 py-1">类型</th>
+              <th className="py-1">文本</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tokens.map((token) => (
+              <tr key={`detail-${token.index}-${token.id}`} className="border-t border-slate-100 text-slate-700">
+                <td className="py-1">{token.index}</td>
+                <td className="py-1">{token.id}</td>
+                <td className="py-1">{(token.probability * 100).toFixed(2)}%</td>
+                <td className="py-1">{token.kind}</td>
+                <td className="truncate py-1" title={token.text}>{token.displayText}</td>
+              </tr>
             ))}
-          </div>
-
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 p-2">
-              <p className="mb-2 text-xs text-slate-500">主模型 Embedding</p>
-              <svg viewBox="0 0 360 220" className="h-56 w-full">
-                {isDiffOverlayEnabled && (
-                  <defs>
-                    <marker id="diff-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
-                    </marker>
-                  </defs>
-                )}
-
-                {isDiffOverlayEnabled &&
-                  displacementPoints.map((point) => (
-                    <line
-                      key={`diff_${point.label}`}
-                      x1={20 + point.fromX * 320}
-                      y1={20 + (1 - point.fromY) * 180}
-                      x2={20 + point.toX * 320}
-                      y2={20 + (1 - point.toY) * 180}
-                      stroke={getArrowColor(point.intensity)}
-                      strokeWidth={activeDisplacementLabel === point.label ? 2.8 : 1.6}
-                      strokeOpacity={activeDisplacementLabel === point.label ? 1 : 0.7}
-                      markerEnd="url(#diff-arrow)"
-                    />
-                  ))}
-
-                {points.map((point) => (
-                  <g key={point.label}>
-                    <circle
-                      cx={20 + point.nx * 320}
-                      cy={20 + (1 - point.ny) * 180}
-                      r={activeDisplacementLabel === point.label ? 6.8 : 5}
-                      fill="#0f766e"
-                      opacity={activeDisplacementLabel === point.label ? 1 : 0.8}
-                      stroke={activeDisplacementLabel === point.label ? '#f59e0b' : 'none'}
-                      strokeWidth={activeDisplacementLabel === point.label ? 2 : 0}
-                    />
-                    <title>{`${point.label}: ${point.chunkText}`}</title>
-                  </g>
-                ))}
-              </svg>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 p-2">
-              <p className="mb-2 text-xs text-slate-500">对比模型 Embedding</p>
-              <svg viewBox="0 0 360 220" className="h-56 w-full">
-                {secondaryPoints.map((point) => (
-                  <g key={point.label}>
-                    <circle
-                      cx={20 + point.nx * 320}
-                      cy={20 + (1 - point.ny) * 180}
-                      r={activeDisplacementLabel === point.label ? 6.8 : 5}
-                      fill="#3730a3"
-                      opacity={activeDisplacementLabel === point.label ? 1 : 0.8}
-                      stroke={activeDisplacementLabel === point.label ? '#f59e0b' : 'none'}
-                      strokeWidth={activeDisplacementLabel === point.label ? 2 : 0}
-                    />
-                    <title>{`${point.label}: ${point.chunkText}`}</title>
-                  </g>
-                ))}
-              </svg>
-            </div>
-          </div>
-        </>
-      )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 };
