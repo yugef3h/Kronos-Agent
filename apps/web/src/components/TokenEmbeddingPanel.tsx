@@ -55,6 +55,22 @@ type AnalyzeResponse = {
   };
 };
 
+const PROJECTION_LABEL_MAP: Record<'random' | 'pca' | 'umap', string> = {
+  random: '随机投影 (random)',
+  pca: '主成分分析 (pca)',
+  umap: '流形降维 (umap)',
+};
+
+const TOKENIZER_LABEL_MAP: Record<'cl100k_base' | 'p50k_base', string> = {
+  cl100k_base: 'cl100k_base（通用）',
+  p50k_base: 'p50k_base（代码偏向）',
+};
+
+const EMBEDDING_SOURCE_LABEL_MAP: Record<'doubao' | 'fallback', string> = {
+  doubao: '豆包向量服务 (doubao)',
+  fallback: '本地回退向量 (fallback)',
+};
+
 const normalizePoint = (values: number[]): number[] => {
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -79,6 +95,7 @@ const getArrowColor = (intensity: number): string => {
 };
 
 const normalizeProjectionPoints = (projection: ProjectionPoint[]): NormalizedProjectionPoint[] => {
+  // 将不同投影结果归一化到 [0,1] 区间，便于在同一画布稳定展示。
   const xs = normalizePoint(projection.map((item) => item.x));
   const ys = normalizePoint(projection.map((item) => item.y));
 
@@ -124,6 +141,7 @@ export const TokenEmbeddingPanel = () => {
       return [];
     }
 
+    // 计算每个 chunk 在主/对比投影平面中的位移向量。
     const items: Array<Omit<DisplacementPoint, 'intensity'>> = points.map((point, index) => {
       const target = secondaryPoints[index];
       const dx = (target?.nx ?? point.nx) - point.nx;
@@ -139,6 +157,7 @@ export const TokenEmbeddingPanel = () => {
       };
     });
 
+    // 按最大位移归一化强度，用于热力颜色编码。
     const maxDelta = Math.max(...items.map((item) => item.delta), 1);
     return items.map((item) => ({
       ...item,
@@ -242,9 +261,9 @@ export const TokenEmbeddingPanel = () => {
             onChange={(event) => setProjectionMethod(event.target.value as 'random' | 'pca' | 'umap')}
             className="rounded border border-slate-300 px-2 py-1"
           >
-            <option value="random">random</option>
-            <option value="pca">pca</option>
-            <option value="umap">umap</option>
+            <option value="random">{PROJECTION_LABEL_MAP.random}</option>
+            <option value="pca">{PROJECTION_LABEL_MAP.pca}</option>
+            <option value="umap">{PROJECTION_LABEL_MAP.umap}</option>
           </select>
         </div>
 
@@ -255,8 +274,8 @@ export const TokenEmbeddingPanel = () => {
             onChange={(event) => setSecondaryTokenizer(event.target.value as 'cl100k_base' | 'p50k_base')}
             className="rounded border border-slate-300 px-2 py-1"
           >
-            <option value="cl100k_base">cl100k_base</option>
-            <option value="p50k_base">p50k_base</option>
+            <option value="cl100k_base">{TOKENIZER_LABEL_MAP.cl100k_base}</option>
+            <option value="p50k_base">{TOKENIZER_LABEL_MAP.p50k_base}</option>
           </select>
         </div>
 
@@ -297,11 +316,11 @@ export const TokenEmbeddingPanel = () => {
       {result && (
         <>
           <div className="mt-3 grid gap-2 text-xs text-slate-700 md:grid-cols-4">
-            <div className="rounded bg-slate-100 px-2 py-1">分词器: {result.tokenizer}</div>
+            <div className="rounded bg-slate-100 px-2 py-1">分词器: {TOKENIZER_LABEL_MAP[result.tokenizer as 'cl100k_base' | 'p50k_base'] || result.tokenizer}</div>
             <div className="rounded bg-slate-100 px-2 py-1">Token 数量: {result.tokenCount}</div>
             <div className="rounded bg-slate-100 px-2 py-1">Chunk 数量: {result.chunkCount}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">Embedding 来源: {result.embeddingSource}</div>
-            <div className="rounded bg-slate-100 px-2 py-1">投影方法: {result.projectionMethod}</div>
+            <div className="rounded bg-slate-100 px-2 py-1">Embedding 来源: {EMBEDDING_SOURCE_LABEL_MAP[result.embeddingSource]}</div>
+            <div className="rounded bg-slate-100 px-2 py-1">投影方法: {PROJECTION_LABEL_MAP[result.projectionMethod]}</div>
             <div className="rounded bg-slate-100 px-2 py-1">Token 重叠率: {result.comparison.tokenOverlapRatio}</div>
             <div className="rounded bg-slate-100 px-2 py-1">邻域一致率: {result.comparison.neighborhoodAgreement}</div>
             <div className="rounded bg-slate-100 px-2 py-1">对比 Token 数: {result.comparison.secondaryTokenCount}</div>
