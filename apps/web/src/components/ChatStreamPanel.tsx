@@ -20,7 +20,18 @@ type RecentDialogueItem = {
   userContent: string;
 };
 
+type PromptQuickAction = {
+  key: 'file' | 'image' | 'translate';
+  label: string;
+};
+
 export const ChatStreamPanel = () => {
+  const PROMPT_MAX_HEIGHT = 300;
+  const promptQuickActions: PromptQuickAction[] = [
+    { key: 'file', label: '文件' },
+    { key: 'image', label: '图像' },
+    { key: 'translate', label: '翻译' },
+  ];
   const {
     sessionId,
     authToken,
@@ -32,7 +43,7 @@ export const ChatStreamPanel = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [, setIsGeneratingToken] = useState(false);
   const [tokenMessage, setTokenMessage] = useState('');
   const [isMemoryStrategyOpen, setIsMemoryStrategyOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -49,9 +60,22 @@ export const ChatStreamPanel = () => {
   // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
   const activeRequestIdRef = useRef(0);
   const activeControllerRef = useRef<AbortController | null>(null);
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const timelineBodyRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const adjustPromptTextareaHeight = useCallback(() => {
+    const textarea = promptTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = 'auto';
+    const nextHeight = Math.min(textarea.scrollHeight, PROMPT_MAX_HEIGHT);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > PROMPT_MAX_HEIGHT ? 'auto' : 'hidden';
+  }, []);
 
   const formatTimestamp = useCallback((timestamp: number) => {
     return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
@@ -204,6 +228,10 @@ export const ChatStreamPanel = () => {
   }, [currentTimelineEvent, isStreaming]);
 
   useEffect(() => {
+    adjustPromptTextareaHeight();
+  }, [prompt, adjustPromptTextareaHeight]);
+
+  useEffect(() => {
     if (!isHistoryOpen) {
       return;
     }
@@ -225,7 +253,7 @@ export const ChatStreamPanel = () => {
     if (!canSend) return;
 
     if (!authToken) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'JWT token is required before sending requests.' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: '发送前需要先准备 JWT。' }]);
       return;
     }
 
@@ -321,17 +349,17 @@ export const ChatStreamPanel = () => {
       }
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'stream interrupted, please retry.' },
+        { role: 'assistant', content: '流式输出中断，请重试。' },
       ]);
     }
   };
 
-  const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) {
       return;
     }
 
-    if (event.key === 'Enter' && canSend) {
+    if (event.key === 'Enter' && !event.shiftKey && canSend) {
       event.preventDefault();
       void sendPrompt();
     }
@@ -347,19 +375,25 @@ export const ChatStreamPanel = () => {
   };
 
   return (
-    <section className="relative rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
+    <section className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_16px_48px_-24px_rgba(14,116,144,0.45)] backdrop-blur">
+      <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-40 w-40 rounded-full bg-cyan-100/70 blur-2xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-sky-100/80 blur-2xl" />
+
       <div className="relative flex items-start justify-between gap-3">
-        <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">Agent Runtime</p>
+          <h2 className="mt-1 font-display text-xl text-ink">SSE Chat Stream</h2>
+        </div>
         <div ref={historyPanelRef} className="relative">
           <button
             type="button"
             onClick={toggleHistoryPanel}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-xl border border-slate-300/90 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50"
           >
             历史对话
           </button>
           {isHistoryOpen && (
-            <div className="absolute right-0 top-9 z-30 w-[26rem] max-w-[85vw] rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+            <div className="absolute right-0 top-10 z-30 w-[26rem] max-w-[85vw] rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
               <div className="mb-1 px-2 text-xs font-semibold text-slate-600">最近 10 条历史对话</div>
               <div className="max-h-80 space-y-2 overflow-auto pr-1">
                 {isHistoryLoading && <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">读取中...</p>}
@@ -367,7 +401,7 @@ export const ChatStreamPanel = () => {
                   <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">暂无本地缓存对话</p>
                 )}
                 {!isHistoryLoading && recentDialogues.map((item) => (
-                  <article key={item.id} className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-2 transition hover:border-cyan-200 hover:bg-cyan-50/40">
+                  <article key={item.id} className="rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2 transition hover:border-cyan-200 hover:bg-cyan-50/50">
                     <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
                     <div className="mt-1"></div>
                     <p className="line-clamp-1 text-xs text-slate-700" title={item.userContent || '（无用户输入）'}>{item.userContent || '（无用户输入）'}</p>
@@ -378,31 +412,31 @@ export const ChatStreamPanel = () => {
           )}
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-600">模拟 LangChain 输出流，后续可接真实 Agent 链路。</p>
+      <p className="mt-1 text-sm text-slate-600">模拟 LangChain 输出流，支持实时思考状态与 memory 指标观测。</p>
 
-      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="mt-4 rounded-2xl border border-slate-200/90 bg-gradient-to-r from-white via-cyan-50/70 to-sky-50/50 p-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Memory Realtime Metrics</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">Memory Realtime Metrics</p>
           <button
             type="button"
             aria-label="查看 memory 策略说明"
             onClick={() => setIsMemoryStrategyOpen(true)}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold text-slate-700 transition hover:bg-slate-100"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100"
           >
             i
           </button>
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700 md:grid-cols-3">
-          <div className="rounded-lg bg-white px-2 py-1.5">消息数: {memoryMetrics.messageCount}</div>
-          <div className="rounded-lg bg-white px-2 py-1.5">会话 token(est): {memoryMetrics.conversationTokensEstimate}</div>
-          <div className="rounded-lg bg-white px-2 py-1.5">摘要 token(est): {memoryMetrics.summaryTokensEstimate}</div>
-          <div className="rounded-lg bg-white px-2 py-1.5">输入预算(est): {memoryMetrics.budgetTokensEstimate}</div>
-          <div className="rounded-lg bg-white px-2 py-1.5">摘要阈值: {memoryMetrics.summaryTriggerMessageCount} 条</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">消息数: {memoryMetrics.messageCount}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">会话 token(est): {memoryMetrics.conversationTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">摘要 token(est): {memoryMetrics.summaryTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">输入预算(est): {memoryMetrics.budgetTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">摘要阈值: {memoryMetrics.summaryTriggerMessageCount} 条</div>
           <div
-            className={`rounded-lg px-2 py-1.5 ${
+            className={`rounded-xl border px-2 py-1.5 ${
               memoryMetrics.isSummaryThresholdReached
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-amber-100 text-amber-700'
+                ? 'border-emerald-200 bg-emerald-100 text-emerald-700'
+                : 'border-amber-200 bg-amber-100 text-amber-700'
             }`}
           >
             阈值状态: {memoryMetrics.isSummaryThresholdReached ? '已达到' : '未达到'}
@@ -410,60 +444,118 @@ export const ChatStreamPanel = () => {
         </div>
       </div>
 
-      <div ref={messageListRef} className="mt-4 max-h-72 space-y-3 overflow-auto rounded-xl border border-slate-200 p-3">
-        {messages.length === 0 && <p className="text-sm text-slate-500">Start a prompt to see token streaming.</p>}
+      <div ref={messageListRef} className="mt-4 max-h-72 space-y-3 overflow-auto rounded-2xl border border-slate-200 bg-gradient-to-b from-white via-slate-50/50 to-cyan-50/20 p-3 shadow-inner">
+        {messages.length === 0 && <p className="text-sm text-slate-500">发送一条提示词，查看流式输出过程。</p>}
         {messages.map((message, index) => (
           <article
             key={`${message.role}-${index}`}
-            className={`rounded-lg px-3 py-2 text-sm ${
-              message.role === 'user' ? 'ml-10 bg-cyan-50 text-ink' : 'mr-10 bg-slate-100 text-slate-700'
+            className={`rounded-2xl border px-3 py-2 text-sm shadow-sm ${
+              message.role === 'user'
+                ? 'ml-10 border-cyan-200 bg-cyan-50/90 text-ink'
+                : 'mr-10 border-slate-200 bg-white text-slate-700'
             }`}
           >
-            {message.content || '...'}
+            {!message.content && message.role === 'assistant' ? (
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
+                正在生成内容
+              </span>
+            ) : (
+              message.content || '...'
+            )}
           </article>
         ))}
       </div>
 
       <div className="mt-4 space-y-3">
-        <div className="flex gap-3">
+        {/* <div className="flex gap-3 rounded-2xl border border-slate-200 bg-white/80 p-2">
           <input
             value={authToken}
             onChange={(event) => setAuthToken(event.target.value)}
-            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-accent transition focus:ring"
-            placeholder="JWT will be auto-generated"
+            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-cyan-300 transition focus:ring"
+            placeholder="JWT 会自动生成，也可手动覆盖"
           />
           <button
             type="button"
             onClick={() => void generateDevToken()}
             disabled={isGeneratingToken}
-            className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isGeneratingToken ? '生成中...' : '生成测试 JWT'}
           </button>
+        </div> */}
+
+        <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white/80 p-2">
+          <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
+            <textarea
+              ref={promptTextareaRef}
+              rows={1}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={handlePromptKeyDown}
+              className="max-h-[160px] min-h-[44px] w-full resize-none border-none bg-transparent py-1 text-sm leading-6 text-slate-800 outline-none"
+              placeholder="发消息或输入“/”选择技能"
+            />
+
+            <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-center justify-between">
+              <div className="pointer-events-auto flex items-center gap-2">
+                {promptQuickActions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    title={`${action.label}功能即将上线`}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                  >
+                    {action.key === 'file' && (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                        <path d="M14 3v5h5" />
+                      </svg>
+                    )}
+                    {action.key === 'image' && (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <rect x="3" y="5" width="18" height="14" rx="2" />
+                        <circle cx="9" cy="10" r="1.4" />
+                        <path d="m21 16-5.5-5.5L8 18" />
+                      </svg>
+                    )}
+                    {action.key === 'translate' && (
+                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <path d="M4 5h10" />
+                        <path d="M9 3v2" />
+                        <path d="M7 9c.8 1.8 2.2 3.5 4 5" />
+                        <path d="M5 13c2.5-1.3 4.7-3.5 6-6" />
+                        <path d="m14 17 3-8 3 8" />
+                        <path d="M15.2 14h3.6" />
+                      </svg>
+                    )}
+                    <span>{action.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                aria-label="发送消息"
+                disabled={!canSend}
+                onClick={sendPrompt}
+                className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-600 to-sky-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:shadow-none"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-3">
-          <input
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            onKeyDown={handlePromptKeyDown}
-            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none ring-accent transition focus:ring"
-            placeholder="输入一个你想调试的提示词"
-          />
-          <button
-            type="button"
-            disabled={!canSend}
-            onClick={sendPrompt}
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isStreaming ? '思考中...' : '发消息'}
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-cyan-200/70 bg-gradient-to-r from-cyan-50 via-sky-50 to-white p-3 shadow-sm">
+        <div className="rounded-2xl border border-cyan-200/80 bg-gradient-to-r from-cyan-50 via-sky-50 to-white p-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-base leading-none">🧠</span>
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[11px] font-bold text-cyan-700 shadow-sm">AI</span>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">Agent Thinking Flow</p>
             </div>
             <span
@@ -474,13 +566,13 @@ export const ChatStreamPanel = () => {
 
           <div ref={timelineBodyRef} className="mt-2 space-y-2 pr-1 text-xs transition-[height] duration-200">
             {!currentTimelineEvent && (
-              <p className="rounded-lg border border-dashed border-slate-300 bg-white/70 px-2 py-1.5 text-slate-500">
+              <p className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-2 py-2 text-slate-500">
                 暂无当前思考状态。发送提示词后，这里会实时更新 Agent 当前步骤。
               </p>
             )}
 
             {currentTimelineEvent && (
-              <article key={currentTimelineEvent.eventId} className="rounded-xl border border-cyan-100 bg-white/85 px-2.5 py-2">
+              <article key={currentTimelineEvent.eventId} className="rounded-xl border border-cyan-100 bg-white/90 px-2.5 py-2 shadow-[0_8px_20px_-14px_rgba(14,116,144,0.55)]">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className={`rounded px-1.5 py-0.5 ${stageToneMap[currentTimelineEvent.stage]}`}>{stageLabelMap[currentTimelineEvent.stage]}</span>
                   <span className={`rounded px-1.5 py-0.5 ${statusToneMap[currentTimelineEvent.status]}`}>{statusLabelMap[currentTimelineEvent.status]}</span>
@@ -498,11 +590,11 @@ export const ChatStreamPanel = () => {
 
       {isMemoryStrategyOpen && (
         <div
-          className="absolute inset-0 z-50 flex justify-center bg-slate-900/45 px-4"
+          className="absolute inset-0 z-50 flex justify-center bg-slate-900/45 px-4 backdrop-blur-[1px]"
           onClick={() => setIsMemoryStrategyOpen(false)}
         >
           <div
-            className="absolute top-[10%] w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+            className="absolute top-[8%] w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
@@ -516,9 +608,9 @@ export const ChatStreamPanel = () => {
               </button>
             </div>
             <div className="mt-3 space-y-2 text-sm leading-relaxed text-slate-700">
-              <p>1. 滚动摘要: 会话消息达到阈值后，系统将较旧历史压缩到 summary，减少每轮传入模型的上下文长度。</p>
-              <p>2. 预算编排: 每轮请求根据输入预算动态裁剪 history，优先保留最近轮次，避免接近窗口上限导致卡顿。</p>
-              <p>3. 透明可观测: 本面板实时显示消息数、token 估算、阈值状态，便于你调试 40% 上下文拐点前后的性能变化。</p>
+              <p><span className="font-semibold text-slate-900">1. 滚动摘要:</span> 会话消息达到阈值后，系统将较旧历史压缩到 summary，减少每轮传入模型的上下文长度。</p>
+              <p><span className="font-semibold text-slate-900">2. 预算编排:</span> 每轮请求根据输入预算动态裁剪 history，优先保留最近轮次，避免接近窗口上限导致卡顿。</p>
+              <p><span className="font-semibold text-slate-900">3. 透明可观测:</span> 本面板实时显示消息数、token 估算、阈值状态，便于你调试 40% 上下文拐点前后的性能变化。</p>
             </div>
           </div>
         </div>

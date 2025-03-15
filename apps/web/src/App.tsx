@@ -24,12 +24,12 @@ const App = () => {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <ChatStreamPanel />
-        <SamplingInspector />
+        <TokenEmbeddingPanel />
       </section>
 
       <section className="mt-4 grid gap-4 lg:grid-cols-2">
         <AttentionHeatmap />
-        <TokenEmbeddingPanel />
+        <SamplingInspector />
       </section>
 
       <section className="mt-4 grid gap-4 lg:grid-cols-3">
