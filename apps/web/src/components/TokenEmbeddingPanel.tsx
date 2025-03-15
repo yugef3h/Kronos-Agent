@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 type TokenKind = 'high-frequency' | 'chinese' | 'english' | 'symbol';
@@ -122,6 +122,7 @@ export const TokenEmbeddingPanel = () => {
   const [errorText, setErrorText] = useState('');
   const [selectedTokenIndex, setSelectedTokenIndex] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
+  const previousModeRef = useRef(isSseTemplateMode);
 
   const activeInputText = isSseTemplateMode
     ? (latestUserQuestion.trim() || SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT)
@@ -199,11 +200,12 @@ export const TokenEmbeddingPanel = () => {
   }, [activeInputText]);
 
   useEffect(() => {
-    if (!isSseTemplateMode) {
-      return;
-    }
+    const hasModeChanged = previousModeRef.current !== isSseTemplateMode;
+    previousModeRef.current = isSseTemplateMode;
 
-    void parseTokens(activeInputText);
+    if (isSseTemplateMode || hasModeChanged) {
+      void parseTokens(activeInputText);
+    }
   }, [activeInputText, isSseTemplateMode, parseTokens]);
 
   return (

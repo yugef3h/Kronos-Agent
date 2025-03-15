@@ -4,6 +4,34 @@ import { apiUrl, requestDevToken, requestRecentSessions, requestSessionSnapshot 
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
 
+const MAX_CONTEXT_TOKENS = 8192;
+
+type TokenizerModule = {
+  encode: (text: string) => Iterable<number>;
+};
+
+let tokenizerModulePromise: Promise<TokenizerModule> | null = null;
+
+const getTokenizerModule = (): Promise<TokenizerModule> => {
+  if (!tokenizerModulePromise) {
+    tokenizerModulePromise = import('gpt-tokenizer').then((module) => ({
+      encode: module.encode,
+    }));
+  }
+
+  return tokenizerModulePromise;
+};
+
+const countTextTokens = async (text: string): Promise<number> => {
+  const content = text.trim();
+  if (!content) {
+    return 0;
+  }
+
+  const tokenizer = await getTokenizerModule();
+  return Array.from(tokenizer.encode(content)).length;
+};
+
 type MemoryLiveMetrics = {
   messageCount: number;
   conversationTokensEstimate: number;
@@ -34,6 +62,12 @@ const getLatestUserQuestion = (chatMessages: ChatMessage[]): string => {
   }
 
   return '';
+};
+
+const buildConversationText = (chatMessages: ChatMessage[]): string => {
+  return chatMessages
+    .map((message) => `${message.role}: ${message.content}`)
+    .join('\n');
 };
 
 export const ChatStreamPanel = () => {
@@ -141,7 +175,18 @@ export const ChatStreamPanel = () => {
 
     try {
       const snapshot = await requestSessionSnapshot({ sessionId, authToken });
-      setMemoryMetrics(snapshot.memoryMetrics);
+      const [conversationTokens, summaryTokens] = await Promise.all([
+        countTextTokens(buildConversationText(snapshot.messages)),
+        countTextTokens(snapshot.memorySummary),
+      ]);
+      const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
+
+      setMemoryMetrics({
+        ...snapshot.memoryMetrics,
+        conversationTokensEstimate: conversationTokens,
+        summaryTokensEstimate: summaryTokens,
+        budgetTokensEstimate: budgetTokens,
+      });
     } catch {
       // 会话指标请求失败时保持当前显示，不中断主对话流。
     }
@@ -170,9 +215,20 @@ export const ChatStreamPanel = () => {
 
     try {
       const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+      const [conversationTokens, summaryTokens] = await Promise.all([
+        countTextTokens(buildConversationText(snapshot.messages)),
+        countTextTokens(snapshot.memorySummary),
+      ]);
+      const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
+
       setMessages(snapshot.messages);
       setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
-      setMemoryMetrics(snapshot.memoryMetrics);
+      setMemoryMetrics({
+        ...snapshot.memoryMetrics,
+        conversationTokensEstimate: conversationTokens,
+        summaryTokensEstimate: summaryTokens,
+        budgetTokensEstimate: budgetTokens,
+      });
     } catch {
       // 刷新回显失败时保留当前页状态，不阻断继续提问。
     }
@@ -443,9 +499,9 @@ export const ChatStreamPanel = () => {
         </div>
         <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-700 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">消息数: {memoryMetrics.messageCount}</div>
-          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">会话 token(est): {memoryMetrics.conversationTokensEstimate}</div>
-          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">摘要 token(est): {memoryMetrics.summaryTokensEstimate}</div>
-          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">输入预算(est): {memoryMetrics.budgetTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">会话 token(real): {memoryMetrics.conversationTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">摘要 token(real): {memoryMetrics.summaryTokensEstimate}</div>
+          <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">输入预算(real): {memoryMetrics.budgetTokensEstimate}</div>
           <div className="rounded-xl border border-slate-200/80 bg-white px-2 py-1.5">摘要阈值: {memoryMetrics.summaryTriggerMessageCount} 条</div>
           <div
             className={`rounded-xl border px-2 py-1.5 ${
