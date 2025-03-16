@@ -53,6 +53,28 @@ type PromptQuickAction = {
   label: string;
 };
 
+type LocalChatMessage = ChatMessage & {
+  isIncomplete?: boolean;
+};
+
+const markLastAssistantMessageIncomplete = (
+  chatMessages: LocalChatMessage[],
+): LocalChatMessage[] => {
+  const draft = [...chatMessages];
+  const lastMessage = draft[draft.length - 1];
+
+  if (!lastMessage || lastMessage.role !== 'assistant') {
+    return draft;
+  }
+
+  draft[draft.length - 1] = {
+    ...lastMessage,
+    isIncomplete: true,
+  };
+
+  return draft;
+};
+
 const getLatestUserQuestion = (chatMessages: ChatMessage[]): string => {
   for (let index = chatMessages.length - 1; index >= 0; index -= 1) {
     const message = chatMessages[index];
@@ -87,7 +109,7 @@ export const ChatStreamPanel = () => {
     appendTimelineEvent,
     clearTimelineEvents,
   } = usePlaygroundStore();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [, setIsGeneratingToken] = useState(false);
@@ -104,11 +126,21 @@ export const ChatStreamPanel = () => {
     isSummaryThresholdReached: false,
   });
   // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
   const activeRequestIdRef = useRef(0);
+  const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = useCallback(() => {
+    const el = messageListRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
+  }, []);
 
   const adjustPromptTextareaHeight = useCallback(() => {
     const textarea = promptTextareaRef.current;
@@ -126,7 +158,7 @@ export const ChatStreamPanel = () => {
     return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
   }, []);
 
-  const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
+  const canSend = useMemo(() => prompt.trim().length > 0, [prompt]);
 
   const stageLabelMap: Record<TimelineEvent['stage'], string> = {
     plan: '规划',
@@ -202,7 +234,7 @@ export const ChatStreamPanel = () => {
       ]);
       const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
 
-      setMessages(snapshot.messages);
+      setMessages(snapshot.messages.map((message) => ({ ...message, isIncomplete: false })));
       setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
       setMemoryMetrics({
         ...snapshot.memoryMetrics,
@@ -289,6 +321,26 @@ export const ChatStreamPanel = () => {
     };
   }, [isHistoryOpen]);
 
+  // 监听消息列表滚动位置，距底部超过 80px 时显示「滚动到底部」按钮。
+  useEffect(() => {
+    const el = messageListRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollToBottom(distanceFromBottom > 80);
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      activeControllerRef.current?.abort();
+    };
+  }, []);
+
   const sendPrompt = async () => {
     if (!canSend) return;
 
@@ -297,15 +349,21 @@ export const ChatStreamPanel = () => {
       return;
     }
 
-    const requestId = activeRequestIdRef.current + 1;
-    activeRequestIdRef.current = requestId;
-
     // 发起新请求前先终止旧流，保证同一时刻只有一个有效 SSE 流。
-    activeControllerRef.current?.abort();
+    const previousRequestId = activeRequestIdRef.current;
+    if (activeControllerRef.current) {
+      interruptedRequestIdsRef.current.add(previousRequestId);
+      setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+      activeControllerRef.current.abort();
+    }
+
+    const requestId = previousRequestId + 1;
+    activeRequestIdRef.current = requestId;
     const controller = new AbortController();
     activeControllerRef.current = controller;
     // 某些传输层在重连时会重放事件，按 eventId 去重可避免重复渲染。
     let lastSeenEventId = 0;
+    let isRequestComplete = false;
     const userPrompt = prompt.trim();
 
     clearTimelineEvents();
@@ -358,11 +416,15 @@ export const ChatStreamPanel = () => {
               const draft = [...prev];
               const last = draft[draft.length - 1];
               if (!last || last.role !== 'assistant') return draft;
-              return [...draft.slice(0, -1), { ...last, content: `${last.content}${payload.content}` }];
+              return [
+                ...draft.slice(0, -1),
+                { ...last, content: `${last.content}${payload.content}`, isIncomplete: false },
+              ];
             });
           }
 
           if (payload.type === 'complete') {
+            isRequestComplete = true;
             if (requestId === activeRequestIdRef.current) {
               setIsStreaming(false);
               activeControllerRef.current = null;
@@ -377,21 +439,34 @@ export const ChatStreamPanel = () => {
           throw error;
         },
         onclose() {
+          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+            setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+          }
+
           if (requestId === activeRequestIdRef.current) {
             setIsStreaming(false);
             activeControllerRef.current = null;
           }
+
+          interruptedRequestIdsRef.current.delete(requestId);
         },
       });
     } catch {
+      const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
+
       if (requestId === activeRequestIdRef.current) {
+        if (!isRequestComplete) {
+          setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+        }
         setIsStreaming(false);
         activeControllerRef.current = null;
       }
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: '流式输出中断，请重试。' },
-      ]);
+
+      interruptedRequestIdsRef.current.delete(requestId);
+
+      if (isInterruptedRequest) {
+        return;
+      }
     }
   };
 
@@ -455,7 +530,7 @@ export const ChatStreamPanel = () => {
       </div>
 
       <div className="mt-2 flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 justify-center">
+        <div className="relative flex min-h-0 flex-1 justify-center">
           <div
             ref={messageListRef}
             className="h-full w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6"
@@ -468,27 +543,46 @@ export const ChatStreamPanel = () => {
               </div>
             )}
             {messages.map((message, index) => (
-              <article
+              <div
                 key={`${message.role}-${index}`}
-                className={`rounded-2xl border px-3.5 py-2.5 text-sm shadow-sm md:text-[15px] ${
-                  message.role === 'user'
-                    ? 'ml-10 border-cyan-200/90 bg-cyan-50/95 text-ink md:ml-16'
-                    : 'mr-10 border-slate-200/90 bg-white text-slate-700 md:mr-16'
-                }`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {!message.content && message.role === 'assistant' ? (
-                  <span className="inline-flex items-center gap-1 text-slate-500">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
-                    正在生成内容
-                  </span>
-                ) : (
-                  message.content || '...'
-                )}
-              </article>
+                <article
+                  className={`max-w-[80%] rounded-2xl border px-3.5 py-2.5 text-sm shadow-sm md:text-[15px] ${
+                    message.role === 'user'
+                      ? 'border-cyan-200/90 bg-cyan-50/95 text-ink'
+                      : 'border-slate-200/90 bg-white text-slate-700'
+                  }`}
+                >
+                  {!message.content && message.role === 'assistant' && !message.isIncomplete ? (
+                    <span className="inline-flex items-center gap-1 text-slate-500">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
+                      正在生成内容
+                    </span>
+                  ) : (
+                    `${message.content || ''}${message.isIncomplete ? '...' : ''}` || '...'
+                  )}
+                </article>
+              </div>
             ))}
           </div>
+
+          {/* 用户向上滚动时显示「回到底部」按钮，点击后平滑滚动到最新消息 */}
+          {showScrollToBottom && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              aria-label="滚动到底部"
+              className="absolute bottom-3 left-1/2 z-10 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-slate-200 bg-white/90 shadow-md backdrop-blur transition hover:border-cyan-300 hover:bg-cyan-50"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 5v14" />
+                <path d="m6 13 6 6 6-6" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div className="mt-3 w-full max-w-3xl self-center space-y-2">
