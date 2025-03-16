@@ -15,11 +15,12 @@ type ParsedToken = {
 const MAX_CONTEXT_TOKENS = 8192;
 const ATTENTION_TOKEN_LIMIT = 24;
 const HIGH_FREQUENCY_PATTERNS = [/\bLLM\b/i, /\bAI\b/i, /\bGPT\b/i, /transformer/i, /agent/i, /token/i];
-const SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT = [
-  '当然 new EventSource().onmessage 也可以实现基本的 SSE，但不支持 POST 和断点续传，且在网络异常时重连机制不够灵活。',
-  '推荐使用 fetch + ReadableStream + AbortController 方案，实现流式读取、指数退避重连和 Last-Event-ID 续传。',
-  '同时在前端维护 sessionId 与 isStreaming 状态，避免并发请求导致响应乱序。',
-].join('\n');
+// const SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT = [
+//   '当然 new EventSource().onmessage 也可以实现基本的 SSE，但不支持 POST 和断点续传，且在网络异常时重连机制不够灵活。',
+//   '推荐使用 fetch + ReadableStream + AbortController 方案，实现流式读取、指数退避重连和 Last-Event-ID 续传。',
+//   '同时在前端维护 sessionId 与 isStreaming 状态，避免并发请求导致响应乱序。',
+// ].join('\n');
+const SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT = '';
 
 const TOKEN_KIND_STYLE: Record<TokenKind, string> = {
   'high-frequency': 'border-orange-200 bg-orange-50 text-orange-700',
@@ -163,7 +164,7 @@ export const TokenEmbeddingPanel = () => {
     const trimmed = (sourceText ?? activeInputText).trim();
 
     if (!trimmed) {
-      setErrorText('请输入要解析的文本。');
+      // setErrorText('请输入要解析的文本。');
       setTokens([]);
       return;
     }

@@ -539,7 +539,7 @@ export const ChatStreamPanel = () => {
               <div className="mx-auto mt-8 max-w-xl text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700/90">Kronos Agent</p>
                 <h3 className="mt-2 font-display text-3xl text-slate-800 md:text-4xl">你好，我是 Kronos</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-500">我会把回答展示在中间区域，输入框固定在底部。你可以直接提问，右侧栏查看调试细节。</p>
+                <p className="mt-3 text-sm leading-6 text-slate-500">我会把回答展示在中间区域，你可以直接提问，右侧栏查看调试细节。</p>
               </div>
             )}
             {messages.map((message, index) => (
@@ -604,7 +604,11 @@ export const ChatStreamPanel = () => {
                     key={action.key}
                     type="button"
                     title={`${action.label}功能即将上线`}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
+                      action.key === 'takeout'
+                        ? 'border-amber-300 bg-[#ffd100] font-semibold text-slate-950 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-amber-400 hover:bg-[#ffda33]'
+                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
+                    }`}
                   >
                     {action.key === 'file' && (
                       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -630,12 +634,12 @@ export const ChatStreamPanel = () => {
                       </svg>
                     )}
                     {action.key === 'takeout' && (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M4 11h16" />
-                        <path d="M6 11v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6" />
-                        <path d="M9 11V7a3 3 0 0 1 6 0v4" />
-                        <path d="M10 15h4" />
-                      </svg>
+                      <span
+                        aria-hidden
+                        className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-slate-950 px-1 text-[10px] font-bold leading-none tracking-tight text-[#ffd100]"
+                      >
+                        美
+                      </span>
                     )}
                     <span>{action.label}</span>
                   </button>
