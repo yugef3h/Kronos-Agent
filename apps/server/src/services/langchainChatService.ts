@@ -5,7 +5,14 @@ import { z } from 'zod';
 import type { Message } from '../domain/sessionStore.js';
 import { env } from '../config/env.js';
 import { normalizeStreamDelta } from './streamDelta.js';
-import { extractModelToolCalls } from './toolCallExtractor.js';
+import { runPlanningStep } from './planningStep.js';
+import {
+  createFirstTokenInfoMessage,
+  createFirstTokenSlowWarningMessage,
+  createReasonCompletedMessage,
+  createReasonRequestInfoMessage,
+  raceFirstChunkWithTimeout,
+} from './reasonTelemetry.js';
 
 type TimelineEvent = {
   type: 'timeline';
@@ -166,15 +173,17 @@ export async function* streamLangChainReply(params: {
     new HumanMessage(params.prompt),
   ];
 
-  const planningResult = await toolEnabledModel.invoke(planningMessages);
-  const modelToolCalls = extractModelToolCalls(planningResult);
+  // 规划阶段设置超时，避免上游抖动导致首个可见事件长时间卡住。
+  const planningStep = await runPlanningStep({
+    invokePlanning: () => toolEnabledModel.invoke(planningMessages),
+    timeoutMs: env.DOUBAO_PLAN_TIMEOUT_MS,
+  });
+  const modelToolCalls = planningStep.modelToolCalls;
 
   yield createTimelineEvent(
     'plan',
     'info',
-    modelToolCalls.length > 0
-      ? `模型决策调用工具：${modelToolCalls.map((item) => item.name).join('、')}`
-      : '模型决策为无工具调用，直接进入推理阶段。',
+    planningStep.message,
   );
 
   const toolOutputs: string[] = [];
@@ -234,6 +243,7 @@ export async function* streamLangChainReply(params: {
   }
 
   yield createTimelineEvent('reason', 'start', '推理器开始生成流式响应。');
+  const reasonStartedAt = Date.now();
 
   const messages = [
     ...params.history.map(toLangChainMessage),
@@ -248,10 +258,32 @@ export async function* streamLangChainReply(params: {
     new HumanMessage(params.prompt),
   ];
 
+  const requestStartedAt = Date.now();
   const stream = await chatModel.stream(messages);
-  let previousChunkText = '';
+  const requestSetupElapsedMs = Date.now() - requestStartedAt;
 
-  for await (const chunk of stream) {
+  yield createTimelineEvent('reason', 'info', createReasonRequestInfoMessage(requestSetupElapsedMs));
+
+  const iterator = stream[Symbol.asyncIterator]();
+  const firstChunkPromise = iterator.next();
+  const firstChunkRace = await raceFirstChunkWithTimeout({
+    firstChunkPromise,
+    timeoutMs: env.DOUBAO_FIRST_TOKEN_WARN_MS,
+  });
+
+  if (firstChunkRace.timedOut) {
+    yield createTimelineEvent(
+      'reason',
+      'info',
+      createFirstTokenSlowWarningMessage(env.DOUBAO_FIRST_TOKEN_WARN_MS),
+    );
+  }
+
+  const firstChunkResult = await firstChunkPromise;
+  let previousChunkText = '';
+  let firstTokenElapsedMs: number | null = null;
+
+  const emitChunkAsContent = (chunk: { content: unknown }): ContentEvent | null => {
     const rawContent = readChunkText(chunk.content);
     const content = normalizeStreamDelta(previousChunkText, rawContent);
 
@@ -259,13 +291,52 @@ export async function* streamLangChainReply(params: {
       previousChunkText = rawContent;
     }
 
-    if (content.length > 0) {
-      yield {
-        type: 'content',
-        content,
-      };
+    if (content.length === 0) {
+      return null;
+    }
+
+    if (firstTokenElapsedMs === null) {
+      firstTokenElapsedMs = Date.now() - reasonStartedAt;
+    }
+
+    return {
+      type: 'content',
+      content,
+    };
+  };
+
+  if (!firstChunkResult.done) {
+    const firstContentEvent = emitChunkAsContent(firstChunkResult.value);
+
+    if (firstTokenElapsedMs !== null) {
+      yield createTimelineEvent('reason', 'info', createFirstTokenInfoMessage(firstTokenElapsedMs));
+    }
+
+    if (firstContentEvent) {
+      yield firstContentEvent;
     }
   }
 
-  yield createTimelineEvent('reason', 'end', '推理器已完成流式响应。');
+  while (true) {
+    const chunkResult = await iterator.next();
+
+    if (chunkResult.done) {
+      break;
+    }
+
+    const contentEvent = emitChunkAsContent(chunkResult.value);
+    if (contentEvent) {
+      yield contentEvent;
+    }
+  }
+
+  const totalElapsedMs = Date.now() - reasonStartedAt;
+  yield createTimelineEvent(
+    'reason',
+    'end',
+    createReasonCompletedMessage({
+      totalElapsedMs,
+      firstTokenElapsedMs,
+    }),
+  );
 }
