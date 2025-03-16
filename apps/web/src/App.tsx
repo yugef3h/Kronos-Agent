@@ -1,42 +1,67 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { AgentOrchestratorPanel } from './components/AgentOrchestratorPanel';
-import { AttentionHeatmap } from './components/AttentionHeatmap';
 import { ChatStreamPanel } from './components/ChatStreamPanel';
 import { MemorySummaryPanel } from './components/MemorySummaryPanel';
 import { SamplingInspector } from './components/SamplingInspector';
 import { TokenEmbeddingPanel } from './components/TokenEmbeddingPanel';
+import { ToolInvocationPanel } from './components/ToolInvocationPanel';
 
 const App = () => {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 text-ink md:px-8">
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="mb-8"
+    <main className="relative h-screen overflow-hidden bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
+      <button
+        type="button"
+        onClick={() => setIsMobileSidebarOpen(true)}
+        className="absolute right-3 top-3 z-40 rounded-full border border-slate-300/80 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:border-cyan-300 hover:bg-cyan-50 lg:hidden"
       >
-        <p className="text-sm uppercase tracking-[0.2em] text-accent">Kronos Agent</p>
-        <h1 className="font-display text-3xl md:text-5xl">LLM Insight Playground</h1>
-        <p className="mt-3 max-w-3xl text-sm text-slate-600 md:text-base">
-          一个面向前端 AI 工程师的原理可视化与 Agent 调试工作台，当前版本优先落地 LangChain.js + 豆包 + JWT 安全链路。
-        </p>
-      </motion.header>
+        调试面板
+      </button>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <ChatStreamPanel />
-        <TokenEmbeddingPanel />
-      </section>
+      <div className="mx-auto flex h-full max-w-[1680px] gap-3 p-3 md:gap-4 md:p-4">
+        <section className="min-w-0 flex-1">
+          <ChatStreamPanel />
+        </section>
 
-      {/* <section className="mt-4 grid gap-4 lg:grid-cols-2">
-        <AttentionHeatmap />
-        <SamplingInspector />
-      </section> */}
+        <aside className="hidden w-[550px] shrink-0 space-y-3 overflow-y-auto pb-2 pr-1 lg:block">
+          <TokenEmbeddingPanel />
+          <ToolInvocationPanel />
+          <MemorySummaryPanel />
+          <AgentOrchestratorPanel />
+          <SamplingInspector />
+        </aside>
+      </div>
 
-      <section className="mt-4 grid gap-4 lg:grid-cols-3">
-        <MemorySummaryPanel />
-        <AgentOrchestratorPanel />
-        <SamplingInspector />
-      </section>
+      {isMobileSidebarOpen && (
+        <div
+          className="absolute inset-0 z-50 flex justify-end bg-slate-900/30"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        >
+          <aside
+            className="h-full w-[92vw] max-w-[380px] overflow-y-auto border-l border-slate-200 bg-white p-3 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-lg text-ink">调试面板</h2>
+              <button
+                type="button"
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-600"
+              >
+                关闭
+              </button>
+            </div>
+            <div className="space-y-3 pb-6">
+              <TokenEmbeddingPanel />
+              <ToolInvocationPanel />
+              <MemorySummaryPanel />
+              <AgentOrchestratorPanel />
+              <SamplingInspector />
+            </div>
+          </aside>
+        </div>
+      )}
     </main>
   );
 };

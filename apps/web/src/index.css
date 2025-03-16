@@ -15,3 +15,10 @@ body {
   min-height: 100vh;
   font-family: 'Manrope', sans-serif;
 }
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
