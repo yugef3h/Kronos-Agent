@@ -92,6 +92,11 @@ export type TakeoutOrchestrationResponse = {
 	};
 };
 
+export type ImageRecognitionResponse = {
+	reply: string;
+	model: string;
+};
+
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	const response = await fetch(apiUrl('/api/dev/token'));
 
@@ -207,4 +212,28 @@ export const requestTakeoutOrchestration = async (params: {
 	}
 
 	return (await response.json()) as TakeoutOrchestrationResponse;
+};
+
+export const requestImageRecognition = async (params: {
+	authToken: string;
+	imageDataUrl: string;
+	prompt?: string;
+}): Promise<ImageRecognitionResponse> => {
+	const response = await fetch(apiUrl('/api/image/analyze'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			imageDataUrl: params.imageDataUrl,
+			prompt: params.prompt || '',
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request image recognition');
+	}
+
+	return (await response.json()) as ImageRecognitionResponse;
 };

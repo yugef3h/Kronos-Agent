@@ -7,6 +7,7 @@ import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
+import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -38,6 +39,11 @@ const takeoutIntentSchema = z.object({
 const takeoutOrchestrationSchema = z.object({
   prompt: z.string().min(1),
   history: z.array(z.string()).max(12).optional(),
+});
+
+const imageAnalyzeSchema = z.object({
+  imageDataUrl: z.string().min(64).max(8_000_000),
+  prompt: z.string().max(400).optional(),
 });
 
 export const chatRoutes = Router();
@@ -170,4 +176,24 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
   });
 
   response.json(result);
+});
+
+chatRoutes.post('/image/analyze', async (request: Request, response: Response) => {
+  const parsed = imageAnalyzeSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await recognizeImageByDoubao({
+      imageDataUrl: parsed.data.imageDataUrl,
+      prompt: parsed.data.prompt,
+    });
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `Image recognition failed: ${reason}` });
+  }
 });

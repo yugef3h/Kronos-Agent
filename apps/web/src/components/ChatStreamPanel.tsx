@@ -3,6 +3,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import {
   apiUrl,
   requestDevToken,
+  requestImageRecognition,
   requestRecentSessions,
   requestSessionSnapshot,
   requestTakeoutOrchestration,
@@ -19,11 +20,16 @@ import {
   useTakeoutTool,
   type TakeoutChatMessage,
 } from '../features/agent-tools/takeout';
+import {
+  prepareImageForAnalyze,
+  type ImageSelectionResult,
+} from '../features/agent-tools/image';
 import taobao_icon from '../assets/taobao.png';
 
 const MAX_CONTEXT_TOKENS = 8192;
 const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
 const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
+const IMAGE_DEFAULT_PROMPT = '解释图片';
 
 type TokenizerModule = {
   encode: (text: string) => Iterable<number>;
@@ -72,7 +78,10 @@ type PromptQuickAction = {
   label: string;
 };
 
-type LocalChatMessage = TakeoutChatMessage;
+type LocalChatMessage = TakeoutChatMessage & {
+  imagePreviewUrl?: string;
+  imageName?: string;
+};
 
 const markLastAssistantMessageIncomplete = (
   chatMessages: LocalChatMessage[],
@@ -112,10 +121,10 @@ const buildConversationText = (chatMessages: ChatMessage[]): string => {
 export const ChatStreamPanel = () => {
   const PROMPT_MAX_HEIGHT = 300;
   const promptQuickActions: PromptQuickAction[] = [
-    { key: 'takeout', label: '外卖' },
-    { key: 'file', label: '文件' },
     { key: 'image', label: '图像' },
-    { key: 'translate', label: '翻译' },
+    // { key: 'file', label: '文件' },
+    // { key: 'translate', label: '翻译' },
+    { key: 'takeout', label: '外卖' },
   ];
   const {
     sessionId,
@@ -128,8 +137,10 @@ export const ChatStreamPanel = () => {
   } = usePlaygroundStore();
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
+  const [pendingImage, setPendingImage] = useState<ImageSelectionResult | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -151,6 +162,7 @@ export const ChatStreamPanel = () => {
   const activeControllerRef = useRef<AbortController | null>(null);
   const takeoutQuickReplyTimerRef = useRef<number | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -200,7 +212,7 @@ export const ChatStreamPanel = () => {
     return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
   }, []);
 
-  const canSend = useMemo(() => prompt.trim().length > 0, [prompt]);
+  const canSend = useMemo(() => prompt.trim().length > 0 || pendingImage !== null, [prompt, pendingImage]);
 
   const stageLabelMap: Record<TimelineEvent['stage'], string> = {
     plan: '规划',
@@ -414,6 +426,88 @@ export const ChatStreamPanel = () => {
 
     const userPrompt = prompt.trim();
 
+    if (pendingImage) {
+      if (isStreaming || isOrchestrating || isAnalyzingImage) {
+        return;
+      }
+
+      if (!authToken) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: '识别图片前需要先准备 JWT。', isIncomplete: false },
+        ]);
+        return;
+      }
+
+      const imagePrompt = userPrompt || IMAGE_DEFAULT_PROMPT;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'user',
+          content: '',
+          imagePreviewUrl: pendingImage.dataUrl,
+          imageName: pendingImage.fileName,
+          isIncomplete: false,
+        },
+        {
+          role: 'user',
+          content: imagePrompt,
+          isIncomplete: false,
+        },
+        { role: 'assistant', content: '', isIncomplete: false },
+      ]);
+      setLatestUserQuestion(imagePrompt);
+      setPrompt('');
+      setPendingImage(null);
+      setIsAnalyzingImage(true);
+
+      try {
+        const response = await requestImageRecognition({
+          authToken,
+          imageDataUrl: pendingImage.dataUrl,
+          prompt: imagePrompt,
+        });
+
+        setMessages((prev) => {
+          const draft = [...prev];
+          const last = draft[draft.length - 1];
+          if (!last || last.role !== 'assistant') {
+            return draft;
+          }
+
+          draft[draft.length - 1] = {
+            ...last,
+            content: response.reply,
+            isIncomplete: false,
+          };
+
+          return draft;
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
+        setMessages((prev) => {
+          const draft = [...prev];
+          const last = draft[draft.length - 1];
+          if (!last || last.role !== 'assistant') {
+            return [...prev, { role: 'assistant', content: message, isIncomplete: false }];
+          }
+
+          draft[draft.length - 1] = {
+            ...last,
+            content: message,
+            isIncomplete: false,
+          };
+
+          return draft;
+        });
+      } finally {
+        setIsAnalyzingImage(false);
+      }
+
+      return;
+    }
+
     // 先乐观渲染用户消息，避免等待编排接口返回后才显示。
     setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
     setPrompt('');
@@ -587,6 +681,21 @@ export const ChatStreamPanel = () => {
     }
   };
 
+  const handleExplainImageClick = () => {
+    if (!pendingImage) {
+      return;
+    }
+
+    if (prompt.trim().length > 0) {
+      return;
+    }
+
+    setPrompt(IMAGE_DEFAULT_PROMPT);
+    requestAnimationFrame(() => {
+      void sendPrompt();
+    });
+  };
+
   const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) {
       return;
@@ -609,7 +718,7 @@ export const ChatStreamPanel = () => {
 
   const handleQuickActionClick = (action: PromptQuickAction['key']) => {
     if (action === 'takeout') {
-      if (isStreaming || isOrchestrating || takeoutQuickReplyTimerRef.current !== null) {
+      if (isStreaming || isOrchestrating || isAnalyzingImage || takeoutQuickReplyTimerRef.current !== null) {
         return;
       }
 
@@ -653,12 +762,36 @@ export const ChatStreamPanel = () => {
     }
 
     if (action === 'image') {
-      setPrompt((prev) => `${prev}${prev ? ' ' : ''}/image `);
+      if (isStreaming || isOrchestrating || isAnalyzingImage) {
+        return;
+      }
+
+      imageInputRef.current?.click();
       return;
     }
 
     if (action === 'translate') {
       setPrompt((prev) => `${prev}${prev ? ' ' : ''}/translate `);
+    }
+  };
+
+  const handleImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      const preparedImage = await prepareImageForAnalyze(selectedFile);
+      setPendingImage(preparedImage);
+      requestAnimationFrame(() => {
+        promptTextareaRef.current?.focus();
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
+      setMessages((prev) => [...prev, { role: 'assistant', content: message, isIncomplete: false }]);
     }
   };
 
@@ -722,7 +855,9 @@ export const ChatStreamPanel = () => {
                 <article
                   className={`max-w-[80%] rounded-2xl border px-3.5 py-2.5 text-sm shadow-sm md:text-[15px] ${
                     message.role === 'user'
-                      ? 'border-cyan-200/90 bg-cyan-50/95 text-ink'
+                      ? message.imagePreviewUrl
+                        ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
+                        : 'border-cyan-200/90 bg-cyan-50/95 text-ink'
                       : isTakeoutWideCardMessage(message)
                         ? 'border-transparent bg-transparent px-0 py-0 text-slate-700 shadow-none'
                         : 'border-slate-200/90 bg-white text-slate-700'
@@ -738,6 +873,12 @@ export const ChatStreamPanel = () => {
                       onOpenAuthorizationModal={openTakeoutAuthorizationModal}
                       onSelectFood={handleTakeoutSelectFood}
                       onOpenPaymentModal={openTakeoutPaymentModal}
+                    />
+                  ) : message.imagePreviewUrl ? (
+                    <img
+                      src={message.imagePreviewUrl}
+                      alt={message.imageName || '用户上传图片'}
+                      className="max-h-64 w-auto max-w-full rounded-xl object-contain"
                     />
                   ) : !message.content && message.role === 'assistant' && !message.isIncomplete ? (
                     <span className="inline-flex items-center gap-1 text-slate-500">
@@ -782,6 +923,47 @@ export const ChatStreamPanel = () => {
 
         <div className="mt-3 w-full max-w-3xl self-center space-y-2">
         <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageFileChange}
+            />
+
+            {pendingImage && (
+              <div className="mb-2 rounded-lg pt-1 text-xs text-cyan-800">
+                <div className="group relative inline-block max-w-full">
+                  <img
+                    src={pendingImage.dataUrl}
+                    alt={pendingImage.fileName}
+                    className="max-h-16 w-auto max-w-full rounded-lg object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPendingImage(null)}
+                    aria-label="移除图片"
+                    className="absolute right-[-8px] top-[-8px] inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/90 text-white opacity-0 shadow-sm transition hover:bg-black focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 5l10 10" />
+                      <path d="M15 5L5 15" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExplainImageClick}
+                    disabled={isStreaming || isOrchestrating || isAnalyzingImage || prompt.trim().length > 0}
+                    className="rounded-[6px] bg-[#f4f5f5] px-3 py-1 text-xs text-black transition hover:bg-[#e0e0e0] disabled:cursor-not-allowed"
+                  >
+                    {"解释图片 ->"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <textarea
               ref={promptTextareaRef}
               rows={1}
@@ -789,7 +971,7 @@ export const ChatStreamPanel = () => {
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={handlePromptKeyDown}
               className="max-h-[160px] min-h-[44px] w-full resize-none border-none bg-transparent py-1 text-sm leading-6 text-slate-800 outline-none"
-              placeholder="发消息或输入“/”选择技能"
+              placeholder={pendingImage ? '可继续输入问题，或点“解释图片”直接发送' : '发消息，可以试着点餐哦~'}
             />
 
             <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-center justify-between">
@@ -799,7 +981,7 @@ export const ChatStreamPanel = () => {
                     key={action.key}
                     type="button"
                     onClick={() => handleQuickActionClick(action.key)}
-                    title={action.key === 'takeout' ? '打开外卖模拟流程' : `${action.label}功能即将上线`}
+                    title={action.key === 'takeout' ? '打开外卖模拟流程' : action.key === 'image' ? '上传图片进行识别' : `${action.label}功能即将上线`}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
                         'border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
                     }`}
