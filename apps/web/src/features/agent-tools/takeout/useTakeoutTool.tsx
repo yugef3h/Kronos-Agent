@@ -5,6 +5,10 @@ import {
   createInitialTakeoutFlowState,
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
+import {
+  hasTakeoutBindingConfirmed,
+  setTakeoutBindingConfirmed,
+} from './localBindingCache';
 import type {
   TakeoutAssistantMessageOptions,
   TakeoutChatMessage,
@@ -164,23 +168,13 @@ export const useTakeoutTool = ({
     }
   }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, resetModalState]);
 
-  const openTakeoutAuthorizationModal = useCallback((flowId: number) => {
-    if (flowId !== flowState.flowId || flowState.isCallingApi) {
-      return;
-    }
-
-    setIsTakeoutAgreementChecked(true);
-    setModalState((prev) => ({ ...prev, authFlowId: flowId }));
-  }, [flowState.flowId, flowState.isCallingApi]);
-
-  const closeTakeoutAuthorizationModal = useCallback(() => {
-    setModalState((prev) => ({ ...prev, authFlowId: null }));
-  }, []);
-
   const handleTakeoutAgreement = useCallback(async (flowId: number) => {
     if (flowId !== flowState.flowId) {
       return;
     }
+
+    // 用户确认过一次后记本地标记，后续可跳过绑定弹窗步骤。
+    setTakeoutBindingConfirmed();
 
     resetModalState();
     setFlowState((prev) => ({
@@ -210,6 +204,24 @@ export const useTakeoutTool = ({
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
   }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, flowState.flowId, resetModalState, setMessages]);
+
+  const openTakeoutAuthorizationModal = useCallback((flowId: number) => {
+    if (flowId !== flowState.flowId || flowState.isCallingApi) {
+      return;
+    }
+
+    if (hasTakeoutBindingConfirmed()) {
+      void handleTakeoutAgreement(flowId);
+      return;
+    }
+
+    setIsTakeoutAgreementChecked(true);
+    setModalState((prev) => ({ ...prev, authFlowId: flowId }));
+  }, [flowState.flowId, flowState.isCallingApi, handleTakeoutAgreement]);
+
+  const closeTakeoutAuthorizationModal = useCallback(() => {
+    setModalState((prev) => ({ ...prev, authFlowId: null }));
+  }, []);
 
   const handleTakeoutCancel = useCallback((flowId: number) => {
     if (flowId !== flowState.flowId) {
