@@ -141,6 +141,7 @@ export const ChatStreamPanel = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [isAwaitingTakeoutFollowup, setIsAwaitingTakeoutFollowup] = useState(false);
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -187,7 +188,7 @@ export const ChatStreamPanel = () => {
     openTakeoutPaymentModal,
     closeTakeoutPaymentModal,
     handleTakeoutPaymentPasswordChange,
-  } = useTakeoutTool({ messages, setMessages, authToken });
+  } = useTakeoutTool({ messages, setMessages, authToken, sessionId });
 
   const scrollToBottom = useCallback(() => {
     const el = messageListRef.current;
@@ -467,6 +468,7 @@ export const ChatStreamPanel = () => {
           authToken,
           imageDataUrl: pendingImage.dataUrl,
           prompt: imagePrompt,
+          sessionId,
         });
 
         setMessages((prev) => {
@@ -515,6 +517,15 @@ export const ChatStreamPanel = () => {
 
     const tryHandleTakeout = async (): Promise<boolean> => {
       if (!authToken) {
+        // 快捷入口后的补充消息必须走后端命中后才可进入外卖流程。
+        if (isAwaitingTakeoutFollowup) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: '请先完成 JWT 鉴权后再继续点餐，我会根据你的具体需求进入外卖流程。', isIncomplete: false },
+          ]);
+          return true;
+        }
+
         return isTakeoutIntentPrompt(userPrompt);
       }
 
@@ -524,6 +535,7 @@ export const ChatStreamPanel = () => {
           authToken,
           prompt: userPrompt,
           history: messages.slice(-6).map((message) => message.content),
+          sessionId,
         });
 
         if (orchestrated.action === 'chat' || orchestrated.action === 'ask_slot') {
@@ -535,7 +547,11 @@ export const ChatStreamPanel = () => {
         }
 
         if (orchestrated.action === 'tool_call' && orchestrated.toolCall?.name === 'takeout') {
-          void startTakeoutConversation();
+          if (isAwaitingTakeoutFollowup) {
+            setIsAwaitingTakeoutFollowup(false);
+          }
+
+          void startTakeoutConversation(userPrompt);
           return true;
         }
 
@@ -553,7 +569,7 @@ export const ChatStreamPanel = () => {
     }
 
     // 无鉴权时保留本地关键词兜底，确保体验可用。
-    if (!authToken && isTakeoutIntentPrompt(userPrompt)) {
+    if (!authToken && !isAwaitingTakeoutFollowup && isTakeoutIntentPrompt(userPrompt)) {
       void startTakeoutConversation();
       return;
     }
@@ -752,6 +768,7 @@ export const ChatStreamPanel = () => {
         });
 
         takeoutQuickReplyTimerRef.current = null;
+        setIsAwaitingTakeoutFollowup(true);
       }, TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS);
       return;
     }
@@ -838,7 +855,7 @@ export const ChatStreamPanel = () => {
         <div className="relative flex min-h-0 flex-1 justify-center">
           <div
             ref={messageListRef}
-            className="h-full w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6"
+              className="soft-scrollbar h-full w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6"
           >
             {messages.length === 0 && (
               <div className="mx-auto mt-8 max-w-xl text-center">
@@ -853,14 +870,14 @@ export const ChatStreamPanel = () => {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <article
-                  className={`max-w-[80%] rounded-2xl border px-3.5 py-2.5 text-sm shadow-sm md:text-[15px] ${
+                  className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${
                     message.role === 'user'
                       ? message.imagePreviewUrl
                         ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
-                        : 'border-cyan-200/90 bg-cyan-50/95 text-ink'
+                        : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
                       : isTakeoutWideCardMessage(message)
-                        ? 'border-transparent bg-transparent px-0 py-0 text-slate-700 shadow-none'
-                        : 'border-slate-200/90 bg-white text-slate-700'
+                        ? 'border-transparent bg-transparent px-0 py-1 text-slate-700 shadow-none'
+                        : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
                   }`}
                 >
                   {message.flowType === 'takeout' && message.takeoutMessageType ? (

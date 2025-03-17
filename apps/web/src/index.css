@@ -22,3 +22,26 @@ body,
   height: 100%;
   overflow: hidden;
 }
+
+.soft-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.06) rgba(0, 0, 0, 0.06);
+}
+
+.soft-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.soft-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+}
+
+.soft-scrollbar::-webkit-scrollbar-corner {
+  background: rgba(0, 0, 0, 0.06);
+}

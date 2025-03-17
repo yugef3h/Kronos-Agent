@@ -5,6 +5,7 @@ import {
   createInitialTakeoutFlowState,
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
+import { requestAppendSessionMessages } from '../../../lib/api';
 import {
   hasTakeoutBindingConfirmed,
   setTakeoutBindingConfirmed,
@@ -22,6 +23,7 @@ type UseTakeoutToolParams = {
   messages: TakeoutChatMessage[];
   setMessages: TakeoutMessageUpdater;
   authToken: string;
+  sessionId: string;
 };
 
 type UseTakeoutToolResult = {
@@ -32,7 +34,7 @@ type UseTakeoutToolResult = {
   foodsScrollerRef: RefObject<HTMLDivElement>;
   paymentInputRef: RefObject<HTMLInputElement>;
   showTakeoutScrollHint: boolean;
-  startTakeoutConversation: () => Promise<void>;
+  startTakeoutConversation: (initialUserPrompt?: string) => Promise<void>;
   openTakeoutAuthorizationModal: (flowId: number) => void;
   closeTakeoutAuthorizationModal: () => void;
   handleTakeoutAgreement: (flowId: number) => Promise<void>;
@@ -57,6 +59,7 @@ export const useTakeoutTool = ({
   messages,
   setMessages,
   authToken,
+  sessionId,
 }: UseTakeoutToolParams): UseTakeoutToolResult => {
   const [flowState, setFlowState] = useState<TakeoutFlowState>(createInitialTakeoutFlowState());
   const [modalState, setModalState] = useState<TakeoutModalState>(createInitialModalState());
@@ -149,7 +152,35 @@ export const useTakeoutTool = ({
     [appendAssistantTextMessage],
   );
 
-  const startTakeoutConversation = useCallback(async () => {
+  const appendTakeoutSessionMessages = useCallback(async (params: {
+    userContent?: string;
+    assistantContent?: string;
+  }) => {
+    if (!authToken) {
+      return;
+    }
+
+    const payload = [
+      params.userContent ? { role: 'user' as const, content: params.userContent } : null,
+      params.assistantContent ? { role: 'assistant' as const, content: params.assistantContent } : null,
+    ].filter((item): item is { role: 'user' | 'assistant'; content: string } => item !== null);
+
+    if (payload.length === 0) {
+      return;
+    }
+
+    try {
+      await requestAppendSessionMessages({
+        authToken,
+        sessionId,
+        messages: payload,
+      });
+    } catch {
+      // 本地 UI 可继续，历史写入失败不阻塞当前流程。
+    }
+  }, [authToken, sessionId]);
+
+  const startTakeoutConversation = useCallback(async (initialUserPrompt?: string) => {
     const nextFlowId = Date.now();
     resetModalState();
     setFlowState({
@@ -157,16 +188,42 @@ export const useTakeoutTool = ({
       isCallingApi: true,
     });
 
+    if (hasTakeoutBindingConfirmed()) {
+      try {
+        const reply = await callDoubaoAPI('协议同意回复', { address: MOCK_ADDRESS }, authToken);
+        appendAssistantTextMessage(reply, { flowType: 'takeout', flowId: nextFlowId });
+        void appendTakeoutSessionMessages({
+          userContent: initialUserPrompt,
+          assistantContent: reply,
+        });
+        appendTakeoutCardMessage(nextFlowId, 'foods-card');
+        setFlowState((prev) => ({
+          ...prev,
+          isCallingApi: false,
+          isFoodListVisible: true,
+        }));
+      } catch {
+        appendTakeoutFallbackMessage(nextFlowId);
+        setFlowState((prev) => ({ ...prev, isCallingApi: false }));
+      }
+
+      return;
+    }
+
     try {
       const reply = await callDoubaoAPI('识别外卖意图', {}, authToken);
       appendAssistantTextMessage(reply, { flowType: 'takeout', flowId: nextFlowId });
+      void appendTakeoutSessionMessages({
+        userContent: initialUserPrompt,
+        assistantContent: reply,
+      });
       appendTakeoutCardMessage(nextFlowId, 'protocol-card');
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     } catch {
       appendTakeoutFallbackMessage(nextFlowId);
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
-  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, resetModalState]);
+  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, resetModalState]);
 
   const handleTakeoutAgreement = useCallback(async (flowId: number) => {
     if (flowId !== flowState.flowId) {
@@ -296,6 +353,10 @@ export const useTakeoutTool = ({
     try {
       const reply = await callDoubaoAPI('商品选择完成', { discount: MOCK_DISCOUNT }, authToken);
       appendAssistantTextMessage(reply, { flowType: 'takeout', flowId });
+      void appendTakeoutSessionMessages({
+        userContent: userOrderPrompt,
+        assistantContent: reply,
+      });
       appendTakeoutCardMessage(flowId, 'checkout-card');
       setFlowState((prev) => ({
         ...prev,
@@ -307,7 +368,7 @@ export const useTakeoutTool = ({
       appendTakeoutFallbackMessage(flowId);
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
-  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, closeTakeoutComboModal, flowState, setMessages]);
+  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, closeTakeoutComboModal, flowState, setMessages]);
 
   const openTakeoutPaymentModal = useCallback((flowId: number) => {
     if (flowId !== flowState.flowId || flowState.isCallingApi) {

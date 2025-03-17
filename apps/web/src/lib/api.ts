@@ -97,6 +97,11 @@ export type ImageRecognitionResponse = {
 	model: string;
 };
 
+export type SessionAppendMessage = {
+	role: 'user' | 'assistant';
+	content: string;
+};
+
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	const response = await fetch(apiUrl('/api/dev/token'));
 
@@ -194,6 +199,7 @@ export const requestTakeoutOrchestration = async (params: {
 	authToken: string;
 	prompt: string;
 	history?: string[];
+	sessionId?: string;
 }): Promise<TakeoutOrchestrationResponse> => {
 	const response = await fetch(apiUrl('/api/takeout/orchestrate'), {
 		method: 'POST',
@@ -204,6 +210,7 @@ export const requestTakeoutOrchestration = async (params: {
 		body: JSON.stringify({
 			prompt: params.prompt,
 			history: params.history || [],
+			sessionId: params.sessionId,
 		}),
 	});
 
@@ -218,6 +225,7 @@ export const requestImageRecognition = async (params: {
 	authToken: string;
 	imageDataUrl: string;
 	prompt?: string;
+	sessionId?: string;
 }): Promise<ImageRecognitionResponse> => {
 	const response = await fetch(apiUrl('/api/image/analyze'), {
 		method: 'POST',
@@ -228,6 +236,7 @@ export const requestImageRecognition = async (params: {
 		body: JSON.stringify({
 			imageDataUrl: params.imageDataUrl,
 			prompt: params.prompt || '',
+			sessionId: params.sessionId,
 		}),
 	});
 
@@ -236,4 +245,26 @@ export const requestImageRecognition = async (params: {
 	}
 
 	return (await response.json()) as ImageRecognitionResponse;
+};
+
+export const requestAppendSessionMessages = async (params: {
+	authToken: string;
+	sessionId: string;
+	messages: SessionAppendMessage[];
+}): Promise<void> => {
+	const response = await fetch(apiUrl('/api/session/append'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			sessionId: params.sessionId,
+			messages: params.messages,
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to append session messages');
+	}
 };

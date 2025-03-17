@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
-import { getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
+import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
@@ -39,11 +39,21 @@ const takeoutIntentSchema = z.object({
 const takeoutOrchestrationSchema = z.object({
   prompt: z.string().min(1),
   history: z.array(z.string()).max(12).optional(),
+  sessionId: z.string().min(1).optional(),
 });
 
 const imageAnalyzeSchema = z.object({
   imageDataUrl: z.string().min(64).max(8_000_000),
   prompt: z.string().max(400).optional(),
+  sessionId: z.string().min(1).optional(),
+});
+
+const sessionAppendSchema = z.object({
+  sessionId: z.string().min(1),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().min(1).max(3000),
+  })).min(1).max(20),
 });
 
 export const chatRoutes = Router();
@@ -175,6 +185,16 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
     history: parsed.data.history,
   });
 
+  if (parsed.data.sessionId) {
+    void appendSessionMessages({
+      sessionId: parsed.data.sessionId,
+      messages: [
+        { role: 'user', content: parsed.data.prompt },
+        { role: 'assistant', content: result.assistantReply },
+      ],
+    });
+  }
+
   response.json(result);
 });
 
@@ -191,9 +211,42 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
       imageDataUrl: parsed.data.imageDataUrl,
       prompt: parsed.data.prompt,
     });
+
+    if (parsed.data.sessionId) {
+      const userPrompt = parsed.data.prompt?.trim() || '解释图片';
+      void appendSessionMessages({
+        sessionId: parsed.data.sessionId,
+        messages: [
+          { role: 'user', content: `[图片] ${userPrompt}` },
+          { role: 'assistant', content: result.reply },
+        ],
+      });
+    }
+
     response.json(result);
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Image recognition failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/session/append', async (request: Request, response: Response) => {
+  const parsed = sessionAppendSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    await appendSessionMessages({
+      sessionId: parsed.data.sessionId,
+      messages: parsed.data.messages,
+    });
+
+    response.status(204).end();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `Session append failed: ${reason}` });
   }
 });

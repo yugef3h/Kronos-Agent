@@ -5,6 +5,7 @@ import {
   formatTakeoutPrice,
   getTakeoutPaymentSummary,
 } from '../helpers';
+import { hasTakeoutBindingConfirmed } from '../localBindingCache';
 import type { TakeoutChatMessage, TakeoutFlowState } from '../types';
 import taobao_icon from '../../../../assets/taobao.png'
 
@@ -22,7 +23,6 @@ type TakeoutMessageCardProps = {
 export const TakeoutMessageCard = ({
   message,
   flowState,
-  showTakeoutScrollHint,
   foodsScrollerRef,
   onCancel,
   onOpenAuthorizationModal,
@@ -33,7 +33,12 @@ export const TakeoutMessageCard = ({
     return <span className="text-xs text-slate-500">该外卖流程已结束，请发起新的外卖请求。</span>;
   }
 
-  if (message.takeoutMessageType === 'protocol-card') {
+  const effectiveMessageType =
+    message.takeoutMessageType === 'protocol-card' && hasTakeoutBindingConfirmed()
+      ? 'foods-card'
+      : message.takeoutMessageType;
+
+  if (effectiveMessageType === 'protocol-card') {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2 **text-[0]**">
@@ -71,13 +76,13 @@ export const TakeoutMessageCard = ({
     );
   }
 
-  if (message.takeoutMessageType === 'foods-card') {
+  if (effectiveMessageType === 'foods-card') {
     const currentFood = flowState.selectedFood;
 
     return (
       <div className="space-y-3">
         <div className="relative">
-          <div ref={foodsScrollerRef} className="flex gap-3 overflow-x-auto px-1 py-1 pr-8">
+          <div ref={foodsScrollerRef} className="soft-scrollbar flex gap-3 overflow-x-auto pr-8">
             {MOCK_FOODS.map((food) => {
               const isSelected = currentFood?.id === food.id;
 
@@ -86,8 +91,8 @@ export const TakeoutMessageCard = ({
                   key={food.id}
                   className={`w-[14rem] flex-shrink-0 overflow-hidden rounded-xl border bg-white transition-all duration-200 ${
                     isSelected
-                      ? '-translate-y-0.5 border-cyan-300 shadow-[0_16px_36px_-20px_rgba(8,145,178,0.65)]'
-                      : 'border-slate-200 shadow-[0_12px_28px_-20px_rgba(15,23,42,0.38)] hover:border-[#ff5500] hover:shadow-[0_18px_36px_-20px_rgba(14,116,144,0.5)]'
+                      ? '-translate-y-0.5 shadow-[0_16px_36px_-20px_rgba(8,145,178,0.65)]'
+                      : 'shadow-[0_12px_28px_-20px_rgba(15,23,42,0.38)] hover:shadow-[0_18px_36px_-20px_rgba(14,116,144,0.5)]'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 border-b border-slate-100 px-2.5 py-2">
@@ -124,7 +129,7 @@ export const TakeoutMessageCard = ({
                     <button
                       type="button"
                       onClick={() => onSelectFood(message.flowId!, food)}
-                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e0e9fd] py-1.5 text-[11px] font-medium text-[#3544e1] transition"
+                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#e0e9fdc5] py-1.5 text-[11px] font-medium text-[#3544e1] transition hover:bg-[#d0d6f8]"
                     >
                       <span>选这个</span>
                     </button>
@@ -134,8 +139,8 @@ export const TakeoutMessageCard = ({
             })}
           </div>
 
-          {showTakeoutScrollHint && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
+          {/* {showTakeoutScrollHint && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center mr-[-40px]">
               <div className="flex h-7 w-7 items-center justify-center rounded-full border border-cyan-200 bg-white/95 text-cyan-600 shadow-sm">
                 <svg
                   viewBox="0 0 24 24"
@@ -151,7 +156,7 @@ export const TakeoutMessageCard = ({
                 </svg>
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     );
@@ -190,7 +195,7 @@ export const TakeoutMessageCard = ({
             </div>
           </div>
 
-          <div className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5 text-[12px]">
+          <div className="mt-2.5 space-y-1.5 pt-2.5 text-[12px]">
             <div className="flex items-center justify-between text-slate-500">
               <span>立即送出</span>
               <span>{MOCK_DELIVERY.eta}</span>
@@ -205,7 +210,7 @@ export const TakeoutMessageCard = ({
             </div>
           </div>
 
-          <div className="mt-2.5 border-t border-slate-100 pt-2.5">
+          <div className="mt-2.5 pt-2.5">
             <p className="text-right text-xs text-slate-400">配送费 ¥6.0</p>
             <p className="mt-1 text-right text-[14px]">
               <span className="mr-2 text-[#f3683d]">已优惠 ¥{formatTakeoutPrice(MOCK_DISCOUNT)}</span>

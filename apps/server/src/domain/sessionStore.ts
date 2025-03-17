@@ -15,6 +15,11 @@ export type Message = {
   timestamp?: number;
 };
 
+export type SessionAppendMessage = {
+  role: Message['role'];
+  content: string;
+};
+
 export type Session = {
   lastId: number;
   messages: Message[];
@@ -180,4 +185,29 @@ export const getSessionSnapshot = (sessionId: string) => {
       isSummaryThresholdReached,
     },
   };
+};
+
+export const appendSessionMessages = async (params: {
+  sessionId: string;
+  messages: SessionAppendMessage[];
+}): Promise<void> => {
+  const session = getSession(params.sessionId);
+  const now = Date.now();
+
+  const nextMessages = params.messages
+    .map((message, index) => ({
+      role: message.role,
+      content: message.content.trim(),
+      timestamp: now + index,
+    }))
+    .filter((message) => message.content.length > 0);
+
+  if (nextMessages.length === 0) {
+    return;
+  }
+
+  session.messages.push(...nextMessages);
+  session.lastId += nextMessages.length;
+
+  await persistSession(params.sessionId, session);
 };
