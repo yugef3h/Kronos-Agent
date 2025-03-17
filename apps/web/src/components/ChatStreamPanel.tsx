@@ -130,6 +130,7 @@ export const ChatStreamPanel = () => {
     sessionId,
     authToken,
     timelineEvents,
+    setSessionId,
     setAuthToken,
     setLatestUserQuestion,
     appendTimelineEvent,
@@ -782,6 +783,30 @@ export const ChatStreamPanel = () => {
     }
   };
 
+  const handleHistoryItemClick = (targetSessionId: string) => {
+    if (targetSessionId === sessionId) {
+      setIsHistoryOpen(false);
+      return;
+    }
+
+    if (messages.length > 0) {
+      const shouldOverwrite = window.confirm('当前对话框已有内容，是否覆盖？');
+      if (!shouldOverwrite) {
+        return;
+      }
+    }
+
+    setIsHistoryOpen(false);
+
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    setIsStreaming(false);
+    setIsOrchestrating(false);
+    setIsAwaitingTakeoutFollowup(false);
+    clearTimelineEvents();
+    setSessionId(targetSessionId);
+  };
+
   const handleQuickActionClick = (action: PromptQuickAction['key']) => {
     if (action === 'takeout') {
       if (isStreaming || isOrchestrating || isAnalyzingImage || takeoutQuickReplyTimerRef.current !== null) {
@@ -870,7 +895,7 @@ export const ChatStreamPanel = () => {
 
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">Agent Runtime</p>
+          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-cyan-700">Agent Runtime</p>
           <h2 className="mt-1 font-display text-xl text-ink">Kronos Chat</h2>
         </div>
         <div ref={historyPanelRef} className="relative">
@@ -890,11 +915,20 @@ export const ChatStreamPanel = () => {
                   <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">暂无本地缓存对话</p>
                 )}
                 {!isHistoryLoading && recentDialogues.map((item) => (
-                  <article key={item.id} className="rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2 transition hover:border-cyan-200 hover:bg-cyan-50/50">
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleHistoryItemClick(item.sessionId)}
+                    className={`w-full rounded-xl border px-2 py-2 text-left transition ${
+                      item.sessionId === sessionId
+                        ? 'border-cyan-300 bg-cyan-50/70'
+                        : 'border-slate-100 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
+                    }`}
+                  >
                     <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
                     <div className="mt-1"></div>
                     <p className="line-clamp-1 text-xs text-slate-700" title={item.userContent || '（无用户输入）'}>{item.userContent || '（无用户输入）'}</p>
-                  </article>
+                  </button>
                 ))}
               </div>
             </div>

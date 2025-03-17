@@ -24,6 +24,7 @@ type PlaygroundState = {
   timelineEvents: TimelineEvent[];
   setTemperature: (value: number) => void;
   setTopP: (value: number) => void;
+  setSessionId: (value: string) => void;
   setAuthToken: (value: string) => void;
   setLatestUserQuestion: (value: string) => void;
   appendTimelineEvent: (value: TimelineEvent) => void;
@@ -39,6 +40,10 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   timelineEvents: [],
   setTemperature: (value) => set({ temperature: value }),
   setTopP: (value) => set({ topP: value }),
+  setSessionId: (value) => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, value);
+    set({ sessionId: value, timelineEvents: [] });
+  },
   setAuthToken: (value) => set({ authToken: value }),
   setLatestUserQuestion: (value) => set({ latestUserQuestion: value }),
   appendTimelineEvent: (value) => set((state) => ({ timelineEvents: [...state.timelineEvents, value] })),
