@@ -162,6 +162,7 @@ export const ChatStreamPanel = () => {
   const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
   const takeoutQuickReplyTimerRef = useRef<number | null>(null);
+  const metricsRefreshTimerRef = useRef<number | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
@@ -232,6 +233,18 @@ export const ChatStreamPanel = () => {
     [timelineEvents],
   );
 
+  const latestMessageSignature = useMemo(() => {
+    const lastMessage = messages[messages.length - 1];
+    return [
+      messages.length,
+      lastMessage?.role || '',
+      lastMessage?.content || '',
+      lastMessage?.flowType || '',
+      lastMessage?.takeoutMessageType || '',
+      lastMessage?.isIncomplete ? '1' : '0',
+    ].join('|');
+  }, [messages]);
+
   const latestTimelineEventId = useMemo(() => {
     return timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1]?.eventId || 0 : 0;
   }, [timelineEvents]);
@@ -259,6 +272,22 @@ export const ChatStreamPanel = () => {
       // 会话指标请求失败时保持当前显示，不中断主对话流。
     }
   }, [authToken, sessionId]);
+
+  // 统一调度会话指标刷新，避免新增 feature 时遗漏刷新时机。
+  const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
+    if (!authToken) {
+      return;
+    }
+
+    if (metricsRefreshTimerRef.current !== null) {
+      window.clearTimeout(metricsRefreshTimerRef.current);
+    }
+
+    metricsRefreshTimerRef.current = window.setTimeout(() => {
+      metricsRefreshTimerRef.current = null;
+      void refreshMemoryMetrics();
+    }, delayMs);
+  }, [authToken, refreshMemoryMetrics]);
 
   const refreshRecentSessions = useCallback(async () => {
     if (!authToken) {
@@ -346,6 +375,21 @@ export const ChatStreamPanel = () => {
   }, [isStreaming, refreshMemoryMetrics]);
 
   useEffect(() => {
+    if (!authToken || isStreaming || isOrchestrating || isAnalyzingImage) {
+      return;
+    }
+
+    scheduleMemoryMetricsRefresh();
+  }, [
+    authToken,
+    isStreaming,
+    isOrchestrating,
+    isAnalyzingImage,
+    latestMessageSignature,
+    scheduleMemoryMetricsRefresh,
+  ]);
+
+  useEffect(() => {
     const messageListElement = messageListRef.current;
     if (!messageListElement) {
       return;
@@ -395,6 +439,9 @@ export const ChatStreamPanel = () => {
       activeControllerRef.current?.abort();
       if (takeoutQuickReplyTimerRef.current !== null) {
         window.clearTimeout(takeoutQuickReplyTimerRef.current);
+      }
+      if (metricsRefreshTimerRef.current !== null) {
+        window.clearTimeout(metricsRefreshTimerRef.current);
       }
     };
   }, []);
@@ -505,6 +552,7 @@ export const ChatStreamPanel = () => {
         });
       } finally {
         setIsAnalyzingImage(false);
+        scheduleMemoryMetricsRefresh();
       }
 
       return;
@@ -543,6 +591,7 @@ export const ChatStreamPanel = () => {
             ...prev,
             { role: 'assistant', content: orchestrated.assistantReply, isIncomplete: false },
           ]);
+          scheduleMemoryMetricsRefresh();
           return true;
         }
 
@@ -552,6 +601,7 @@ export const ChatStreamPanel = () => {
           }
 
           void startTakeoutConversation(userPrompt);
+          scheduleMemoryMetricsRefresh();
           return true;
         }
 
@@ -769,6 +819,7 @@ export const ChatStreamPanel = () => {
 
         takeoutQuickReplyTimerRef.current = null;
         setIsAwaitingTakeoutFollowup(true);
+        scheduleMemoryMetricsRefresh();
       }, TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS);
       return;
     }
