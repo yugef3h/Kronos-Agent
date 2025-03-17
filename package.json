@@ -2,21 +2,18 @@
   "name": "kronos-agent",
   "version": "0.2.0",
   "private": true,
+  "packageManager": "pnpm@10.27.0",
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace @kronos/server\" \"npm run dev --workspace @kronos/web\"",
-    "dev:web": "npm run dev --workspace @kronos/web",
-    "dev:server": "npm run dev --workspace @kronos/server",
-    "build": "npm run build --workspace @kronos/core && npm run build --workspace @kronos/server && npm run build --workspace @kronos/web",
+    "dev": "concurrently \"pnpm --filter @kronos/server dev\" \"pnpm --filter @kronos/web dev\"",
+    "dev:web": "pnpm --filter @kronos/web dev",
+    "dev:server": "pnpm --filter @kronos/server dev",
+    "build": "pnpm --filter @kronos/core build && pnpm --filter @kronos/server build && pnpm --filter @kronos/web build",
     "cd": "node scripts/git-commit-date.mjs",
     "test": "jest --runInBand",
-    "lint": "npm run lint --workspace @kronos/server && npm run lint --workspace @kronos/web",
+    "lint": "pnpm --filter @kronos/server lint && pnpm --filter @kronos/web lint",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",

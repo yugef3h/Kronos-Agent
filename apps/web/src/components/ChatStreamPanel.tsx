@@ -239,10 +239,10 @@ export const ChatStreamPanel = () => {
 
   const takeoutLoadingLabel = useMemo(() => {
     if (!takeoutFlowState.flowId) {
-      return '正在搜索附近可配送商品';
+      return '正在搜索';
     }
 
-    return takeoutFlowState.isFoodListVisible ? '正在更新外卖流程' : '正在搜索附近可配送商品';
+    return takeoutFlowState.isFoodListVisible ? '正在更新外卖流程' : '正在搜索';
   }, [takeoutFlowState.flowId, takeoutFlowState.isFoodListVisible]);
 
   const latestMessageSignature = useMemo(() => {

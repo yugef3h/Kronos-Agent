@@ -29,8 +29,8 @@ Draft.md              # 项目策略与面试叙事草稿
 ## 快速启动
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 服务端需要先配置环境变量：复制 `apps/server/.env.example` 为 `apps/server/.env`，并填写 JWT 与豆包模型参数。
@@ -67,6 +67,15 @@ npm run dev
 - 调试可视化：SSE 轨迹会输出本轮 history/summary/budget 的估算 token，Memory 面板展示摘要状态与更新时间。
 
 开发态 JWT 自动签发流程见 `docs/JWT_DEV_TOKEN.md`。
+
+常用命令：
+
+- `pnpm dev`：同时启动前后端开发服务
+- `pnpm dev:web`：仅启动前端
+- `pnpm dev:server`：仅启动后端
+- `pnpm build`：构建全部工作区包
+- `pnpm lint`：检查前后端代码
+- `pnpm test`：运行根级 Jest 测试
 
 ## 下一步规划（LangChain 接入）
 

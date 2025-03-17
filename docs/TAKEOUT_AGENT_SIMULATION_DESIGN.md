@@ -77,5 +77,5 @@ apps/web/src/features/agent-tools/takeout/
 ## 6. 测试与运行
 
 - 纯函数测试位于 `apps/web/src/features/agent-tools/takeout/helpers.test.ts`
-- 运行前端 lint：`npm run lint --workspace @kronos/web`
-- 运行根测试：`npm test -- --runInBand`
+- 运行前端 lint：`pnpm --filter @kronos/web lint`
+- 运行根测试：`pnpm test`

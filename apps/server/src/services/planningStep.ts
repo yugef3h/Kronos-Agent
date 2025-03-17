@@ -1,6 +1,6 @@
 import type { AIMessage } from '@langchain/core/messages';
-import { extractModelToolCalls } from './toolCallExtractor';
-import type { ModelToolCall } from './toolCallExtractor';
+import { extractModelToolCalls } from './toolCallExtractor.js';
+import type { ModelToolCall } from './toolCallExtractor.js';
 
 const PLANNING_TIMEOUT = Symbol('planning_timeout');
 
