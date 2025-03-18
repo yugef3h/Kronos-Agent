@@ -129,6 +129,12 @@ export type ImageRecognitionResponse = {
 	model: string;
 };
 
+export type FileAnalysisResponse = {
+	reply: string;
+	model: string;
+	extractedCharacters: number;
+};
+
 export type SessionAppendMessage = {
 	role: 'user' | 'assistant';
 	content: string;
@@ -301,6 +307,36 @@ export const requestImageRecognition = async (params: {
 	}
 
 	return (await response.json()) as ImageRecognitionResponse;
+};
+
+export const requestFileAnalysis = async (params: {
+	authToken: string;
+	fileDataUrl: string;
+	fileName: string;
+	mimeType: string;
+	prompt?: string;
+	sessionId?: string;
+}): Promise<FileAnalysisResponse> => {
+	const response = await fetch(apiUrl('/api/file/analyze'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			fileDataUrl: params.fileDataUrl,
+			fileName: params.fileName,
+			mimeType: params.mimeType,
+			prompt: params.prompt || '',
+			sessionId: params.sessionId,
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request file analysis');
+	}
+
+	return (await response.json()) as FileAnalysisResponse;
 };
 
 export const requestAppendSessionMessages = async (params: {

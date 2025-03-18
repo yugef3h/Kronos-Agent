@@ -13,7 +13,7 @@ app.use(
     origin: env.ALLOWED_ORIGIN,
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 app.get('/healthz', (_req, res) => {
   res.json({ ok: true, service: 'kronos-server' });

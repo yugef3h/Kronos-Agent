@@ -3,6 +3,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import {
   apiUrl,
   requestDevToken,
+  requestFileAnalysis,
   requestImageRecognition,
   requestRecentSessions,
   requestSessionSnapshot,
@@ -20,6 +21,12 @@ import {
   useTakeoutTool,
   type TakeoutChatMessage,
 } from '../features/agent-tools/takeout';
+import {
+  buildFileAnalyzeUserMessage,
+  FILE_INPUT_ACCEPT,
+  prepareFileForAnalyze,
+  type FileSelectionResult,
+} from '../features/agent-tools/file';
 import {
   prepareImageForAnalyze,
   type ImageSelectionResult,
@@ -81,6 +88,8 @@ type PromptQuickAction = {
 type LocalChatMessage = TakeoutChatMessage & {
   imagePreviewUrl?: string;
   imageName?: string;
+  fileName?: string;
+  fileExtension?: string;
 };
 
 const markLastAssistantMessageIncomplete = (
@@ -122,7 +131,7 @@ export const ChatStreamPanel = () => {
   const PROMPT_MAX_HEIGHT = 300;
   const promptQuickActions: PromptQuickAction[] = [
     { key: 'image', label: '图像' },
-    // { key: 'file', label: '文件' },
+    { key: 'file', label: '文件' },
     // { key: 'translate', label: '翻译' },
     { key: 'takeout', label: '外卖' },
   ];
@@ -138,6 +147,7 @@ export const ChatStreamPanel = () => {
   } = usePlaygroundStore();
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
+  const [pendingFile, setPendingFile] = useState<FileSelectionResult | null>(null);
   const [pendingImage, setPendingImage] = useState<ImageSelectionResult | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
@@ -165,6 +175,7 @@ export const ChatStreamPanel = () => {
   const takeoutQuickReplyTimerRef = useRef<number | null>(null);
   const metricsRefreshTimerRef = useRef<number | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
@@ -214,7 +225,9 @@ export const ChatStreamPanel = () => {
     return new Date(timestamp).toLocaleString('zh-CN', { hour12: false });
   }, []);
 
-  const canSend = useMemo(() => prompt.trim().length > 0 || pendingImage !== null, [prompt, pendingImage]);
+  const canSend = useMemo(() => {
+    return prompt.trim().length > 0 || pendingImage !== null || pendingFile !== null;
+  }, [pendingFile, pendingImage, prompt]);
 
   const stageLabelMap: Record<TimelineEvent['stage'], string> = {
     plan: '规划',
@@ -570,6 +583,90 @@ export const ChatStreamPanel = () => {
       return;
     }
 
+    if (pendingFile) {
+      if (isStreaming || isOrchestrating || isAnalyzingImage) {
+        return;
+      }
+
+      if (!authToken) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: '解读文件前需要先准备 JWT。', isIncomplete: false },
+        ]);
+        return;
+      }
+
+      const filePrompt = userPrompt || '请解读这个文件';
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'user',
+          content: buildFileAnalyzeUserMessage({
+            fileName: pendingFile.fileName,
+            prompt: filePrompt,
+          }),
+          fileName: pendingFile.fileName,
+          fileExtension: pendingFile.extension,
+          isIncomplete: false,
+        },
+        { role: 'assistant', content: '', isIncomplete: false },
+      ]);
+      setLatestUserQuestion(filePrompt);
+      setPrompt('');
+      setPendingFile(null);
+      setIsAnalyzingImage(true);
+
+      try {
+        const response = await requestFileAnalysis({
+          authToken,
+          fileDataUrl: pendingFile.dataUrl,
+          fileName: pendingFile.fileName,
+          mimeType: pendingFile.mimeType,
+          prompt: filePrompt,
+          sessionId,
+        });
+
+        setMessages((prev) => {
+          const draft = [...prev];
+          const last = draft[draft.length - 1];
+          if (!last || last.role !== 'assistant') {
+            return draft;
+          }
+
+          draft[draft.length - 1] = {
+            ...last,
+            content: response.reply,
+            isIncomplete: false,
+          };
+
+          return draft;
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '文件解读失败，请稍后重试';
+        setMessages((prev) => {
+          const draft = [...prev];
+          const last = draft[draft.length - 1];
+          if (!last || last.role !== 'assistant') {
+            return [...prev, { role: 'assistant', content: message, isIncomplete: false }];
+          }
+
+          draft[draft.length - 1] = {
+            ...last,
+            content: message,
+            isIncomplete: false,
+          };
+
+          return draft;
+        });
+      } finally {
+        setIsAnalyzingImage(false);
+        scheduleMemoryMetricsRefresh();
+      }
+
+      return;
+    }
+
     // 先乐观渲染用户消息，避免等待编排接口返回后才显示。
     setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
     setPrompt('');
@@ -861,7 +958,11 @@ export const ChatStreamPanel = () => {
     }
 
     if (action === 'file') {
-      setPrompt((prev) => `${prev}${prev ? ' ' : ''}/file `);
+      if (isStreaming || isOrchestrating || isAnalyzingImage) {
+        return;
+      }
+
+      fileInputRef.current?.click();
       return;
     }
 
@@ -895,6 +996,27 @@ export const ChatStreamPanel = () => {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
+      setMessages((prev) => [...prev, { role: 'assistant', content: message, isIncomplete: false }]);
+    }
+  };
+
+  const handleDocumentFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      const preparedFile = await prepareFileForAnalyze(selectedFile);
+      setPendingImage(null);
+      setPendingFile(preparedFile);
+      requestAnimationFrame(() => {
+        promptTextareaRef.current?.focus();
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '文件读取失败，请稍后重试';
       setMessages((prev) => [...prev, { role: 'assistant', content: message, isIncomplete: false }]);
     }
   };
@@ -1037,12 +1159,51 @@ export const ChatStreamPanel = () => {
         <div className="mt-3 w-full max-w-3xl self-center space-y-2">
         <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
             <input
+              ref={fileInputRef}
+              type="file"
+              accept={FILE_INPUT_ACCEPT}
+              className="hidden"
+              onChange={handleDocumentFileChange}
+            />
+            <input
               ref={imageInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={handleImageFileChange}
             />
+
+            {pendingFile && (
+              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 3v5h5" />
+                        </svg>
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-800">{pendingFile.fileName}</p>
+                        <p className="text-[11px] text-slate-500">{pendingFile.extension.toUpperCase()} | {(pendingFile.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingFile(null)}
+                    aria-label="移除文件"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-700"
+                  >
+                    <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 5l10 10" />
+                      <path d="M15 5L5 15" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {pendingImage && (
               <div className="mb-2 rounded-lg pt-1 text-xs text-cyan-800">
@@ -1084,7 +1245,11 @@ export const ChatStreamPanel = () => {
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={handlePromptKeyDown}
               className="max-h-[160px] min-h-[44px] w-full resize-none border-none bg-transparent py-1 text-sm leading-6 text-slate-800 outline-none"
-              placeholder={pendingImage ? '可继续输入问题，或点“解释图片”直接发送' : '发消息，可以试着点餐哦~'}
+              placeholder={pendingImage
+                ? '可继续输入问题，或点“解释图片”直接发送'
+                : pendingFile
+                  ? '输入你希望如何解读这个文件，例如总结重点、提取风险或生成结论'
+                  : '发消息，可以试着点餐哦~'}
             />
 
             <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-center justify-between">

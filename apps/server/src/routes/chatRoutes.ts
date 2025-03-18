@@ -9,6 +9,7 @@ import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService
 import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
+import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -50,6 +51,15 @@ const takeoutCatalogSchema = z.object({
 
 const imageAnalyzeSchema = z.object({
   imageDataUrl: z.string().min(64).max(8_000_000),
+  prompt: z.string().max(400).optional(),
+  sessionId: z.string().min(1).optional(),
+});
+
+// 文字数量
+const fileAnalyzeSchema = z.object({
+  fileDataUrl: z.string().min(1).max(15_000_000),
+  fileName: z.string().min(1).max(240),
+  mimeType: z.string().min(1).max(120).optional(),
   prompt: z.string().max(400).optional(),
   sessionId: z.string().min(1).optional(),
 });
@@ -249,6 +259,40 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Image recognition failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/file/analyze', async (request: Request, response: Response) => {
+  const parsed = fileAnalyzeSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await analyzeFileByDoubao({
+      fileDataUrl: parsed.data.fileDataUrl,
+      fileName: parsed.data.fileName,
+      mimeType: parsed.data.mimeType,
+      prompt: parsed.data.prompt,
+    });
+
+    if (parsed.data.sessionId) {
+      const userPrompt = parsed.data.prompt?.trim() || '请解读这个文件';
+      void appendSessionMessages({
+        sessionId: parsed.data.sessionId,
+        messages: [
+          { role: 'user', content: `[文件] ${parsed.data.fileName}\n需求：${userPrompt}` },
+          { role: 'assistant', content: result.reply },
+        ],
+      });
+    }
+
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `File analysis failed: ${reason}` });
   }
 });
 

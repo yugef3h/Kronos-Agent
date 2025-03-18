@@ -12,11 +12,14 @@
   "dependencies": {
     "@langchain/core": "^0.3.58",
     "@langchain/openai": "^0.5.16",
+    "@types/pdf-parse": "^1.1.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "js-tiktoken": "^1.0.21",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
     "umap-js": "^1.4.0",
     "zod": "^3.24.2"
   },
