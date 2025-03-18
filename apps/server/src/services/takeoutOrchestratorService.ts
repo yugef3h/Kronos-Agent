@@ -1,6 +1,7 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { analyzeTakeoutIntent } from './takeoutIntentService.js';
+import { TAKEOUT_ORCHESTRATION_PROMPT } from '../const/prompt.js';
 
 export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call';
 
@@ -14,20 +15,6 @@ export type TakeoutOrchestrationResult = {
     };
   };
 };
-
-const TAKEOUT_ORCHESTRATION_PROMPT = `你是聊天+外卖助手。
-先判断是否为点外卖意图：
-1) 无外卖意图：正常闲聊。
-2) 有外卖意图但缺 food：自然追问补全。
-3) 有外卖意图且 food 完整：准备调用外卖工具。
-
-输出要求：
-- 给用户看的回复要简洁自然。
-- 最后一行必须且只能是以下之一：
-  [[CHAT]]
-  [[ASK_SLOT]]
-  [[TAKEOUT_TOOL]]{"food":"菜品"}
-`;
 
 const createOrchestratorModel = (): ChatOpenAI => {
   const apiKey = process.env.DOUBAO_API_KEY || '';

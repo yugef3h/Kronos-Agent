@@ -2,6 +2,7 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
 import { analyzeTakeoutIntent } from './takeoutIntentService.js';
+import { TAKEOUT_CATALOG_PROMPT } from '../const/prompt.js';
 
 export type TakeoutCatalogCombo = {
   id: string;
@@ -85,18 +86,6 @@ const takeoutCatalogDraftSchema = z.object({
 const takeoutCatalogModelSchema = z.object({
   items: z.array(takeoutCatalogDraftSchema).min(3).max(5),
 });
-
-const TAKEOUT_CATALOG_PROMPT = `你是外卖候选生成器。
-按用户需求返回 3 个候选商品。
-只输出 JSON：
-{"items":[{"shopName":"店名","productName":"商品名","price":28,"combos":[{"name":"套餐名","extraPrice":5}]}]}
-要求：
-- 仅返回 items
-- 正好 3 个商品
-- price 为数字，不带单位
-- combos 最多 2 个
-- 候选价格接近
-- 店名和商品名要像真实外卖商品`;
 
 const CATEGORY_BLUEPRINTS: Record<string, TakeoutCatalogDraft[]> = {
   咖啡: [
