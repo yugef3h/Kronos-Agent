@@ -55,7 +55,6 @@ const imageAnalyzeSchema = z.object({
   sessionId: z.string().min(1).optional(),
 });
 
-// 文字数量
 const fileAnalyzeSchema = z.object({
   fileDataUrl: z.string().min(1).max(15_000_000),
   fileName: z.string().min(1).max(240),
