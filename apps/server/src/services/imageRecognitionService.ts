@@ -1,4 +1,8 @@
 import { env } from '../config/env.js';
+import {
+  extractDoubaoChatReply,
+  readDoubaoChatStreamReply,
+} from './doubaoChatHelpers.js';
 
 type DoubaoContentPart =
   | { type: 'text'; text: string }
@@ -14,47 +18,12 @@ type DoubaoChatCompletionRequest = {
   messages: DoubaoMessage[];
   temperature?: number;
   max_tokens?: number;
+  stream?: boolean;
 };
 
-type DoubaoChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string | Array<{ type?: string; text?: string }>;
-    };
-  }>;
-};
+export const extractImageRecognitionReply = extractDoubaoChatReply;
 
-const normalizeResponseText = (content: unknown): string => {
-  if (typeof content === 'string') {
-    return content.trim();
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === 'string') {
-          return part;
-        }
-
-        if (typeof part === 'object' && part !== null) {
-          const text = (part as { text?: unknown }).text;
-          return typeof text === 'string' ? text : '';
-        }
-
-        return '';
-      })
-      .join('')
-      .trim();
-  }
-
-  return '';
-};
-
-export const extractImageRecognitionReply = (payload: DoubaoChatCompletionResponse): string => {
-  const content = payload.choices?.[0]?.message?.content;
-  return normalizeResponseText(content);
-};
-
+// https://www.volcengine.com/docs/82379/1494384?redirect=1&lang=zh
 export const recognizeImageByDoubao = async (params: {
   imageDataUrl: string;
   prompt?: string;
@@ -66,6 +35,7 @@ export const recognizeImageByDoubao = async (params: {
     model: env.DOUBAO_MODEL,
     temperature: 0.2,
     max_tokens: 512,
+    stream: true,
     messages: [
       {
         role: 'user',
@@ -80,6 +50,7 @@ export const recognizeImageByDoubao = async (params: {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
+      Accept: 'text/event-stream',
       'Content-Type': 'application/json',
       Authorization: `Bearer ${env.DOUBAO_API_KEY}`,
     },
@@ -90,8 +61,7 @@ export const recognizeImageByDoubao = async (params: {
     throw new Error(`Doubao image recognition failed: ${response.status}`);
   }
 
-  const payload = (await response.json()) as DoubaoChatCompletionResponse;
-  const reply = extractImageRecognitionReply(payload);
+  const reply = await readDoubaoChatStreamReply(response);
 
   if (!reply) {
     throw new Error('Doubao image recognition returned empty reply');

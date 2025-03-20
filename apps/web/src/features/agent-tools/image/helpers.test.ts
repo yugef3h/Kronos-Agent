@@ -1,5 +1,6 @@
 import {
   buildImageAnalyzeUserMessage,
+  getCompressedImageDimensions,
   isImageSizeAllowed,
   isSupportedImageMimeType,
 } from './helpers';
@@ -17,6 +18,16 @@ describe('image helpers', () => {
     expect(isImageSizeAllowed(5 * 1024 * 1024)).toBe(true);
     expect(isImageSizeAllowed(0)).toBe(false);
     expect(isImageSizeAllowed(5 * 1024 * 1024 + 1)).toBe(false);
+  });
+
+  it('limits the longest image edge to 800px while preserving aspect ratio', () => {
+    expect(getCompressedImageDimensions(1600, 1200)).toEqual({ width: 800, height: 600 });
+    expect(getCompressedImageDimensions(1200, 1600)).toEqual({ width: 600, height: 800 });
+    expect(getCompressedImageDimensions(640, 480)).toEqual({ width: 640, height: 480 });
+  });
+
+  it('rejects invalid image dimensions', () => {
+    expect(() => getCompressedImageDimensions(0, 1200)).toThrow('图片尺寸无效，请重试');
   });
 
   it('builds user message with optional prompt', () => {

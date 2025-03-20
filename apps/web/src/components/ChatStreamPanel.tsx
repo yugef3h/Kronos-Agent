@@ -1120,7 +1120,6 @@ export const ChatStreamPanel = () => {
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
-                      正在生成内容
                     </span>
                   ) : (
                     renderMessageContent(message)

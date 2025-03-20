@@ -1,4 +1,6 @@
 export const IMAGE_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const IMAGE_COMPRESS_MAX_EDGE_PX = 800;
+export const IMAGE_COMPRESS_QUALITY = 0.82;
 
 export const IMAGE_SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 

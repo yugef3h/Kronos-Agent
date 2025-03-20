@@ -1,11 +1,10 @@
 import { env } from '../config/env.js';
 import {
-  type DoubaoChatCompletionResponse,
-  extractFileAnalysisReply,
   getFileExtension,
   normalizeExtractedText,
   parseFileDataUrl,
 } from './fileAnalysisHelpers.js';
+import { readDoubaoChatStreamReply } from './doubaoChatHelpers.js';
 
 const FILE_TEXT_PREVIEW_LIMIT = 16_000;
 const FILE_REPLY_MAX_TOKENS = 1_200;
@@ -42,6 +41,7 @@ type DoubaoChatCompletionRequest = {
   messages: DoubaoMessage[];
   temperature?: number;
   max_tokens?: number;
+  stream?: boolean;
 };
 
 const truncateExtractedText = (text: string): string => {
@@ -132,6 +132,7 @@ export const analyzeFileByDoubao = async (params: {
     model: env.DOUBAO_MODEL,
     temperature: 0.2,
     max_tokens: FILE_REPLY_MAX_TOKENS,
+    stream: true,
     messages: [
       {
         role: 'user',
@@ -147,6 +148,7 @@ export const analyzeFileByDoubao = async (params: {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
+      Accept: 'text/event-stream',
       'Content-Type': 'application/json',
       Authorization: `Bearer ${env.DOUBAO_API_KEY}`,
     },
@@ -157,8 +159,7 @@ export const analyzeFileByDoubao = async (params: {
     throw new Error(`Doubao file analysis failed: ${response.status}`);
   }
 
-  const payload = (await response.json()) as DoubaoChatCompletionResponse;
-  const reply = extractFileAnalysisReply(payload);
+  const reply = await readDoubaoChatStreamReply(response);
 
   if (!reply) {
     throw new Error('Doubao file analysis returned empty reply');
