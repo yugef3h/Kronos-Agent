@@ -31,6 +31,7 @@ import {
   type ImageSelectionResult,
 } from '../features/agent-tools/image';
 import taobao_icon from '../assets/taobao.png';
+import { HOT_TOPIC_PROMPTS, shouldShowHotTopics } from './chatHotTopics';
 
 const MAX_CONTEXT_TOKENS = 8192;
 const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
@@ -236,6 +237,15 @@ export const ChatStreamPanel = () => {
   const canSend = useMemo(() => {
     return prompt.trim().length > 0 || pendingImage !== null || pendingFile !== null;
   }, [pendingFile, pendingImage, prompt]);
+
+  const showHotTopics = useMemo(() => {
+    return shouldShowHotTopics({
+      messageCount: messages.length,
+      prompt,
+      hasPendingImage: pendingImage !== null,
+      hasPendingFile: pendingFile !== null,
+    });
+  }, [messages.length, pendingFile, pendingImage, prompt]);
 
   const stageLabelMap: Record<TimelineEvent['stage'], string> = {
     plan: '规划',
@@ -502,10 +512,14 @@ export const ChatStreamPanel = () => {
     );
   }, []);
 
-  const sendPrompt = async () => {
-    if (!canSend) return;
+  const sendPrompt = async (overridePrompt?: string) => {
+    const userPrompt = (overridePrompt ?? prompt).trim();
 
-    const userPrompt = prompt.trim();
+    if (!pendingImage && !pendingFile && !userPrompt) {
+      return;
+    }
+
+    if (!overridePrompt && !canSend) return;
 
     if (pendingImage) {
       if (isStreaming || isOrchestrating || isAnalyzingImage) {
@@ -876,10 +890,7 @@ export const ChatStreamPanel = () => {
       return;
     }
 
-    setPrompt(IMAGE_DEFAULT_PROMPT);
-    requestAnimationFrame(() => {
-      void sendPrompt();
-    });
+    void sendPrompt(IMAGE_DEFAULT_PROMPT);
   };
 
   const handleExplainFileClick = () => {
@@ -891,10 +902,7 @@ export const ChatStreamPanel = () => {
       return;
     }
 
-    setPrompt(FILE_DEFAULT_PROMPT);
-    requestAnimationFrame(() => {
-      void sendPrompt();
-    });
+    void sendPrompt(FILE_DEFAULT_PROMPT);
   };
 
   const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -906,6 +914,14 @@ export const ChatStreamPanel = () => {
       event.preventDefault();
       void sendPrompt();
     }
+  };
+
+  const handleHotTopicClick = (topic: string) => {
+    if (isStreaming || isOrchestrating || isAnalyzingImage || takeoutQuickReplyTimerRef.current !== null) {
+      return;
+    }
+
+    void sendPrompt(topic);
   };
 
   const toggleHistoryPanel = () => {
@@ -1100,13 +1116,28 @@ export const ChatStreamPanel = () => {
         <div className="relative flex min-h-0 flex-1 justify-center">
           <div
             ref={messageListRef}
-              className="soft-scrollbar h-full w-full max-w-3xl space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6"
+              className={`soft-scrollbar h-full w-full ${messages.length === 0 ? 'max-w-5xl' : 'max-w-3xl'} space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6`}
           >
             {messages.length === 0 && (
-              <div className="mx-auto mt-8 max-w-xl text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700/90">Kronos Agent</p>
-                <h3 className="mt-2 font-display text-3xl text-slate-800 md:text-4xl">你好，我是 Kronos</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-500">有什么我能帮你的吗？</p>
+              <div className="mx-auto mt-8 max-w-5xl text-center">
+                <h3 className="mt-2 font-display text-xl text-slate-800 md:text-2xl">你好，我是 Kronos，有什么我能帮你的吗？</h3>
+                {showHotTopics && (
+                  <div className="mt-6">
+                    <div className="mt-4 flex flex-wrap justify-center gap-4 text-center">
+                      {HOT_TOPIC_PROMPTS.map((topic) => (
+                        <button
+                          key={topic}
+                          type="button"
+                          onClick={() => handleHotTopicClick(topic)}
+                          disabled={isStreaming || isOrchestrating || isAnalyzingImage}
+                          className="group w-full max-w-full rounded-[16px] border border-transparent bg-slate-100/95 px-2 py-2 text-center text-[14px] leading-7 text-slate-800 shadow-none transition hover:bg-slate-200/90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-8"
+                        >
+                          <span className="block whitespace-normal sm:whitespace-nowrap">{topic}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {messages.map((message, index) => (
@@ -1359,7 +1390,9 @@ export const ChatStreamPanel = () => {
                 type="button"
                 aria-label="发送消息"
                 disabled={!canSend}
-                onClick={sendPrompt}
+                onClick={() => {
+                  void sendPrompt();
+                }}
                 className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-600 to-sky-600 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:shadow-none"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
