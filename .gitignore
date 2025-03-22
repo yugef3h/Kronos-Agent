@@ -5,6 +5,7 @@ apps/web/.vite/
 *.tsbuildinfo
 .env
 .env.*
+!.env.example
 scripts
 # session 持久化数据（本地缓存，不入仓库）
 apps/server/data/sessions/*.json
