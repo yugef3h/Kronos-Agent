@@ -1106,7 +1106,7 @@ export const ChatStreamPanel = () => {
               <div className="mx-auto mt-8 max-w-xl text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700/90">Kronos Agent</p>
                 <h3 className="mt-2 font-display text-3xl text-slate-800 md:text-4xl">你好，我是 Kronos</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-500">我会把回答展示在中间区域，你可以直接提问，右侧栏查看调试细节。</p>
+                <p className="mt-3 text-sm leading-6 text-slate-500">有什么我能帮你的吗？</p>
               </div>
             )}
             {messages.map((message, index) => (
