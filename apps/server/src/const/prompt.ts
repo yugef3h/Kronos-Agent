@@ -23,3 +23,5 @@ export const TAKEOUT_ORCHESTRATION_PROMPT = `你是聊天+外卖助手。
   [[ASK_SLOT]]
   [[TAKEOUT_TOOL]]{"food":"菜品"}
 `;
+
+export const HOT_TOPICS_PROMPT = '生成 5 条今日科技/AI 热门提问，像用户会点的问题，12-24 字，不重复，不带序号。只输出 JSON：{"items":["问题1","问题2","问题3","问题4","问题5"]}';

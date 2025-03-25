@@ -42,6 +42,11 @@ export type RecentSessionResponse = {
 	items: RecentDialogueItem[];
 };
 
+export type HotTopicsResponse = {
+	topics: string[];
+	source: 'model' | 'fallback';
+};
+
 export type TakeoutInstruction = '识别外卖意图' | '协议同意回复' | '商品选择完成';
 
 export type TakeoutSimulationPayload = {
@@ -183,6 +188,22 @@ export const requestRecentSessions = async (params: {
 	}
 
 	return (await response.json()) as RecentSessionResponse;
+};
+
+export const requestHotTopics = async (params: {
+	authToken: string;
+}): Promise<HotTopicsResponse> => {
+	const response = await fetch(apiUrl('/api/hot-topics'), {
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request hot topics');
+	}
+
+	return (await response.json()) as HotTopicsResponse;
 };
 
 export const requestTakeoutSimulation = async (params: {

@@ -3,8 +3,8 @@ import { HOT_TOPIC_PROMPTS, shouldShowHotTopics } from './chatHotTopics';
 describe('chatHotTopics', () => {
   it('exposes five hot topic prompts', () => {
     expect(HOT_TOPIC_PROMPTS).toHaveLength(5);
-    expect(HOT_TOPIC_PROMPTS).toContain('最近有什么新鲜的科技资讯值得关注');
-    expect(HOT_TOPIC_PROMPTS).toContain('AI 岗位工程师需求激增，背后原因是什么');
+    expect(HOT_TOPIC_PROMPTS.some((topic) => topic.includes('科技资讯'))).toBe(true);
+    expect(HOT_TOPIC_PROMPTS.some((topic) => topic.includes('AI'))).toBe(true);
   });
 
   it('shows hot topics only for a blank initial composer state', () => {

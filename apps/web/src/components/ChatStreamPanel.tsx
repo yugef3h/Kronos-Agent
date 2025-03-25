@@ -4,6 +4,7 @@ import {
   apiUrl,
   requestDevToken,
   requestFileAnalysis,
+  requestHotTopics,
   requestImageRecognition,
   requestRecentSessions,
   requestSessionSnapshot,
@@ -30,6 +31,11 @@ import {
   prepareImageForAnalyze,
   type ImageSelectionResult,
 } from '../features/agent-tools/image';
+import {
+  getCachedLocalStorage,
+  getNextDayStartTimestamp,
+  setCachedLocalStorage,
+} from '../lib/localStorageCache';
 import taobao_icon from '../assets/taobao.png';
 import { HOT_TOPIC_PROMPTS, shouldShowHotTopics } from './chatHotTopics';
 
@@ -38,6 +44,7 @@ const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
 const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
 const IMAGE_DEFAULT_PROMPT = '解释图片';
 const FILE_DEFAULT_PROMPT = '请解读这个文件';
+const HOT_TOPICS_CACHE_KEY = 'kronos.hot-topics';
 
 type TokenizerModule = {
   encode: (text: string) => Iterable<number>;
@@ -167,6 +174,9 @@ export const ChatStreamPanel = () => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
+  const [hotTopics, setHotTopics] = useState<string[]>(() => {
+    return getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...HOT_TOPIC_PROMPTS];
+  });
   const [memoryMetrics, setMemoryMetrics] = useState<MemoryLiveMetrics>({
     messageCount: 0,
     conversationTokensEstimate: 0,
@@ -394,6 +404,40 @@ export const ChatStreamPanel = () => {
       void generateDevToken();
     }
   }, [authToken, generateDevToken]);
+
+  useEffect(() => {
+    const cachedTopics = getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY);
+    if (cachedTopics && cachedTopics.length > 0) {
+      setHotTopics(cachedTopics);
+      return;
+    }
+
+    if (!authToken) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const hydrateHotTopics = async () => {
+      try {
+        const result = await requestHotTopics({ authToken });
+        if (isCancelled || result.topics.length === 0) {
+          return;
+        }
+
+        setHotTopics(result.topics);
+        setCachedLocalStorage(HOT_TOPICS_CACHE_KEY, result.topics, getNextDayStartTimestamp());
+      } catch {
+        // 热门问题获取失败时保留前端兜底文案，不阻断聊天。
+      }
+    };
+
+    void hydrateHotTopics();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authToken]);
 
   useEffect(() => {
     void hydrateSessionMessages();
@@ -1124,7 +1168,7 @@ export const ChatStreamPanel = () => {
                 {showHotTopics && (
                   <div className="mt-6">
                     <div className="mt-4 flex flex-wrap justify-center gap-4 text-center">
-                      {HOT_TOPIC_PROMPTS.map((topic) => (
+                      {hotTopics.map((topic) => (
                         <button
                           key={topic}
                           type="button"

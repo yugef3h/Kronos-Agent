@@ -10,6 +10,7 @@ import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
+import { generateHotTopics } from '../services/hotTopicService.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -116,6 +117,11 @@ chatRoutes.get('/sessions/recent', async (request: Request, response: Response) 
 
   const items = await listRecentDialogues(limit);
   response.json({ items });
+});
+
+chatRoutes.get('/hot-topics', async (_request: Request, response: Response) => {
+  const result = await generateHotTopics();
+  response.json(result);
 });
 
 chatRoutes.post('/token-embedding/analyze', async (request: Request, response: Response) => {
