@@ -1120,7 +1120,7 @@ export const ChatStreamPanel = () => {
           >
             {messages.length === 0 && (
               <div className="mx-auto mt-8 max-w-5xl text-center">
-                <h3 className="mt-2 font-display text-xl text-slate-800 md:text-2xl">你好，我是 Kronos，有什么我能帮你的吗？</h3>
+                <h3 className="mt-2 font-display text-xl text-slate-800 md:text-2xl">有什么我能帮你的吗？</h3>
                 {showHotTopics && (
                   <div className="mt-6">
                     <div className="mt-4 flex flex-wrap justify-center gap-4 text-center">
