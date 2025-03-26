@@ -38,6 +38,7 @@ import {
 } from '../lib/localStorageCache';
 import taobao_icon from '../assets/taobao.png';
 import { HOT_TOPIC_PROMPTS, shouldShowHotTopics } from './chatHotTopics';
+import { MarkdownMessage } from './MarkdownMessage';
 
 const MAX_CONTEXT_TOKENS = 8192;
 const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
@@ -533,7 +534,7 @@ export const ChatStreamPanel = () => {
     };
   }, []);
 
-  const renderMessageContent = useCallback((message: LocalChatMessage) => {
+  const renderPlainMessageContent = useCallback((message: LocalChatMessage) => {
     const suffix = message.isIncomplete ? '...' : '';
     const content = message.content || '';
 
@@ -1242,7 +1243,11 @@ export const ChatStreamPanel = () => {
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
                     </span>
                   ) : (
-                    renderMessageContent(message)
+                    message.role === 'assistant' ? (
+                      <MarkdownMessage content={message.content} isIncomplete={message.isIncomplete} />
+                    ) : (
+                      renderPlainMessageContent(message)
+                    )
                   )}
                 </article>
               </div>
