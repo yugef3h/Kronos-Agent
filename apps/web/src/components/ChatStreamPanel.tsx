@@ -100,7 +100,10 @@ type LocalChatMessage = TakeoutChatMessage & {
   fileName?: string;
   fileExtension?: string;
   fileSize?: number;
+  isStreamingText?: boolean;
 };
+
+const STREAM_TYPEWRITER_DELAY_MS = 32;
 
 const formatUploadSize = (size: number): string => {
   if (size >= 1024 * 1024) {
@@ -194,6 +197,10 @@ export const ChatStreamPanel = () => {
   const activeControllerRef = useRef<AbortController | null>(null);
   const takeoutQuickReplyTimerRef = useRef<number | null>(null);
   const metricsRefreshTimerRef = useRef<number | null>(null);
+  const streamPendingCharsRef = useRef<string[]>([]);
+  const streamFlushTimerRef = useRef<number | null>(null);
+  const streamHasCompletedRef = useRef(false);
+  const streamCompletionCallbackRef = useRef<(() => void) | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -531,19 +538,180 @@ export const ChatStreamPanel = () => {
       if (metricsRefreshTimerRef.current !== null) {
         window.clearTimeout(metricsRefreshTimerRef.current);
       }
+      if (streamFlushTimerRef.current !== null) {
+        window.clearTimeout(streamFlushTimerRef.current);
+      }
     };
   }, []);
+
+  const stopStreamFlushTimer = useCallback(() => {
+    if (streamFlushTimerRef.current !== null) {
+      window.clearTimeout(streamFlushTimerRef.current);
+      streamFlushTimerRef.current = null;
+    }
+  }, []);
+
+  const finalizeStreamingAssistantMessage = useCallback(() => {
+    setMessages((prev) => {
+      const draft = [...prev];
+      const last = draft[draft.length - 1];
+
+      if (!last || last.role !== 'assistant') {
+        return draft;
+      }
+
+      draft[draft.length - 1] = {
+        ...last,
+        isStreamingText: false,
+      };
+
+      return draft;
+    });
+  }, []);
+
+  const flushRemainingAssistantBuffer = useCallback(() => {
+    if (streamPendingCharsRef.current.length === 0) {
+      return;
+    }
+
+    const pendingText = streamPendingCharsRef.current.join('');
+    streamPendingCharsRef.current = [];
+
+    setMessages((prev) => {
+      const draft = [...prev];
+      const last = draft[draft.length - 1];
+
+      if (!last || last.role !== 'assistant') {
+        return draft;
+      }
+
+      draft[draft.length - 1] = {
+        ...last,
+        content: `${last.content}${pendingText}`,
+        isStreamingText: !streamHasCompletedRef.current,
+        isIncomplete: false,
+      };
+
+      return draft;
+    });
+  }, []);
+
+  const resetAssistantStreamingState = useCallback(() => {
+    stopStreamFlushTimer();
+    streamPendingCharsRef.current = [];
+    streamHasCompletedRef.current = false;
+    streamCompletionCallbackRef.current = null;
+  }, [stopStreamFlushTimer]);
+
+  const drainAssistantBuffer = useCallback(() => {
+    if (streamPendingCharsRef.current.length === 0) {
+      stopStreamFlushTimer();
+
+      if (streamHasCompletedRef.current) {
+        const onComplete = streamCompletionCallbackRef.current;
+        finalizeStreamingAssistantMessage();
+        setIsStreaming(false);
+        activeControllerRef.current = null;
+        resetAssistantStreamingState();
+        onComplete?.();
+      }
+
+      return;
+    }
+
+    const nextChar = streamPendingCharsRef.current.shift();
+
+    if (!nextChar) {
+      stopStreamFlushTimer();
+      return;
+    }
+
+    setMessages((prev) => {
+      const draft = [...prev];
+      const last = draft[draft.length - 1];
+
+      if (!last || last.role !== 'assistant') {
+        return draft;
+      }
+
+      draft[draft.length - 1] = {
+        ...last,
+        content: `${last.content}${nextChar}`,
+        isStreamingText: true,
+        isIncomplete: false,
+      };
+
+      return draft;
+    });
+
+    streamFlushTimerRef.current = window.setTimeout(drainAssistantBuffer, STREAM_TYPEWRITER_DELAY_MS);
+  }, [finalizeStreamingAssistantMessage, resetAssistantStreamingState, stopStreamFlushTimer]);
+
+  const scheduleAssistantBufferDrain = useCallback(() => {
+    if (streamFlushTimerRef.current !== null) {
+      return;
+    }
+
+    drainAssistantBuffer();
+  }, [drainAssistantBuffer]);
+
+  const startAssistantTypewriter = useCallback((
+    content: string,
+    options?: {
+      replaceLastAssistant?: boolean;
+      onComplete?: () => void;
+    },
+  ) => {
+    resetAssistantStreamingState();
+    streamHasCompletedRef.current = true;
+    streamCompletionCallbackRef.current = options?.onComplete || null;
+    streamPendingCharsRef.current = Array.from(content);
+    setIsStreaming(true);
+
+    setMessages((prev) => {
+      const draft = [...prev];
+
+      if (options?.replaceLastAssistant) {
+        const last = draft[draft.length - 1];
+
+        if (last && last.role === 'assistant') {
+          draft[draft.length - 1] = {
+            ...last,
+            content: '',
+            isIncomplete: false,
+            isStreamingText: true,
+          };
+
+          return draft;
+        }
+      }
+
+      return [
+        ...draft,
+        { role: 'assistant', content: '', isIncomplete: false, isStreamingText: true },
+      ];
+    });
+
+    scheduleAssistantBufferDrain();
+  }, [resetAssistantStreamingState, scheduleAssistantBufferDrain]);
 
   const renderPlainMessageContent = useCallback((message: LocalChatMessage) => {
     const suffix = message.isIncomplete ? '...' : '';
     const content = message.content || '';
+    const cursor = message.role === 'assistant' && message.isStreamingText ? <span className="ml-0.5 inline-block animate-pulse text-cyan-500">|</span> : null;
 
     if (!content) {
       return '...';
     }
 
     if (message.role !== 'assistant' || !content.includes(MOCK_ADDRESS)) {
-      return `${content}${suffix}`;
+      return (
+        <>
+          {content}
+          {suffix}
+          {cursor}
+        </>
+      );
     }
 
     const [prefix, ...rest] = content.split(MOCK_ADDRESS);
@@ -553,6 +721,7 @@ export const ChatStreamPanel = () => {
         <span className="text-blue-500">{MOCK_ADDRESS}</span>
         {rest.join(MOCK_ADDRESS)}
         {suffix}
+        {cursor}
       </>
     );
   }, []);
@@ -572,10 +741,7 @@ export const ChatStreamPanel = () => {
       }
 
       if (!authToken) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: '识别图片前需要先准备 JWT。', isIncomplete: false },
-        ]);
+        startAssistantTypewriter('识别图片前需要先准备 JWT。');
         return;
       }
 
@@ -610,41 +776,22 @@ export const ChatStreamPanel = () => {
           sessionId,
         });
 
-        setMessages((prev) => {
-          const draft = [...prev];
-          const last = draft[draft.length - 1];
-          if (!last || last.role !== 'assistant') {
-            return draft;
-          }
-
-          draft[draft.length - 1] = {
-            ...last,
-            content: response.reply,
-            isIncomplete: false,
-          };
-
-          return draft;
+        startAssistantTypewriter(response.reply, {
+          replaceLastAssistant: true,
+          onComplete: () => {
+            scheduleMemoryMetricsRefresh();
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
-        setMessages((prev) => {
-          const draft = [...prev];
-          const last = draft[draft.length - 1];
-          if (!last || last.role !== 'assistant') {
-            return [...prev, { role: 'assistant', content: message, isIncomplete: false }];
-          }
-
-          draft[draft.length - 1] = {
-            ...last,
-            content: message,
-            isIncomplete: false,
-          };
-
-          return draft;
+        startAssistantTypewriter(message, {
+          replaceLastAssistant: true,
+          onComplete: () => {
+            scheduleMemoryMetricsRefresh();
+          },
         });
       } finally {
         setIsAnalyzingImage(false);
-        scheduleMemoryMetricsRefresh();
       }
 
       return;
@@ -656,10 +803,7 @@ export const ChatStreamPanel = () => {
       }
 
       if (!authToken) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: '解读文件前需要先准备 JWT。', isIncomplete: false },
-        ]);
+        startAssistantTypewriter('解读文件前需要先准备 JWT。');
         return;
       }
 
@@ -697,41 +841,22 @@ export const ChatStreamPanel = () => {
           sessionId,
         });
 
-        setMessages((prev) => {
-          const draft = [...prev];
-          const last = draft[draft.length - 1];
-          if (!last || last.role !== 'assistant') {
-            return draft;
-          }
-
-          draft[draft.length - 1] = {
-            ...last,
-            content: response.reply,
-            isIncomplete: false,
-          };
-
-          return draft;
+        startAssistantTypewriter(response.reply, {
+          replaceLastAssistant: true,
+          onComplete: () => {
+            scheduleMemoryMetricsRefresh();
+          },
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : '文件解读失败，请稍后重试';
-        setMessages((prev) => {
-          const draft = [...prev];
-          const last = draft[draft.length - 1];
-          if (!last || last.role !== 'assistant') {
-            return [...prev, { role: 'assistant', content: message, isIncomplete: false }];
-          }
-
-          draft[draft.length - 1] = {
-            ...last,
-            content: message,
-            isIncomplete: false,
-          };
-
-          return draft;
+        startAssistantTypewriter(message, {
+          replaceLastAssistant: true,
+          onComplete: () => {
+            scheduleMemoryMetricsRefresh();
+          },
         });
       } finally {
         setIsAnalyzingImage(false);
-        scheduleMemoryMetricsRefresh();
       }
 
       return;
@@ -746,10 +871,7 @@ export const ChatStreamPanel = () => {
       if (!authToken) {
         // 快捷入口后的补充消息必须走后端命中后才可进入外卖流程。
         if (isAwaitingTakeoutFollowup) {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant', content: '请先完成 JWT 鉴权后再继续点餐，我会根据你的具体需求进入外卖流程。', isIncomplete: false },
-          ]);
+          startAssistantTypewriter('请先完成 JWT 鉴权后再继续点餐，我会根据你的具体需求进入外卖流程。');
           return true;
         }
 
@@ -766,11 +888,11 @@ export const ChatStreamPanel = () => {
         });
 
         if (orchestrated.action === 'chat' || orchestrated.action === 'ask_slot') {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant', content: orchestrated.assistantReply, isIncomplete: false },
-          ]);
-          scheduleMemoryMetricsRefresh();
+          startAssistantTypewriter(orchestrated.assistantReply, {
+            onComplete: () => {
+              scheduleMemoryMetricsRefresh();
+            },
+          });
           return true;
         }
 
@@ -804,7 +926,7 @@ export const ChatStreamPanel = () => {
     }
 
     if (!authToken) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: '发送前需要先准备 JWT。' }]);
+      startAssistantTypewriter('发送前需要先准备 JWT。');
       return;
     }
 
@@ -812,6 +934,9 @@ export const ChatStreamPanel = () => {
     const previousRequestId = activeRequestIdRef.current;
     if (activeControllerRef.current) {
       interruptedRequestIdsRef.current.add(previousRequestId);
+      flushRemainingAssistantBuffer();
+      finalizeStreamingAssistantMessage();
+      resetAssistantStreamingState();
       setMessages((prev) => markLastAssistantMessageIncomplete(prev));
       activeControllerRef.current.abort();
     }
@@ -825,7 +950,8 @@ export const ChatStreamPanel = () => {
     let isRequestComplete = false;
 
     clearTimelineEvents();
-    setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+    resetAssistantStreamingState();
+    setMessages((prev) => [...prev, { role: 'assistant', content: '', isStreamingText: true, isIncomplete: false }]);
     setIsStreaming(true);
 
     try {
@@ -868,27 +994,27 @@ export const ChatStreamPanel = () => {
           }
 
           if (payload.type === 'content') {
-            setMessages((prev) => {
-              const draft = [...prev];
-              const last = draft[draft.length - 1];
-              if (!last || last.role !== 'assistant') return draft;
-              return [
-                ...draft.slice(0, -1),
-                { ...last, content: `${last.content}${payload.content}`, isIncomplete: false },
-              ];
-            });
+            streamPendingCharsRef.current.push(...Array.from(payload.content));
+            scheduleAssistantBufferDrain();
           }
 
           if (payload.type === 'complete') {
             isRequestComplete = true;
+            streamHasCompletedRef.current = true;
             if (requestId === activeRequestIdRef.current) {
-              setIsStreaming(false);
-              activeControllerRef.current = null;
+              if (streamPendingCharsRef.current.length === 0 && streamFlushTimerRef.current === null) {
+                finalizeStreamingAssistantMessage();
+                setIsStreaming(false);
+                activeControllerRef.current = null;
+              }
             }
           }
         },
         onerror(error) {
           if (requestId === activeRequestIdRef.current) {
+            flushRemainingAssistantBuffer();
+            finalizeStreamingAssistantMessage();
+            resetAssistantStreamingState();
             setIsStreaming(false);
             activeControllerRef.current = null;
           }
@@ -896,10 +1022,13 @@ export const ChatStreamPanel = () => {
         },
         onclose() {
           if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+            flushRemainingAssistantBuffer();
+            finalizeStreamingAssistantMessage();
+            resetAssistantStreamingState();
             setMessages((prev) => markLastAssistantMessageIncomplete(prev));
           }
 
-          if (requestId === activeRequestIdRef.current) {
+          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
             setIsStreaming(false);
             activeControllerRef.current = null;
           }
@@ -911,6 +1040,9 @@ export const ChatStreamPanel = () => {
       const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
 
       if (requestId === activeRequestIdRef.current) {
+        flushRemainingAssistantBuffer();
+        finalizeStreamingAssistantMessage();
+        resetAssistantStreamingState();
         if (!isRequestComplete) {
           setMessages((prev) => markLastAssistantMessageIncomplete(prev));
         }
@@ -995,6 +1127,7 @@ export const ChatStreamPanel = () => {
 
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
+    resetAssistantStreamingState();
     setIsStreaming(false);
     setIsOrchestrating(false);
     setIsAwaitingTakeoutFollowup(false);
@@ -1031,15 +1164,22 @@ export const ChatStreamPanel = () => {
           const draft = [...prev];
           draft[placeholderIndex] = {
             ...targetMessage,
-            content: TAKEOUT_QUICK_ACTION_REPLY,
+            content: '',
             isIncomplete: false,
+            isStreamingText: true,
           };
           return draft;
         });
 
+        startAssistantTypewriter(TAKEOUT_QUICK_ACTION_REPLY, {
+          replaceLastAssistant: true,
+          onComplete: () => {
+            setIsAwaitingTakeoutFollowup(true);
+            scheduleMemoryMetricsRefresh();
+          },
+        });
+
         takeoutQuickReplyTimerRef.current = null;
-        setIsAwaitingTakeoutFollowup(true);
-        scheduleMemoryMetricsRefresh();
       }, TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS);
       return;
     }
@@ -1084,7 +1224,7 @@ export const ChatStreamPanel = () => {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
-      setMessages((prev) => [...prev, { role: 'assistant', content: message, isIncomplete: false }]);
+      startAssistantTypewriter(message);
     }
   };
 
@@ -1105,7 +1245,7 @@ export const ChatStreamPanel = () => {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '文件读取失败，请稍后重试';
-      setMessages((prev) => [...prev, { role: 'assistant', content: message, isIncomplete: false }]);
+      startAssistantTypewriter(message);
     }
   };
 
@@ -1243,7 +1383,7 @@ export const ChatStreamPanel = () => {
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
                     </span>
                   ) : (
-                    message.role === 'assistant' ? (
+                    message.role === 'assistant' && !message.isStreamingText ? (
                       <MarkdownMessage content={message.content} isIncomplete={message.isIncomplete} />
                     ) : (
                       renderPlainMessageContent(message)
