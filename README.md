@@ -79,9 +79,8 @@ pnpm dev
 
 ## 下一步规划（LangChain 接入）
 
-1. 在 `apps/server` 新增 `langchain/` 模块，拆分 Chain/Agent/Tool。
-2. 在 `apps/web` 新增工作流面板，展示 ReAct 轨迹与工具调用。
-3. 在 `packages/core` 落地统一事件协议，支持前后端同构调试。
+1. 在 `apps/web` 新增工作流面板，展示 ReAct 轨迹与工具调用。
+2. 在 `packages/core` 落地统一事件协议，支持前后端同构调试。
 
 ## Apache 2.0 合规声明模板（已启用）
 
