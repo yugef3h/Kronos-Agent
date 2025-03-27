@@ -7,7 +7,6 @@
 ## 技术栈
 
 - 前端: React 18 + TypeScript + Vite 5 + TailwindCSS + Zustand + React Query
-- 可视化: D3 / ECharts（预留）
 - 后端: Express + TypeScript + SSE
 - 共享域层: `@kronos/core`（采样等基础领域逻辑）
 
