@@ -6,6 +6,7 @@ import {
   TakeoutToolModals,
   isTakeoutWideCardMessage,
 } from '../../agent-tools/takeout';
+import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
 import { formatUploadSize } from '../utils/chatStreamHelpers';
 
@@ -28,7 +29,10 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     handlePromptKeyDown,
     handleQuickActionClick,
     handleTakeoutCancel,
+    confirmHistorySessionSwitch,
+    cancelHistorySessionSwitch,
     historyPanelRef,
+    historySwitchConfirmTargetId,
     hotTopics,
     imageInputRef,
     isAnalyzingImage,
@@ -428,6 +432,14 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
         onClosePayment={onClosePayment}
         onPaymentPasswordChange={onPaymentPasswordChange}
       />
+
+      {historySwitchConfirmTargetId && (
+        <HistorySwitchConfirmDialog
+          targetSessionId={historySwitchConfirmTargetId}
+          onCancel={cancelHistorySessionSwitch}
+          onConfirm={confirmHistorySessionSwitch}
+        />
+      )}
     </section>
   );
 };

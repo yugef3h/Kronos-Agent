@@ -91,7 +91,10 @@ export type UseChatStreamControllerResult = {
   handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   handleQuickActionClick: (action: PromptQuickAction['key']) => void;
   handleTakeoutCancel: (flowId: number) => void;
+  confirmHistorySessionSwitch: () => void;
+  cancelHistorySessionSwitch: () => void;
   historyPanelRef: MutableRefObject<HTMLDivElement | null>;
+  historySwitchConfirmTargetId: string | null;
   hotTopics: string[];
   imageInputRef: MutableRefObject<HTMLInputElement | null>;
   isAnalyzingImage: boolean;
@@ -168,6 +171,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historySwitchConfirmTargetId, setHistorySwitchConfirmTargetId] = useState<string | null>(null);
   const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
   const [hotTopics, setHotTopics] = useState<string[]>(() => getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...DEFAULT_HOT_TOPICS]);
   const [memoryMetrics, setMemoryMetrics] = useState<MemoryLiveMetrics>({
@@ -477,7 +481,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [adjustPromptTextareaHeight, prompt]);
 
   useEffect(() => {
-    if (!isHistoryOpen) {
+    if (!isHistoryOpen || historySwitchConfirmTargetId) {
       return undefined;
     }
 
@@ -492,7 +496,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return () => {
       document.removeEventListener('mousedown', handleDocumentClick);
     };
-  }, [isHistoryOpen]);
+  }, [historySwitchConfirmTargetId, isHistoryOpen]);
 
   useEffect(() => {
     const element = messageListRef.current;
@@ -510,6 +514,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, []);
 
   useEffect(() => {
+    const flushTimerId = streamFlushTimerRef.current;
+
     return () => {
       activeControllerRef.current?.abort();
       if (takeoutQuickReplyTimerRef.current !== null) {
@@ -518,8 +524,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       if (metricsRefreshTimerRef.current !== null) {
         window.clearTimeout(metricsRefreshTimerRef.current);
       }
-      if (streamFlushTimerRef.current !== null) {
-        window.clearTimeout(streamFlushTimerRef.current);
+      if (flushTimerId !== null) {
+        window.clearTimeout(flushTimerId);
       }
     };
   }, [streamFlushTimerRef]);
@@ -852,7 +858,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
     }
-  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, scheduleMemoryMetricsRefresh, sessionId, setLatestUserQuestion, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
+  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, scheduleMemoryMetricsRefresh, sessionId, setLatestUserQuestion, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
 
   const handleExplainImageClick = useCallback(() => {
     if (!pendingImage || prompt.trim().length > 0) {
@@ -889,6 +895,18 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     void sendPrompt(topic);
   }, [isAnalyzingImage, isOrchestrating, isStreaming, sendPrompt]);
 
+  const applyHistorySessionSwitch = useCallback((targetSessionId: string) => {
+    setIsHistoryOpen(false);
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    resetAssistantStreamingState();
+    setIsStreaming(false);
+    setIsOrchestrating(false);
+    setIsAwaitingTakeoutFollowup(false);
+    clearTimelineEvents();
+    setSessionId(targetSessionId);
+  }, [clearTimelineEvents, resetAssistantStreamingState, setSessionId]);
+
   const toggleHistoryPanel = useCallback(() => {
     const nextOpen = !isHistoryOpen;
     setIsHistoryOpen(nextOpen);
@@ -905,22 +923,26 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
 
     if (messages.length > 0) {
-      const shouldOverwrite = window.confirm('当前对话框已有内容，是否覆盖？');
-      if (!shouldOverwrite) {
-        return;
-      }
+      setHistorySwitchConfirmTargetId(targetSessionId);
+      return;
     }
 
-    setIsHistoryOpen(false);
-    activeControllerRef.current?.abort();
-    activeControllerRef.current = null;
-    resetAssistantStreamingState();
-    setIsStreaming(false);
-    setIsOrchestrating(false);
-    setIsAwaitingTakeoutFollowup(false);
-    clearTimelineEvents();
-    setSessionId(targetSessionId);
-  }, [clearTimelineEvents, messages.length, resetAssistantStreamingState, sessionId, setSessionId]);
+    applyHistorySessionSwitch(targetSessionId);
+  }, [applyHistorySessionSwitch, messages.length, sessionId]);
+
+  const cancelHistorySessionSwitch = useCallback(() => {
+    setIsHistoryOpen(true);
+    setHistorySwitchConfirmTargetId(null);
+  }, []);
+
+  const confirmHistorySessionSwitch = useCallback(() => {
+    if (!historySwitchConfirmTargetId) {
+      return;
+    }
+
+    applyHistorySessionSwitch(historySwitchConfirmTargetId);
+    setHistorySwitchConfirmTargetId(null);
+  }, [applyHistorySessionSwitch, historySwitchConfirmTargetId]);
 
   const handleQuickActionClick = useCallback((action: PromptQuickAction['key']) => {
     if (action === 'takeout') {
@@ -1019,6 +1041,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   return {
     canSend,
     currentTimelineEvent,
+    confirmHistorySessionSwitch,
+    cancelHistorySessionSwitch,
     fileInputRef,
     formatTimestamp,
     handleDocumentFileChange,
@@ -1031,6 +1055,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     handleQuickActionClick,
     handleTakeoutCancel,
     historyPanelRef,
+    historySwitchConfirmTargetId,
     hotTopics,
     imageInputRef,
     isAnalyzingImage,
