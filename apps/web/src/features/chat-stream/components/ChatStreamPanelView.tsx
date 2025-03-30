@@ -132,10 +132,10 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
       </div>
 
       <div className="mt-2 flex min-h-0 flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 justify-center">
+        <div className="relative flex min-h-0 flex-1">
           <div
             ref={messageListRef}
-            className={`soft-scrollbar h-full w-full ${messages.length === 0 ? 'max-w-5xl' : 'max-w-3xl'} space-y-4 overflow-y-auto rounded-3xl border border-slate-200/85 bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 px-3 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] md:px-6`}
+            className="soft-scrollbar h-full w-full space-y-4 overflow-y-auto border-slate-200/85 from-white via-slate-50/35 to-cyan-50/20 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
           >
             {messages.length === 0 && (
               <div className="mx-auto mt-8 max-w-5xl text-center">
@@ -250,7 +250,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
           )}
         </div>
 
-        <div className="mt-3 w-full max-w-3xl self-center space-y-2">
+        <div className="mt-3 w-full self-center space-y-2">
           <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
             <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleDocumentFileChange} />
             <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFileChange} />
