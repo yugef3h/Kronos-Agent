@@ -96,7 +96,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
           <button
             type="button"
             onClick={toggleHistoryPanel}
-            className="rounded-xl border border-slate-300/90 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50"
+            className="rounded-xl border border-slate-300/90 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
           >
             历史对话
           </button>
