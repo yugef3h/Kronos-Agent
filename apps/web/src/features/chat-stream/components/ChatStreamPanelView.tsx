@@ -89,7 +89,6 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
 
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <p className="text-[8px] font-semibold uppercase tracking-[0.16em] text-cyan-700">Agent Runtime</p>
           <h2 className="mt-1 font-display text-xl text-ink">Kronos Chat</h2>
         </div>
 
