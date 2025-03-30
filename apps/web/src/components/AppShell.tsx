@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { DropdownMenu } from './DropdownMenu';
+import { workflowMenuItems } from './workflowNavMenuConfig';
 
 type NavItem = {
   to: string;
@@ -36,22 +38,36 @@ export const AppShell = () => {
 
             {/* 导航菜单 */}
             <nav className="flex flex-wrap gap-2">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
-                      isActive
-                        ? 'border-cyan-500 bg-cyan-600 text-white shadow-md'
-                        : 'border-slate-200 bg-white/90 text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+              {NAV_ITEMS.map((item) => {
+                if (item.to === '/workflow') {
+                  return (
+                    <DropdownMenu
+                      key={item.to}
+                      triggerTo={item.to}
+                      triggerLabel={item.label}
+                      triggerEnd
+                      items={workflowMenuItems}
+                    />
+                  );
+                }
+
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                        isActive
+                          ? 'border-cyan-500 bg-cyan-600 text-white shadow-md'
+                          : 'border-slate-200 bg-white/90 text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                );
+              })}
             </nav>
           </div>
         </div>
