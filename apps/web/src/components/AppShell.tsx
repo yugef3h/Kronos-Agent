@@ -45,7 +45,7 @@ export const AppShell = () => {
                     `rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
                       isActive
                         ? 'border-cyan-500 bg-cyan-600 text-white shadow-md'
-                        : 'border-slate-200 bg-white/90 text-slate-700 hover:-translate-y-0.5 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
+                        : 'border-slate-200 bg-white/90 text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
                     }`
                   }
                 >

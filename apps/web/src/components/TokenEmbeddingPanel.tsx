@@ -254,7 +254,7 @@ export const TokenEmbeddingPanel = () => {
           type="button"
           onClick={() => void parseTokens()}
           disabled={isParsing}
-          className="h-fit rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-fit rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isParsing ? '解析中...' : '解析 Token'}
         </button>
