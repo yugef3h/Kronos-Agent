@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from 'react';
 import { MOCK_ADDRESS, MOCK_DELIVERY, MOCK_DISCOUNT, MOCK_FOODS, type TakeoutCombo, type TakeoutFood } from './data/mockData';
 import {
   buildTakeoutOrderPrompt,
@@ -24,6 +32,8 @@ type UseTakeoutToolParams = {
   setMessages: TakeoutMessageUpdater;
   authToken: string;
   sessionId: string;
+  flowState: TakeoutFlowState;
+  setFlowState: Dispatch<SetStateAction<TakeoutFlowState>>;
 };
 
 type UseTakeoutToolResult = {
@@ -67,8 +77,9 @@ export const useTakeoutTool = ({
   setMessages,
   authToken,
   sessionId,
+  flowState,
+  setFlowState,
 }: UseTakeoutToolParams): UseTakeoutToolResult => {
-  const [flowState, setFlowState] = useState<TakeoutFlowState>(createInitialTakeoutFlowState());
   const [modalState, setModalState] = useState<TakeoutModalState>(createInitialModalState());
   const [isTakeoutAgreementChecked, setIsTakeoutAgreementChecked] = useState(true);
   const [showTakeoutScrollHint, setShowTakeoutScrollHint] = useState(false);
@@ -265,7 +276,7 @@ export const useTakeoutTool = ({
       appendTakeoutFallbackMessage(nextFlowId);
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
-  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, loadTakeoutCatalog, resetModalState]);
+  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, loadTakeoutCatalog, resetModalState, setFlowState]);
 
   const handleTakeoutAgreement = useCallback(async (flowId: number) => {
     if (flowId !== flowState.flowId) {
@@ -312,7 +323,7 @@ export const useTakeoutTool = ({
       appendTakeoutFallbackMessage(flowId);
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
-  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, flowState.flowId, flowState.requestPrompt, loadTakeoutCatalog, resetModalState, setMessages]);
+  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, authToken, flowState.flowId, flowState.requestPrompt, loadTakeoutCatalog, resetModalState, setFlowState, setMessages]);
 
   const openTakeoutAuthorizationModal = useCallback((flowId: number) => {
     if (flowId !== flowState.flowId || flowState.isCallingApi) {
@@ -356,7 +367,7 @@ export const useTakeoutTool = ({
       selectedSnackId: null,
     }));
     setModalState((prev) => ({ ...prev, comboFlowId: flowId }));
-  }, [flowState.flowId]);
+  }, [flowState.flowId, setFlowState]);
 
   const closeTakeoutComboModal = useCallback(() => {
     setModalState((prev) => ({ ...prev, comboFlowId: null }));
@@ -371,7 +382,7 @@ export const useTakeoutTool = ({
       ...prev,
       selectedCombo: combo,
     }));
-  }, [flowState.flowId]);
+  }, [flowState.flowId, setFlowState]);
 
   const handleTakeoutConfirmSelection = useCallback(async (flowId: number) => {
     if (flowId !== flowState.flowId) {
@@ -409,7 +420,7 @@ export const useTakeoutTool = ({
       appendTakeoutFallbackMessage(flowId);
       setFlowState((prev) => ({ ...prev, isCallingApi: false }));
     }
-  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, closeTakeoutComboModal, flowState, setMessages]);
+  }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, closeTakeoutComboModal, flowState, setFlowState, setMessages]);
 
   const openTakeoutPaymentModal = useCallback((flowId: number) => {
     if (flowId !== flowState.flowId || flowState.isCallingApi) {
@@ -421,7 +432,7 @@ export const useTakeoutTool = ({
       paymentPassword: '',
     }));
     setModalState((prev) => ({ ...prev, paymentFlowId: flowId }));
-  }, [flowState.flowId, flowState.isCallingApi]);
+  }, [flowState.flowId, flowState.isCallingApi, setFlowState]);
 
   const closeTakeoutPaymentModal = useCallback(() => {
     setModalState((prev) => ({ ...prev, paymentFlowId: null }));
@@ -429,7 +440,7 @@ export const useTakeoutTool = ({
       ...prev,
       paymentPassword: '',
     }));
-  }, []);
+  }, [setFlowState]);
 
   const handleTakeoutPaymentPasswordChange = useCallback((flowId: number, rawValue: string) => {
     if (flowId !== flowState.flowId) {
@@ -450,7 +461,7 @@ export const useTakeoutTool = ({
         flowId,
       });
     }
-  }, [appendAssistantTextMessage, flowState.flowId]);
+  }, [appendAssistantTextMessage, flowState.flowId, setFlowState]);
 
   return {
     flowState,

@@ -1,7 +1,44 @@
+import type { SetStateAction } from 'react';
 import { create } from 'zustand';
+import type { FileSelectionResult } from '../features/agent-tools/file';
+import {
+  createInitialTakeoutFlowState,
+  type ImageSelectionResult,
+  type LocalChatMessage,
+  type MemoryLiveMetrics,
+  type TakeoutFlowState,
+} from '../features/chat-stream/storeTypes';
 import type { TimelineEvent } from '../types/chat';
 
 const SESSION_STORAGE_KEY = 'kronos_session_id';
+
+const applyStateAction = <T>(currentValue: T, nextValue: SetStateAction<T>): T => {
+  return typeof nextValue === 'function'
+    ? (nextValue as (previousValue: T) => T)(currentValue)
+    : nextValue;
+};
+
+export const createInitialMemoryMetrics = (): MemoryLiveMetrics => ({
+  messageCount: 0,
+  conversationTokensEstimate: 0,
+  summaryTokensEstimate: 0,
+  budgetTokensEstimate: 0,
+  summaryTriggerMessageCount: 12,
+  isSummaryThresholdReached: false,
+});
+
+export const createInitialChatPanelState = () => ({
+  chatMessages: [] as LocalChatMessage[],
+  chatPrompt: '',
+  pendingFile: null as FileSelectionResult | null,
+  pendingImage: null as ImageSelectionResult | null,
+  isStreaming: false,
+  isOrchestrating: false,
+  isAnalyzingImage: false,
+  isAwaitingTakeoutFollowup: false,
+  memoryMetrics: createInitialMemoryMetrics(),
+  takeoutFlowState: createInitialTakeoutFlowState(),
+});
 
 /**
  * 从 sessionStorage 读取已有 sessionId，若不存在则生成新的并写入。
@@ -22,6 +59,16 @@ type PlaygroundState = {
   authToken: string;
   latestUserQuestion: string;
   timelineEvents: TimelineEvent[];
+  chatMessages: LocalChatMessage[];
+  chatPrompt: string;
+  pendingFile: FileSelectionResult | null;
+  pendingImage: ImageSelectionResult | null;
+  isStreaming: boolean;
+  isOrchestrating: boolean;
+  isAnalyzingImage: boolean;
+  isAwaitingTakeoutFollowup: boolean;
+  memoryMetrics: MemoryLiveMetrics;
+  takeoutFlowState: TakeoutFlowState;
   setTemperature: (value: number) => void;
   setTopP: (value: number) => void;
   setSessionId: (value: string) => void;
@@ -29,6 +76,17 @@ type PlaygroundState = {
   setLatestUserQuestion: (value: string) => void;
   appendTimelineEvent: (value: TimelineEvent) => void;
   clearTimelineEvents: () => void;
+  setChatMessages: (value: SetStateAction<LocalChatMessage[]>) => void;
+  setChatPrompt: (value: SetStateAction<string>) => void;
+  setPendingFile: (value: SetStateAction<FileSelectionResult | null>) => void;
+  setPendingImage: (value: SetStateAction<ImageSelectionResult | null>) => void;
+  setIsStreaming: (value: SetStateAction<boolean>) => void;
+  setIsOrchestrating: (value: SetStateAction<boolean>) => void;
+  setIsAnalyzingImage: (value: SetStateAction<boolean>) => void;
+  setIsAwaitingTakeoutFollowup: (value: SetStateAction<boolean>) => void;
+  setMemoryMetrics: (value: SetStateAction<MemoryLiveMetrics>) => void;
+  setTakeoutFlowState: (value: SetStateAction<TakeoutFlowState>) => void;
+  resetChatPanelState: () => void;
 };
 
 export const usePlaygroundStore = create<PlaygroundState>((set) => ({
@@ -38,14 +96,28 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   authToken: '',
   latestUserQuestion: '',
   timelineEvents: [],
+  ...createInitialChatPanelState(),
   setTemperature: (value) => set({ temperature: value }),
   setTopP: (value) => set({ topP: value }),
   setSessionId: (value) => {
     sessionStorage.setItem(SESSION_STORAGE_KEY, value);
-    set({ sessionId: value, timelineEvents: [] });
+    set({ sessionId: value, timelineEvents: [], ...createInitialChatPanelState() });
   },
   setAuthToken: (value) => set({ authToken: value }),
   setLatestUserQuestion: (value) => set({ latestUserQuestion: value }),
   appendTimelineEvent: (value) => set((state) => ({ timelineEvents: [...state.timelineEvents, value] })),
   clearTimelineEvents: () => set({ timelineEvents: [] }),
+  setChatMessages: (value) => set((state) => ({ chatMessages: applyStateAction(state.chatMessages, value) })),
+  setChatPrompt: (value) => set((state) => ({ chatPrompt: applyStateAction(state.chatPrompt, value) })),
+  setPendingFile: (value) => set((state) => ({ pendingFile: applyStateAction(state.pendingFile, value) })),
+  setPendingImage: (value) => set((state) => ({ pendingImage: applyStateAction(state.pendingImage, value) })),
+  setIsStreaming: (value) => set((state) => ({ isStreaming: applyStateAction(state.isStreaming, value) })),
+  setIsOrchestrating: (value) => set((state) => ({ isOrchestrating: applyStateAction(state.isOrchestrating, value) })),
+  setIsAnalyzingImage: (value) => set((state) => ({ isAnalyzingImage: applyStateAction(state.isAnalyzingImage, value) })),
+  setIsAwaitingTakeoutFollowup: (value) => set((state) => ({
+    isAwaitingTakeoutFollowup: applyStateAction(state.isAwaitingTakeoutFollowup, value),
+  })),
+  setMemoryMetrics: (value) => set((state) => ({ memoryMetrics: applyStateAction(state.memoryMetrics, value) })),
+  setTakeoutFlowState: (value) => set((state) => ({ takeoutFlowState: applyStateAction(state.takeoutFlowState, value) })),
+  resetChatPanelState: () => set(createInitialChatPanelState()),
 }));

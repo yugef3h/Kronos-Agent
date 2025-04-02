@@ -152,21 +152,33 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     sessionId,
     authToken,
     timelineEvents,
+    chatMessages: messages,
+    chatPrompt: prompt,
+    pendingFile,
+    pendingImage,
+    isStreaming,
+    isOrchestrating,
+    isAnalyzingImage,
+    isAwaitingTakeoutFollowup,
+    memoryMetrics,
+    takeoutFlowState: persistedTakeoutFlowState,
     setSessionId,
     setAuthToken,
     setLatestUserQuestion,
     appendTimelineEvent,
     clearTimelineEvents,
+    setChatMessages: setMessages,
+    setChatPrompt: setPrompt,
+    setPendingFile,
+    setPendingImage,
+    setIsStreaming,
+    setIsOrchestrating,
+    setIsAnalyzingImage,
+    setIsAwaitingTakeoutFollowup,
+    setMemoryMetrics,
+    setTakeoutFlowState,
   } = usePlaygroundStore();
 
-  const [messages, setMessages] = useState<LocalChatMessage[]>([]);
-  const [prompt, setPrompt] = useState('');
-  const [pendingFile, setPendingFile] = useState<FileSelectionResult | null>(null);
-  const [pendingImage, setPendingImage] = useState<ImageSelectionResult | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [isOrchestrating, setIsOrchestrating] = useState(false);
-  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
-  const [isAwaitingTakeoutFollowup, setIsAwaitingTakeoutFollowup] = useState(false);
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -174,14 +186,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const [historySwitchConfirmTargetId, setHistorySwitchConfirmTargetId] = useState<string | null>(null);
   const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
   const [hotTopics, setHotTopics] = useState<string[]>(() => getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...DEFAULT_HOT_TOPICS]);
-  const [memoryMetrics, setMemoryMetrics] = useState<MemoryLiveMetrics>({
-    messageCount: 0,
-    conversationTokensEstimate: 0,
-    summaryTokensEstimate: 0,
-    budgetTokensEstimate: 0,
-    summaryTriggerMessageCount: 12,
-    isSummaryThresholdReached: false,
-  });
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const activeRequestIdRef = useRef(0);
@@ -230,7 +234,24 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     openTakeoutPaymentModal,
     closeTakeoutPaymentModal,
     handleTakeoutPaymentPasswordChange,
-  } = useTakeoutTool({ messages, setMessages, authToken, sessionId });
+  } = useTakeoutTool({
+    messages,
+    setMessages,
+    authToken,
+    sessionId,
+    flowState: persistedTakeoutFlowState,
+    setFlowState: setTakeoutFlowState,
+  });
+
+  const hasRestorableDraft = useMemo(() => {
+    return (
+      messages.length > 0
+      || prompt.trim().length > 0
+      || pendingFile !== null
+      || pendingImage !== null
+      || persistedTakeoutFlowState.flowId !== 0
+    );
+  }, [messages.length, pendingFile, pendingImage, prompt, persistedTakeoutFlowState.flowId]);
 
   const scrollToBottom = useCallback(() => {
     const element = messageListRef.current;
@@ -323,7 +344,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     } catch {
       // 会话指标刷新失败时保留当前展示，避免影响主流程。
     }
-  }, [authToken, sessionId]);
+  }, [authToken, sessionId, setMemoryMetrics]);
 
   const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
     if (!authToken) {
@@ -380,7 +401,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     } catch {
       // 历史会话回显失败时保留当前界面状态。
     }
-  }, [authToken, sessionId, setLatestUserQuestion]);
+  }, [authToken, sessionId, setLatestUserQuestion, setMemoryMetrics, setMessages]);
 
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
@@ -438,8 +459,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [authToken]);
 
   useEffect(() => {
+    if (hasRestorableDraft) {
+      return;
+    }
+
     void hydrateSessionMessages();
-  }, [hydrateSessionMessages]);
+  }, [hasRestorableDraft, hydrateSessionMessages]);
 
   useEffect(() => {
     void refreshMemoryMetrics();
@@ -858,7 +883,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
     }
-  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, scheduleMemoryMetricsRefresh, sessionId, setLatestUserQuestion, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
+  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
 
   const handleExplainImageClick = useCallback(() => {
     if (!pendingImage || prompt.trim().length > 0) {
@@ -905,7 +930,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setIsAwaitingTakeoutFollowup(false);
     clearTimelineEvents();
     setSessionId(targetSessionId);
-  }, [clearTimelineEvents, resetAssistantStreamingState, setSessionId]);
+  }, [clearTimelineEvents, resetAssistantStreamingState, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setSessionId]);
 
   const toggleHistoryPanel = useCallback(() => {
     const nextOpen = !isHistoryOpen;
@@ -994,7 +1019,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     if (action === 'translate') {
       setPrompt((prev) => `${prev}${prev ? ' ' : ''}/translate `);
     }
-  }, [isAnalyzingImage, isOrchestrating, isStreaming, prompt, scheduleMemoryMetricsRefresh, setLatestUserQuestion, startAssistantTypewriter]);
+  }, [isAnalyzingImage, isOrchestrating, isStreaming, prompt, scheduleMemoryMetricsRefresh, setIsAwaitingTakeoutFollowup, setLatestUserQuestion, setMessages, setPrompt, startAssistantTypewriter]);
 
   const handleImageFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -1015,7 +1040,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
       startAssistantTypewriter(message);
     }
-  }, [startAssistantTypewriter]);
+  }, [setPendingFile, setPendingImage, startAssistantTypewriter]);
 
   const handleDocumentFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -1036,7 +1061,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const message = error instanceof Error ? error.message : '文件读取失败，请稍后重试';
       startAssistantTypewriter(message);
     }
-  }, [startAssistantTypewriter]);
+  }, [setPendingFile, setPendingImage, startAssistantTypewriter]);
 
   return {
     canSend,
