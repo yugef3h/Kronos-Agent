@@ -1,6 +1,9 @@
 import {
   buildConversationText,
   formatUploadSize,
+  getPrimaryImageAttachment,
+  getRenderableImageName,
+  getRenderableImageSource,
   getLatestUserQuestion,
   markLastAssistantMessageIncomplete,
 } from './chatStreamHelpers';
@@ -27,5 +30,48 @@ describe('chatStreamHelpers', () => {
 
     expect(buildConversationText(messages)).toBe('user: 你好\nassistant: 世界');
     expect(markLastAssistantMessageIncomplete(messages)[1]?.isIncomplete).toBe(true);
+  });
+
+  it('resolves image attachments from persisted session messages', () => {
+    const message = {
+      role: 'user' as const,
+      content: '解释图片',
+      attachments: [
+        {
+          id: 'attachment-1',
+          type: 'image' as const,
+          fileName: 'diagram.png',
+          mimeType: 'image/png',
+          size: 1024,
+          createdAt: 1,
+        },
+      ],
+    };
+
+    expect(getPrimaryImageAttachment(message)?.id).toBe('attachment-1');
+    expect(getRenderableImageSource(message)).toBe('http://localhost:3001/api/attachments/attachment-1');
+    expect(getRenderableImageName(message)).toBe('diagram.png');
+  });
+
+  it('prefers in-memory preview metadata over persisted attachment data', () => {
+    const message = {
+      role: 'user' as const,
+      content: '',
+      imagePreviewUrl: 'data:image/png;base64,abc',
+      imageName: 'clipboard.png',
+      attachments: [
+        {
+          id: 'attachment-2',
+          type: 'image' as const,
+          fileName: 'server.png',
+          mimeType: 'image/png',
+          size: 2048,
+          createdAt: 2,
+        },
+      ],
+    };
+
+    expect(getRenderableImageSource(message)).toBe('data:image/png;base64,abc');
+    expect(getRenderableImageName(message)).toBe('clipboard.png');
   });
 });

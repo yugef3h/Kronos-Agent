@@ -28,7 +28,16 @@ app.get('/api/dev/token', (_req, res) => {
   res.json(createDevToken(env.JWT_SECRET));
 });
 
-app.use('/api', authenticateJwt, chatRoutes);
+// 附件文件流需要被 <img> 直接访问，无法带 Authorization 头。
+const maybeSkipAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.path.startsWith('/attachments/')) {
+    next();
+    return;
+  }
+  authenticateJwt(req, res, next);
+};
+
+app.use('/api', maybeSkipAuth, chatRoutes);
 
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();

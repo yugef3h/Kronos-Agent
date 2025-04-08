@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
+import { createReadStream } from 'fs';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
@@ -11,6 +12,8 @@ import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
+import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
+import { join } from 'path';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -122,6 +125,34 @@ chatRoutes.get('/sessions/recent', async (request: Request, response: Response) 
 chatRoutes.get('/hot-topics', async (_request: Request, response: Response) => {
   const result = await generateHotTopics();
   response.json(result);
+});
+
+chatRoutes.get('/attachments/:id', async (request: Request, response: Response) => {
+  const id = String(request.params.id || '');
+  const meta = await loadAttachmentMeta(id);
+
+  if (!meta) {
+    response.status(404).json({ error: 'Attachment not found' });
+    return;
+  }
+
+  response.setHeader('Content-Type', meta.mimeType || 'application/octet-stream');
+  response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+  const diskFilePath = meta.filePath ? join(ATTACHMENTS_DIR, meta.filePath) : meta.storagePath;
+
+  if (!diskFilePath) {
+    response.status(404).end();
+    return;
+  }
+
+  try {
+    const stream = createReadStream(diskFilePath);
+    stream.on('error', () => response.status(404).end());
+    stream.pipe(response);
+  } catch {
+    response.status(404).end();
+  }
 });
 
 chatRoutes.post('/token-embedding/analyze', async (request: Request, response: Response) => {
@@ -244,6 +275,10 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
   }
 
   try {
+    const attachment = await saveImageAttachment({
+      dataUrl: parsed.data.imageDataUrl,
+    });
+
     const result = await recognizeImageByDoubao({
       imageDataUrl: parsed.data.imageDataUrl,
       prompt: parsed.data.prompt,
@@ -254,13 +289,13 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
       void appendSessionMessages({
         sessionId: parsed.data.sessionId,
         messages: [
-          { role: 'user', content: `[图片] ${userPrompt}` },
+          { role: 'user', content: userPrompt, attachments: [attachment] },
           { role: 'assistant', content: result.reply },
         ],
       });
     }
 
-    response.json(result);
+    response.json({ ...result, attachmentId: attachment.id });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Image recognition failed: ${reason}` });

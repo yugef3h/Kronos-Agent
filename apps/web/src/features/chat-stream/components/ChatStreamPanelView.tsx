@@ -8,7 +8,11 @@ import {
 } from '../../agent-tools/takeout';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
-import { formatUploadSize } from '../utils/chatStreamHelpers';
+import {
+  formatUploadSize,
+  getRenderableImageName,
+  getRenderableImageSource,
+} from '../utils/chatStreamHelpers';
 
 type ChatStreamPanelViewProps = {
   controller: UseChatStreamControllerResult;
@@ -160,12 +164,16 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
               </div>
             )}
 
-            {messages.map((message, index) => (
+            {messages.map((message, index) => {
+              const imageSource = getRenderableImageSource(message);
+              const imageName = getRenderableImageName(message);
+
+              return (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <article
                   className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${
                     message.role === 'user'
-                      ? message.imagePreviewUrl || (message.fileName && message.fileExtension)
+                      ? imageSource || (message.fileName && message.fileExtension)
                         ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
                         : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
                       : isTakeoutWideCardMessage(message)
@@ -184,12 +192,17 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                       onSelectFood={onSelectFood}
                       onOpenPaymentModal={onOpenPaymentModal}
                     />
-                  ) : message.imagePreviewUrl ? (
-                    <img
-                      src={message.imagePreviewUrl}
-                      alt={message.imageName || '用户上传图片'}
-                      className="max-h-64 w-auto max-w-full rounded-xl object-contain"
-                    />
+                  ) : imageSource ? (
+                    <div className="space-y-2">
+                      <img
+                        src={imageSource}
+                        alt={imageName || '用户上传图片'}
+                        className="max-h-64 w-auto max-w-full rounded-xl object-contain"
+                      />
+                      {message.content ? (
+                        <p className="whitespace-pre-wrap text-sm text-slate-700">{message.content}</p>
+                      ) : null}
+                    </div>
                   ) : message.fileName && message.fileExtension ? (
                     <div className="w-[18rem] max-w-full rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.4)]">
                       <div className="flex items-start gap-3">
@@ -221,7 +234,8 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                   )}
                 </article>
               </div>
-            ))}
+              );
+            })}
 
             {isTakeoutLoading && (
               <div className="flex justify-start">

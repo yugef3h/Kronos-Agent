@@ -17,7 +17,7 @@ export type DevTokenResponse = {
 };
 
 export type SessionSnapshotResponse = {
-	messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp?: number }>;
+	messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp?: number; attachments?: { id: string; type: 'image'; fileName: string; mimeType: string; size: number; createdAt: number }[] }>;
 	memorySummary: string;
 	memorySummaryUpdatedAt: number | null;
 	lastId: number;
@@ -132,6 +132,7 @@ export type TakeoutCatalogResponse = {
 export type ImageRecognitionResponse = {
 	reply: string;
 	model: string;
+	attachmentId?: string;
 };
 
 export type FileAnalysisResponse = {

@@ -1,4 +1,4 @@
-import type { ChatMessage, TimelineEvent } from '../../types/chat';
+import type { AttachmentMeta, ChatMessage, TimelineEvent } from '../../types/chat';
 import type { TakeoutChatMessage } from '../agent-tools/takeout';
 
 export type TokenizerModule = {

@@ -9,15 +9,34 @@ import {
   estimateTextTokens,
 } from '../services/memoryOrchestrator.js';
 
+export type AttachmentMeta = {
+  id: string;
+  type: 'image';
+  fileName: string;
+  mimeType: string;
+  size: number;
+  /**
+   * 相对路径，基于附件根目录，如 "<id>.jpeg"。
+   */
+  filePath?: string;
+  /**
+   * 兼容旧数据的绝对路径。
+   */
+  storagePath?: string;
+  createdAt: number;
+};
+
 export type Message = {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: number;
+  attachments?: AttachmentMeta[];
 };
 
 export type SessionAppendMessage = {
   role: Message['role'];
   content: string;
+  attachments?: AttachmentMeta[];
 };
 
 export type Session = {
@@ -199,8 +218,9 @@ export const appendSessionMessages = async (params: {
       role: message.role,
       content: message.content.trim(),
       timestamp: now + index,
+      attachments: message.attachments,
     }))
-    .filter((message) => message.content.length > 0);
+    .filter((message) => message.content.length > 0 || (message.attachments && message.attachments.length > 0));
 
   if (nextMessages.length === 0) {
     return;

@@ -1,5 +1,11 @@
-import type { ChatMessage } from '../../../types/chat';
+import { apiUrl } from '../../../lib/api';
+import type { AttachmentMeta, ChatMessage } from '../../../types/chat';
 import type { LocalChatMessage, TokenizerModule } from '../types';
+
+type ImageRenderableMessage = Pick<ChatMessage, 'attachments'> & {
+  imagePreviewUrl?: string;
+  imageName?: string;
+};
 
 let tokenizerModulePromise: Promise<TokenizerModule> | null = null;
 
@@ -47,6 +53,29 @@ export const markLastAssistantMessageIncomplete = (
   };
 
   return draft;
+};
+
+export const getPrimaryImageAttachment = (
+  message: Pick<ChatMessage, 'attachments'>,
+): AttachmentMeta | undefined => {
+  return message.attachments?.find((attachment) => attachment.type === 'image');
+};
+
+export const getRenderableImageSource = (message: ImageRenderableMessage): string | undefined => {
+  if (message.imagePreviewUrl?.trim()) {
+    return message.imagePreviewUrl;
+  }
+
+  const imageAttachment = getPrimaryImageAttachment(message);
+  return imageAttachment ? apiUrl(`/api/attachments/${imageAttachment.id}`) : undefined;
+};
+
+export const getRenderableImageName = (message: ImageRenderableMessage): string | undefined => {
+  if (message.imageName?.trim()) {
+    return message.imageName;
+  }
+
+  return getPrimaryImageAttachment(message)?.fileName;
 };
 
 export const getLatestUserQuestion = (chatMessages: ChatMessage[]): string => {

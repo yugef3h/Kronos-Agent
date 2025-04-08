@@ -39,8 +39,20 @@ type TimelineChunk = {
 
 export type StreamChunk = ContentChunk | CompleteChunk | TimelineChunk;
 
+export type AttachmentMeta = {
+  id: string;
+  type: 'image';
+  fileName: string;
+  mimeType: string;
+  size: number;
+  filePath?: string;
+  storagePath?: string;
+  createdAt: number;
+};
+
 export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: number;
+  attachments?: AttachmentMeta[];
 };
