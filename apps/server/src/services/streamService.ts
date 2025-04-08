@@ -1,5 +1,7 @@
 import { getSession, persistSession } from '../domain/sessionStore.js';
+import { env } from '../config/env.js';
 import { streamLangChainReply } from './langchainChatService.js';
+import { streamLangGraphReply } from './langgraphWorkflowService.js';
 import { createMemoryPlan } from './memoryOrchestrator.js';
 import { streamMockReply } from './mockReplyService.js';
 
@@ -45,11 +47,20 @@ export async function* streamChat(params: {
   }
 
   try {
-    for await (const event of streamLangChainReply({
-      prompt,
-      history: memoryPlan.history,
-      memorySummary: memoryPlan.memorySummary,
-    })) {
+    const streamSource = env.LANGGRAPH_ENABLED
+      ? streamLangGraphReply({
+          prompt,
+          history: memoryPlan.history,
+          memorySummary: memoryPlan.memorySummary,
+          sessionId,
+        })
+      : streamLangChainReply({
+          prompt,
+          history: memoryPlan.history,
+          memorySummary: memoryPlan.memorySummary,
+        });
+
+    for await (const event of streamSource) {
       eventId += 1;
 
       if (eventId <= lastEventId) {

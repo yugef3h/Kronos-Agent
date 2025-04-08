@@ -41,7 +41,7 @@ const toLangChainMessage = (message: Message): HumanMessage | AIMessage => {
   return new AIMessage(message.content);
 };
 
-const chatModel = new ChatOpenAI({
+export const chatModel = new ChatOpenAI({
   model: env.DOUBAO_MODEL,
   apiKey: env.DOUBAO_API_KEY,
   configuration: {
@@ -85,7 +85,7 @@ const attentionProbeTool = tool(
   },
 );
 
-const toolRegistry = {
+export const toolRegistry = {
   token_estimator: tokenEstimatorTool,
   attention_probe: attentionProbeTool,
 };

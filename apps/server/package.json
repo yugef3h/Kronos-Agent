@@ -12,6 +12,7 @@
   "dependencies": {
     "@langchain/core": "^0.3.58",
     "@langchain/openai": "^0.5.16",
+    "@langchain/langgraph": "1.2.6",
     "@types/pdf-parse": "^1.1.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

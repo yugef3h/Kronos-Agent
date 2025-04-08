@@ -13,6 +13,7 @@ const envSchema = z.object({
   DOUBAO_PLAN_TIMEOUT_MS: z.coerce.number().int().positive().default(1500),
   DOUBAO_FIRST_TOKEN_WARN_MS: z.coerce.number().int().positive().default(3000),
   ALLOWED_ORIGIN: z.string().default('http://localhost:5173'),
+  LANGGRAPH_ENABLED: z.coerce.boolean().default(false),
 });
 
 export const env = envSchema.parse(process.env);
