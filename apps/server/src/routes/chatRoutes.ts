@@ -289,7 +289,8 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
       void appendSessionMessages({
         sessionId: parsed.data.sessionId,
         messages: [
-          { role: 'user', content: userPrompt, attachments: [attachment] },
+          { role: 'user', content: '', attachments: [attachment] },
+          { role: 'user', content: userPrompt },
           { role: 'assistant', content: result.reply },
         ],
       });

@@ -5,6 +5,7 @@ import {
   getRenderableImageName,
   getRenderableImageSource,
   getLatestUserQuestion,
+  hydrateRenderableMessages,
   markLastAssistantMessageIncomplete,
 } from './chatStreamHelpers';
 
@@ -73,5 +74,37 @@ describe('chatStreamHelpers', () => {
 
     expect(getRenderableImageSource(message)).toBe('data:image/png;base64,abc');
     expect(getRenderableImageName(message)).toBe('clipboard.png');
+  });
+
+  it('splits legacy restored image messages into separate image and text bubbles', () => {
+    const messages = hydrateRenderableMessages([
+      {
+        role: 'user' as const,
+        content: '解释图片',
+        attachments: [
+          {
+            id: 'attachment-legacy',
+            type: 'image' as const,
+            fileName: 'meal.png',
+            mimeType: 'image/png',
+            size: 512,
+            createdAt: 3,
+          },
+        ],
+      },
+    ]);
+
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toMatchObject({
+      role: 'user',
+      content: '',
+      imageName: 'meal.png',
+      imagePreviewUrl: 'http://localhost:3001/api/attachments/attachment-legacy',
+    });
+    expect(messages[1]).toMatchObject({
+      role: 'user',
+      content: '解释图片',
+    });
+    expect(messages[1]?.attachments).toBeUndefined();
   });
 });

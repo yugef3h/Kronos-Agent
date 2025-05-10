@@ -89,6 +89,41 @@ export const getLatestUserQuestion = (chatMessages: ChatMessage[]): string => {
   return '';
 };
 
+export const hydrateRenderableMessages = (chatMessages: ChatMessage[]): LocalChatMessage[] => {
+  return chatMessages.flatMap((message) => {
+    const imageSource = getRenderableImageSource(message);
+    const imageName = getRenderableImageName(message);
+    const content = message.content.trim();
+
+    if (!imageSource || !content) {
+      return [{
+        ...message,
+        isIncomplete: false,
+        imagePreviewUrl: imageSource,
+        imageName,
+      }];
+    }
+
+    // 兼容旧历史快照：服务端曾把“图片 + 文字提示”落成同一条消息。
+    return [
+      {
+        ...message,
+        content: '',
+        isIncomplete: false,
+        imagePreviewUrl: imageSource,
+        imageName,
+      },
+      {
+        ...message,
+        attachments: undefined,
+        isIncomplete: false,
+        imagePreviewUrl: undefined,
+        imageName: undefined,
+      },
+    ];
+  });
+};
+
 export const buildConversationText = (chatMessages: ChatMessage[]): string => {
   return chatMessages
     .map((message) => `${message.role}: ${message.content}`)

@@ -72,8 +72,7 @@ import type {
 import {
   buildConversationText,
   countTextTokens,
-  getRenderableImageName,
-  getRenderableImageSource,
+  hydrateRenderableMessages,
   markLastAssistantMessageIncomplete,
 } from '../utils/chatStreamHelpers';
 import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
@@ -392,12 +391,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       ]);
       const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
 
-      setMessages(snapshot.messages.map((message) => ({
-        ...message,
-        isIncomplete: false,
-        imagePreviewUrl: getRenderableImageSource(message),
-        imageName: getRenderableImageName(message),
-      })));
+      setMessages(hydrateRenderableMessages(snapshot.messages));
       setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
       setMemoryMetrics({
         ...snapshot.memoryMetrics,
