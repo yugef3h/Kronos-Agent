@@ -37,6 +37,34 @@ export const formatUploadSize = (size: number): string => {
   return `${(size / 1024).toFixed(1)} KB`;
 };
 
+const parseLegacyFileAnalyzeMessage = (rawContent: string): {
+  fileName: string;
+  fileExtension: string;
+  prompt: string;
+} | null => {
+  const content = rawContent.trim();
+  const match = /^\[文件\]\s*(.+?)(?:\n需求：([\s\S]*))?$/.exec(content);
+
+  if (!match) {
+    return null;
+  }
+
+  const fileName = match[1]?.trim() || '';
+  if (!fileName) {
+    return null;
+  }
+
+  const prompt = match[2]?.trim() || '';
+  const dotIndex = fileName.lastIndexOf('.');
+  const fileExtension = dotIndex > -1 ? fileName.slice(dotIndex + 1).toLowerCase() : '';
+
+  return {
+    fileName,
+    fileExtension,
+    prompt,
+  };
+};
+
 export const markLastAssistantMessageIncomplete = (
   chatMessages: LocalChatMessage[],
 ): LocalChatMessage[] => {
@@ -95,32 +123,63 @@ export const hydrateRenderableMessages = (chatMessages: ChatMessage[]): LocalCha
     const imageName = getRenderableImageName(message);
     const content = message.content.trim();
 
-    if (!imageSource || !content) {
-      return [{
-        ...message,
-        isIncomplete: false,
-        imagePreviewUrl: imageSource,
-        imageName,
-      }];
+    if (imageSource && content) {
+      // 兼容旧历史快照：服务端曾把“图片 + 文字提示”落成同一条消息。
+      return [
+        {
+          ...message,
+          content: '',
+          isIncomplete: false,
+          imagePreviewUrl: imageSource,
+          imageName,
+        },
+        {
+          ...message,
+          attachments: undefined,
+          isIncomplete: false,
+          imagePreviewUrl: undefined,
+          imageName: undefined,
+        },
+      ];
     }
 
-    // 兼容旧历史快照：服务端曾把“图片 + 文字提示”落成同一条消息。
-    return [
-      {
+    const legacyFileMessage = message.role === 'user' ? parseLegacyFileAnalyzeMessage(content) : null;
+
+    if (legacyFileMessage) {
+      const fileCardMessage: LocalChatMessage = {
         ...message,
         content: '',
         isIncomplete: false,
-        imagePreviewUrl: imageSource,
-        imageName,
-      },
-      {
-        ...message,
-        attachments: undefined,
-        isIncomplete: false,
-        imagePreviewUrl: undefined,
-        imageName: undefined,
-      },
-    ];
+        fileName: legacyFileMessage.fileName,
+        fileExtension: legacyFileMessage.fileExtension || undefined,
+      };
+
+      if (!legacyFileMessage.prompt) {
+        return [fileCardMessage];
+      }
+
+      return [
+        fileCardMessage,
+        {
+          ...message,
+          content: legacyFileMessage.prompt,
+          isIncomplete: false,
+          attachments: undefined,
+          imagePreviewUrl: undefined,
+          imageName: undefined,
+          fileName: undefined,
+          fileExtension: undefined,
+          fileSize: undefined,
+        },
+      ];
+    }
+
+    return [{
+      ...message,
+      isIncomplete: false,
+      imagePreviewUrl: imageSource,
+      imageName,
+    }];
   });
 };
 

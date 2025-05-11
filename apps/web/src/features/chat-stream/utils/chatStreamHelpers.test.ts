@@ -107,4 +107,27 @@ describe('chatStreamHelpers', () => {
     });
     expect(messages[1]?.attachments).toBeUndefined();
   });
+
+  it('splits legacy restored file analysis message into file card and prompt text', () => {
+    const messages = hydrateRenderableMessages([
+      {
+        role: 'user' as const,
+        content: '[文件] 风险评估报告.PDF\n需求：帮我提炼关键风险',
+      },
+    ]);
+
+    expect(messages).toHaveLength(2);
+    expect(messages[0]).toMatchObject({
+      role: 'user',
+      content: '',
+      fileName: '风险评估报告.PDF',
+      fileExtension: 'pdf',
+    });
+    expect(messages[1]).toMatchObject({
+      role: 'user',
+      content: '帮我提炼关键风险',
+    });
+    expect(messages[1]?.fileName).toBeUndefined();
+    expect(messages[1]?.fileExtension).toBeUndefined();
+  });
 });
