@@ -314,7 +314,7 @@ export const TokenEmbeddingPanel = () => {
           </p>
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-600">第一步看 Token 切分，核心步看关联热力图（优先使用后端关联）。</p>
+      <p className="mt-1 text-sm text-slate-600">第一步看 Token 切分，核心步看关联热力图。</p>
       <p className="mt-1 text-xs text-slate-500">
         输入模式：{isSseTemplateMode ? 'SSE Chat Stream 最新问题（默认）' : '自定义文本'}
       </p>
