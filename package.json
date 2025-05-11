@@ -7,6 +7,8 @@
     "dev": "concurrently \"pnpm --filter @kronos/server dev\" \"pnpm --filter @kronos/web dev\"",
     "dev:web": "pnpm --filter @kronos/web dev",
     "dev:server": "pnpm --filter @kronos/server dev",
+    "dev:attention-py": "python3 -m uvicorn apps.attention_py.app:app --host 127.0.0.1 --port 8008 --reload",
+    "install:attention-py": "python3 -m pip install -r apps/attention_py/requirements.txt",
     "build": "pnpm --filter @kronos/core build && pnpm --filter @kronos/server build && pnpm --filter @kronos/web build",
     "cd": "node scripts/git-commit-date.mjs",
     "test": "jest --runInBand",

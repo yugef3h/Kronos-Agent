@@ -24,6 +24,7 @@ const tokenEmbeddingSchema = z.object({
   text: z.string().min(1).max(8000),
   maxChunkSize: z.number().int().min(40).max(500).default(180),
   projectionMethod: z.enum(['random', 'pca', 'umap']).default('pca'),
+  attentionTokenLimit: z.number().int().min(8).max(64).default(24),
   secondaryTokenizer: z.enum(['cl100k_base', 'p50k_base']).optional(),
   secondaryEmbeddingModel: z.string().min(1).optional(),
 });
@@ -76,6 +77,20 @@ const sessionAppendSchema = z.object({
 });
 
 export const chatRoutes = Router();
+
+const persistSessionMessagesSafely = (params: {
+  sessionId: string;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    attachments?: import('../domain/sessionStore.js').AttachmentMeta[];
+  }>;
+}): void => {
+  void appendSessionMessages(params).catch((error) => {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    console.warn(`[chatRoutes] appendSessionMessages failed: ${reason}`);
+  });
+};
 
 chatRoutes.post('/chat-stream', async (request: Request, response: Response) => {
   const parsed = chatSchema.safeParse(request.body);
@@ -168,6 +183,7 @@ chatRoutes.post('/token-embedding/analyze', async (request: Request, response: R
       text: parsed.data.text,
       maxChunkSize: parsed.data.maxChunkSize,
       projectionMethod: parsed.data.projectionMethod,
+      attentionTokenLimit: parsed.data.attentionTokenLimit,
       secondaryTokenizer: parsed.data.secondaryTokenizer,
       secondaryEmbeddingModel: parsed.data.secondaryEmbeddingModel,
     });
@@ -238,7 +254,7 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
   });
 
   if (parsed.data.sessionId) {
-    void appendSessionMessages({
+    persistSessionMessagesSafely({
       sessionId: parsed.data.sessionId,
       messages: [
         { role: 'user', content: parsed.data.prompt },
@@ -286,7 +302,7 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
 
     if (parsed.data.sessionId) {
       const userPrompt = parsed.data.prompt?.trim() || '解释图片';
-      void appendSessionMessages({
+      persistSessionMessagesSafely({
         sessionId: parsed.data.sessionId,
         messages: [
           { role: 'user', content: '', attachments: [attachment] },
@@ -321,7 +337,7 @@ chatRoutes.post('/file/analyze', async (request: Request, response: Response) =>
 
     if (parsed.data.sessionId) {
       const userPrompt = parsed.data.prompt?.trim() || '请解读这个文件';
-      void appendSessionMessages({
+      persistSessionMessagesSafely({
         sessionId: parsed.data.sessionId,
         messages: [
           { role: 'user', content: `[文件] ${parsed.data.fileName}\n需求：${userPrompt}` },

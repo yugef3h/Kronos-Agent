@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { requestTokenEmbeddingAnalysis } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 type TokenKind = 'high-frequency' | 'chinese' | 'english' | 'symbol';
@@ -11,6 +12,8 @@ type ParsedToken = {
   probability: number;
   kind: TokenKind;
 };
+
+type AttentionDataSource = 'embedding-association' | 'frontend-sim';
 
 const MAX_CONTEXT_TOKENS = 8192;
 const ATTENTION_TOKEN_LIMIT = 24;
@@ -117,13 +120,18 @@ const buildAttentionMatrix = (tokens: ParsedToken[]): number[][] => {
 
 export const TokenEmbeddingPanel = () => {
   const latestUserQuestion = usePlaygroundStore((state) => state.latestUserQuestion);
+  const authToken = usePlaygroundStore((state) => state.authToken);
   const [inputText, setInputText] = useState('基于Transformer的LLM在长上下文场景下会变笨。');
   const [isSseTemplateMode, setIsSseTemplateMode] = useState(true);
   const [tokens, setTokens] = useState<ParsedToken[]>([]);
+  const [serverAttentionMatrix, setServerAttentionMatrix] = useState<number[][] | null>(null);
+  const [attentionDataSource, setAttentionDataSource] = useState<AttentionDataSource>('frontend-sim');
+  const [attentionNote, setAttentionNote] = useState('前端模拟注意力（字符语义 + 距离偏置）');
   const [errorText, setErrorText] = useState('');
   const [selectedTokenIndex, setSelectedTokenIndex] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
   const previousModeRef = useRef(isSseTemplateMode);
+  const associationRequestSeqRef = useRef(0);
 
   const activeInputText = isSseTemplateMode
     ? (latestUserQuestion.trim() || SSE_CHAT_STREAM_TEMPLATE_FALLBACK_INPUT)
@@ -136,8 +144,13 @@ export const TokenEmbeddingPanel = () => {
       return [];
     }
 
+    if (serverAttentionMatrix && serverAttentionMatrix.length > 0) {
+      const size = Math.min(attentionTokens.length, serverAttentionMatrix.length);
+      return serverAttentionMatrix.slice(0, size).map((row) => row.slice(0, size));
+    }
+
     return buildAttentionMatrix(attentionTokens);
-  }, [attentionTokens]);
+  }, [attentionTokens, serverAttentionMatrix]);
 
   const contextUsageRatio = useMemo(() => {
     return Number(((tokens.length / MAX_CONTEXT_TOKENS) * 100).toFixed(2));
@@ -162,15 +175,19 @@ export const TokenEmbeddingPanel = () => {
 
   const parseTokens = useCallback(async (sourceText?: string) => {
     const trimmed = (sourceText ?? activeInputText).trim();
+    const requestSeq = associationRequestSeqRef.current + 1;
+    associationRequestSeqRef.current = requestSeq;
 
     if (!trimmed) {
-      // setErrorText('请输入要解析的文本。');
       setTokens([]);
+      setServerAttentionMatrix(null);
+      setAttentionDataSource('frontend-sim');
+      setAttentionNote('前端模拟注意力（字符语义 + 距离偏置）');
+      setErrorText('');
       return;
     }
 
-    try {
-      setIsParsing(true);
+    const buildLocalTokens = async () => {
       const tokenizer = await import('gpt-tokenizer');
       const tokenIds = Array.from(tokenizer.encode(trimmed));
       const probabilities = buildPseudoProbabilities(tokenIds);
@@ -188,17 +205,77 @@ export const TokenEmbeddingPanel = () => {
       });
 
       setTokens(nextTokens);
+      setServerAttentionMatrix(null);
+      setAttentionDataSource('frontend-sim');
+      setAttentionNote('前端模拟注意力（字符语义 + 距离偏置）');
       setSelectedTokenIndex((previousIndex) =>
         Math.min(previousIndex, Math.max(0, nextTokens.length - 1)),
       );
+    };
+
+    try {
+      setIsParsing(true);
+      await buildLocalTokens();
       setErrorText('');
     } catch {
       setErrorText('Token 解析失败，请检查输入内容。');
       setTokens([]);
+      setServerAttentionMatrix(null);
+      setIsParsing(false);
+      return;
     } finally {
       setIsParsing(false);
     }
-  }, [activeInputText]);
+
+    if (!authToken) {
+      return;
+    }
+
+    setAttentionNote('后端 embedding 关联计算中，当前先展示前端模拟结果。');
+
+    void (async () => {
+      try {
+        const analysis = await requestTokenEmbeddingAnalysis({
+          authToken,
+          text: trimmed,
+          attentionTokenLimit: ATTENTION_TOKEN_LIMIT,
+        });
+
+        if (associationRequestSeqRef.current !== requestSeq) {
+          return;
+        }
+
+        const tokenIds = analysis.tokens.map((token) => token.tokenId);
+        const probabilities = buildPseudoProbabilities(tokenIds);
+        const nextTokens: ParsedToken[] = analysis.tokens.map((token, index) => ({
+          index: token.index,
+          id: token.tokenId,
+          text: token.tokenText,
+          displayText: getDisplayTokenText(token.tokenText),
+          probability: probabilities[index],
+          kind: classifyTokenKind(token.tokenText),
+        }));
+
+        setTokens(nextTokens);
+        setServerAttentionMatrix(analysis.attentionAssociation?.matrix || null);
+        setAttentionDataSource(analysis.attentionAssociation ? 'embedding-association' : 'frontend-sim');
+        setAttentionNote(
+          analysis.attentionAssociation?.note || '后端未返回关联矩阵，当前保持前端模拟结果。',
+        );
+        setSelectedTokenIndex((previousIndex) =>
+          Math.min(previousIndex, Math.max(0, nextTokens.length - 1)),
+        );
+      } catch {
+        if (associationRequestSeqRef.current !== requestSeq) {
+          return;
+        }
+
+        setServerAttentionMatrix(null);
+        setAttentionDataSource('frontend-sim');
+        setAttentionNote('后端关联计算失败，当前保持前端模拟结果。');
+      }
+    })();
+  }, [activeInputText, authToken]);
 
   useEffect(() => {
     const hasModeChanged = previousModeRef.current !== isSseTemplateMode;
@@ -212,7 +289,7 @@ export const TokenEmbeddingPanel = () => {
   return (
     <section className="rounded-2xl bg-white/85 p-5 shadow-sm backdrop-blur">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="font-display text-lg text-ink">Token 切分与注意力关联可视化</h2>
+        <h2 className="font-display text-lg text-ink font-bold">Token 切分</h2>
         <div className="flex flex-col items-end gap-1">
           <button
             type="button"
@@ -237,9 +314,12 @@ export const TokenEmbeddingPanel = () => {
           </p>
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-600">纯前端实时渲染：第一步看 Token 切分，核心步看注意力关联。</p>
+      <p className="mt-1 text-sm text-slate-600">第一步看 Token 切分，核心步看关联热力图（优先使用后端关联）。</p>
       <p className="mt-1 text-xs text-slate-500">
         输入模式：{isSseTemplateMode ? 'SSE Chat Stream 最新问题（默认）' : '自定义文本'}
+      </p>
+      <p className="mt-1 text-xs text-slate-500">
+        关联数据源：{attentionDataSource === 'embedding-association' ? '后端关联（可由 Python 微服务或 embedding 生成）' : '前端模拟'}
       </p>
 
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -266,7 +346,7 @@ export const TokenEmbeddingPanel = () => {
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">总 Token 数: {tokens.length}</div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">上下文占用模拟: {contextUsageRatio}% / 8K</div>
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">注意力热力图: {Math.min(tokens.length, ATTENTION_TOKEN_LIMIT)} 个 Token</div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">Tokenizer: gpt-tokenizer (cl100k_base)</div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5">Tokenizer: cl100k_base</div>
       </div>
 
       <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2">
@@ -297,7 +377,8 @@ export const TokenEmbeddingPanel = () => {
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.6fr)]">
         <div className="rounded-xl border border-slate-200 p-2">
-          <p className="mb-2 text-xs text-slate-500">核心步: 注意力关联热力图（行: Query，列: Key）</p>
+          <p className="mb-1 text-xs text-slate-500">核心步: 关联热力图（行: Query，列: Key）</p>
+          <p className="mb-2 text-[11px] text-slate-400">{attentionNote}</p>
           <div
             className="grid gap-1"
             style={{

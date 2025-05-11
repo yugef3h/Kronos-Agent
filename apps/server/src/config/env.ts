@@ -14,6 +14,9 @@ const envSchema = z.object({
   DOUBAO_FIRST_TOKEN_WARN_MS: z.coerce.number().int().positive().default(3000),
   ALLOWED_ORIGIN: z.string().default('http://localhost:5173'),
   LANGGRAPH_ENABLED: z.coerce.boolean().default(false),
+  ATTENTION_PY_ENABLED: z.coerce.boolean().default(false),
+  ATTENTION_PY_BASE_URL: z.string().url().default('http://127.0.0.1:8008'),
+  ATTENTION_PY_TIMEOUT_MS: z.coerce.number().int().positive().default(1200),
 });
 
 export const env = envSchema.parse(process.env);

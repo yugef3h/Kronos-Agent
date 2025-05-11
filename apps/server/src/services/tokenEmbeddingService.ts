@@ -25,10 +25,25 @@ export type AnalyzeTokenAndEmbeddingParams = {
   projectionMethod: ProjectionMethod;
   secondaryTokenizer?: string;
   secondaryEmbeddingModel?: string;
+  attentionTokenLimit?: number;
 };
 
 const SUPPORTED_TOKENIZERS = ['cl100k_base', 'p50k_base'] as const;
 type SupportedTokenizer = (typeof SUPPORTED_TOKENIZERS)[number];
+
+const DEFAULT_ATTENTION_TOKEN_LIMIT = 24;
+
+export type AttentionAssociation = {
+  mode: 'embedding_similarity';
+  tokenLimit: number;
+  embeddingSource: 'doubao' | 'fallback' | 'python-service';
+  matrix: number[][];
+  note: string;
+};
+
+type PythonAttentionResponse = {
+  matrix: number[][];
+};
 
 const estimateOffsets = (sourceText: string, tokenTexts: string[]): Array<{ start: number; end: number }> => {
   const offsets: Array<{ start: number; end: number }> = [];
@@ -121,6 +136,32 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   return numerator / denominator;
 };
 
+const softmax = (values: number[]): number[] => {
+  const max = Math.max(...values);
+  const exps = values.map((value) => Math.exp(value - max));
+  const sum = exps.reduce((acc, value) => acc + value, 0) || 1;
+  return exps.map((value) => value / sum);
+};
+
+const buildCausalAssociationMatrix = (vectors: number[][]): number[][] => {
+  return vectors.map((queryVector, queryIndex) => {
+    const logits = vectors.map((keyVector, keyIndex) => {
+      if (keyIndex > queryIndex) {
+        return Number.NEGATIVE_INFINITY;
+      }
+
+      const similarity = cosineSimilarity(queryVector, keyVector);
+      const distanceBias = Math.exp(-(queryIndex - keyIndex) / 6);
+      return 1.6 * similarity + 0.8 * distanceBias;
+    });
+
+    const validValues = logits.map((value) => (Number.isFinite(value) ? value : -1e9));
+    const weights = softmax(validValues);
+
+    return weights.map((weight, index) => (index > queryIndex ? 0 : Number(weight.toFixed(4))));
+  });
+};
+
 const getTopKNeighborIndices = (vectors: number[][], sourceIndex: number, topK: number): number[] => {
   const source = vectors[sourceIndex];
   const scores: Array<{ index: number; score: number }> = [];
@@ -204,6 +245,65 @@ const embedChunks = async (chunks: string[], embeddingModel: string) => {
   return { vectors, embeddingSource };
 };
 
+const sanitizeTokenForEmbedding = (tokenText: string): string => {
+  if (tokenText.length === 0) {
+    return '[EMPTY]';
+  }
+
+  if (tokenText.trim().length === 0) {
+    return `[WS:${tokenText.length}]`;
+  }
+
+  return tokenText;
+};
+
+const requestPythonAttentionMatrix = async (tokens: string[]): Promise<number[][] | null> => {
+  if (!env.ATTENTION_PY_ENABLED || tokens.length === 0) {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), env.ATTENTION_PY_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${env.ATTENTION_PY_BASE_URL}/attention/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        tokens,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json() as PythonAttentionResponse;
+
+    if (!Array.isArray(payload.matrix) || payload.matrix.length === 0) {
+      return null;
+    }
+
+    return payload.matrix.map((row, queryIndex) =>
+      row.map((value, keyIndex) => {
+        if (keyIndex > queryIndex) {
+          return 0;
+        }
+
+        const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+        return Number(normalized.toFixed(4));
+      }),
+    );
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 export const analyzeTokenAndEmbedding = async (params: AnalyzeTokenAndEmbeddingParams) => {
   // 主分词器固定为 cl100k_base；对比分词器可切换用于差异观察。
   const tokenizerName = sanitizeTokenizer('cl100k_base');
@@ -217,6 +317,34 @@ export const analyzeTokenAndEmbedding = async (params: AnalyzeTokenAndEmbeddingP
 
   const primaryEmbedding = await embedChunks(chunks, embeddingModel);
   const secondaryEmbedding = await embedChunks(chunks, secondaryEmbeddingModel);
+
+  const attentionTokenLimit = Math.max(8, Math.min(params.attentionTokenLimit ?? DEFAULT_ATTENTION_TOKEN_LIMIT, 64));
+  const attentionTokens = tokens.slice(0, attentionTokenLimit);
+  const tokenTextsForEmbedding = attentionTokens.map((token) => sanitizeTokenForEmbedding(token.tokenText));
+
+  const pythonMatrix = await requestPythonAttentionMatrix(tokenTextsForEmbedding);
+  let attentionAssociation: AttentionAssociation;
+
+  if (pythonMatrix) {
+    attentionAssociation = {
+      mode: 'embedding_similarity',
+      tokenLimit: attentionTokens.length,
+      embeddingSource: 'python-service',
+      matrix: pythonMatrix,
+      note: 'Python 微服务 attention（环境变量 ATTENTION_PY_ENABLED=true 时启用）。',
+    };
+  } else {
+    const tokenEmbedding = await embedChunks(tokenTextsForEmbedding, embeddingModel);
+    attentionAssociation = {
+      mode: 'embedding_similarity',
+      tokenLimit: attentionTokens.length,
+      embeddingSource: tokenEmbedding.embeddingSource,
+      matrix: buildCausalAssociationMatrix(tokenEmbedding.vectors),
+      note: env.ATTENTION_PY_ENABLED
+        ? 'Python 微服务不可用，已回退为当前版本（embedding 相似度关联）。'
+        : '当前版本（embedding 相似度关联）；如需 Python 微服务请设置 ATTENTION_PY_ENABLED=true。',
+    };
+  }
 
   // 两套 embedding 使用同一种投影算法，保证可视化对比公平。
   const points = await projectVectorsTo2D({
@@ -253,6 +381,7 @@ export const analyzeTokenAndEmbedding = async (params: AnalyzeTokenAndEmbeddingP
     tokenCount: tokens.length,
     chunkCount: chunks.length,
     tokens,
+    attentionAssociation,
     projection,
     comparison: {
       secondaryTokenizer: secondaryTokenizerName,

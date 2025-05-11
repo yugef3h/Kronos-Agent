@@ -141,6 +141,29 @@ export type FileAnalysisResponse = {
 	extractedCharacters: number;
 };
 
+export type TokenEmbeddingAnalyzeResponse = {
+	tokenizer: string;
+	embeddingModel: string;
+	embeddingSource: 'doubao' | 'fallback';
+	projectionMethod: 'random' | 'pca' | 'umap';
+	tokenCount: number;
+	chunkCount: number;
+	tokens: Array<{
+		index: number;
+		tokenId: number;
+		tokenText: string;
+		start: number;
+		end: number;
+	}>;
+	attentionAssociation?: {
+		mode: 'embedding_similarity';
+		tokenLimit: number;
+		embeddingSource: 'doubao' | 'fallback' | 'python-service';
+		matrix: number[][];
+		note: string;
+	};
+};
+
 export type SessionAppendMessage = {
 	role: 'user' | 'assistant';
 	content: string;
@@ -359,6 +382,34 @@ export const requestFileAnalysis = async (params: {
 	}
 
 	return (await response.json()) as FileAnalysisResponse;
+};
+
+export const requestTokenEmbeddingAnalysis = async (params: {
+	authToken: string;
+	text: string;
+	maxChunkSize?: number;
+	projectionMethod?: 'random' | 'pca' | 'umap';
+	attentionTokenLimit?: number;
+}): Promise<TokenEmbeddingAnalyzeResponse> => {
+	const response = await fetch(apiUrl('/api/token-embedding/analyze'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			text: params.text,
+			maxChunkSize: params.maxChunkSize ?? 180,
+			projectionMethod: params.projectionMethod ?? 'pca',
+			attentionTokenLimit: params.attentionTokenLimit ?? 24,
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request token embedding analysis');
+	}
+
+	return (await response.json()) as TokenEmbeddingAnalyzeResponse;
 };
 
 export const requestAppendSessionMessages = async (params: {

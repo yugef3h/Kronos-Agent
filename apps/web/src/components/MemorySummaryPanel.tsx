@@ -44,7 +44,7 @@ export const MemorySummaryPanel = () => {
 
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
-      <h2 className="font-display text-lg text-ink">Long Context Memory</h2>
+      <h2 className="font-display text-lg text-ink font-bold">长上下文记忆</h2>
       <p className="mt-1 text-sm text-slate-600">滚动摘要 + Token 预算编排已启用，优先保留近期多轮并压缩历史。</p>
       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
         <p>Session messages: {messageCount}</p>
