@@ -29,7 +29,7 @@ export const workflowMenuItems: readonly DropdownMenuItem[] = [
   {
     to: '/workflow/draft',
     label: '创建空白应用',
-    description: '打开工作流草稿页',
+    description: '填写应用信息并初始化空白工作流',
     icon: <DraftIcon />,
   },
 ];

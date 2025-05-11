@@ -33,7 +33,17 @@ const TOKEN_KIND_STYLE: Record<TokenKind, string> = {
 };
 
 const getDisplayTokenText = (text: string): string => {
-  return text.replace(/ /g, '␠').replace(/\n/g, '↵').replace(/\t/g, '⇥') || '∅';
+  // BPE 里部分 token 只是 UTF-8 字节片段（尤其中文），单独 decode 可能是空串或含 U+FFFD。
+  // UI 层只做可读性规整，不改变真实 token id。
+  const normalized = text
+    .replace(/\uFFFD+/g, '')
+    .replace(/\r/g, '↩')
+    .replace(/\n/g, '↵')
+    .replace(/\t/g, '⇥')
+    .replace(/ /g, '␠')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '·');
+
+  return normalized;
 };
 
 const isHighFrequencyToken = (text: string): boolean => {
@@ -188,7 +198,7 @@ export const TokenEmbeddingPanel = () => {
     }
 
     const buildLocalTokens = async () => {
-      const tokenizer = await import('gpt-tokenizer');
+      const tokenizer = await import('gpt-tokenizer/encoding/cl100k_base');
       const tokenIds = Array.from(tokenizer.encode(trimmed));
       const probabilities = buildPseudoProbabilities(tokenIds);
 
@@ -245,16 +255,24 @@ export const TokenEmbeddingPanel = () => {
           return;
         }
 
+        const tokenizer = await import('gpt-tokenizer/encoding/cl100k_base');
         const tokenIds = analysis.tokens.map((token) => token.tokenId);
         const probabilities = buildPseudoProbabilities(tokenIds);
-        const nextTokens: ParsedToken[] = analysis.tokens.map((token, index) => ({
-          index: token.index,
-          id: token.tokenId,
-          text: token.tokenText,
-          displayText: getDisplayTokenText(token.tokenText),
-          probability: probabilities[index],
-          kind: classifyTokenKind(token.tokenText),
-        }));
+        const nextTokens: ParsedToken[] = analysis.tokens.map((token, index) => {
+          // 优先用 tokenId 本地 decode；若为空再回退到后端 offset 切片，尽量减少“看起来空白”的 token。
+          const decodedTokenText = tokenizer.decode([token.tokenId]);
+          const sourceSlice = trimmed.slice(token.start, token.end);
+          const resolvedText = decodedTokenText || sourceSlice || '';
+
+          return {
+            index: token.index,
+            id: token.tokenId,
+            text: resolvedText,
+            displayText: getDisplayTokenText(resolvedText),
+            probability: probabilities[index],
+            kind: classifyTokenKind(resolvedText),
+          };
+        });
 
         setTokens(nextTokens);
         setServerAttentionMatrix(analysis.attentionAssociation?.matrix || null);
