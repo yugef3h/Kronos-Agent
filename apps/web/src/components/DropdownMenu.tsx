@@ -67,27 +67,17 @@ export const DropdownMenu = ({ triggerTo, triggerLabel, triggerEnd = false, item
               key={to}
               to={to}
               end={end}
-              className={({ isActive }) =>
-                `flex items-start gap-3 rounded-xl px-3 py-3 transition-colors ${
-                  isActive ? 'bg-cyan-50 text-cyan-900' : 'text-slate-700 hover:bg-slate-50'
-                }`
-              }
+              className="flex items-start gap-3 rounded-xl px-3 py-3 text-slate-700 transition-colors hover:bg-slate-50"
             >
-              {({ isActive }) => (
-                <>
-                  <span
-                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                      isActive ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {icon}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold">{label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span>
-                  </span>
-                </>
-              )}
+              <>
+                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                  {icon}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">{description}</span>
+                </span>
+              </>
             </NavLink>
           ))}
         </div>
