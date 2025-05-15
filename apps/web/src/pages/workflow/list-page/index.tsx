@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-
-import { createWorkflowApp, listWorkflowApps } from '../features/workflow/workflowAppStore';
+import { createWorkflowApp, listWorkflowApps } from '../../../features/workflow/workflowAppStore';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
