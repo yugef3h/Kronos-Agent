@@ -137,6 +137,7 @@ export const TokenEmbeddingPanel = () => {
   const [serverAttentionMatrix, setServerAttentionMatrix] = useState<number[][] | null>(null);
   const [attentionDataSource, setAttentionDataSource] = useState<AttentionDataSource>('frontend-sim');
   const [attentionNote, setAttentionNote] = useState('前端模拟注意力（字符语义 + 距离偏置）');
+  const [hasPythonServiceAttention, setHasPythonServiceAttention] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [selectedTokenIndex, setSelectedTokenIndex] = useState(0);
   const [isParsing, setIsParsing] = useState(false);
@@ -193,6 +194,7 @@ export const TokenEmbeddingPanel = () => {
       setServerAttentionMatrix(null);
       setAttentionDataSource('frontend-sim');
       setAttentionNote('前端模拟注意力（字符语义 + 距离偏置）');
+      setHasPythonServiceAttention(false);
       setErrorText('');
       return;
     }
@@ -218,6 +220,7 @@ export const TokenEmbeddingPanel = () => {
       setServerAttentionMatrix(null);
       setAttentionDataSource('frontend-sim');
       setAttentionNote('前端模拟注意力（字符语义 + 距离偏置）');
+      setHasPythonServiceAttention(false);
       setSelectedTokenIndex((previousIndex) =>
         Math.min(previousIndex, Math.max(0, nextTokens.length - 1)),
       );
@@ -231,6 +234,7 @@ export const TokenEmbeddingPanel = () => {
       setErrorText('Token 解析失败，请检查输入内容。');
       setTokens([]);
       setServerAttentionMatrix(null);
+      setHasPythonServiceAttention(false);
       setIsParsing(false);
       return;
     } finally {
@@ -274,12 +278,17 @@ export const TokenEmbeddingPanel = () => {
           };
         });
 
+        const hasPythonAssociation = analysis.attentionAssociation?.embeddingSource === 'python-service';
+
         setTokens(nextTokens);
-        setServerAttentionMatrix(analysis.attentionAssociation?.matrix || null);
-        setAttentionDataSource(analysis.attentionAssociation ? 'embedding-association' : 'frontend-sim');
+        setServerAttentionMatrix(hasPythonAssociation ? (analysis.attentionAssociation?.matrix || null) : null);
+        setAttentionDataSource(hasPythonAssociation ? 'embedding-association' : 'frontend-sim');
         setAttentionNote(
-          analysis.attentionAssociation?.note || '后端未返回关联矩阵，当前保持前端模拟结果。',
+          hasPythonAssociation
+            ? (analysis.attentionAssociation?.note || 'Python 微服务已返回真实向量关联矩阵。')
+            : 'Python 微服务未开启或未返回真实向量，核心关联视图已隐藏。',
         );
+        setHasPythonServiceAttention(hasPythonAssociation);
         setSelectedTokenIndex((previousIndex) =>
           Math.min(previousIndex, Math.max(0, nextTokens.length - 1)),
         );
@@ -290,7 +299,8 @@ export const TokenEmbeddingPanel = () => {
 
         setServerAttentionMatrix(null);
         setAttentionDataSource('frontend-sim');
-        setAttentionNote('后端关联计算失败，当前保持前端模拟结果。');
+        setAttentionNote('Python 微服务关联计算失败或不可用，核心关联视图已隐藏。');
+        setHasPythonServiceAttention(false);
       }
     })();
   }, [activeInputText, authToken]);
@@ -393,78 +403,86 @@ export const TokenEmbeddingPanel = () => {
         </p>
       )}
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.6fr)]">
-        <div className="rounded-xl border border-slate-200 p-2">
-          <p className="mb-1 text-xs text-slate-500">核心步: 关联热力图（行: Query，列: Key）</p>
-          <p className="mb-2 text-[11px] text-slate-400">{attentionNote}</p>
-          <div
-            className="grid gap-1"
-            style={{
-              gridTemplateColumns: `repeat(${Math.max(1, attentionTokens.length)}, minmax(0, 1fr))`,
-            }}
-          >
-            {attentionMatrix.flatMap((row, queryIndex) =>
-              row.map((value, keyIndex) => (
-                <button
-                  key={`${queryIndex}-${keyIndex}`}
-                  type="button"
-                  onClick={() => setSelectedTokenIndex(queryIndex)}
-                  className="aspect-square rounded-md border border-slate-100"
-                  style={{
-                    backgroundColor: `rgba(14, 116, 144, ${Math.min(1, value * 2.2)})`,
-                  }}
-                  title={`q${queryIndex}(${attentionTokens[queryIndex]?.displayText}) -> k${keyIndex}(${attentionTokens[keyIndex]?.displayText}): ${value.toFixed(4)}`}
-                />
-              )),
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 p-2 text-xs">
-          <p className="font-semibold text-slate-700">当前 Query Token: #{selectedTokenIndex}</p>
-          <p className="mt-1 rounded bg-slate-100 px-2 py-1 text-slate-700">
-            {attentionTokens[selectedTokenIndex]?.displayText || '未选择'}
-          </p>
-
-          <p className="mt-2 text-slate-500">Top 注意力关联</p>
-          <div className="mt-1 space-y-1">
-            {selectedAssociations.map((item) => (
-              <div key={item.index} className="rounded border border-slate-100 bg-slate-50 px-2 py-1">
-                <p className="truncate text-slate-700">
-                  k{item.index}: {item.token.displayText}
-                </p>
-                <p className="text-[11px] text-slate-500">score: {item.score.toFixed(4)}</p>
+      {hasPythonServiceAttention ? (
+        <>
+          <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.6fr)]">
+            <div className="rounded-xl border border-slate-200 p-2">
+              <p className="mb-1 text-xs text-slate-500">核心步: 关联热力图（行: Query，列: Key）</p>
+              <p className="mb-2 text-[11px] text-slate-400">{attentionNote}</p>
+              <div
+                className="grid gap-1"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.max(1, attentionTokens.length)}, minmax(0, 1fr))`,
+                }}
+              >
+                {attentionMatrix.flatMap((row, queryIndex) =>
+                  row.map((value, keyIndex) => (
+                    <button
+                      key={`${queryIndex}-${keyIndex}`}
+                      type="button"
+                      onClick={() => setSelectedTokenIndex(queryIndex)}
+                      className="aspect-square rounded-md border border-slate-100"
+                      style={{
+                        backgroundColor: `rgba(14, 116, 144, ${Math.min(1, value * 2.2)})`,
+                      }}
+                      title={`q${queryIndex}(${attentionTokens[queryIndex]?.displayText}) -> k${keyIndex}(${attentionTokens[keyIndex]?.displayText}): ${value.toFixed(4)}`}
+                    />
+                  )),
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </div>
 
-      <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2 text-xs">
-        <p className="mb-2 text-slate-500">Token 详情（ID / 概率 / 类型）</p>
-        <table className="w-full table-fixed border-collapse">
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="w-16 py-1">序号</th>
-              <th className="w-24 py-1">ID</th>
-              <th className="w-24 py-1">概率</th>
-              <th className="w-28 py-1">类型</th>
-              <th className="py-1">文本</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tokens.map((token) => (
-              <tr key={`detail-${token.index}-${token.id}`} className="border-t border-slate-100 text-slate-700">
-                <td className="py-1">{token.index}</td>
-                <td className="py-1">{token.id}</td>
-                <td className="py-1">{(token.probability * 100).toFixed(2)}%</td>
-                <td className="py-1">{token.kind}</td>
-                <td className="truncate py-1" title={token.text}>{token.displayText}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            <div className="rounded-xl border border-slate-200 p-2 text-xs">
+              <p className="font-semibold text-slate-700">当前 Query Token: #{selectedTokenIndex}</p>
+              <p className="mt-1 rounded bg-slate-100 px-2 py-1 text-slate-700">
+                {attentionTokens[selectedTokenIndex]?.displayText || '未选择'}
+              </p>
+
+              <p className="mt-2 text-slate-500">Top 注意力关联</p>
+              <div className="mt-1 space-y-1">
+                {selectedAssociations.map((item) => (
+                  <div key={item.index} className="rounded border border-slate-100 bg-slate-50 px-2 py-1">
+                    <p className="truncate text-slate-700">
+                      k{item.index}: {item.token.displayText}
+                    </p>
+                    <p className="text-[11px] text-slate-500">score: {item.score.toFixed(4)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2 text-xs">
+            <p className="mb-2 text-slate-500">Token 详情（ID / 概率 / 类型）</p>
+            <table className="w-full table-fixed border-collapse">
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="w-16 py-1">序号</th>
+                  <th className="w-24 py-1">ID</th>
+                  <th className="w-24 py-1">概率</th>
+                  <th className="w-28 py-1">类型</th>
+                  <th className="py-1">文本</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.map((token) => (
+                  <tr key={`detail-${token.index}-${token.id}`} className="border-t border-slate-100 text-slate-700">
+                    <td className="py-1">{token.index}</td>
+                    <td className="py-1">{token.id}</td>
+                    <td className="py-1">{(token.probability * 100).toFixed(2)}%</td>
+                    <td className="py-1">{token.kind}</td>
+                    <td className="truncate py-1" title={token.text}>{token.displayText}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          未检测到 Python 微服务生成的真实向量 Token，已隐藏核心关联热力图与详情区域。
+        </p>
+      )}
     </section>
   );
 };
