@@ -323,8 +323,8 @@ export const TokenEmbeddingPanel = () => {
             type="button"
             onClick={() => setIsSseTemplateMode((prev) => !prev)}
             className={`relative inline-flex h-7 w-14 items-center rounded-full border px-1 transition ${isSseTemplateMode
-                ? 'border-cyan-300 bg-cyan-500/90'
-                : 'border-slate-300 bg-slate-300/90'
+              ? 'border-cyan-300 bg-cyan-500/90'
+              : 'border-slate-300 bg-slate-300/90'
               }`}
             aria-pressed={isSseTemplateMode}
             aria-label="切换 SSE 模版输入"
@@ -377,20 +377,23 @@ export const TokenEmbeddingPanel = () => {
 
       {tokens.length > 0 && (<div className="mt-3 max-h-44 overflow-auto rounded-xl border border-slate-200 p-2">
         <div className="flex flex-wrap gap-2">
-          {tokens.map((token) => (
-            <button
-              key={`${token.index}-${token.id}`}
-              type="button"
-              onClick={() => setSelectedTokenIndex(token.index)}
-              className={`min-w-[90px] rounded-xl border px-2 py-1 text-left text-xs transition hover:-translate-y-0.5 ${TOKEN_KIND_STYLE[token.kind]} ${selectedTokenIndex === token.index ? 'ring-2 ring-cyan-300' : ''
-                }`}
-              title={`token_${token.index}`}
-            >
-              <p className="truncate font-medium">{token.displayText}</p>
-              <p className="text-[11px] opacity-80">ID: {token.id}</p>
-              <p className="text-[11px] opacity-80">P: {(token.probability * 100).toFixed(2)}%</p>
-            </button>
-          ))}
+          {tokens.map((token) => {
+            if (!token?.displayText) return null;
+            return (
+              <button
+                key={`${token.index}-${token.id}`}
+                type="button"
+                onClick={() => setSelectedTokenIndex(token.index)}
+                className={`min-w-[90px] rounded-xl border px-2 py-1 text-left text-xs transition hover:-translate-y-0.5 ${TOKEN_KIND_STYLE[token.kind]} ${selectedTokenIndex === token.index ? 'ring-2 ring-cyan-300' : ''
+                  }`}
+                title={`token_${token.index}`}
+              >
+                <p className="truncate font-medium">{token.displayText}</p>
+                <p className="text-[11px] opacity-80">ID: {token.id}</p>
+                <p className="text-[11px] opacity-80">P: {(token.probability * 100).toFixed(2)}%</p>
+              </button>
+            )
+          })}
         </div>
       </div>
       )}
