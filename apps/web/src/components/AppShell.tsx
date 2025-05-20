@@ -2,18 +2,52 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { DropdownMenu } from './DropdownMenu';
 import { workflowMenuItems } from './workflowNavMenuConfig';
 
+type NavIcon = 'home' | 'workflow' | 'memory';
+
 type NavItem = {
   to: string;
   label: string;
+  icon: NavIcon;
   end?: boolean;
 };
 
 // 导航配置（不变）
 const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/', label: '首页', end: true },
-  { to: '/workflow', label: '工作流' },
-  { to: '/memory', label: '记忆' },
+  { to: '/', label: '首页', icon: 'home', end: true },
+  { to: '/workflow', label: '工作流', icon: 'workflow' },
+  { to: '/memory', label: '记忆', icon: 'memory' },
 ];
+
+const renderNavIcon = (icon: NavIcon) => {
+  const iconClassName = 'h-4 w-4';
+
+  if (icon === 'home') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClassName}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5 12 3l9 7.5" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5.5 9.5V21h13V9.5" />
+      </svg>
+    );
+  }
+
+  if (icon === 'workflow') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClassName}>
+        <circle cx="6" cy="6" r="2.2" />
+        <circle cx="18" cy="12" r="2.2" />
+        <circle cx="6" cy="18" r="2.2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.2 7.1 15.8 10.9M8.2 16.9l7.6-3.8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClassName}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 5.5h12v13H6z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9.5h6M9 13h6M9 16.5h4" />
+    </svg>
+  );
+};
 
 export const AppShell = () => {
   return (
@@ -39,32 +73,21 @@ export const AppShell = () => {
             {/* 导航菜单 */}
             <nav className="flex flex-wrap gap-2">
               {NAV_ITEMS.map((item) => {
-                if (item.to === '/workflow') {
-                  return (
-                    <DropdownMenu
-                      key={item.to}
-                      triggerTo={item.to}
-                      triggerLabel={item.label}
-                      triggerEnd
-                      items={workflowMenuItems}
-                    />
-                  );
-                }
-
                 return (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     end={item.end}
                     className={({ isActive }) =>
-                      `rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                      `inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
                         isActive
                           ? 'border-cyan-500 bg-cyan-600 text-white shadow-md'
                           : 'border-slate-200 bg-white/90 text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
                       }`
                     }
                   >
-                    {item.label}
+                    {renderNavIcon(item.icon)}
+                    <span>{item.label}</span>
                   </NavLink>
                 );
               })}
