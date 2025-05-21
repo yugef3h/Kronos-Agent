@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
-  BackgroundVariant,
   Controls,
   Handle,
   MarkerType,
@@ -17,12 +16,18 @@ import {
   type Node,
   type NodeProps,
 } from 'reactflow';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import 'reactflow/dist/style.css';
-import { CUSTOM_EDGE, ITERATION_CHILDREN_Z_INDEX, NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '../constants';
+import {
+  CUSTOM_EDGE,
+  ITERATION_CHILDREN_Z_INDEX,
+  NODE_WIDTH_X_OFFSET,
+  START_INITIAL_POSITION,
+} from '../constants';
 import customEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
+import { SearchBox } from '../compts/search-box';
 
 type CanvasNodeKind = 'trigger' | 'agent' | 'end';
 type AppendableNodeKind = Exclude<CanvasNodeKind, 'trigger'>;
@@ -54,7 +59,11 @@ const createNodeData = (kind: AppendableNodeKind): CanvasNodeData => {
   };
 };
 
-const createNodeFromSource = (sourceNode: Node<CanvasNodeData>, kind: AppendableNodeKind, index: number): Node<CanvasNodeData> => {
+const createNodeFromSource = (
+  sourceNode: Node<CanvasNodeData>,
+  kind: AppendableNodeKind,
+  index: number,
+): Node<CanvasNodeData> => {
   const x = sourceNode.position.x + 320;
   const y = sourceNode.position.y + index * 120;
 
@@ -68,6 +77,7 @@ const createNodeFromSource = (sourceNode: Node<CanvasNodeData>, kind: Appendable
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { setNodes, setEdges, getNode, getEdges } = useReactFlow<CanvasNodeData, Edge>();
   const canAppend = data.kind !== 'end';
 
@@ -110,10 +120,38 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     [getEdges, getNode, id, setEdges, setNodes],
   );
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as HTMLDivElement)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="group relative min-w-[220px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] transition hover:border-blue-300">
-      {data.kind !== 'trigger' ? <Handle id="in" type="target" position={Position.Left} className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500" /> : null}
-      {data.kind !== 'end' ? <Handle id="out" type="source" position={Position.Right} className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500" /> : null}
+      {data.kind !== 'trigger' ? (
+        <Handle
+          id="in"
+          type="target"
+          position={Position.Left}
+          className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
+        />
+      ) : null}
+      {data.kind !== 'end' ? (
+        <Handle
+          id="out"
+          type="source"
+          position={Position.Right}
+          className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
+        />
+      ) : null}
 
       <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
       <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
@@ -131,27 +169,12 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             +
           </button>
 
-          {menuOpen ? (
-            <div
-              className="absolute left-10 top-1/2 z-20 w-40 -translate-y-1/2 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <button
-                type="button"
-                className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                onClick={() => appendNode('agent')}
-              >
-                添加 LLM
-              </button>
-              <button
-                type="button"
-                className="mt-1 w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                onClick={() => appendNode('end')}
-              >
-                添加结束
-              </button>
-            </div>
-          ) : null}
+          <SearchBox
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            onAppendNode={appendNode}
+            menuRef={menuRef}
+          />
         </div>
       ) : null}
     </div>
@@ -164,39 +187,36 @@ const nodeTypes = {
 
 const edgeTypes = {
   [CUSTOM_EDGE]: customEdge,
-}
+};
 
 export const WorkflowDraftPage = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
 
-  const initialNodes = useMemo<Node<CanvasNodeData>[]>(
-    () => {
-      const nodes = [
-        {
-          id: 'trigger-1',
-          type: 'workflow',
-          data: {
-            kind: 'trigger',
-            title: '用户输入',
-            subtitle: '开始',
-          },
+  const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
+    const nodes = [
+      {
+        id: 'trigger-1',
+        type: 'workflow',
+        data: {
+          kind: 'trigger',
+          title: '用户输入',
+          subtitle: '开始',
         },
-      ] as Node<CanvasNodeData>[];
-      const firstNode = nodes[0]
+      },
+    ] as Node<CanvasNodeData>[];
+    const firstNode = nodes[0];
 
-      if (!firstNode?.position) {
-        nodes.forEach((node, index) => {
-          node.position = {
-            x: START_INITIAL_POSITION.x + index * NODE_WIDTH_X_OFFSET,
-            y: START_INITIAL_POSITION.y,
-          }
-        })
-      }
-      return nodes;
-    },
-    [],
-  );
+    if (!firstNode?.position) {
+      nodes.forEach((node, index) => {
+        node.position = {
+          x: START_INITIAL_POSITION.x + index * NODE_WIDTH_X_OFFSET,
+          y: START_INITIAL_POSITION.y,
+        };
+      });
+    }
+    return nodes;
+  }, []);
 
   const [nodes, , onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -239,15 +259,18 @@ export const WorkflowDraftPage = () => {
   }
 
   return (
-    <section className="space-y-4">
-
-      <div className="rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">Draft</p>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">应用 ID：{appId}</span>
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+            Draft
+          </p>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            应用 ID：{appId}
+          </span>
         </div>
 
-        <div className="h-[68vh] min-h-[480px] overflow-hidden rounded-b-3xl">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-b-3xl">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -266,6 +289,7 @@ export const WorkflowDraftPage = () => {
             nodesFocusable={false}
             edgesFocusable={false}
             panOnScroll={false}
+            zoomOnScroll
             selectionKeyCode={null}
             className="bg-white"
             proOptions={{ hideAttribution: true }}

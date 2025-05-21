@@ -1,6 +1,4 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { DropdownMenu } from './DropdownMenu';
-import { workflowMenuItems } from './workflowNavMenuConfig';
 
 type NavIcon = 'home' | 'workflow' | 'memory';
 
@@ -51,7 +49,7 @@ const renderNavIcon = (icon: NavIcon) => {
 
 export const AppShell = () => {
   return (
-    <main className="relative min-h-screen bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
+    <main className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
       {/* 顶部渐变遮罩（优化层级） */}
       <div 
         aria-hidden 
@@ -59,7 +57,7 @@ export const AppShell = () => {
       />
 
       {/* 头部导航栏 - 核心优化区域 */}
-      <header className="sticky top-0 z-50">
+      <header className="sticky top-0 z-50 shrink-0">
         {/* 导航容器：背景、模糊、边框、内边距统一优化 */}
         <div className="mx-auto max-w-[1680px] px-3 md:px-4">
           <div className="flex flex-col gap-3 py-2 lg:flex-row lg:items-center lg:justify-between">
@@ -100,7 +98,7 @@ export const AppShell = () => {
       </header>
 
       {/* 内容区域（优化内边距） */}
-      <div className="mx-auto max-w-[1680px] p-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 p-3">
         <Outlet />
       </div>
     </main>
