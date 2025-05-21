@@ -32,6 +32,26 @@ const TOKEN_KIND_STYLE: Record<TokenKind, string> = {
   symbol: 'border-slate-200 bg-slate-100 text-slate-500',
 };
 
+const replaceUnsupportedControlChars = (text: string): string => {
+  return Array.from(text, (char) => {
+    const codePoint = char.codePointAt(0);
+
+    if (codePoint === undefined) {
+      return char;
+    }
+
+    const isControlChar =
+      (codePoint >= 0x00 && codePoint <= 0x08)
+      || codePoint === 0x0b
+      || codePoint === 0x0c
+      || (codePoint >= 0x0e && codePoint <= 0x1f)
+      || codePoint === 0x7f
+      || (codePoint >= 0x80 && codePoint <= 0x9f);
+
+    return isControlChar ? '·' : char;
+  }).join('');
+};
+
 const getDisplayTokenText = (text: string): string => {
   // BPE 里部分 token 只是 UTF-8 字节片段（尤其中文），单独 decode 可能是空串或含 U+FFFD。
   // UI 层只做可读性规整，不改变真实 token id。
@@ -41,9 +61,9 @@ const getDisplayTokenText = (text: string): string => {
     .replace(/\n/g, '↵')
     .replace(/\t/g, '⇥')
     .replace(/ /g, '␠')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '·');
+  ;
 
-  return normalized;
+  return replaceUnsupportedControlChars(normalized);
 };
 
 const isHighFrequencyToken = (text: string): boolean => {

@@ -4,6 +4,24 @@ import type { LangChainStreamEvent } from './langchainChatService.js';
 import { chatModel, toolRegistry } from './langchainChatService.js';
 import type { Message } from '../domain/sessionStore.js';
 
+type MessageTextPart = {
+  text?: unknown;
+};
+
+type LangGraphStreamState = {
+  messages?: BaseMessage[];
+};
+
+const readMessageType = (message: BaseMessage): string | undefined => {
+  const maybeGetType = (message as { _getType?: unknown })._getType;
+  if (typeof maybeGetType === 'function') {
+    return maybeGetType.call(message) as string;
+  }
+
+  const maybeType = (message as { type?: unknown }).type;
+  return typeof maybeType === 'string' ? maybeType : undefined;
+};
+
 const toLangChainMessage = (message: Message): BaseMessage => {
   if (message.role === 'user') {
     return new HumanMessage(message.content);
@@ -26,7 +44,7 @@ const createTimelineEvent = (
 
 const readMessageText = (message: BaseMessage | undefined): string => {
   if (!message) return '';
-  const raw = (message as any).content;
+  const raw: unknown = message.content;
 
   if (typeof raw === 'string') return raw;
   if (Array.isArray(raw)) {
@@ -34,7 +52,7 @@ const readMessageText = (message: BaseMessage | undefined): string => {
       .map((item) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && item !== null) {
-          const maybeText = (item as { text?: unknown }).text;
+          const maybeText = (item as MessageTextPart).text;
           return typeof maybeText === 'string' ? maybeText : '';
         }
         return '';
@@ -43,7 +61,7 @@ const readMessageText = (message: BaseMessage | undefined): string => {
   }
 
   if (typeof raw === 'object' && raw !== null) {
-    const maybeText = (raw as { text?: unknown }).text;
+    const maybeText = (raw as MessageTextPart).text;
     return typeof maybeText === 'string' ? maybeText : '';
   }
 
@@ -91,13 +109,13 @@ export async function* streamLangGraphReply(params: {
   let previousText = '';
 
   for await (const state of stream) {
-    const messages = (state as any)?.messages as BaseMessage[] | undefined;
+    const messages = (state as LangGraphStreamState).messages;
     if (!messages || messages.length === 0) {
       continue;
     }
 
     const lastAssistant = [...messages].reverse().find((msg) => {
-      const type = (msg as any)?._getType?.() || (msg as any)?.type;
+      const type = readMessageType(msg);
       return type === 'ai' || type === 'assistant';
     });
 

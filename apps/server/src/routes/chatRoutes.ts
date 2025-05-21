@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import { createReadStream } from 'fs';
+import type { AttachmentMeta } from '../domain/sessionStore.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
@@ -83,7 +84,7 @@ const persistSessionMessagesSafely = (params: {
   messages: Array<{
     role: 'user' | 'assistant';
     content: string;
-    attachments?: import('../domain/sessionStore.js').AttachmentMeta[];
+    attachments?: AttachmentMeta[];
   }>;
 }): void => {
   void appendSessionMessages(params).catch((error) => {
