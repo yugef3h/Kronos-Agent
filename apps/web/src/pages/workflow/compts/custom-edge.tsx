@@ -8,8 +8,12 @@ import {
   getBezierPath,
   Position,
 } from 'reactflow'
-import { NodeRunningStatus } from '../types/common'
+import {
+  type CommonEdgeType,
+  NodeRunningStatus,
+} from '../types/common'
 import { getEdgeColor } from '../utils/edge'
+import { resolveEdgeRuntimeData } from '../utils/edge-data'
 import { ErrorHandleTypeEnum } from '../types/error-handle'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 
@@ -22,7 +26,7 @@ const CustomEdge = ({
   targetX,
   targetY,
   selected,
-}: EdgeProps) => {
+}: EdgeProps<CommonEdgeType>) => {
   const [
     edgePath,
   ] = getBezierPath({
@@ -35,9 +39,11 @@ const CustomEdge = ({
     curvature: 0.16,
   })
   const {
+    _connectedNodeIsHovering,
     _sourceRunningStatus,
     _targetRunningStatus,
-  } = data
+    _waitingRun,
+  } = resolveEdgeRuntimeData(data)
 
   const linearGradientId = useMemo(() => {
     if (
@@ -63,11 +69,11 @@ const CustomEdge = ({
     if (linearGradientId)
       return `url(#${linearGradientId})`
 
-    if (data?._connectedNodeIsHovering)
+    if (_connectedNodeIsHovering)
       return getEdgeColor(NodeRunningStatus.Running, sourceHandleId === ErrorHandleTypeEnum.failBranch)
 
     return getEdgeColor()
-  }, [data._connectedNodeIsHovering, linearGradientId, selected, sourceHandleId])
+  }, [_connectedNodeIsHovering, linearGradientId, selected, sourceHandleId])
 
   return (
     <>
@@ -92,7 +98,7 @@ const CustomEdge = ({
         style={{
           stroke,
           strokeWidth: 2,
-          opacity: data._waitingRun ? 0.7 : 1,
+          opacity: _waitingRun ? 0.7 : 1,
         }}
       />
     </>

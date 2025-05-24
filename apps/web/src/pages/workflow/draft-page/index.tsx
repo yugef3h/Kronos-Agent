@@ -12,22 +12,22 @@ import {
   useNodesState,
   useReactFlow,
   type Connection,
-  type Edge,
   type Node,
   type NodeProps,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-
-import 'reactflow/dist/style.css';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants';
-import customEdge from '../compts/custom-edge';
+import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import { SearchBox } from '../compts/search-box';
+import 'reactflow/dist/style.css';
+import { BlockEnum, type Edge } from '../types/common';
+import { createWorkflowEdgeData } from '../utils/edge-data';
 
 type CanvasNodeKind = 'trigger' | 'agent' | 'end';
 type AppendableNodeKind = Exclude<CanvasNodeKind, 'trigger'>;
@@ -36,6 +36,12 @@ type CanvasNodeData = {
   kind: CanvasNodeKind;
   title: string;
   subtitle: string;
+};
+
+const CANVAS_NODE_KIND_TO_BLOCK: Record<CanvasNodeKind, BlockEnum> = {
+  trigger: BlockEnum.Start,
+  agent: BlockEnum.LLM,
+  end: BlockEnum.End,
 };
 
 const createNodeId = (kind: AppendableNodeKind): string => {
@@ -97,11 +103,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         addEdge(
           {
             id: edgeId,
+            type: CUSTOM_EDGE,
             source: id,
             target: nextNode.id,
             sourceHandle: 'out',
             targetHandle: 'in',
-            type: 'smoothstep',
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: '#94a3b8',
@@ -110,6 +116,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               stroke: '#94a3b8',
               strokeWidth: 1.6,
             },
+            data: createWorkflowEdgeData({
+              sourceType: CANVAS_NODE_KIND_TO_BLOCK[sourceNode.data.kind],
+              targetType: CANVAS_NODE_KIND_TO_BLOCK[nextNode.data.kind],
+            }),
           },
           edges,
         ),
@@ -157,10 +167,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
 
       {canAppend ? (
-        <div className="absolute -right-4 top-1/2 -translate-y-1/2">
+        <div className="absolute -right-3 top-1/2 -translate-y-1/2">
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-blue-200 bg-white text-lg font-semibold text-blue-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-blue-50"
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-white text-lg text-blue-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-blue-50"
             onClick={(event) => {
               event.stopPropagation();
               setMenuOpen((prev) => !prev);
@@ -186,7 +196,7 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  [CUSTOM_EDGE]: customEdge,
+  [CUSTOM_EDGE]: CustomEdge,
 };
 
 export const WorkflowDraftPage = () => {
@@ -229,6 +239,13 @@ export const WorkflowDraftPage = () => {
 
       const edgeId = `${connection.source}-${connection.sourceHandle ?? 'out'}-${connection.target}-${connection.targetHandle ?? 'in'}`;
       setEdges((current) => {
+        const sourceNode = nodes.find((node) => node.id === connection.source);
+        const targetNode = nodes.find((node) => node.id === connection.target);
+
+        if (!sourceNode || !targetNode) {
+          return current;
+        }
+
         if (current.some((item) => item.id === edgeId)) {
           return current;
         }
@@ -237,7 +254,7 @@ export const WorkflowDraftPage = () => {
           {
             ...connection,
             id: edgeId,
-            type: 'smoothstep',
+            type: CUSTOM_EDGE,
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: '#94a3b8',
@@ -246,12 +263,16 @@ export const WorkflowDraftPage = () => {
               stroke: '#94a3b8',
               strokeWidth: 1.6,
             },
+            data: createWorkflowEdgeData({
+              sourceType: CANVAS_NODE_KIND_TO_BLOCK[sourceNode.data.kind],
+              targetType: CANVAS_NODE_KIND_TO_BLOCK[targetNode.data.kind],
+            }),
           },
           current,
         );
       });
     },
-    [setEdges],
+    [nodes, setEdges],
   );
 
   if (!appId) {

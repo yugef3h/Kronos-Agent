@@ -1,6 +1,11 @@
 html {
     --color-workflow-canvas-workflow-bg: #f2f4f7;
     --color-workflow-canvas-workflow-dot-color: #8585ad26;
+    --color-workflow-link-line-normal: #676f83;
+    --color-workflow-link-line-handle: #5289ff;
+    --color-workflow-link-line-success-handle: #17b26a;
+    --color-workflow-link-line-error-handle: #f04438;
+    --color-workflow-link-line-failure-handle: #f79009;
 }
 
 .bg-workflow-canvas-workflow-bg {
