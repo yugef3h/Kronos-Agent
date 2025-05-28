@@ -25,7 +25,7 @@ import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import { SearchBox } from '../compts/search-box';
 import 'reactflow/dist/style.css';
-import { BlockEnum, type Edge } from '../types/common';
+import { BlockEnum, type CommonEdgeType, type Edge } from '../types/common';
 import { createWorkflowEdgeData } from '../utils/edge-data';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
@@ -55,16 +55,16 @@ const createNodeData = (kind: AppendableNodeKind): CanvasNodeData => {
   if (kind === 'agent') {
     return {
       kind,
-      title: 'LLM',
-      subtitle: '豆包',
+      title: '豆包',
+      subtitle: 'LLM',
       selected: false,
     };
   }
 
   return {
     kind,
-    title: '结束',
-    subtitle: '直接回复',
+    title: '产物',
+    subtitle: '输出',
     selected: false,
   };
 };
@@ -149,7 +149,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   }, []);
 
   return (
-    <div className="group relative min-w-[220px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] transition hover:border-blue-300">
+    <div
+      className={`group relative min-w-[220px] rounded-2xl border bg-white px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] transition ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}
+    >
       {data.kind !== 'trigger' ? (
         <Handle
           id="in"
@@ -206,7 +208,6 @@ const edgeTypes = {
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
-  const { handleNodeClick, handlePaneClick } = useNodesInteractions();
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
     const nodes = [
@@ -234,8 +235,26 @@ export const WorkflowChildren = () => {
     return nodes;
   }, []);
 
-  const [nodes, , onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>([]);
+  const { handleNodeClick, handlePaneClick, handlePanelClose } = useNodesInteractions<CanvasNodeData>({
+    setNodes,
+    setEdges,
+  });
+
+  const selectedNode = useMemo(() => {
+    const currentNode = nodes.find(node => node.data.selected)
+
+    if (!currentNode)
+      return undefined
+
+    return {
+      id: currentNode.id,
+      type: currentNode.type,
+      data: currentNode.data,
+    }
+  }, [nodes])
+
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -332,7 +351,7 @@ export const WorkflowChildren = () => {
           </ReactFlow>
         </div>
 
-        <Panel />
+        <Panel selectedNode={selectedNode} onClose={handlePanelClose} />
       </div>
     </section>
   );

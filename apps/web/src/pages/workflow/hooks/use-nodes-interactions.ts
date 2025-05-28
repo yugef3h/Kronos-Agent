@@ -1,49 +1,38 @@
 import { useCallback } from 'react';
-import { getConnectedEdges, type Node, type NodeMouseHandler, useStoreApi } from 'reactflow';
-import { produce } from 'immer'
+import type { Dispatch, SetStateAction } from 'react'
+import type { Node, NodeMouseHandler } from 'reactflow';
+import type { Edge as WorkflowEdge } from '../types/common'
+import { applyConnectedEdgeSelection, applyNodeSelection } from './node-selection'
 
-export const useNodesInteractions = () => {
-  const store = useStoreApi();
+type SelectableNodeData = {
+  selected?: boolean
+}
+
+type UseNodesInteractionsOptions<
+  TNodeData extends SelectableNodeData,
+> = {
+  setNodes: Dispatch<SetStateAction<Node<TNodeData>[]>>
+  setEdges: Dispatch<SetStateAction<WorkflowEdge[]>>
+}
+
+export const useNodesInteractions = <
+  TNodeData extends SelectableNodeData,
+>({ setNodes, setEdges }: UseNodesInteractionsOptions<TNodeData>) => {
 
   const handleNodeSelect = useCallback(
-    (nodeId: string, cancelSelection?: boolean) => {
-      const { getNodes, setNodes, edges, setEdges } = store.getState();
+    (nodeId?: string) => {
+      setNodes((currentNodes) => {
+        const selectedNode = currentNodes.find((node) => node.data.selected);
 
-      const nodes = getNodes();
-      const selectedNode = nodes.find((node) => node.data.selected);
+        if (nodeId && selectedNode?.id === nodeId)
+          return currentNodes
 
-      if (!cancelSelection && selectedNode?.id === nodeId) return;
+        return applyNodeSelection(currentNodes, nodeId)
+      })
 
-      const newNodes = produce(nodes, (draft) => {
-        draft.forEach((node) => {
-          if (node.id === nodeId) node.data.selected = !cancelSelection;
-          else node.data.selected = false;
-        });
-      });
-      setNodes(newNodes);
-
-      const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges).map(
-        (edge) => edge.id,
-      );
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((edge) => {
-          if (connectedEdges.includes(edge.id)) {
-            edge.data = {
-              ...edge.data,
-              _connectedNodeIsSelected: !cancelSelection,
-            };
-          } else {
-            edge.data = {
-              ...edge.data,
-              _connectedNodeIsSelected: false,
-            };
-          }
-        });
-      });
-      setEdges(newEdges);
-
+      setEdges(currentEdges => applyConnectedEdgeSelection(currentEdges, nodeId))
     },
-    [store],
+    [setEdges, setNodes],
   );
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
@@ -55,13 +44,14 @@ export const useNodesInteractions = () => {
 
   const handlePaneClick = useCallback(
     () => {
-      handleNodeSelect('', true)
+      return undefined
     },
-    [handleNodeSelect],
+    [],
   )
 
   return {
     handleNodeClick,
+    handlePanelClose: () => handleNodeSelect(),
     handlePaneClick,
   };
 };

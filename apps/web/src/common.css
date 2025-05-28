@@ -10,6 +10,7 @@ html {
     --color-components-kbd-bg-white: #ffffff1f;
     --color-text-primary-on-surface: #fff;
     --color-text-tertiary: #676f83;
+    --color-components-option-card-option-selected-border: #296dff;
 }
 
 .bg-workflow-canvas-workflow-bg {
@@ -26,4 +27,7 @@ html {
 }
 .text-text-tertiary {
   color: var(--color-text-tertiary);
+}
+.border-components-option-card-option-selected-border {
+  border-color: var(--color-components-option-card-option-selected-border);
 }

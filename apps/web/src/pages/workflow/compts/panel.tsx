@@ -1,8 +1,12 @@
 import { Panel as NodePanel } from "../compts/custom-node";
-import { useShallow } from 'zustand/react/shallow';
+import type { PanelProps as NodePanelProps } from '../compts/custom-node'
 import React, { memo, useCallback, useEffect, useRef } from "react";
-import { useStore as useReactflow } from 'reactflow'
 import { cn } from "../utils/classnames";
+
+type PanelProps = {
+  selectedNode?: NodePanelProps
+  onClose: () => void
+}
 
 /**
  * Reference MDN standard implementation：https://developer.mozilla.org/zh-CN/docs/Web/API/ResizeObserverEntry/borderBoxSize
@@ -48,20 +52,7 @@ export const useResizeObserver = (
   return elementRef
 }
 
-const Panel = () => {
-  const selectedNode = useReactflow(useShallow((s) => {
-    const nodes = s.getNodes()
-    const currentNode = nodes.find(node => node.data.selected)
-
-    if (currentNode) {
-      return {
-        id: currentNode.id,
-        type: currentNode.type,
-        data: currentNode.data,
-      }
-    }
-  }))
-
+const Panel = ({ selectedNode, onClose }: PanelProps) => {
   if (!selectedNode)
     return null
 
@@ -76,9 +67,18 @@ const Panel = () => {
       className={cn('pointer-events-none absolute inset-y-4 right-4 z-10 flex items-start outline-none')}
     >
       <div className="pointer-events-auto flex h-full w-[320px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_50px_-28px_rgba(15,23,42,0.45)]">
-        <div className="border-b border-slate-100 px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Panel</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{panelTitle}</p>
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Panel</p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-900">{panelTitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            关闭
+          </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <NodePanel {...selectedNode} />
