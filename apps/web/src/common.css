@@ -6,8 +6,24 @@ html {
     --color-workflow-link-line-success-handle: #17b26a;
     --color-workflow-link-line-error-handle: #f04438;
     --color-workflow-link-line-failure-handle: #f79009;
+    --color-components-kbd-bg-gray: #1018280a;
+    --color-components-kbd-bg-white: #ffffff1f;
+    --color-text-primary-on-surface: #fff;
+    --color-text-tertiary: #676f83;
 }
 
 .bg-workflow-canvas-workflow-bg {
     background-color: var(--color-workflow-canvas-workflow-bg);
+}
+.bg-components-kbd-bg-gray {
+  background-color: var(--color-components-kbd-bg-gray);
+}
+.bg-components-kbd-bg-white {
+  background-color: var(--color-components-kbd-bg-white);
+}
+.text-text-primary-on-surface {
+  color: var(--color-text-primary-on-surface);
+}
+.text-text-tertiary {
+  color: var(--color-text-tertiary);
 }
