@@ -1,0 +1,11 @@
+import React from "react"
+
+const LLMPanel = () => {
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="text-gray-500">LLM Node</div>
+    </div>
+  )
+}
+
+export default React.memo(LLMPanel)
