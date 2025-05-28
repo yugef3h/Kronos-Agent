@@ -26,9 +26,16 @@ import { EmptyView } from '../compts/empty-view';
 import { SearchBox } from '../compts/search-box';
 import 'reactflow/dist/style.css';
 import { BlockEnum, type CommonEdgeType, type Edge } from '../types/common';
+import {
+  applyConnectedEdgeSelection,
+  applyNodeSelection,
+  removeConnectedEdges,
+  removeNodeById,
+} from '../hooks/node-selection';
 import { createWorkflowEdgeData } from '../utils/edge-data';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
+import NodeControl from '../compts/node-control';
 
 type CanvasNodeKind = 'trigger' | 'agent' | 'end';
 type AppendableNodeKind = Exclude<CanvasNodeKind, 'trigger'>;
@@ -101,38 +108,42 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       const childCount = getEdges().filter((edge) => edge.source === id).length;
       const nextNode = createNodeFromSource(sourceNode, kind, childCount);
       const edgeId = `${id}-out-${nextNode.id}-in`;
+      const nextEdge = {
+        id: edgeId,
+        type: CUSTOM_EDGE,
+        source: id,
+        target: nextNode.id,
+        sourceHandle: 'out',
+        targetHandle: 'in',
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: '#94a3b8',
+        },
+        style: {
+          stroke: '#94a3b8',
+          strokeWidth: 1.6,
+        },
+        data: createWorkflowEdgeData({
+          sourceType: CANVAS_NODE_KIND_TO_BLOCK[sourceNode.data.kind],
+          targetType: CANVAS_NODE_KIND_TO_BLOCK[nextNode.data.kind],
+        }),
+      };
 
-      setNodes((nodes) => [...nodes, nextNode]);
+      setNodes((nodes) => applyNodeSelection([...nodes, nextNode], nextNode.id));
       setEdges((edges) =>
-        addEdge(
-          {
-            id: edgeId,
-            type: CUSTOM_EDGE,
-            source: id,
-            target: nextNode.id,
-            sourceHandle: 'out',
-            targetHandle: 'in',
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: '#94a3b8',
-            },
-            style: {
-              stroke: '#94a3b8',
-              strokeWidth: 1.6,
-            },
-            data: createWorkflowEdgeData({
-              sourceType: CANVAS_NODE_KIND_TO_BLOCK[sourceNode.data.kind],
-              targetType: CANVAS_NODE_KIND_TO_BLOCK[nextNode.data.kind],
-            }),
-          },
-          edges,
-        ),
+        applyConnectedEdgeSelection(addEdge(nextEdge, edges), nextNode.id),
       );
 
       setMenuOpen(false);
     },
     [getEdges, getNode, id, setEdges, setNodes],
   );
+
+  const deleteNode = useCallback(() => {
+    setMenuOpen(false);
+    setNodes((currentNodes) => removeNodeById(currentNodes, id));
+    setEdges((currentEdges) => removeConnectedEdges(currentEdges, id));
+  }, [id, setEdges, setNodes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -171,6 +182,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
       <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
       <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
+
+      <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
 
       {canAppend ? (
         <div className="absolute -right-3 top-1/2 -translate-y-1/2">
@@ -237,24 +250,23 @@ export const WorkflowChildren = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>([]);
-  const { handleNodeClick, handlePaneClick, handlePanelClose } = useNodesInteractions<CanvasNodeData>({
-    setNodes,
-    setEdges,
-  });
+  const { handleNodeClick, handlePaneClick, handlePanelClose } =
+    useNodesInteractions<CanvasNodeData>({
+      setNodes,
+      setEdges,
+    });
 
   const selectedNode = useMemo(() => {
-    const currentNode = nodes.find(node => node.data.selected)
+    const currentNode = nodes.find((node) => node.data.selected);
 
-    if (!currentNode)
-      return undefined
+    if (!currentNode) return undefined;
 
     return {
       id: currentNode.id,
       type: currentNode.type,
       data: currentNode.data,
-    }
-  }, [nodes])
-
+    };
+  }, [nodes]);
 
   const onConnect = useCallback(
     (connection: Connection) => {

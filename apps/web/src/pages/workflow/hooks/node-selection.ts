@@ -30,3 +30,13 @@ export const applyConnectedEdgeSelection = <TData extends SelectableEdgeData>(
       && (edge.source === selectedNodeId || edge.target === selectedNodeId),
   } as TData,
 }))
+
+export const removeNodeById = <TData>(
+  nodes: Node<TData>[],
+  nodeId: string,
+) => nodes.filter(node => node.id !== nodeId)
+
+export const removeConnectedEdges = <TData>(
+  edges: Edge<TData>[],
+  nodeId: string,
+) => edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
