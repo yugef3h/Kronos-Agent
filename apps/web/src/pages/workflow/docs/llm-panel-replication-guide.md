@@ -101,7 +101,7 @@ LLMPanel 的 UI 可以理解为两个大区域。
 1. 根据 `isChatModel` 在两种 Prompt 形态间切换。
 2. Chat model 下维护 message list。
 3. Completion model 下维护单段 prompt。
-4. 支持 basic / jinja2 两种编辑模式。
+4. 支持 basic 编辑模式。
 5. 支持 prompt generator。
 6. 把可插入变量、上下文块、查询块等能力注入编辑器。
 
@@ -276,7 +276,7 @@ type LLMNodeType = CommonNodeType & {
 `prompt_template` 是单对象：
 
 ```ts
-{ text: '', edition_type?: 'basic' | 'jinja2', jinja2_text?: '' }
+{ text: '', edition_type?: 'basic' , jinja2_text?: '' }
 ```
 
 复刻时必须保留这种联合类型，或者在你的实现中先统一成 view model，再在保存时转换。
@@ -478,14 +478,14 @@ Prompt 部分是复刻成本最高的区域。
 6. 每条 message 都支持：
    - 切角色
    - 改文本
-   - 切 basic / jinja2
+   - basic
    - 删除
    - 打开 prompt generator
 
 ### 8.2 Completion model 下的行为
 
 1. 只有一个 Prompt editor。
-2. 支持 basic / jinja2 两种编辑模式。
+2. 支持 basic 编辑模式。
 3. 支持 prompt generator。
 
 ### 8.3 Prompt 中的 block 检测
@@ -675,7 +675,6 @@ LLMPanel 中多个区域都依赖“上游变量选择”，例如：
 
 1. Chat model: message 数组里至少有一条非空文本。
 2. Completion model: 单个 prompt 非空。
-3. 如果是 jinja2 模式，则检查 `jinja2_text`。
 
 ### 14.3 Memory query 模板必须包含 `sys.query`
 
@@ -780,7 +779,6 @@ LLMPanel 中多个区域都依赖“上游变量选择”，例如：
 
 1. 区分 chat / completion prompt 形态。
 2. 补 context selector。
-3. 补 jinja2 变量区。
 4. 补 memory 开关和 window。
 
 ### 第三阶段：补高级能力
@@ -844,10 +842,9 @@ LLMPanel 中多个区域都依赖“上游变量选择”，例如：
 
 1. 模型选择与 completion params 编辑。
 2. 区分 chat model 和 completion model。
-3. chat model 使用 message list prompt，支持 system/user/assistant 角色、拖拽排序、basic/jinja2 两种编辑模式。
-4. completion model 使用单段 prompt，支持 basic/jinja2 两种编辑模式。
+3. chat model 使用 message list prompt，支持 system/user/assistant 角色、拖拽排序、basic 编辑模式。
+4. completion model 使用单段 prompt，支持 basic 编辑模式。
 5. context 支持从上游节点变量中选择一个变量源。
-6. jinja2 模式下，维护模板变量列表，变量名改动时同步替换 prompt 中的 `{{ varName }}`。
 7. memory 支持总开关、window 开关、window size、query prompt template；chat model 下 query prompt 必须包含 `{{#sys.query#}}`。
 8. vision 只在模型支持时可开启；开启后可选择文件变量和分辨率。
 9. reasoning format 支持 `tagged` 和 `separated`。
@@ -945,7 +942,7 @@ LLMPanel 中多个区域都依赖“上游变量选择”，例如：
 1. 实现单段 Prompt editor。
 2. 实现 message list Prompt editor。
 3. 实现 role 切换。
-4. 实现 basic / jinja2 双模式编辑。
+4. 实现 basic 模式编辑。
 5. 实现消息拖拽排序。
 6. 实现 system role 唯一限制。
 7. 实现插入 block 与插入变量能力。
@@ -1073,7 +1070,7 @@ export type VariableBinding = {
 }
 
 export type PromptRole = 'system' | 'user' | 'assistant'
-export type PromptEditionType = 'basic' | 'jinja2'
+export type PromptEditionType = 'basic'
 
 export type ChatPromptItem = {
   id: string

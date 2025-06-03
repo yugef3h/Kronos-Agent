@@ -10,6 +10,10 @@ describe('panel-resolver', () => {
     expect(resolvePanelBlockType('workflow', { kind: 'agent' })).toBe(BlockEnum.LLM)
   })
 
+  it('maps workflow llm nodes to the llm panel block', () => {
+    expect(resolvePanelBlockType('workflow', { kind: 'llm' })).toBe(BlockEnum.LLM)
+  })
+
   it('keeps legacy custom node mapping working', () => {
     expect(resolvePanelBlockType('custom', { type: BlockEnum.End })).toBe(BlockEnum.End)
   })

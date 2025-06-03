@@ -24,7 +24,7 @@ export const Panel = memo((props: PanelProps) => {
   if (!PanelComponent)
     return null
 
-  return <PanelComponent />
+  return <PanelComponent {...props} />
 })
 
 Panel.displayName = 'Panel'

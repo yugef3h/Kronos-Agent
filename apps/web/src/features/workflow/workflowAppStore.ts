@@ -1,4 +1,15 @@
-export type WorkflowNodeType = 'trigger' | 'agent' | 'end' | 'tool' | 'if' | 'loop' | 'parallel';
+export type WorkflowNodeType =
+  | 'trigger'
+  | 'agent'
+  | 'end'
+  | 'tool'
+  | 'if'
+  | 'loop'
+  | 'parallel'
+  | 'llm'
+  | 'knowledge'
+  | 'condition'
+  | 'iteration';
 
 export type WorkflowNode = {
   id: string;
@@ -7,6 +18,8 @@ export type WorkflowNode = {
   parentId?: string;
   data: {
     label?: string;
+    kind?: string;
+    subtitle?: string;
     inputs?: Record<string, unknown>;
     outputs?: Record<string, unknown>;
     _runningStatus?: 'idle' | 'running' | 'finished' | 'failed' | 'paused';
@@ -22,8 +35,9 @@ export type WorkflowEdge = {
   data?: {
     sourceType?: string;
     targetType?: string;
-    _sourceRunningStatus?: 'idle' | 'running' | 'finished' | 'failed' | 'paused';
-    _targetRunningStatus?: 'idle' | 'running' | 'finished' | 'failed' | 'paused';
+    _sourceRunningStatus?: string;
+    _targetRunningStatus?: string;
+    [key: string]: unknown;
   };
 };
 
@@ -97,6 +111,29 @@ const generateWorkflowAppId = (): string => {
 export const listWorkflowApps = (): WorkflowAppRecord[] => {
   return readAppRecords().sort((a, b) => b.updatedAt - a.updatedAt);
 };
+
+export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined => {
+  return readAppRecords().find(app => app.id === id)
+}
+
+export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowAppRecord | undefined => {
+  const apps = readAppRecords()
+  const appIndex = apps.findIndex(app => app.id === appId)
+
+  if (appIndex < 0)
+    return undefined
+
+  const updatedApp: WorkflowAppRecord = {
+    ...apps[appIndex],
+    updatedAt: Date.now(),
+    dsl,
+  }
+
+  apps[appIndex] = updatedApp
+  writeAppRecords(apps)
+
+  return updatedApp
+}
 
 export const createWorkflowApp = (payload: { name: string; description?: string }): WorkflowAppRecord => {
   const name = payload.name.trim();

@@ -15,11 +15,10 @@ import {
   type NodeProps,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
+import { getWorkflowAppById, updateWorkflowAppDsl } from '../../../features/workflow/workflowAppStore';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
-  NODE_WIDTH_X_OFFSET,
-  START_INITIAL_POSITION,
 } from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
@@ -30,6 +29,7 @@ import {
   type CommonEdgeType,
   type Edge,
 } from '../types/common';
+import type { CanvasNodeData } from '../types/canvas';
 import {
   applyConnectedEdgeSelection,
   applyNodeSelection,
@@ -37,17 +37,16 @@ import {
   removeNodeById,
 } from '../hooks/node-selection';
 import { createWorkflowEdgeData } from '../utils/edge-data';
+import {
+  buildCanvasNodeData,
+  createInitialTriggerNode,
+  createWorkflowDslFromCanvas,
+  hydrateCanvasNodesFromDsl,
+} from '../utils/workflow-dsl';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import 'reactflow/dist/style.css';
-
-type CanvasNodeData = {
-  kind: AppendableNodeKind;
-  title: string;
-  subtitle: string;
-  selected?: boolean;
-};
 
 const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
   trigger: BlockEnum.Start,
@@ -65,12 +64,11 @@ const createNodeId = (kind: AppendableNodeKind): string => {
 };
 
 const createNodeData = (node: NodeItem): CanvasNodeData => {
-  return {
+  return buildCanvasNodeData({
     kind: node.kind,
     title: node.name,
     subtitle: node.id,
-    selected: false,
-  };
+  });
 };
 
 const createNodeFromSource = (
@@ -218,38 +216,60 @@ export const WorkflowChildren = () => {
   const appId = searchParams.get('appId');
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
-    const nodes = [
-      {
-        id: 'trigger-1',
-        type: 'workflow',
-        data: {
-          kind: 'trigger',
-          title: '用户输入',
-          subtitle: '开始',
-          selected: false,
-        },
-      },
-    ] as Node<CanvasNodeData>[];
-    const firstNode = nodes[0];
+    if (!appId)
+      return [createInitialTriggerNode()]
 
-    if (!firstNode?.position) {
-      nodes.forEach((node, index) => {
-        node.position = {
-          x: START_INITIAL_POSITION.x + index * NODE_WIDTH_X_OFFSET,
-          y: START_INITIAL_POSITION.y,
-        };
-      });
-    }
-    return nodes;
-  }, []);
+    const app = getWorkflowAppById(appId)
+    if (!app)
+      return [createInitialTriggerNode()]
+
+    return hydrateCanvasNodesFromDsl(app.dsl)
+  }, [appId]);
+
+  const initialEdges = useMemo<Edge[]>(() => {
+    if (!appId)
+      return []
+
+    const app = getWorkflowAppById(appId)
+    if (!app)
+      return []
+
+    return app.dsl.edges as unknown as Edge[]
+  }, [appId])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
   const { handleNodeClick, handlePaneClick, handlePanelClose } =
     useNodesInteractions<CanvasNodeData>({
       setNodes,
       setEdges,
     });
+
+  useEffect(() => {
+    if (!appId)
+      return
+
+    const app = getWorkflowAppById(appId)
+    if (!app) {
+      setNodes([createInitialTriggerNode()])
+      setEdges([])
+      return
+    }
+
+    setNodes(hydrateCanvasNodesFromDsl(app.dsl))
+    setEdges(app.dsl.edges as Edge[])
+  }, [appId, setEdges, setNodes])
+
+  useEffect(() => {
+    if (!appId)
+      return
+
+    const app = getWorkflowAppById(appId)
+    updateWorkflowAppDsl(
+      appId,
+      createWorkflowDslFromCanvas(nodes, edges as Edge[], app?.name),
+    )
+  }, [appId, edges, nodes])
 
   const selectedNode = useMemo(() => {
     const currentNode = nodes.find((node) => node.data.selected);

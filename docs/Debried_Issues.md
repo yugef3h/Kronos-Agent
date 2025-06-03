@@ -33,3 +33,9 @@
 - 根因：React Flow 的 `onPaneClick` 直接复用了“取消节点选中”逻辑，导致点击画布空白区域时会清空 `data.selected`，右侧 panel 也随之卸载。
 - 现象：节点 panel 打开后，只要点到外层画布容器就会失焦并关闭，无法保持当前上下文继续编辑。
 - 修复：将“画布空白点击”与“显式关闭 panel”拆成两条路径；前者不再改动选中态，后者仅由 panel 头部关闭按钮触发，同时补充节点/边选中同步纯函数单测。
+
+## 2026-04-03 工作流 LLMPanel 之前无法真实保存节点配置
+
+- 根因：右侧 panel 组件映射没有把当前节点 `id/data` 透传到具体面板，`llm` 节点也没有被 panel resolver 映射到 LLMPanel；同时画布 nodes/edges 仅存在于 ReactFlow 内存，未与 `workflowAppStore.dsl` 双向同步。
+- 现象：LLM 节点即使点开右侧面板，也只能看到占位内容；即便面板后续写了本地 state，刷新页面后配置仍会丢失。
+- 修复：补齐 `workflow -> llm` 的 panel 解析，面板装配链路改为透传节点 `id/data`；新增节点/边与 `workflowAppStore` 的最小 DSL 回填与保存逻辑；LLMPanel 配置统一写入 `node.data.inputs`，并随画布自动持久化。
