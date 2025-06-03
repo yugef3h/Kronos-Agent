@@ -23,9 +23,13 @@ import {
 } from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
-import { SearchBox } from '../compts/search-box';
-import 'reactflow/dist/style.css';
-import { BlockEnum, type CommonEdgeType, type Edge } from '../types/common';
+import { type NodeItem, SearchBox } from '../compts/search-box';
+import {
+  type AppendableNodeKind,
+  BlockEnum,
+  type CommonEdgeType,
+  type Edge,
+} from '../types/common';
 import {
   applyConnectedEdgeSelection,
   applyNodeSelection,
@@ -36,21 +40,23 @@ import { createWorkflowEdgeData } from '../utils/edge-data';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
-
-type CanvasNodeKind = 'trigger' | 'agent' | 'end';
-type AppendableNodeKind = Exclude<CanvasNodeKind, 'trigger'>;
+import 'reactflow/dist/style.css';
 
 type CanvasNodeData = {
-  kind: CanvasNodeKind;
+  kind: AppendableNodeKind;
   title: string;
   subtitle: string;
   selected?: boolean;
 };
 
-const CANVAS_NODE_KIND_TO_BLOCK: Record<CanvasNodeKind, BlockEnum> = {
+const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
   trigger: BlockEnum.Start,
-  agent: BlockEnum.LLM,
   end: BlockEnum.End,
+  llm: BlockEnum.LLM,
+  knowledge: BlockEnum.LLM,
+  condition: BlockEnum.IfElse,
+  iteration: BlockEnum.Iteration,
+  loop: BlockEnum.Loop,
 };
 
 const createNodeId = (kind: AppendableNodeKind): string => {
@@ -58,37 +64,28 @@ const createNodeId = (kind: AppendableNodeKind): string => {
   return `${kind}-${Date.now().toString(36)}-${random}`;
 };
 
-const createNodeData = (kind: AppendableNodeKind): CanvasNodeData => {
-  if (kind === 'agent') {
-    return {
-      kind,
-      title: '豆包',
-      subtitle: 'LLM',
-      selected: false,
-    };
-  }
-
+const createNodeData = (node: NodeItem): CanvasNodeData => {
   return {
-    kind,
-    title: '产物',
-    subtitle: '输出',
+    kind: node.kind,
+    title: node.name,
+    subtitle: node.id,
     selected: false,
   };
 };
 
 const createNodeFromSource = (
   sourceNode: Node<CanvasNodeData>,
-  kind: AppendableNodeKind,
+  node: NodeItem,
   index: number,
 ): Node<CanvasNodeData> => {
   const x = sourceNode.position.x + 320;
   const y = sourceNode.position.y + index * 120;
 
   return {
-    id: createNodeId(kind),
+    id: createNodeId(node.kind),
     type: 'workflow',
     position: { x, y },
-    data: createNodeData(kind),
+    data: createNodeData(node),
   };
 };
 
@@ -99,14 +96,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const canAppend = data.kind !== 'end';
 
   const appendNode = useCallback(
-    (kind: AppendableNodeKind) => {
+    (node: NodeItem) => {
       const sourceNode = getNode(id);
       if (!sourceNode) {
         return;
       }
 
       const childCount = getEdges().filter((edge) => edge.source === id).length;
-      const nextNode = createNodeFromSource(sourceNode, kind, childCount);
+      const nextNode = createNodeFromSource(sourceNode, node, childCount);
       const edgeId = `${id}-out-${nextNode.id}-in`;
       const nextEdge = {
         id: edgeId,
@@ -130,9 +127,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       };
 
       setNodes((nodes) => applyNodeSelection([...nodes, nextNode], nextNode.id));
-      setEdges((edges) =>
-        applyConnectedEdgeSelection(addEdge(nextEdge, edges), nextNode.id),
-      );
+      setEdges((edges) => applyConnectedEdgeSelection(addEdge(nextEdge, edges), nextNode.id));
 
       setMenuOpen(false);
     },

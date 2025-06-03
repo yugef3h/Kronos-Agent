@@ -6,6 +6,7 @@ import { IconKnowledge } from '../assets/knowledge';
 import { IconCondition } from '../assets/condition';
 import { IconIteration } from '../assets/iteration';
 import { IconLoop } from '../assets/loop';
+import type { AppendableNodeKind } from '../types/common';
 
 // 节点类型定义（完全匹配截图分类）
 type NodeCategory = {
@@ -14,15 +15,12 @@ type NodeCategory = {
   nodes: NodeItem[];
 };
 
-type NodeItem = {
+export type NodeItem = {
   id: string;
   name: string;
   icon: ReactNode;
   kind: AppendableNodeKind; // 复用你现有类型
 };
-
-// 复用你现有类型
-type AppendableNodeKind = 'agent' | 'end';
 
 const NODE_CATEGORIES: NodeCategory[] = [
   {
@@ -32,21 +30,17 @@ const NODE_CATEGORIES: NodeCategory[] = [
       {
         id: 'llm',
         name: 'LLM',
-        kind: 'agent',
-        icon: (
-          <IconLLM />
-        ),
+        kind: 'llm',
+        icon: <IconLLM />,
       },
       {
         id: 'knowledge',
         name: '知识检索',
-        kind: 'agent',
-        icon: (
-          <IconKnowledge />
-        ),
+        kind: 'knowledge',
+        icon: <IconKnowledge />,
       },
       {
-        id: 'output',
+        id: 'end',
         name: '输出',
         kind: 'end',
         icon: <IconOutput />,
@@ -83,26 +77,20 @@ const NODE_CATEGORIES: NodeCategory[] = [
       {
         id: 'condition',
         name: '条件分支',
-        kind: 'agent',
-        icon: (
-          <IconCondition />
-        ),
+        kind: 'condition',
+        icon: <IconCondition />,
       },
       {
         id: 'iteration',
         name: '迭代',
-        kind: 'agent',
-        icon: (
-          <IconIteration />
-        ),
+        kind: 'iteration',
+        icon: <IconIteration />,
       },
       {
         id: 'loop',
         name: '循环',
-        kind: 'agent',
-        icon: (
-          <IconLoop />
-        ),
+        kind: 'loop',
+        icon: <IconLoop />,
       },
     ],
   },
@@ -117,7 +105,7 @@ const NODE_CATEGORIES: NodeCategory[] = [
 type NodeMenuProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAppendNode: (kind: AppendableNodeKind) => void;
+  onAppendNode: (node: NodeItem) => void;
   menuRef: RefObject<HTMLDivElement>;
 };
 
@@ -138,8 +126,8 @@ export const SearchBox = ({ isOpen, onClose, onAppendNode, menuRef }: NodeMenuPr
 
   // 点击节点后关闭菜单
   const handleNodeClick = useCallback(
-    (kind: AppendableNodeKind) => {
-      onAppendNode(kind);
+    (node: NodeItem) => {
+      onAppendNode(node);
       onClose();
       setSearchText(''); // 清空搜索
     },
@@ -212,7 +200,7 @@ export const SearchBox = ({ isOpen, onClose, onAppendNode, menuRef }: NodeMenuPr
               <button
                 key={node.id}
                 type="button"
-                onClick={() => handleNodeClick(node.kind)}
+                onClick={() => handleNodeClick(node)}
                 className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-slate-100"
               >
                 {/* 图标容器（带背景色，匹配截图） */}
