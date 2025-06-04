@@ -1054,7 +1054,6 @@ src/
       draft-service.ts
     utils/
       prompt-template.ts
-      jinja-variable.ts
       structured-output.ts
     types.ts
 ```
