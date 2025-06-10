@@ -6,6 +6,7 @@ import LLMPanel from "./compts/llm-panel";
 import IfElsePanel from "./compts/ifelse-panel";
 import LoopPanel from "./compts/loop-panel";
 import IterationPanel from "./compts/iteration-panel";
+import KnowledgeRetrievalPanel from "./compts/knowledge-retrieval-panel";
 
 export const NODE_WIDTH = 240;
 export const X_OFFSET = 60;
@@ -25,4 +26,5 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.IfElse]: IfElsePanel,
   [BlockEnum.Loop]: LoopPanel,
   [BlockEnum.Iteration]: IterationPanel,
+  [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,
 }

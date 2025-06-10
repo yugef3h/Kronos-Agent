@@ -11,7 +11,7 @@ const WORKFLOW_NODE_KIND_TO_BLOCK: Record<WorkflowNodeKind, BlockEnum> = {
   trigger: BlockEnum.Start,
   agent: BlockEnum.LLM,
   llm: BlockEnum.LLM,
-  knowledge: BlockEnum.LLM,
+  knowledge: BlockEnum.KnowledgeRetrieval,
   end: BlockEnum.End,
 }
 

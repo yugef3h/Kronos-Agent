@@ -52,7 +52,7 @@ const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
   trigger: BlockEnum.Start,
   end: BlockEnum.End,
   llm: BlockEnum.LLM,
-  knowledge: BlockEnum.LLM,
+  knowledge: BlockEnum.KnowledgeRetrieval,
   condition: BlockEnum.IfElse,
   iteration: BlockEnum.Iteration,
   loop: BlockEnum.Loop,

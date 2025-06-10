@@ -38,6 +38,7 @@ export enum BlockEnum {
   LoopEnd = 'loop-end',
   Iteration = 'iteration',
   IterationStart = 'iteration-start',
+  KnowledgeRetrieval = 'knowledge-retrieval',
 }
 
 export type CommonEdgeType = {
