@@ -27,6 +27,7 @@ import type {
   ChatPromptItem,
   CompletionPromptItem,
   LLMNodeConfig,
+  StructuredOutputConfig,
   VariableOption,
 } from '../features/llm-panel/types';
 import type { PanelFieldControl } from '../base/panel-form';
@@ -46,6 +47,26 @@ const VISION_DETAIL_OPTIONS: Array<{ label: string; value: 'high' | 'low' | 'aut
 ];
 
 type NumberSliderFieldConfig = Extract<PanelFieldControl, { controlType: 'numberSlider' }>;
+
+const normalizeStructuredSchema = (
+  parsed: Record<string, unknown>,
+): StructuredOutputConfig['schema'] => {
+  const properties =
+    typeof parsed.properties === 'object' && parsed.properties !== null
+      ? (parsed.properties as StructuredOutputConfig['schema']['properties'])
+      : {};
+
+  const required = Array.isArray(parsed.required)
+    ? parsed.required.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  return {
+    type: 'object',
+    properties,
+    required,
+    additionalProperties: false,
+  };
+};
 
 const buildVariableOptions = (
   currentNodeId: string,
@@ -551,24 +572,14 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
           <Field title="JSON Schema" compact>
             <JSONSchemaInput
               value={schemaText}
-              onChange={val => {
+              onChange={(val) => {
                 setSchemaText(val);
                 setSchemaError(null);
               }}
               onBlur={(parsed, error) => {
                 if (!error && parsed) {
                   handleStructuredOutputChange({
-                    schema: {
-                      type: 'object',
-                      properties:
-                        typeof (parsed as any).properties === 'object' && (parsed as any).properties
-                          ? (parsed as any).properties
-                          : {},
-                      required: Array.isArray((parsed as any).required)
-                        ? (parsed as any).required.filter((item: any): item is string => typeof item === 'string')
-                        : [],
-                      additionalProperties: false,
-                    },
+                    schema: normalizeStructuredSchema(parsed as Record<string, unknown>),
                   });
                   setSchemaError(null);
                 } else {
