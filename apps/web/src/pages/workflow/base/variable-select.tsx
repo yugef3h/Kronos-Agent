@@ -1,4 +1,5 @@
 import React from 'react';
+import { PanelSelect } from './panel-form';
 import type { ValueSelector, VariableOption } from '../features/llm-panel/types';
 
 const serializeValueSelector = (valueSelector: ValueSelector): string => valueSelector.join('.');
@@ -15,10 +16,10 @@ const VariableSelect: React.FC<{
 }> = ({ value, options, onChange, placeholder }) => {
   const serializedValue = serializeValueSelector(value);
   return (
-    <select
-      className="text-[12px] border rounded px-2 py-1"
+    <PanelSelect
+      className="w-full text-[12px]"
       value={serializedValue}
-      onChange={e => onChange(parseValueSelector(e.target.value))}
+      onChange={(event) => onChange(parseValueSelector(event.target.value))}
     >
       <option value="">{placeholder}</option>
       {options.map(option => {
@@ -29,7 +30,7 @@ const VariableSelect: React.FC<{
           </option>
         );
       })}
-    </select>
+    </PanelSelect>
   );
 };
 
