@@ -46,7 +46,13 @@ import {
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
-import { buildIfElseTargetBranches, normalizeIfElseNodeConfig } from '../features/ifelse-panel/schema';
+import { IconCondition } from '../assets/condition';
+import type { VariableOption } from '../features/llm-panel/types';
+import {
+  buildIfElseConditionSummary,
+  buildIfElseTargetBranches,
+  normalizeIfElseNodeConfig,
+} from '../features/ifelse-panel/schema';
 import 'reactflow/dist/style.css';
 
 const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
@@ -95,19 +101,70 @@ const areStringArraysEqual = (left: string[] = [], right: string[] = []) => {
   return left.every((item, index) => item === right[index]);
 };
 
+const buildConditionNodeVariableOptions = (
+  currentNodeId: string,
+  nodes: Array<{ id: string; data: CanvasNodeData }>,
+) : VariableOption[] => {
+  const systemVariables: VariableOption[] = [
+    { label: 'sys.query', valueSelector: ['sys', 'query'], valueType: 'string', source: 'system' },
+    { label: 'sys.files', valueSelector: ['sys', 'files'], valueType: 'file', source: 'system' },
+    { label: 'sys.conversation_id', valueSelector: ['sys', 'conversation_id'], valueType: 'string', source: 'system' },
+  ];
+
+  const nodeVariables: VariableOption[] = nodes
+    .filter(node => node.id !== currentNodeId)
+    .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
+    .flatMap((node) => Object.keys(node.data.outputs ?? {}).map((outputKey) => ({
+      label: `${node.data.title}.${outputKey}`,
+      valueSelector: [node.id, outputKey],
+      valueType: outputKey.includes('file')
+        ? 'file'
+        : outputKey === 'usage'
+          ? 'object'
+          : 'string',
+      source: 'node',
+    })))
+
+  return [...systemVariables, ...nodeVariables];
+};
+
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setNodes, setEdges, getNode, getEdges } = useReactFlow<CanvasNodeData, Edge>();
+  const { setNodes, setEdges, getNode, getEdges, getNodes } = useReactFlow<CanvasNodeData, Edge>();
   const canAppend = data.kind !== 'end';
+  const conditionConfig = useMemo(() => {
+    if (data.kind !== 'condition') {
+      return null;
+    }
+
+    return normalizeIfElseNodeConfig(data.inputs);
+  }, [data.inputs, data.kind]);
   const conditionBranches = useMemo(() => {
     if (data.kind !== 'condition') {
       return [];
     }
 
-    return data._targetBranches ?? buildIfElseTargetBranches(normalizeIfElseNodeConfig(data.inputs).cases);
-  }, [data._targetBranches, data.inputs, data.kind]);
+    return data._targetBranches ?? buildIfElseTargetBranches(conditionConfig?.cases ?? []);
+  }, [conditionConfig?.cases, data._targetBranches, data.kind]);
+  const conditionVariableOptions = useMemo(() => {
+    if (data.kind !== 'condition') {
+      return [];
+    }
+
+    return buildConditionNodeVariableOptions(
+      id,
+      getNodes().map(node => ({ id: node.id, data: node.data })),
+    );
+  }, [data.kind, getNodes, id]);
+  const primaryConditionSummary = useMemo(() => {
+    if (!conditionConfig?.cases[0]?.conditions.length) {
+      return '添加条件后，这里会显示 IF 分支摘要';
+    }
+
+    return buildIfElseConditionSummary(conditionConfig.cases[0].conditions[0], conditionVariableOptions);
+  }, [conditionConfig, conditionVariableOptions]);
   const connectedSourceHandleIds = data._connectedSourceHandleIds ?? [];
 
   const appendNode = useCallback(
@@ -182,17 +239,19 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
   return (
     <div
-      className={`group relative min-w-[220px] rounded-2xl border bg-white px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] transition ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}
+      className={`group relative bg-white transition ${data.kind === 'condition'
+        ? `min-w-[312px] rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)] ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
+        : `min-w-[220px] rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
     >
       {data.kind !== 'trigger' ? (
         <Handle
           id="in"
           type="target"
           position={Position.Left}
-          className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
+          className={`!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500 ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
-      {data.kind !== 'end' ? (
+      {data.kind !== 'end' && data.kind !== 'condition' ? (
         <Handle
           id="out"
           type="source"
@@ -201,49 +260,95 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         />
       ) : null}
 
-      <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
-
       {data.kind === 'condition' ? (
-        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-          {conditionBranches.map((branch, index) => {
-            const isConnected = connectedSourceHandleIds.includes(branch.id);
+        <div>
+          <div className="flex items-center gap-3 pr-8">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#16b5d8] text-white shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]">
+              <IconCondition />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <p className="text-[16px] font-semibold tracking-[0.01em] text-slate-900">{data.title}</p>
+            </div>
+          </div>
 
-            return (
-              <div
-                key={branch.id}
-                className="relative flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-2.5 py-2"
-              >
-                <Handle
-                  id={branch.id}
-                  type="source"
-                  position={Position.Right}
-                  style={{ top: 18 + index * 44 }}
-                  className="!h-2.5 !w-2.5 !border-2 !border-white !bg-emerald-500"
-                />
-                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                  {branch.name}
-                </span>
-                <span className="line-clamp-1 text-[11px] text-slate-500">
-                  {branch.id === 'false' ? '兜底分支' : '条件成立后进入'}
-                </span>
-                <button
-                  type="button"
-                  disabled={isConnected}
-                  className="ml-auto flex h-6 w-6 items-center justify-center rounded-full border border-emerald-200 bg-white text-base text-emerald-600 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setAppendSourceHandle(branch.id);
-                    setMenuOpen((prev) => !prev || appendSourceHandle !== branch.id);
-                  }}
+          <div className="mt-4 space-y-1.5">
+            {conditionBranches.map((branch, index) => {
+              const isConnected = connectedSourceHandleIds.includes(branch.id);
+              const isElseBranch = branch.id === 'false';
+              const branchCase = isElseBranch
+                ? null
+                : conditionConfig?.cases.find(caseItem => caseItem.case_id === branch.id);
+              const branchSummary = isElseBranch
+                ? '未命中其他条件时执行'
+                : branchCase?.conditions[0]
+                  ? buildIfElseConditionSummary(branchCase.conditions[0], conditionVariableOptions)
+                  : index === 0
+                    ? primaryConditionSummary
+                    : '未设置条件';
+
+              return (
+                <div
+                  key={branch.id}
+                  className={`relative pr-12 ${isElseBranch ? 'min-h-[24px]' : 'min-h-[52px]'}`}
                 >
-                  +
-                </button>
-              </div>
-            );
-          })}
+                  {!isElseBranch ? (
+                    <div className="rounded-xl bg-[#f5f7fb] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]">
+                      {index === 0 && conditionConfig && conditionConfig.cases.length > 1 ? (
+                        <div className="mb-1 flex items-center">
+                          <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
+                            +{conditionConfig.cases.length - 1} ELIF
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="flex min-h-[34px] items-center gap-1.5 rounded-xl bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
+                        <span className="line-clamp-1">{branchSummary}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-6" />
+                  )}
+
+                  <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.01em] text-slate-700">
+                    {branch.name}
+                  </span>
+
+                  <div className="absolute right-[-11px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+                    <Handle
+                      id={branch.id}
+                      type="source"
+                      position={Position.Right}
+                      className="!right-0 !top-1/2 !h-6 !w-6 !-translate-y-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100"
+                    />
+                    <button
+                      type="button"
+                      disabled={isConnected}
+                      className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setAppendSourceHandle(branch.id);
+                        setMenuOpen((prev) => !prev || appendSourceHandle !== branch.id);
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {conditionConfig?.cases.slice(1).length ? (
+            <div className="mt-1.5 pr-8 text-[10px] text-slate-400">
+              {`含 ${conditionConfig.cases.length - 1} 个额外 ELIF 分支`}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      ) : (
+        <>
+          <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
+        </>
+      )}
 
       <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
 

@@ -223,6 +223,10 @@ export const getIfElseCaseLabel = (index: number) => {
   return index === 0 ? 'IF' : `ELIF ${index}`
 }
 
+export const getIfElseLogicalOperatorLabel = (operator: IfElseLogicalOperator) => {
+  return operator === 'or' ? '任一满足' : '全部满足'
+}
+
 export const buildIfElseTargetBranches = (cases: IfElseCaseItem[]): IfElseBranch[] => {
   return [
     ...cases.map((caseItem, index) => ({
@@ -275,6 +279,56 @@ export const getComparisonOptionsByVariableType = (variableType: IfElseVariableT
     { label: '结尾是', value: 'ends_with' },
     ...commonOptions,
   ]
+}
+
+export const getComparisonOperatorLabel = (operator: IfElseComparisonOperator) => {
+  const operatorMap: Record<IfElseComparisonOperator, string> = {
+    is: '等于',
+    is_not: '不等于',
+    contains: '包含',
+    not_contains: '不包含',
+    starts_with: '开头是',
+    ends_with: '结尾是',
+    greater_than: '大于',
+    greater_than_or_equal: '大于等于',
+    less_than: '小于',
+    less_than_or_equal: '小于等于',
+    is_empty: '为空',
+    is_not_empty: '不为空',
+  }
+
+  return operatorMap[operator]
+}
+
+export const resolveIfElseVariableLabel = (
+  variableSelector: string[],
+  variableOptions: VariableOption[],
+) => {
+  const serializedSelector = variableSelector.join('.')
+  const matched = variableOptions.find(option => option.valueSelector.join('.') === serializedSelector)
+
+  return matched?.label ?? variableSelector.join('.') ?? '未设置变量'
+}
+
+export const formatIfElseConditionValue = (condition: IfElseCondition) => {
+  if (!comparisonOperatorRequiresValue(condition.comparisonOperator))
+    return ''
+
+  if (condition.variableType === 'boolean')
+    return condition.value === true ? 'TRUE' : 'FALSE'
+
+  return String(condition.value ?? '')
+}
+
+export const buildIfElseConditionSummary = (
+  condition: IfElseCondition,
+  variableOptions: VariableOption[],
+) => {
+  const variableLabel = resolveIfElseVariableLabel(condition.variableSelector, variableOptions)
+  const operatorLabel = getComparisonOperatorLabel(condition.comparisonOperator)
+  const valueLabel = formatIfElseConditionValue(condition)
+
+  return [variableLabel, operatorLabel, valueLabel].filter(Boolean).join(' ')
 }
 
 export const validateIfElseNodeConfig = (config: IfElseNodeConfig): IfElseValidationIssue[] => {

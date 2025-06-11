@@ -1,6 +1,6 @@
 import { BlockEnum } from '../types/common'
 
-type WorkflowNodeKind = 'trigger' | 'agent' | 'llm' | 'knowledge' | 'end'
+type WorkflowNodeKind = 'trigger' | 'agent' | 'llm' | 'knowledge' | 'end' | 'condition' | 'iteration' | 'loop'
 
 type PanelNodeData = {
   kind?: WorkflowNodeKind
@@ -13,6 +13,9 @@ const WORKFLOW_NODE_KIND_TO_BLOCK: Record<WorkflowNodeKind, BlockEnum> = {
   llm: BlockEnum.LLM,
   knowledge: BlockEnum.KnowledgeRetrieval,
   end: BlockEnum.End,
+  condition: BlockEnum.IfElse,
+  iteration: BlockEnum.Iteration,
+  loop: BlockEnum.Loop,
 }
 
 export const resolvePanelBlockType = (

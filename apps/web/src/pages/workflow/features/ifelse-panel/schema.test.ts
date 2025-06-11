@@ -1,5 +1,6 @@
 import {
   ELSE_BRANCH_ID,
+  buildIfElseConditionSummary,
   buildIfElseTargetBranches,
   comparisonOperatorRequiresValue,
   createDefaultIfElseNodeConfig,
@@ -75,5 +76,20 @@ describe('ifelse-panel schema', () => {
     expect(comparisonOperatorRequiresValue('is_empty')).toBe(false)
     expect(comparisonOperatorRequiresValue('is_not_empty')).toBe(false)
     expect(comparisonOperatorRequiresValue('is')).toBe(true)
+  })
+
+  it('formats a readable condition summary', () => {
+    expect(buildIfElseConditionSummary({
+      id: 'condition-1',
+      variableSelector: ['sys', 'query'],
+      variableType: 'string',
+      comparisonOperator: 'contains',
+      value: 'kronos',
+    }, [{
+      label: 'sys.query',
+      valueSelector: ['sys', 'query'],
+      valueType: 'string',
+      source: 'system',
+    }])).toBe('sys.query 包含 kronos')
   })
 })

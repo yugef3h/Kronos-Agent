@@ -14,6 +14,15 @@ describe('panel-resolver', () => {
     expect(resolvePanelBlockType('workflow', { kind: 'llm' })).toBe(BlockEnum.LLM)
   })
 
+  it('maps workflow condition nodes to the if-else panel block', () => {
+    expect(resolvePanelBlockType('workflow', { kind: 'condition' })).toBe(BlockEnum.IfElse)
+  })
+
+  it('maps workflow loop and iteration nodes to their panel blocks', () => {
+    expect(resolvePanelBlockType('workflow', { kind: 'loop' })).toBe(BlockEnum.Loop)
+    expect(resolvePanelBlockType('workflow', { kind: 'iteration' })).toBe(BlockEnum.Iteration)
+  })
+
   it('keeps legacy custom node mapping working', () => {
     expect(resolvePanelBlockType('custom', { type: BlockEnum.End })).toBe(BlockEnum.End)
   })
