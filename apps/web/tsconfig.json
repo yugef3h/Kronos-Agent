@@ -3,7 +3,6 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "baseUrl": "./src",
-    "ignoreDeprecations": "6.0",
     "noEmit": true,
     "types": ["node", "jest"]
   },

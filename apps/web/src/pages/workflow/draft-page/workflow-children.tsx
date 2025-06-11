@@ -46,6 +46,7 @@ import {
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
+import { buildIfElseTargetBranches, normalizeIfElseNodeConfig } from '../features/ifelse-panel/schema';
 import 'reactflow/dist/style.css';
 
 const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
@@ -87,28 +88,54 @@ const createNodeFromSource = (
   };
 };
 
+const areStringArraysEqual = (left: string[] = [], right: string[] = []) => {
+  if (left.length !== right.length)
+    return false;
+
+  return left.every((item, index) => item === right[index]);
+};
+
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
   const { setNodes, setEdges, getNode, getEdges } = useReactFlow<CanvasNodeData, Edge>();
   const canAppend = data.kind !== 'end';
+  const conditionBranches = useMemo(() => {
+    if (data.kind !== 'condition') {
+      return [];
+    }
+
+    return data._targetBranches ?? buildIfElseTargetBranches(normalizeIfElseNodeConfig(data.inputs).cases);
+  }, [data._targetBranches, data.inputs, data.kind]);
+  const connectedSourceHandleIds = data._connectedSourceHandleIds ?? [];
 
   const appendNode = useCallback(
-    (node: NodeItem) => {
+    (node: NodeItem, sourceHandle = 'out') => {
       const sourceNode = getNode(id);
       if (!sourceNode) {
         return;
       }
 
+       if (sourceNode.data.kind === 'condition') {
+        const hasExistingBranchEdge = getEdges().some(
+          (edge) => edge.source === id && edge.sourceHandle === sourceHandle,
+        );
+        if (hasExistingBranchEdge) {
+          setMenuOpen(false);
+          return;
+        }
+      }
+
       const childCount = getEdges().filter((edge) => edge.source === id).length;
       const nextNode = createNodeFromSource(sourceNode, node, childCount);
-      const edgeId = `${id}-out-${nextNode.id}-in`;
+      const edgeId = `${id}-${sourceHandle}-${nextNode.id}-in`;
       const nextEdge = {
         id: edgeId,
         type: CUSTOM_EDGE,
         source: id,
         target: nextNode.id,
-        sourceHandle: 'out',
+        sourceHandle,
         targetHandle: 'in',
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -128,6 +155,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       setEdges((edges) => applyConnectedEdgeSelection(addEdge(nextEdge, edges), nextNode.id));
 
       setMenuOpen(false);
+      setAppendSourceHandle('out');
     },
     [getEdges, getNode, id, setEdges, setNodes],
   );
@@ -176,15 +204,57 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
       <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
 
+      {data.kind === 'condition' ? (
+        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+          {conditionBranches.map((branch, index) => {
+            const isConnected = connectedSourceHandleIds.includes(branch.id);
+
+            return (
+              <div
+                key={branch.id}
+                className="relative flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-2.5 py-2"
+              >
+                <Handle
+                  id={branch.id}
+                  type="source"
+                  position={Position.Right}
+                  style={{ top: 18 + index * 44 }}
+                  className="!h-2.5 !w-2.5 !border-2 !border-white !bg-emerald-500"
+                />
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                  {branch.name}
+                </span>
+                <span className="line-clamp-1 text-[11px] text-slate-500">
+                  {branch.id === 'false' ? '兜底分支' : '条件成立后进入'}
+                </span>
+                <button
+                  type="button"
+                  disabled={isConnected}
+                  className="ml-auto flex h-6 w-6 items-center justify-center rounded-full border border-emerald-200 bg-white text-base text-emerald-600 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setAppendSourceHandle(branch.id);
+                    setMenuOpen((prev) => !prev || appendSourceHandle !== branch.id);
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
       <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
 
-      {canAppend ? (
+      {canAppend && data.kind !== 'condition' ? (
         <div className="absolute -right-3 top-1/2 -translate-y-1/2">
           <button
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-white text-lg text-blue-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-blue-50"
             onClick={(event) => {
               event.stopPropagation();
+              setAppendSourceHandle('out');
               setMenuOpen((prev) => !prev);
             }}
           >
@@ -194,10 +264,19 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           <SearchBox
             isOpen={menuOpen}
             onClose={() => setMenuOpen(false)}
-            onAppendNode={appendNode}
+            onAppendNode={(node) => appendNode(node, appendSourceHandle)}
             menuRef={menuRef}
           />
         </div>
+      ) : null}
+
+      {canAppend && data.kind === 'condition' ? (
+        <SearchBox
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+          menuRef={menuRef}
+        />
       ) : null}
     </div>
   );
@@ -259,6 +338,34 @@ export const WorkflowChildren = () => {
     setNodes(hydrateCanvasNodesFromDsl(app.dsl))
     setEdges(app.dsl.edges as Edge[])
   }, [appId, setEdges, setNodes])
+
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      let changed = false;
+
+      const nextNodes = currentNodes.map((node) => {
+        const connectedSourceHandleIds = edges
+          .filter((edge) => edge.source === node.id)
+          .map((edge) => edge.sourceHandle ?? 'out');
+
+        if (areStringArraysEqual(node.data._connectedSourceHandleIds ?? [], connectedSourceHandleIds)) {
+          return node;
+        }
+
+        changed = true;
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            _connectedSourceHandleIds: connectedSourceHandleIds,
+          },
+        };
+      });
+
+      return changed ? nextNodes : currentNodes;
+    });
+  }, [edges, setNodes]);
 
   useEffect(() => {
     if (!appId)

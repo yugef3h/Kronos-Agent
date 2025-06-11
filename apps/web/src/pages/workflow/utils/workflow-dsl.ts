@@ -2,6 +2,11 @@ import type { Node } from 'reactflow'
 import type { WorkflowDSL } from '../../../features/workflow/workflowAppStore'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
+import {
+  buildIfElseTargetBranches,
+  createDefaultIfElseNodeConfig,
+  normalizeIfElseNodeConfig,
+} from '../features/ifelse-panel/schema'
 
 const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
   switch (kind) {
@@ -41,6 +46,15 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
   }
 }
 
+const getDefaultInputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
+  switch (kind) {
+    case 'condition':
+      return createDefaultIfElseNodeConfig() as unknown as Record<string, unknown>
+    default:
+      return undefined
+  }
+}
+
 const isCanvasNodeKind = (kind: unknown): kind is CanvasNodeData['kind'] => {
   return ['llm', 'knowledge', 'end', 'condition', 'iteration', 'loop', 'trigger'].includes(
     String(kind),
@@ -67,8 +81,14 @@ export const buildCanvasNodeData = (
   title: partial.title,
   subtitle: partial.subtitle,
   selected: partial.selected ?? false,
-  inputs: partial.inputs,
+  inputs: partial.inputs ?? getDefaultInputs(partial.kind),
   outputs: partial.outputs ?? getDefaultOutputs(partial.kind),
+  _targetBranches: partial.kind === 'condition'
+    ? buildIfElseTargetBranches(
+        normalizeIfElseNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind)).cases,
+      )
+    : undefined,
+  _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],
 })
 
 export const hydrateCanvasNodesFromDsl = (dsl: WorkflowDSL): Node<CanvasNodeData>[] => {
