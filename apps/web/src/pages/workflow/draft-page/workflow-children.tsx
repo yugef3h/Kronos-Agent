@@ -292,10 +292,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               return (
                 <div
                   key={branch.id}
-                  className={`relative ${isElseBranch ? 'min-h-[24px]' : 'min-h-[52px]'}`}
+                  className={`relative ${isElseBranch ? 'min-h-[24px]' : 'min-h-[58px]'}`}
                 >
                   {!isElseBranch ? (
-                    <div className="pt-[9px]">
+                    <div>
+                      <div className="mb-4 min-h-[18px]" />
                       <div className="rounded-xl bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]">
                         <div className="flex min-h-[34px] items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
                           <span className="line-clamp-1">{branchSummary}</span>
@@ -311,7 +312,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                       {branch.name}
                     </span>
                   ) : (
-                    <span className="absolute right-1 top-[9px] text-[10px] font-semibold tracking-[0.01em] text-slate-700">
+                    <span className="absolute right-1 top-[14px] text-[10px] font-semibold tracking-[0.01em] text-slate-700">
                       {branch.name}
                     </span>
                   )}
