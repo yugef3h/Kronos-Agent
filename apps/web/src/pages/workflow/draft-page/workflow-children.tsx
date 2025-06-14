@@ -19,6 +19,8 @@ import { getWorkflowAppById, updateWorkflowAppDsl } from '../../../features/work
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
+  NODE_WIDTH,
+  NODE_WIDTH_X_OFFSET,
 } from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
@@ -83,7 +85,7 @@ const createNodeFromSource = (
   node: NodeItem,
   index: number,
 ): Node<CanvasNodeData> => {
-  const x = sourceNode.position.x + 320;
+  const x = sourceNode.position.x + NODE_WIDTH_X_OFFSET;
   const y = sourceNode.position.y + index * 120;
 
   return {
@@ -240,8 +242,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   return (
     <div
       className={`group relative bg-white transition ${data.kind === 'condition'
-        ? `min-w-[312px] rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)] ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
-        : `min-w-[220px] rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
+        ? `rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)] ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
+        : `rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
+      style={{ width: NODE_WIDTH, minWidth: NODE_WIDTH, maxWidth: NODE_WIDTH }}
     >
       {data.kind !== 'trigger' ? (
         <Handle
@@ -289,40 +292,41 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               return (
                 <div
                   key={branch.id}
-                  className={`relative pr-12 ${isElseBranch ? 'min-h-[24px]' : 'min-h-[52px]'}`}
+                  className={`relative ${isElseBranch ? 'min-h-[24px]' : 'min-h-[52px]'}`}
                 >
                   {!isElseBranch ? (
-                    <div className="rounded-xl bg-[#f5f7fb] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]">
-                      {index === 0 && conditionConfig && conditionConfig.cases.length > 1 ? (
-                        <div className="mb-1 flex items-center">
-                          <span className="rounded-full bg-white px-1.5 py-0.5 text-[9px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
-                            +{conditionConfig.cases.length - 1} ELIF
-                          </span>
+                    <div className="pt-[9px]">
+                      <div className="rounded-xl bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]">
+                        <div className="flex min-h-[34px] items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
+                          <span className="line-clamp-1">{branchSummary}</span>
                         </div>
-                      ) : null}
-                      <div className="flex min-h-[34px] items-center gap-1.5 rounded-xl bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
-                        <span className="line-clamp-1">{branchSummary}</span>
                       </div>
                     </div>
                   ) : (
                     <div className="h-6" />
                   )}
 
-                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.01em] text-slate-700">
-                    {branch.name}
-                  </span>
+                  {isElseBranch ? (
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.01em] text-slate-700">
+                      {branch.name}
+                    </span>
+                  ) : (
+                    <span className="absolute right-1 top-[9px] text-[10px] font-semibold tracking-[0.01em] text-slate-700">
+                      {branch.name}
+                    </span>
+                  )}
 
-                  <div className="absolute right-[-16px] top-1/2 h-0 w-0 -translate-y-1/2 overflow-visible">
+                  <div className={`absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}>
                     <Handle
                       id={branch.id}
                       type="source"
                       position={Position.Right}
-                      className="!right-0 !top-1/2 !h-6 !w-6 !-translate-y-1/2 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100"
+                      className={`!right-0 !h-6 !w-6 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100 ${isElseBranch ? '!top-1/2 !-translate-y-1/2' : '!top-0 !translate-y-0'}`}
                     />
                     <button
                       type="button"
                       disabled={isConnected}
-                      className="absolute left-0 top-1/2 z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      className={`absolute left-0 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setAppendSourceHandle(branch.id);
