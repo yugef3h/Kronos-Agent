@@ -308,21 +308,21 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                     <div className="h-6" />
                   )}
 
-                  <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.01em] text-slate-700">
+                  <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-semibold tracking-[0.01em] text-slate-700">
                     {branch.name}
                   </span>
 
-                  <div className="absolute right-[-11px] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center">
+                  <div className="absolute right-[-16px] top-1/2 h-0 w-0 -translate-y-1/2 overflow-visible">
                     <Handle
                       id={branch.id}
                       type="source"
                       position={Position.Right}
-                      className="!right-0 !top-1/2 !h-6 !w-6 !-translate-y-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100"
+                      className="!right-0 !top-1/2 !h-6 !w-6 !-translate-y-1/2 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100"
                     />
                     <button
                       type="button"
                       disabled={isConnected}
-                      className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      className="absolute left-0 top-1/2 z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
                       onClick={(event) => {
                         event.stopPropagation();
                         setAppendSourceHandle(branch.id);
@@ -331,6 +331,16 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                     >
                       +
                     </button>
+
+                    {menuOpen && appendSourceHandle === branch.id ? (
+                      <SearchBox
+                        isOpen={menuOpen}
+                        onClose={() => setMenuOpen(false)}
+                        onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+                        menuRef={menuRef}
+                        preferredSide="right"
+                      />
+                    ) : null}
                   </div>
                 </div>
               );
@@ -375,14 +385,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         </div>
       ) : null}
 
-      {canAppend && data.kind === 'condition' ? (
-        <SearchBox
-          isOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-          menuRef={menuRef}
-        />
-      ) : null}
     </div>
   );
 };

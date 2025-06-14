@@ -107,11 +107,19 @@ type NodeMenuProps = {
   onClose: () => void;
   onAppendNode: (node: NodeItem) => void;
   menuRef: RefObject<HTMLDivElement>;
+  preferredSide?: 'left' | 'right';
 };
 
-export const SearchBox = ({ isOpen, onClose, onAppendNode, menuRef }: NodeMenuProps) => {
+export const SearchBox = ({
+  isOpen,
+  onClose,
+  onAppendNode,
+  menuRef,
+  preferredSide = 'right',
+}: NodeMenuProps) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchText, setSearchText] = useState<string>('');
+  const [actualSide, setActualSide] = useState<'left' | 'right'>(preferredSide);
 
   // 过滤节点：按搜索词 + 当前Tab
   const filteredNodes = useMemo(() => {
@@ -149,12 +157,55 @@ export const SearchBox = ({ isOpen, onClose, onAppendNode, menuRef }: NodeMenuPr
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, menuRef, onClose]);
 
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+
+    setActualSide(preferredSide);
+
+    const updateSide = () => {
+      if (!menuRef.current) return;
+
+      const rect = menuRef.current.getBoundingClientRect();
+      const boundaryElement = menuRef.current.closest('.react-flow') as HTMLElement | null;
+      const boundaryRect = boundaryElement?.getBoundingClientRect() ?? {
+        left: 0,
+        right: window.innerWidth,
+      };
+
+      if (preferredSide === 'right') {
+        const overflowsRight = rect.right > boundaryRect.right - 8;
+        if (overflowsRight) {
+          setActualSide('left');
+          return;
+        }
+      }
+
+      if (preferredSide === 'left') {
+        const overflowsLeft = rect.left < boundaryRect.left + 8;
+        if (overflowsLeft) {
+          setActualSide('right');
+          return;
+        }
+      }
+
+      setActualSide(preferredSide);
+    };
+
+    const frameId = requestAnimationFrame(updateSide);
+    window.addEventListener('resize', updateSide);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateSide);
+    };
+  }, [isOpen, menuRef, preferredSide]);
+
   if (!isOpen) return null;
 
   return (
     <div
       ref={menuRef}
-      className="nowheel nodrag absolute left-8 top-1/2 z-50 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur"
+      className={`nowheel nodrag absolute top-1/2 z-50 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur ${actualSide === 'right' ? 'left-8' : 'right-8'}`}
       onClick={(e) => e.stopPropagation()}
       onWheelCapture={(event) => event.stopPropagation()}
     >
