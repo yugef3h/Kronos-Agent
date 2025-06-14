@@ -7,6 +7,7 @@ import {
   createDefaultIfElseNodeConfig,
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema'
+import { createDefaultKnowledgeRetrievalNodeConfig } from '../features/knowledge-retrieval-panel/schema'
 
 const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
   switch (kind) {
@@ -23,7 +24,9 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
       }
     case 'knowledge':
       return {
+        result: [],
         documents: [],
+        files: [],
       }
     case 'condition':
       return {
@@ -50,6 +53,8 @@ const getDefaultInputs = (kind: CanvasNodeData['kind']): Record<string, unknown>
   switch (kind) {
     case 'condition':
       return createDefaultIfElseNodeConfig() as unknown as Record<string, unknown>
+    case 'knowledge':
+      return createDefaultKnowledgeRetrievalNodeConfig() as unknown as Record<string, unknown>
     default:
       return undefined
   }
