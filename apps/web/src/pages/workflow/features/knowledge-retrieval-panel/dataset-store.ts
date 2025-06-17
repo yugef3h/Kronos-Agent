@@ -1,12 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  requestCreateKnowledgeDataset,
+  requestDeleteKnowledgeDataset,
+  requestDevToken,
+  requestKnowledgeDatasets,
+  requestUpdateKnowledgeDataset,
+  type KnowledgeDatasetMutationInput,
+  type KnowledgeDatasetResponseItem,
+} from '../../../../lib/api'
+import { usePlaygroundStore } from '../../../../store/playgroundStore'
 import { KNOWLEDGE_DATASET_CATALOG } from './catalog'
-import type { KnowledgeDatasetDetail } from './types'
+import type { KnowledgeDatasetDetail, KnowledgeMetadataField } from './types'
 
-const KNOWLEDGE_DATASETS_STORAGE_KEY = 'kronos_workflow_knowledge_datasets_v1'
 const KNOWLEDGE_DATASETS_UPDATED_EVENT = 'kronos:workflow:knowledge-datasets-updated'
+const KNOWLEDGE_DATASET_AUTH_ERROR = '知识库接口需要 JWT 鉴权'
 
-const canUseLocalStorage = () => {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+let knowledgeDatasetCache: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG
+let authTokenRequest: Promise<string> | null = null
+
+const cloneMetadataFields = (fields: KnowledgeMetadataField[]) => {
+  return fields.map(field => ({ ...field }))
 }
 
 const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
@@ -23,6 +36,9 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
     name: raw.name,
     description: typeof raw.description === 'string' ? raw.description : '',
     is_multimodal: Boolean(raw.is_multimodal),
+    documentCount: typeof raw.documentCount === 'number' ? raw.documentCount : undefined,
+    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : undefined,
+    updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : undefined,
     doc_metadata: Array.isArray(raw.doc_metadata)
       ? raw.doc_metadata
           .filter((item): item is { key: string; label: string } => {
@@ -36,40 +52,133 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
   }
 }
 
-export const listKnowledgeDatasets = (): KnowledgeDatasetDetail[] => {
-  if (!canUseLocalStorage())
-    return KNOWLEDGE_DATASET_CATALOG
+const cloneDataset = (dataset: KnowledgeDatasetDetail): KnowledgeDatasetDetail => ({
+  ...dataset,
+  doc_metadata: cloneMetadataFields(dataset.doc_metadata),
+})
 
-  try {
-    const raw = window.localStorage.getItem(KNOWLEDGE_DATASETS_STORAGE_KEY)
-    if (!raw)
-      return KNOWLEDGE_DATASET_CATALOG
-
-    const parsed = JSON.parse(raw) as unknown[]
-    if (!Array.isArray(parsed))
-      return KNOWLEDGE_DATASET_CATALOG
-
-    const normalized = parsed
-      .map(item => normalizeDataset(item))
-      .filter((item): item is KnowledgeDatasetDetail => item !== null)
-
-    return normalized.length ? normalized : KNOWLEDGE_DATASET_CATALOG
-  }
-  catch {
-    return KNOWLEDGE_DATASET_CATALOG
-  }
+const sortDatasets = (datasets: KnowledgeDatasetDetail[]) => {
+  return [...datasets].sort((left, right) => left.name.localeCompare(right.name, 'zh-CN'))
 }
 
-export const ensureKnowledgeDatasetsSeeded = () => {
-  if (!canUseLocalStorage())
-    return KNOWLEDGE_DATASET_CATALOG
+const buildDatasetSignature = (datasets: KnowledgeDatasetDetail[]) => {
+  return JSON.stringify(sortDatasets(datasets).map(dataset => ({
+    id: dataset.id,
+    name: dataset.name,
+    description: dataset.description,
+    is_multimodal: dataset.is_multimodal,
+    documentCount: dataset.documentCount ?? 0,
+    updatedAt: dataset.updatedAt ?? 0,
+    doc_metadata: dataset.doc_metadata,
+  })))
+}
 
-  const existing = listKnowledgeDatasets()
-  if (existing.length)
-    return existing
+const publishKnowledgeDatasetsUpdate = () => {
+  if (typeof window === 'undefined')
+    return
 
-  window.localStorage.setItem(KNOWLEDGE_DATASETS_STORAGE_KEY, JSON.stringify(KNOWLEDGE_DATASET_CATALOG))
-  return KNOWLEDGE_DATASET_CATALOG
+  window.dispatchEvent(new Event(KNOWLEDGE_DATASETS_UPDATED_EVENT))
+}
+
+const setKnowledgeDatasetCache = (datasets: KnowledgeDatasetDetail[]) => {
+  const normalized = datasets
+    .map(dataset => normalizeDataset(dataset))
+    .filter((dataset): dataset is KnowledgeDatasetDetail => dataset !== null)
+
+  const nextDatasets = normalized.length ? sortDatasets(normalized) : sortDatasets(KNOWLEDGE_DATASET_CATALOG)
+  if (buildDatasetSignature(knowledgeDatasetCache) === buildDatasetSignature(nextDatasets)) {
+    return listKnowledgeDatasets()
+  }
+
+  knowledgeDatasetCache = nextDatasets.map(cloneDataset)
+  publishKnowledgeDatasetsUpdate()
+  return listKnowledgeDatasets()
+}
+
+const normalizeKnowledgeDatasetsResponse = (items: KnowledgeDatasetResponseItem[]) => {
+  return setKnowledgeDatasetCache(items)
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error && error.message.trim() ? error.message : fallback
+}
+
+const ensureKnowledgeDatasetAuthToken = async () => {
+  const currentToken = usePlaygroundStore.getState().authToken.trim()
+  if (currentToken) {
+    return currentToken
+  }
+
+  if (!authTokenRequest) {
+    authTokenRequest = requestDevToken()
+      .then((result: { token: string }) => {
+        usePlaygroundStore.getState().setAuthToken(result.token)
+        return result.token
+      })
+      .catch(() => '')
+      .finally(() => {
+        authTokenRequest = null
+      })
+  }
+
+  const token = await authTokenRequest
+  return (token || '').trim()
+}
+
+const fetchKnowledgeDatasets = async () => {
+  const authToken = await ensureKnowledgeDatasetAuthToken()
+  if (!authToken) {
+    throw new Error(KNOWLEDGE_DATASET_AUTH_ERROR)
+  }
+
+  const response = await requestKnowledgeDatasets({ authToken })
+  return normalizeKnowledgeDatasetsResponse(response.items)
+}
+
+const createRemoteKnowledgeDataset = async (input: KnowledgeDatasetMutationInput) => {
+  const authToken = await ensureKnowledgeDatasetAuthToken()
+  if (!authToken) {
+    throw new Error(KNOWLEDGE_DATASET_AUTH_ERROR)
+  }
+
+  const response = await requestCreateKnowledgeDataset({ authToken, input })
+  const nextItem = normalizeDataset(response.item)
+  if (!nextItem) {
+    throw new Error('知识库创建返回了无效数据')
+  }
+
+  setKnowledgeDatasetCache([...listKnowledgeDatasets().filter(dataset => dataset.id !== nextItem.id), nextItem])
+  return nextItem
+}
+
+const updateRemoteKnowledgeDataset = async (datasetId: string, input: KnowledgeDatasetMutationInput) => {
+  const authToken = await ensureKnowledgeDatasetAuthToken()
+  if (!authToken) {
+    throw new Error(KNOWLEDGE_DATASET_AUTH_ERROR)
+  }
+
+  const response = await requestUpdateKnowledgeDataset({ authToken, datasetId, input })
+  const nextItem = normalizeDataset(response.item)
+  if (!nextItem) {
+    throw new Error('知识库更新返回了无效数据')
+  }
+
+  setKnowledgeDatasetCache([...listKnowledgeDatasets().filter(dataset => dataset.id !== nextItem.id), nextItem])
+  return nextItem
+}
+
+const deleteRemoteKnowledgeDataset = async (datasetId: string) => {
+  const authToken = await ensureKnowledgeDatasetAuthToken()
+  if (!authToken) {
+    throw new Error(KNOWLEDGE_DATASET_AUTH_ERROR)
+  }
+
+  await requestDeleteKnowledgeDataset({ authToken, datasetId })
+  setKnowledgeDatasetCache(listKnowledgeDatasets().filter(dataset => dataset.id !== datasetId))
+}
+
+export const listKnowledgeDatasets = (): KnowledgeDatasetDetail[] => {
+  return knowledgeDatasetCache.map(cloneDataset)
 }
 
 export const getKnowledgeDatasetsByIds = (datasetIds: string[]) => {
@@ -77,29 +186,116 @@ export const getKnowledgeDatasetsByIds = (datasetIds: string[]) => {
   return listKnowledgeDatasets().filter(dataset => idSet.has(dataset.id))
 }
 
-export const publishKnowledgeDatasetsUpdate = () => {
-  if (typeof window === 'undefined')
-    return
-
-  window.dispatchEvent(new Event(KNOWLEDGE_DATASETS_UPDATED_EVENT))
-}
-
 export const useKnowledgeDatasets = () => {
-  const [datasets, setDatasets] = useState<KnowledgeDatasetDetail[]>(() => ensureKnowledgeDatasetsSeeded())
+  const [datasets, setDatasets] = useState<KnowledgeDatasetDetail[]>(() => listKnowledgeDatasets())
+  const [isLoading, setIsLoading] = useState(false)
+  const [isMutating, setIsMutating] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    setDatasets(ensureKnowledgeDatasetsSeeded())
+  const syncFromCache = useCallback(() => {
+    setDatasets(listKnowledgeDatasets())
+  }, [])
 
-    const handleUpdate = () => setDatasets(listKnowledgeDatasets())
+  const refresh = useCallback(async () => {
+    setIsLoading(true)
+    setErrorMessage('')
 
-    window.addEventListener('storage', handleUpdate)
-    window.addEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
-
-    return () => {
-      window.removeEventListener('storage', handleUpdate)
-      window.removeEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
+    try {
+      const nextDatasets = await fetchKnowledgeDatasets()
+      setDatasets(nextDatasets)
+      return nextDatasets
+    }
+    catch (error) {
+      const fallback = listKnowledgeDatasets()
+      setDatasets(fallback)
+      setErrorMessage(getErrorMessage(error, '知识库列表加载失败'))
+      return fallback
+    }
+    finally {
+      setIsLoading(false)
     }
   }, [])
 
-  return datasets
+  const createDataset = useCallback(async (input: KnowledgeDatasetMutationInput) => {
+    setIsMutating(true)
+    setErrorMessage('')
+
+    try {
+      const nextDataset = await createRemoteKnowledgeDataset(input)
+      setDatasets(listKnowledgeDatasets())
+      return nextDataset
+    }
+    catch (error) {
+      const message = getErrorMessage(error, '知识库创建失败')
+      setErrorMessage(message)
+      throw new Error(message)
+    }
+    finally {
+      setIsMutating(false)
+    }
+  }, [])
+
+  const updateDataset = useCallback(async (datasetId: string, input: KnowledgeDatasetMutationInput) => {
+    setIsMutating(true)
+    setErrorMessage('')
+
+    try {
+      const nextDataset = await updateRemoteKnowledgeDataset(datasetId, input)
+      setDatasets(listKnowledgeDatasets())
+      return nextDataset
+    }
+    catch (error) {
+      const message = getErrorMessage(error, '知识库更新失败')
+      setErrorMessage(message)
+      throw new Error(message)
+    }
+    finally {
+      setIsMutating(false)
+    }
+  }, [])
+
+  const deleteDataset = useCallback(async (datasetId: string) => {
+    setIsMutating(true)
+    setErrorMessage('')
+
+    try {
+      await deleteRemoteKnowledgeDataset(datasetId)
+      setDatasets(listKnowledgeDatasets())
+    }
+    catch (error) {
+      const message = getErrorMessage(error, '知识库删除失败')
+      setErrorMessage(message)
+      throw new Error(message)
+    }
+    finally {
+      setIsMutating(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    syncFromCache()
+    void refresh()
+
+    if (typeof window === 'undefined')
+      return undefined
+
+    const handleUpdate = () => syncFromCache()
+
+    window.addEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
+
+    return () => {
+      window.removeEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
+    }
+  }, [refresh, syncFromCache])
+
+  return {
+    datasets,
+    isLoading,
+    isMutating,
+    errorMessage,
+    refresh,
+    createDataset,
+    updateDataset,
+    deleteDataset,
+  }
 }

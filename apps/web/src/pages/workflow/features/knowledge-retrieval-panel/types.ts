@@ -15,6 +15,9 @@ export type KnowledgeDatasetDetail = {
   description: string
   is_multimodal: boolean
   doc_metadata: KnowledgeMetadataField[]
+  documentCount?: number
+  createdAt?: number
+  updatedAt?: number
 }
 
 export type KnowledgeMetadataCondition = {

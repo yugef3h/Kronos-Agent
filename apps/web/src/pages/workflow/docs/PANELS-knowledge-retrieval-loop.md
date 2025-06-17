@@ -619,6 +619,15 @@ flowchart TD
 2. 再做逻辑分支节点，复现 `IfElsePanel` 的 `case_id = handleId = edge.sourceHandle` 规则。
 3. 最后做容器型节点，复现 `LoopPanel` 的内部 start node 和 `_children` 机制。
 
+## 18. 当前实现补充
+
+目前 `KnowledgeRetrievalPanel` 在这个仓库里已经不是纯前端占位状态，而是补齐了两条真实链路：
+
+1. 右侧 panel 内可直接管理知识库，支持新建、编辑、删除数据集。
+2. 数据集来源改为服务端 `workflow/knowledge-datasets` API，而不是只读本地 seed。
+
+这意味着当前节点的 `dataset_ids` 不再只是“演示配置”，而是能和服务端持久化目录保持同步；节点卡片上的 `_datasets` 摘要也会随着后端数据变更一起刷新。
+
 这个顺序的原因是复杂度递增：
 
 - 参数型节点主要是表单和副作用

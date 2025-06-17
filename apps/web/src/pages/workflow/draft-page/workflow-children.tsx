@@ -55,6 +55,7 @@ import {
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema';
+import { getKnowledgeDatasetsByIds, useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store';
 import 'reactflow/dist/style.css';
 
 const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
@@ -101,6 +102,31 @@ const areStringArraysEqual = (left: string[] = [], right: string[] = []) => {
     return false;
 
   return left.every((item, index) => item === right[index]);
+};
+
+const getKnowledgeDatasetIds = (nodeData: CanvasNodeData) => {
+  const datasetIds = (nodeData.inputs as { dataset_ids?: unknown } | undefined)?.dataset_ids;
+  if (!Array.isArray(datasetIds)) {
+    return [];
+  }
+
+  return datasetIds.filter((item): item is string => typeof item === 'string');
+};
+
+const areKnowledgeDatasetsEqual = (
+  left: CanvasNodeData['_datasets'] = [],
+  right: CanvasNodeData['_datasets'] = [],
+) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((dataset, index) => {
+    const target = right[index];
+    return dataset.id === target?.id
+      && dataset.name === target.name
+      && dataset.updatedAt === target.updatedAt;
+  });
 };
 
 const buildConditionNodeVariableOptions = (
@@ -266,7 +292,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       {data.kind === 'condition' ? (
         <div>
           <div className="flex items-center gap-3 pr-8">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#16b5d8] text-white shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] bg-[#16b5d8] text-white shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]">
               <IconCondition />
             </div>
             <div className="min-w-0 pt-0.5">
@@ -274,7 +300,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             </div>
           </div>
 
-          <div className="mt-4 space-y-1.5">
+          <div className="mt-[-6px] space-y-1.5">
             {conditionBranches.map((branch, index) => {
               const isConnected = connectedSourceHandleIds.includes(branch.id);
               const isElseBranch = branch.id === 'false';
@@ -420,6 +446,7 @@ const edgeTypes = {
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
+  const { datasets } = useKnowledgeDatasets();
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
     if (!appId)
@@ -493,6 +520,45 @@ export const WorkflowChildren = () => {
       return changed ? nextNodes : currentNodes;
     });
   }, [edges, setNodes]);
+
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      let changed = false;
+
+      const nextNodes = currentNodes.map((node) => {
+        if (node.data.kind !== 'knowledge') {
+          return node;
+        }
+
+        const datasetIds = getKnowledgeDatasetIds(node.data);
+        const normalizedDatasetIds = datasetIds.filter(datasetId => datasets.some(dataset => dataset.id === datasetId));
+        const nextDatasets = getKnowledgeDatasetsByIds(normalizedDatasetIds);
+
+        if (
+          areStringArraysEqual(datasetIds, normalizedDatasetIds)
+          && areKnowledgeDatasetsEqual(node.data._datasets ?? [], nextDatasets)
+        ) {
+          return node;
+        }
+
+        changed = true;
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            inputs: {
+              ...(node.data.inputs ?? {}),
+              dataset_ids: normalizedDatasetIds,
+            },
+            _datasets: nextDatasets,
+          },
+        };
+      });
+
+      return changed ? nextNodes : currentNodes;
+    });
+  }, [datasets, setNodes]);
 
   useEffect(() => {
     if (!appId)

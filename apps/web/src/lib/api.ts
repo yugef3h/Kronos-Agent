@@ -169,6 +169,33 @@ export type SessionAppendMessage = {
 	content: string;
 };
 
+export type KnowledgeDatasetResponseField = {
+	key: string;
+	label: string;
+};
+
+export type KnowledgeDatasetResponseItem = {
+	id: string;
+	name: string;
+	description: string;
+	is_multimodal: boolean;
+	doc_metadata: KnowledgeDatasetResponseField[];
+	documentCount?: number;
+	createdAt?: number;
+	updatedAt?: number;
+};
+
+export type KnowledgeDatasetsResponse = {
+	items: KnowledgeDatasetResponseItem[];
+};
+
+export type KnowledgeDatasetMutationInput = {
+	name: string;
+	description: string;
+	is_multimodal: boolean;
+	doc_metadata: KnowledgeDatasetResponseField[];
+};
+
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	const response = await fetch(apiUrl('/api/dev/token'));
 
@@ -431,5 +458,78 @@ export const requestAppendSessionMessages = async (params: {
 
 	if (!response.ok) {
 		throw new Error('Failed to append session messages');
+	}
+};
+
+export const requestKnowledgeDatasets = async (params: {
+	authToken: string;
+}): Promise<KnowledgeDatasetsResponse> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-datasets'), {
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request knowledge datasets');
+	}
+
+	return (await response.json()) as KnowledgeDatasetsResponse;
+};
+
+export const requestCreateKnowledgeDataset = async (params: {
+	authToken: string;
+	input: KnowledgeDatasetMutationInput;
+}): Promise<{ item: KnowledgeDatasetResponseItem }> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-datasets'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to create knowledge dataset');
+	}
+
+	return (await response.json()) as { item: KnowledgeDatasetResponseItem };
+};
+
+export const requestUpdateKnowledgeDataset = async (params: {
+	authToken: string;
+	datasetId: string;
+	input: KnowledgeDatasetMutationInput;
+}): Promise<{ item: KnowledgeDatasetResponseItem }> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}`), {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to update knowledge dataset');
+	}
+
+	return (await response.json()) as { item: KnowledgeDatasetResponseItem };
+};
+
+export const requestDeleteKnowledgeDataset = async (params: {
+	authToken: string;
+	datasetId: string;
+}): Promise<void> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}`), {
+		method: 'DELETE',
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to delete knowledge dataset');
 	}
 };

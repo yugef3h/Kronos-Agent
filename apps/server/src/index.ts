@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { env } from './config/env.js';
+import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { chatRoutes } from './routes/chatRoutes.js';
@@ -41,6 +42,7 @@ app.use('/api', maybeSkipAuth, chatRoutes);
 
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();
+await initKnowledgeDatasetStore();
 
 const PORT = env.PORT;
 
