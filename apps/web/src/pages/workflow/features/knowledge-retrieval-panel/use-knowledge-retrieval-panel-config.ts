@@ -8,6 +8,7 @@ import {
   shouldShowKnowledgeAttachmentSelector,
   validateKnowledgeRetrievalNodeConfig,
 } from './schema'
+import type { KnowledgeDatasetDetail } from './types'
 import type {
   KnowledgeMetadataCondition,
   KnowledgeMetadataFilteringMode,
@@ -18,26 +19,27 @@ import type {
 type UseKnowledgeRetrievalPanelConfigOptions = {
   value: unknown
   onChange: (nextValue: KnowledgeRetrievalNodeConfig) => void
+  datasets?: KnowledgeDatasetDetail[]
 }
 
-export const useKnowledgeRetrievalPanelConfig = ({ value, onChange }: UseKnowledgeRetrievalPanelConfigOptions) => {
+export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: UseKnowledgeRetrievalPanelConfigOptions) => {
   const config = useMemo(() => normalizeKnowledgeRetrievalNodeConfig(value), [value])
-  const selectedDatasets = useMemo(() => getKnowledgeSelectedDatasets(config.dataset_ids), [config.dataset_ids])
-  const metadataFields = useMemo(() => getKnowledgeMetadataFieldsIntersection(config.dataset_ids), [config.dataset_ids])
+  const selectedDatasets = useMemo(() => getKnowledgeSelectedDatasets(config.dataset_ids, datasets), [config.dataset_ids, datasets])
+  const metadataFields = useMemo(() => getKnowledgeMetadataFieldsIntersection(config.dataset_ids, datasets), [config.dataset_ids, datasets])
   const showImageQueryVarSelector = useMemo(
-    () => shouldShowKnowledgeAttachmentSelector(config.dataset_ids),
-    [config.dataset_ids],
+    () => shouldShowKnowledgeAttachmentSelector(config.dataset_ids, datasets),
+    [config.dataset_ids, datasets],
   )
   const issues = useMemo(() => validateKnowledgeRetrievalNodeConfig(config, metadataFields), [config, metadataFields])
 
   const update = (recipe: (draft: KnowledgeRetrievalNodeConfig) => void) => {
     const nextValue = produce(config, recipe)
 
-    if (!shouldShowKnowledgeAttachmentSelector(nextValue.dataset_ids)) {
+    if (!shouldShowKnowledgeAttachmentSelector(nextValue.dataset_ids, datasets)) {
       nextValue.query_attachment_selector = []
     }
 
-    const nextMetadataFields = getKnowledgeMetadataFieldsIntersection(nextValue.dataset_ids)
+    const nextMetadataFields = getKnowledgeMetadataFieldsIntersection(nextValue.dataset_ids, datasets)
     if (nextValue.metadata_filtering_mode === 'manual') {
       nextValue.metadata_filtering_conditions = nextValue.metadata_filtering_conditions.filter((condition) => {
         return nextMetadataFields.some(field => field.key === condition.field)

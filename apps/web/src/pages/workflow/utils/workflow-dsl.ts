@@ -8,6 +8,7 @@ import {
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema'
 import { createDefaultKnowledgeRetrievalNodeConfig } from '../features/knowledge-retrieval-panel/schema'
+import { getKnowledgeDatasetsByIds } from '../features/knowledge-retrieval-panel/dataset-store'
 
 const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
   switch (kind) {
@@ -91,6 +92,13 @@ export const buildCanvasNodeData = (
   _targetBranches: partial.kind === 'condition'
     ? buildIfElseTargetBranches(
         normalizeIfElseNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind)).cases,
+      )
+    : undefined,
+  _datasets: partial.kind === 'knowledge'
+    ? getKnowledgeDatasetsByIds(
+        Array.isArray((partial.inputs as Record<string, unknown> | undefined)?.dataset_ids)
+          ? ((partial.inputs as Record<string, unknown>).dataset_ids as string[])
+          : [],
       )
     : undefined,
   _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],

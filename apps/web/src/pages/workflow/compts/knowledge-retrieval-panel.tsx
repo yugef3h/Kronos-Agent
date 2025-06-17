@@ -22,6 +22,7 @@ import {
   KNOWLEDGE_ONE_WAY_MODEL_OPTIONS,
   KNOWLEDGE_RERANK_MODEL_OPTIONS,
 } from '../features/knowledge-retrieval-panel/catalog'
+import { useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store'
 import { useKnowledgeRetrievalPanelConfig } from '../features/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
 import type {
   KnowledgeMetadataCondition,
@@ -143,6 +144,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     id,
     getNodes().map(node => ({ id: node.id, data: node.data })),
   )
+  const datasets = useKnowledgeDatasets()
   const fileVariables = useMemo(
     () => availableVariables.filter(option => option.valueType === 'file'),
     [availableVariables],
@@ -166,6 +168,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     handleRemoveMetadataCondition,
   } = useKnowledgeRetrievalPanelConfig({
     value: nodeData.inputs,
+    datasets,
     onChange: (nextValue: KnowledgeRetrievalNodeConfig) => {
       setNodes((nodes) => nodes.map((node) => {
         if (node.id !== id)
@@ -176,6 +179,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           data: {
             ...node.data,
             inputs: nextValue as unknown as Record<string, unknown>,
+            _datasets: datasets.filter(dataset => nextValue.dataset_ids.includes(dataset.id)),
             outputs: {
               result: [],
               documents: [],
@@ -191,10 +195,12 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   useEffect(() => {
     const rawInputs = JSON.stringify(nodeData.inputs ?? null)
     const normalizedInputs = JSON.stringify(config)
+    const normalizedDatasets = JSON.stringify(selectedDatasets)
+    const rawDatasets = JSON.stringify(nodeData._datasets ?? [])
     const outputs = nodeData.outputs ?? {}
     const hasOutputShape = 'result' in outputs && 'documents' in outputs && 'files' in outputs
 
-    if (rawInputs !== normalizedInputs || !hasOutputShape) {
+    if (rawInputs !== normalizedInputs || rawDatasets !== normalizedDatasets || !hasOutputShape) {
       setNodes((nodes) => nodes.map((node) => {
         if (node.id !== id)
           return node
@@ -204,6 +210,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           data: {
             ...node.data,
             inputs: config as unknown as Record<string, unknown>,
+            _datasets: selectedDatasets,
             outputs: {
               result: [],
               documents: [],
@@ -214,7 +221,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
         }
       }))
     }
-  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes])
+  }, [config, id, nodeData._datasets, nodeData.inputs, nodeData.outputs, selectedDatasets, setNodes])
 
   return (
     <div className="space-y-3">
@@ -290,7 +297,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           <PanelSection title="知识库">
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               <div className="grid gap-2">
-                {KNOWLEDGE_DATASET_CATALOG.map(dataset => {
+                {(datasets.length ? datasets : KNOWLEDGE_DATASET_CATALOG).map(dataset => {
                   const selected = config.dataset_ids.includes(dataset.id)
 
                   return (

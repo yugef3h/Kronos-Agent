@@ -1,4 +1,3 @@
-import { KNOWLEDGE_DATASET_CATALOG } from './catalog'
 import type {
   KnowledgeDatasetDetail,
   KnowledgeMetadataCondition,
@@ -6,6 +5,7 @@ import type {
   KnowledgeRetrievalNodeConfig,
   KnowledgeValidationIssue,
 } from './types'
+import { KNOWLEDGE_DATASET_CATALOG } from './catalog'
 
 const createConditionId = () => `metadata-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -69,17 +69,26 @@ export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalN
   metadata_filtering_conditions: [],
 })
 
-export const getKnowledgeSelectedDatasets = (datasetIds: string[]): KnowledgeDatasetDetail[] => {
+export const getKnowledgeSelectedDatasets = (
+  datasetIds: string[],
+  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+): KnowledgeDatasetDetail[] => {
   const idSet = new Set(datasetIds)
-  return KNOWLEDGE_DATASET_CATALOG.filter(dataset => idSet.has(dataset.id))
+  return datasetCatalog.filter(dataset => idSet.has(dataset.id))
 }
 
-export const shouldShowKnowledgeAttachmentSelector = (datasetIds: string[]) => {
-  return getKnowledgeSelectedDatasets(datasetIds).some(dataset => dataset.is_multimodal)
+export const shouldShowKnowledgeAttachmentSelector = (
+  datasetIds: string[],
+  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+) => {
+  return getKnowledgeSelectedDatasets(datasetIds, datasetCatalog).some(dataset => dataset.is_multimodal)
 }
 
-export const getKnowledgeMetadataFieldsIntersection = (datasetIds: string[]): KnowledgeMetadataField[] => {
-  const selectedDatasets = getKnowledgeSelectedDatasets(datasetIds)
+export const getKnowledgeMetadataFieldsIntersection = (
+  datasetIds: string[],
+  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+): KnowledgeMetadataField[] => {
+  const selectedDatasets = getKnowledgeSelectedDatasets(datasetIds, datasetCatalog)
   if (!selectedDatasets.length)
     return []
 
