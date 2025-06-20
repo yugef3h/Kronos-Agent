@@ -54,8 +54,19 @@ import {
   buildIfElseConditionSummary,
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
+  resolveIfElseVariableLabel,
 } from '../features/ifelse-panel/schema';
+import {
+  buildIterationChildren,
+  normalizeIterationNodeConfig,
+} from '../features/iteration-panel/schema';
 import { getKnowledgeDatasetsByIds, useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store';
+import {
+  buildLoopBreakSummary,
+  buildLoopChildren,
+  normalizeLoopNodeConfig,
+} from '../features/loop-panel/schema';
+import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import 'reactflow/dist/style.css';
 
 const CANVAS_NODE_KIND_TO_BLOCK: Record<AppendableNodeKind, BlockEnum> = {
@@ -73,8 +84,9 @@ const createNodeId = (kind: AppendableNodeKind): string => {
   return `${kind}-${Date.now().toString(36)}-${random}`;
 };
 
-const createNodeData = (node: NodeItem): CanvasNodeData => {
+const createNodeData = (node: NodeItem, nodeId: string): CanvasNodeData => {
   return buildCanvasNodeData({
+    nodeId,
     kind: node.kind,
     title: node.name,
     subtitle: node.id,
@@ -88,12 +100,13 @@ const createNodeFromSource = (
 ): Node<CanvasNodeData> => {
   const x = sourceNode.position.x + NODE_WIDTH_X_OFFSET;
   const y = sourceNode.position.y + index * 120;
+  const nextNodeId = createNodeId(node.kind);
 
   return {
-    id: createNodeId(node.kind),
+    id: nextNodeId,
     type: 'workflow',
     position: { x, y },
-    data: createNodeData(node),
+    data: createNodeData(node, nextNodeId),
   };
 };
 
@@ -129,31 +142,25 @@ const areKnowledgeDatasetsEqual = (
   });
 };
 
+const areContainerChildrenEqual = (
+  left: CanvasNodeData['_children'] = [],
+  right: CanvasNodeData['_children'] = [],
+) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((child, index) => {
+    const target = right[index];
+    return child.nodeId === target?.nodeId && child.nodeType === target.nodeType;
+  });
+};
+
 const buildConditionNodeVariableOptions = (
   currentNodeId: string,
   nodes: Array<{ id: string; data: CanvasNodeData }>,
 ) : VariableOption[] => {
-  const systemVariables: VariableOption[] = [
-    { label: 'sys.query', valueSelector: ['sys', 'query'], valueType: 'string', source: 'system' },
-    { label: 'sys.files', valueSelector: ['sys', 'files'], valueType: 'file', source: 'system' },
-    { label: 'sys.conversation_id', valueSelector: ['sys', 'conversation_id'], valueType: 'string', source: 'system' },
-  ];
-
-  const nodeVariables: VariableOption[] = nodes
-    .filter(node => node.id !== currentNodeId)
-    .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
-    .flatMap((node) => Object.keys(node.data.outputs ?? {}).map((outputKey) => ({
-      label: `${node.data.title}.${outputKey}`,
-      valueSelector: [node.id, outputKey],
-      valueType: outputKey.includes('file')
-        ? 'file'
-        : outputKey === 'usage'
-          ? 'object'
-          : 'string',
-      source: 'node',
-    })))
-
-  return [...systemVariables, ...nodeVariables];
+  return buildWorkflowVariableOptions(currentNodeId, nodes);
 };
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
@@ -186,6 +193,86 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       getNodes().map(node => ({ id: node.id, data: node.data })),
     );
   }, [data.kind, getNodes, id]);
+  const workflowVariableOptions = useMemo(() => {
+    if (data.kind !== 'iteration' && data.kind !== 'loop') {
+      return [];
+    }
+
+    return buildWorkflowVariableOptions(
+      id,
+      getNodes().map(node => ({ id: node.id, data: node.data })),
+    );
+  }, [data.kind, getNodes, id]);
+  const iterationConfig = useMemo(() => {
+    if (data.kind !== 'iteration') {
+      return null;
+    }
+
+    return normalizeIterationNodeConfig(data.inputs, id);
+  }, [data.inputs, data.kind, id]);
+  const loopConfig = useMemo(() => {
+    if (data.kind !== 'loop') {
+      return null;
+    }
+
+    return normalizeLoopNodeConfig(data.inputs, id);
+  }, [data.inputs, data.kind, id]);
+  const iterationSummary = useMemo(() => {
+    if (!iterationConfig) {
+      return null;
+    }
+
+    return {
+      iterator: iterationConfig.iterator_selector.length
+        ? resolveIfElseVariableLabel(iterationConfig.iterator_selector, workflowVariableOptions)
+        : '未选择数组变量',
+      mode: iterationConfig.is_parallel ? `并行 x${iterationConfig.parallel_nums}` : '串行执行',
+      output: iterationConfig.output_selector.length
+        ? resolveIfElseVariableLabel(iterationConfig.output_selector, [
+            {
+              label: 'current.item',
+              valueSelector: [id, 'item'],
+              valueType: 'object',
+              source: 'node',
+            },
+            {
+              label: 'current.index',
+              valueSelector: [id, 'index'],
+              valueType: 'number',
+              source: 'node',
+            },
+            ...workflowVariableOptions,
+          ])
+        : '未配置聚合输出',
+    };
+  }, [id, iterationConfig, workflowVariableOptions]);
+  const loopVariableOptions = useMemo(() => {
+    if (!loopConfig) {
+      return [];
+    }
+
+    return loopConfig.loop_variables
+      .filter(loopVariable => loopVariable.label.trim())
+      .map<VariableOption>((loopVariable) => ({
+        label: `loop.${loopVariable.label.trim()}`,
+        valueSelector: [id, loopVariable.label.trim()],
+        valueType: loopVariable.var_type,
+        source: 'node',
+      }));
+  }, [id, loopConfig]);
+  const loopSummary = useMemo(() => {
+    if (!loopConfig) {
+      return null;
+    }
+
+    return {
+      count: `${loopConfig.loop_count} 轮上限`,
+      variables: `${loopConfig.loop_variables.length} 个上下文变量`,
+      condition: loopConfig.break_conditions[0]
+        ? buildLoopBreakSummary(loopConfig.break_conditions[0], [...loopVariableOptions, ...workflowVariableOptions])
+        : '未配置 break 条件',
+    };
+  }, [loopConfig, loopVariableOptions, workflowVariableOptions]);
   const primaryConditionSummary = useMemo(() => {
     if (!conditionConfig?.cases[0]?.conditions.length) {
       return '添加条件后，这里会显示 IF 分支摘要';
@@ -403,6 +490,29 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               ) : null}
             </div>
           ) : null}
+          {data.kind === 'iteration' && iterationSummary ? (
+            <div className="mt-2 space-y-1">
+              <div className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
+                <span className="line-clamp-1">{iterationSummary.iterator}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                <span>{iterationSummary.mode}</span>
+                <span>•</span>
+                <span className="line-clamp-1">{iterationSummary.output}</span>
+              </div>
+            </div>
+          ) : null}
+          {data.kind === 'loop' && loopSummary ? (
+            <div className="mt-2 space-y-1">
+              <div className="flex flex-wrap gap-1.5">
+                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">{loopSummary.count}</span>
+                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">{loopSummary.variables}</span>
+              </div>
+              <div className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
+                <span className="line-clamp-1">{loopSummary.condition}</span>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
 
@@ -559,6 +669,80 @@ export const WorkflowChildren = () => {
       return changed ? nextNodes : currentNodes;
     });
   }, [datasets, setNodes]);
+
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      let changed = false;
+
+      const nextNodes = currentNodes.map((node) => {
+        if (node.data.kind === 'iteration') {
+          const normalizedConfig = normalizeIterationNodeConfig(node.data.inputs, node.id);
+          const nextChildren = buildIterationChildren(normalizedConfig.start_node_id);
+          const outputs = node.data.outputs ?? {};
+          const hasOutputShape = 'items' in outputs && 'count' in outputs;
+
+          if (
+            JSON.stringify(node.data.inputs ?? null) === JSON.stringify(normalizedConfig)
+            && areContainerChildrenEqual(node.data._children ?? [], nextChildren)
+            && hasOutputShape
+          ) {
+            return node;
+          }
+
+          changed = true;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              inputs: normalizedConfig as unknown as Record<string, unknown>,
+              outputs: {
+                items: [],
+                count: 0,
+                ...(node.data.outputs ?? {}),
+              },
+              _children: nextChildren,
+            },
+          };
+        }
+
+        if (node.data.kind === 'loop') {
+          const normalizedConfig = normalizeLoopNodeConfig(node.data.inputs, node.id);
+          const nextChildren = buildLoopChildren(normalizedConfig.start_node_id);
+          const outputs = node.data.outputs ?? {};
+          const hasOutputShape = 'steps' in outputs && 'count' in outputs;
+
+          if (
+            JSON.stringify(node.data.inputs ?? null) === JSON.stringify(normalizedConfig)
+            && areContainerChildrenEqual(node.data._children ?? [], nextChildren)
+            && hasOutputShape
+          ) {
+            return node;
+          }
+
+          changed = true;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              inputs: normalizedConfig as unknown as Record<string, unknown>,
+              outputs: {
+                steps: [],
+                count: 0,
+                ...(node.data.outputs ?? {}),
+              },
+              _children: nextChildren,
+            },
+          };
+        }
+
+        return node;
+      });
+
+      return changed ? nextNodes : currentNodes;
+    });
+  }, [setNodes]);
 
   useEffect(() => {
     if (!appId)

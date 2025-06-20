@@ -7,8 +7,18 @@ import {
   createDefaultIfElseNodeConfig,
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema'
+import {
+  buildIterationChildren,
+  createDefaultIterationNodeConfig,
+  normalizeIterationNodeConfig,
+} from '../features/iteration-panel/schema'
 import { createDefaultKnowledgeRetrievalNodeConfig } from '../features/knowledge-retrieval-panel/schema'
 import { getKnowledgeDatasetsByIds } from '../features/knowledge-retrieval-panel/dataset-store'
+import {
+  buildLoopChildren,
+  createDefaultLoopNodeConfig,
+  normalizeLoopNodeConfig,
+} from '../features/loop-panel/schema'
 
 const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
   switch (kind) {
@@ -36,10 +46,12 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
     case 'iteration':
       return {
         items: [],
+        count: 0,
       }
     case 'loop':
       return {
         steps: [],
+        count: 0,
       }
     case 'end':
       return {
@@ -50,12 +62,16 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
   }
 }
 
-const getDefaultInputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
+const getDefaultInputs = (kind: CanvasNodeData['kind'], nodeId?: string): Record<string, unknown> | undefined => {
   switch (kind) {
     case 'condition':
       return createDefaultIfElseNodeConfig() as unknown as Record<string, unknown>
     case 'knowledge':
       return createDefaultKnowledgeRetrievalNodeConfig() as unknown as Record<string, unknown>
+    case 'iteration':
+      return createDefaultIterationNodeConfig(nodeId) as unknown as Record<string, unknown>
+    case 'loop':
+      return createDefaultLoopNodeConfig(nodeId) as unknown as Record<string, unknown>
     default:
       return undefined
   }
@@ -81,17 +97,17 @@ export const createInitialTriggerNode = (): Node<CanvasNodeData> => ({
 })
 
 export const buildCanvasNodeData = (
-  partial: Partial<CanvasNodeData> & Pick<CanvasNodeData, 'kind' | 'title' | 'subtitle'>,
+  partial: Partial<CanvasNodeData> & Pick<CanvasNodeData, 'kind' | 'title' | 'subtitle'> & { nodeId?: string },
 ): CanvasNodeData => ({
   kind: partial.kind,
   title: partial.title,
   subtitle: partial.subtitle,
   selected: partial.selected ?? false,
-  inputs: partial.inputs ?? getDefaultInputs(partial.kind),
+  inputs: partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId),
   outputs: partial.outputs ?? getDefaultOutputs(partial.kind),
   _targetBranches: partial.kind === 'condition'
     ? buildIfElseTargetBranches(
-        normalizeIfElseNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind)).cases,
+        normalizeIfElseNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId)).cases,
       )
     : undefined,
   _datasets: partial.kind === 'knowledge'
@@ -101,6 +117,15 @@ export const buildCanvasNodeData = (
           : [],
       )
     : undefined,
+  _children: partial.kind === 'iteration'
+    ? buildIterationChildren(
+        normalizeIterationNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId), partial.nodeId).start_node_id,
+      )
+    : partial.kind === 'loop'
+      ? buildLoopChildren(
+          normalizeLoopNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId), partial.nodeId).start_node_id,
+        )
+      : undefined,
   _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],
 })
 
@@ -119,6 +144,7 @@ export const hydrateCanvasNodesFromDsl = (dsl: WorkflowDSL): Node<CanvasNodeData
       position: node.position,
       parentId: node.parentId,
       data: buildCanvasNodeData({
+        nodeId: node.id,
         kind,
         title: typeof node.data.label === 'string' ? node.data.label : '未命名节点',
         subtitle: typeof node.data.subtitle === 'string' ? node.data.subtitle : node.id,

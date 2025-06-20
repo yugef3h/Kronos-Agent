@@ -101,7 +101,7 @@ export type CompletionParamDefinition = {
 export type VariableOption = {
   label: string
   valueSelector: ValueSelector
-  valueType: 'string' | 'file' | 'object' | 'array' | 'number'
+  valueType: 'string' | 'file' | 'object' | 'array' | 'number' | 'boolean'
   source: 'system' | 'node'
 }
 
