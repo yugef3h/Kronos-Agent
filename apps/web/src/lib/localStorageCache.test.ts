@@ -57,8 +57,9 @@ describe('localStorageCache', () => {
   });
 
   it('computes the next day start timestamp', () => {
-    expect(getNextDayStartTimestamp(new Date('2026-03-20T10:30:00+08:00').getTime())).toBe(
-      new Date('2026-03-21T00:00:00+08:00').getTime(),
-    );
+    const now = new Date(2026, 2, 20, 10, 30, 0, 0).getTime();
+    const expected = new Date(2026, 2, 21, 0, 0, 0, 0).getTime();
+
+    expect(getNextDayStartTimestamp(now)).toBe(expected);
   });
 });
