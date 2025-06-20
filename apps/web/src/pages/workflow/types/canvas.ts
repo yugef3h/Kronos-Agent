@@ -2,8 +2,19 @@ import type { ContainerChildSummary } from '../features/container-panel/runtime'
 import type { IfElseBranch } from '../features/ifelse-panel/types'
 import type { KnowledgeDatasetDetail } from '../features/knowledge-retrieval-panel/types'
 
+export type WorkflowCanvasNodeKind =
+  | 'llm'
+  | 'knowledge'
+  | 'end'
+  | 'condition'
+  | 'iteration'
+  | 'loop'
+  | 'trigger'
+  | 'iteration-start'
+  | 'loop-start'
+
 export type CanvasNodeData = {
-  kind: 'llm' | 'knowledge' | 'end' | 'condition' | 'iteration' | 'loop' | 'trigger'
+  kind: WorkflowCanvasNodeKind
   title: string
   subtitle: string
   selected?: boolean

@@ -31,12 +31,41 @@ export const applyConnectedEdgeSelection = <TData extends SelectableEdgeData>(
   } as TData,
 }))
 
+export const getDescendantNodeIds = <TData>(
+  nodes: Node<TData>[],
+  parentNodeId: string,
+): string[] => {
+  const descendants: string[] = []
+  const queue = [parentNodeId]
+
+  while (queue.length) {
+    const currentNodeId = queue.shift()
+    if (!currentNodeId)
+      continue
+
+    nodes.forEach((node) => {
+      if (node.parentId === currentNodeId) {
+        descendants.push(node.id)
+        queue.push(node.id)
+      }
+    })
+  }
+
+  return descendants
+}
+
 export const removeNodeById = <TData>(
   nodes: Node<TData>[],
   nodeId: string,
-) => nodes.filter(node => node.id !== nodeId)
+) => {
+  const removedNodeIds = new Set([nodeId, ...getDescendantNodeIds(nodes, nodeId)])
+  return nodes.filter(node => !removedNodeIds.has(node.id))
+}
 
 export const removeConnectedEdges = <TData>(
   edges: Edge<TData>[],
-  nodeId: string,
-) => edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
+  nodeIds: string | string[],
+) => {
+  const removedNodeIds = new Set(Array.isArray(nodeIds) ? nodeIds : [nodeIds])
+  return edges.filter(edge => !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target))
+}

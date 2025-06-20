@@ -23,12 +23,12 @@ import { COMPLETION_PARAM_DEFINITIONS } from '../features/llm-panel/catalog';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { useLLMPanelConfig } from '../features/llm-panel/use-llm-panel-config';
+import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import type {
   ChatPromptItem,
   CompletionPromptItem,
   LLMNodeConfig,
   StructuredOutputConfig,
-  VariableOption,
 } from '../features/llm-panel/types';
 import type { PanelFieldControl } from '../base/panel-form';
 
@@ -66,53 +66,6 @@ const normalizeStructuredSchema = (
     required,
     additionalProperties: false,
   };
-};
-
-const buildVariableOptions = (
-  currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData }>,
-): VariableOption[] => {
-  const systemVariables: VariableOption[] = [
-    {
-      label: 'sys.query',
-      valueSelector: ['sys', 'query'],
-      valueType: 'string',
-      source: 'system',
-    },
-    {
-      label: 'sys.files',
-      valueSelector: ['sys', 'files'],
-      valueType: 'file',
-      source: 'system',
-    },
-    {
-      label: 'sys.conversation_id',
-      valueSelector: ['sys', 'conversation_id'],
-      valueType: 'string',
-      source: 'system',
-    },
-  ];
-
-  const nodeVariables = nodes
-    .filter((node) => node.id !== currentNodeId)
-    .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
-    .flatMap((node) => {
-      const outputs = Object.keys(node.data.outputs ?? {});
-      if (!outputs.length) return [];
-
-      return outputs.map<VariableOption>((outputKey) => ({
-        label: `${node.data.title}.${outputKey}`,
-        valueSelector: [node.id, outputKey],
-        valueType: outputKey.includes('file')
-          ? 'file'
-          : outputKey === 'usage'
-            ? 'object'
-            : 'string',
-        source: 'node',
-      }));
-    });
-
-  return [...systemVariables, ...nodeVariables];
 };
 
 const PromptMessageEditor = ({
@@ -180,7 +133,7 @@ const CompletionPromptEditor = ({
 const LLMPanel = ({ id, data }: NodePanelProps) => {
   const { getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>();
   const nodeData = data as CanvasNodeData;
-  const availableVariables = buildVariableOptions(
+  const availableVariables = buildWorkflowVariableOptions(
     id,
     getNodes().map((node) => ({ id: node.id, data: node.data })),
   );

@@ -5,11 +5,13 @@ export type WorkflowNodeType =
   | 'tool'
   | 'if'
   | 'loop'
+  | 'loop-start'
   | 'parallel'
   | 'llm'
   | 'knowledge'
   | 'condition'
-  | 'iteration';
+  | 'iteration'
+  | 'iteration-start';
 
 export type WorkflowNode = {
   id: string;

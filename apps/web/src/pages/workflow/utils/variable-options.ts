@@ -4,9 +4,17 @@ import type { CanvasNodeData } from '../types/canvas'
 export const serializeValueSelector = (valueSelector: ValueSelector) => valueSelector.join('.')
 
 const inferVariableType = (
+  node: { id: string; data: CanvasNodeData },
   outputKey: string,
   outputValue: unknown,
 ): VariableOption['valueType'] => {
+  const explicitOutputTypes = (node.data.inputs as { _outputTypes?: Record<string, unknown> } | undefined)?._outputTypes
+  const explicitOutputType = explicitOutputTypes?.[outputKey]
+
+  if (typeof explicitOutputType === 'string' && ['string', 'number', 'boolean', 'array', 'object', 'file'].includes(explicitOutputType)) {
+    return explicitOutputType as VariableOption['valueType']
+  }
+
   if (typeof outputValue === 'number')
     return 'number'
 
@@ -64,7 +72,7 @@ export const buildWorkflowVariableOptions = (
       return outputKeys.map<VariableOption>((outputKey) => ({
         label: `${node.data.title}.${outputKey}`,
         valueSelector: [node.id, outputKey],
-        valueType: inferVariableType(outputKey, outputs[outputKey]),
+        valueType: inferVariableType(node, outputKey, outputs[outputKey]),
         source: 'node',
       }))
     })

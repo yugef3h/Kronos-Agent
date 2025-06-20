@@ -1,8 +1,19 @@
 export type ContainerKind = 'iteration' | 'loop'
 
+export type ContainerChildNodeType =
+  | 'llm'
+  | 'knowledge'
+  | 'end'
+  | 'condition'
+  | 'iteration'
+  | 'loop'
+  | 'iteration-start'
+  | 'loop-start'
+  | 'trigger'
+
 export type ContainerChildSummary = {
   nodeId: string
-  nodeType: 'iteration-start' | 'loop-start'
+  nodeType: ContainerChildNodeType
 }
 
 export const buildContainerStartNodeId = (nodeId: string | undefined, kind: ContainerKind) => {
