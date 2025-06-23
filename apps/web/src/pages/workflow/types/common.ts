@@ -38,6 +38,7 @@ export enum BlockEnum {
   LoopEnd = 'loop-end',
   Iteration = 'iteration',
   IterationStart = 'iteration-start',
+  IterationEnd = 'iteration-end',
   KnowledgeRetrieval = 'knowledge-retrieval',
 }
 
@@ -61,4 +62,13 @@ export type CommonEdgeType = {
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
 // 复用你现有类型
-export type AppendableNodeKind = 'llm' | 'knowledge' | 'end' | 'condition' | 'iteration' | 'loop' | 'trigger';
+export type AppendableNodeKind =
+  | 'llm'
+  | 'knowledge'
+  | 'end'
+  | 'condition'
+  | 'iteration'
+  | 'loop'
+  | 'trigger'
+  | 'iteration-end'
+  | 'loop-end';

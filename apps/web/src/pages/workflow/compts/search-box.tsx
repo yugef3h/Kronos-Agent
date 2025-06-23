@@ -108,6 +108,27 @@ type NodeMenuProps = {
   onAppendNode: (node: NodeItem) => void;
   menuRef: RefObject<HTMLDivElement>;
   preferredSide?: 'left' | 'right';
+  scope?: 'root' | 'iteration' | 'loop';
+};
+
+const getScopedNodes = (scope: 'root' | 'iteration' | 'loop') => {
+  if (scope === 'root') {
+    return NODE_CATEGORIES;
+  }
+
+  const internalNodes = NODE_CATEGORIES.map(category => ({
+    ...category,
+    nodes: category.nodes
+      .filter(node => node.kind !== 'trigger' && node.kind !== 'end')
+      .concat({
+        id: scope === 'iteration' ? 'iteration-end' : 'loop-end',
+        name: scope === 'iteration' ? '迭代结束' : '循环结束',
+        kind: scope === 'iteration' ? 'iteration-end' : 'loop-end',
+        icon: <IconOutput />,
+      }),
+  }));
+
+  return internalNodes;
 };
 
 export const SearchBox = ({
@@ -116,21 +137,24 @@ export const SearchBox = ({
   onAppendNode,
   menuRef,
   preferredSide = 'right',
+  scope = 'root',
 }: NodeMenuProps) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchText, setSearchText] = useState<string>('');
   const [actualSide, setActualSide] = useState<'left' | 'right'>(preferredSide);
 
+  const scopedCategories = useMemo(() => getScopedNodes(scope), [scope]);
+
   // 过滤节点：按搜索词 + 当前Tab
   const filteredNodes = useMemo(() => {
-    const currentCategory = NODE_CATEGORIES.find((cat) => cat.id === activeTab);
+    const currentCategory = scopedCategories.find((cat) => cat.id === activeTab);
     if (!currentCategory) return [];
 
     if (!searchText.trim()) return currentCategory.nodes;
 
     const lowerSearch = searchText.toLowerCase();
     return currentCategory.nodes.filter((node) => node.name.toLowerCase().includes(lowerSearch));
-  }, [activeTab, searchText]);
+  }, [activeTab, scopedCategories, searchText]);
 
   // 点击节点后关闭菜单
   const handleNodeClick = useCallback(
@@ -211,7 +235,7 @@ export const SearchBox = ({
     >
       {/* Tab 切换栏 */}
       <div className="flex border-b border-slate-100 bg-white/90 px-1 pt-1">
-        {NODE_CATEGORIES.map((tab) => (
+        {scopedCategories.map((tab) => (
           <button
             key={tab.id}
             type="button"

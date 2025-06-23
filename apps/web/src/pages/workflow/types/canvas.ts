@@ -11,6 +11,8 @@ export type WorkflowCanvasNodeKind =
   | 'loop'
   | 'trigger'
   | 'iteration-start'
+  | 'iteration-end'
+  | 'loop-end'
   | 'loop-start'
 
 export type CanvasNodeData = {

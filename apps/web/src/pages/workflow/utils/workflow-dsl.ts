@@ -62,6 +62,15 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
       return {
         index: 0,
       }
+    case 'iteration-end':
+      return {
+        item: null,
+        done: true,
+      }
+    case 'loop-end':
+      return {
+        done: true,
+      }
     case 'end':
       return {
         result: '',
@@ -94,13 +103,26 @@ const getDefaultInputs = (kind: CanvasNodeData['kind'], nodeId?: string): Record
           index: 'number',
         },
       }
+    case 'iteration-end':
+      return {
+        _outputTypes: {
+          item: 'object',
+          done: 'boolean',
+        },
+      }
+    case 'loop-end':
+      return {
+        _outputTypes: {
+          done: 'boolean',
+        },
+      }
     default:
       return undefined
   }
 }
 
 const isCanvasNodeKind = (kind: unknown): kind is CanvasNodeData['kind'] => {
-  return ['llm', 'knowledge', 'end', 'condition', 'iteration', 'loop', 'trigger', 'iteration-start', 'loop-start'].includes(
+  return ['llm', 'knowledge', 'end', 'condition', 'iteration', 'loop', 'trigger', 'iteration-start', 'iteration-end', 'loop-start', 'loop-end'].includes(
     String(kind),
   )
 }

@@ -10,6 +10,8 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useUpdateNodeInternals,
+  useViewport,
   type Connection,
   type Node,
   type NodeProps,
@@ -38,12 +40,18 @@ import {
   removeNodeById,
 } from '../hooks/node-selection';
 import {
+  buildContainerEndNodeData,
   buildContainerChildPosition,
   buildContainerChildSummaries,
+  buildContainerLayout,
   buildContainerStartNode,
+  CONTAINER_CHILD_NODE_WIDTH,
+  CONTAINER_END_NODE_WIDTH,
   CONTAINER_NODE_MIN_HEIGHT,
   CONTAINER_NODE_WIDTH,
+  CONTAINER_START_NODE_WIDTH,
   getContainerBlockEnum,
+  isContainerEndKind,
   isContainerNodeKind,
   isContainerStartKind,
 } from '../features/container-panel/canvas';
@@ -58,19 +66,19 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import { IconCondition } from '../assets/condition';
+import { IconLoop } from '../assets/loop';
+import { IconIteration } from '../assets/iteration';
 import type { VariableOption } from '../features/llm-panel/types';
 import {
   buildIfElseConditionSummary,
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
-  resolveIfElseVariableLabel,
 } from '../features/ifelse-panel/schema';
 import {
   normalizeIterationNodeConfig,
 } from '../features/iteration-panel/schema';
 import { getKnowledgeDatasetsByIds, useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store';
 import {
-  buildLoopBreakSummary,
   normalizeLoopNodeConfig,
 } from '../features/loop-panel/schema';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
@@ -82,6 +90,32 @@ const createNodeId = (kind: CanvasNodeData['kind']): string => {
 };
 
 const createNodeData = (node: NodeItem, nodeId: string): CanvasNodeData => {
+  if (node.kind === 'iteration-end') {
+    const endNodeData = buildContainerEndNodeData('iteration');
+
+    return buildCanvasNodeData({
+      nodeId,
+      kind: endNodeData.kind,
+      title: endNodeData.title,
+      subtitle: endNodeData.subtitle,
+      inputs: endNodeData.inputs,
+      outputs: endNodeData.outputs,
+    });
+  }
+
+  if (node.kind === 'loop-end') {
+    const endNodeData = buildContainerEndNodeData('loop');
+
+    return buildCanvasNodeData({
+      nodeId,
+      kind: endNodeData.kind,
+      title: endNodeData.title,
+      subtitle: endNodeData.subtitle,
+      inputs: endNodeData.inputs,
+      outputs: endNodeData.outputs,
+    });
+  }
+
   return buildCanvasNodeData({
     nodeId,
     kind: node.kind,
@@ -109,9 +143,31 @@ const createNodeFromSource = (
     type: 'workflow',
     parentId: sourceNode.parentId,
     extent: sourceNode.parentId ? 'parent' : undefined,
+    draggable: sourceNode.parentId ? true : undefined,
+    zIndex: sourceNode.parentId ? ITERATION_CHILDREN_Z_INDEX + 1 : undefined,
     position: nextPosition,
     data: createNodeData(node, nextNodeId),
   };
+};
+
+const resolveSearchBoxScope = (
+  nodes: Node<CanvasNodeData>[],
+  node: Node<CanvasNodeData> | undefined,
+): 'root' | 'iteration' | 'loop' => {
+  if (!node?.parentId) {
+    return 'root';
+  }
+
+  const containerNode = nodes.find(candidate => candidate.id === node.parentId);
+  if (containerNode?.data.kind === 'iteration') {
+    return 'iteration';
+  }
+
+  if (containerNode?.data.kind === 'loop') {
+    return 'loop';
+  }
+
+  return 'root';
 };
 
 const getContainerScopeData = (
@@ -213,7 +269,7 @@ const areContainerChildrenEqual = (
 
 const buildConditionNodeVariableOptions = (
   currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData }>,
+  nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
 ) : VariableOption[] => {
   return buildWorkflowVariableOptions(currentNodeId, nodes);
 };
@@ -223,11 +279,21 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
   const { setNodes, setEdges, getNode, getEdges, getNodes } = useReactFlow<CanvasNodeData, Edge>();
-  const parentNodeId = getNode(id)?.parentId;
+  const { zoom } = useViewport();
+  const currentNode = getNode(id);
+  const parentNodeId = currentNode?.parentId;
+  const currentParentNode = parentNodeId ? getNode(parentNodeId) : undefined;
   const isContainerStartNode = isContainerStartKind(data.kind);
+  const isContainerEndNode = isContainerEndKind(data.kind);
   const isContainerNode = data.kind === 'iteration' || data.kind === 'loop';
   const isNestedNode = Boolean(parentNodeId);
-  const canAppend = data.kind !== 'end';
+  const canAppend = !['end', 'iteration-end', 'loop-end'].includes(data.kind);
+  const searchBoxScope = useMemo(
+    () => resolveSearchBoxScope(getNodes(), currentNode),
+    [currentNode, getNodes],
+  );
+  const parentChildCount = currentParentNode?.data._children?.length ?? 0;
+  const showContainerAddBlock = isContainerStartNode && parentChildCount <= 1;
   const conditionConfig = useMemo(() => {
     if (data.kind !== 'condition') {
       return null;
@@ -249,89 +315,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
     return buildConditionNodeVariableOptions(
       id,
-      getNodes().map(node => ({ id: node.id, data: node.data })),
+      getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId })),
     );
   }, [data.kind, getNodes, id]);
-  const workflowVariableOptions = useMemo(() => {
-    if (data.kind !== 'iteration' && data.kind !== 'loop') {
-      return [];
-    }
-
-    return buildWorkflowVariableOptions(
-      id,
-      getNodes().map(node => ({ id: node.id, data: node.data })),
-    );
-  }, [data.kind, getNodes, id]);
-  const iterationConfig = useMemo(() => {
-    if (data.kind !== 'iteration') {
-      return null;
-    }
-
-    return normalizeIterationNodeConfig(data.inputs, id);
-  }, [data.inputs, data.kind, id]);
-  const loopConfig = useMemo(() => {
-    if (data.kind !== 'loop') {
-      return null;
-    }
-
-    return normalizeLoopNodeConfig(data.inputs, id);
-  }, [data.inputs, data.kind, id]);
-  const iterationSummary = useMemo(() => {
-    if (!iterationConfig) {
-      return null;
-    }
-
-    return {
-      iterator: iterationConfig.iterator_selector.length
-        ? resolveIfElseVariableLabel(iterationConfig.iterator_selector, workflowVariableOptions)
-        : '未选择数组变量',
-      mode: iterationConfig.is_parallel ? `并行 x${iterationConfig.parallel_nums}` : '串行执行',
-      output: iterationConfig.output_selector.length
-        ? resolveIfElseVariableLabel(iterationConfig.output_selector, [
-            {
-              label: 'current.item',
-              valueSelector: [id, 'item'],
-              valueType: 'object',
-              source: 'node',
-            },
-            {
-              label: 'current.index',
-              valueSelector: [id, 'index'],
-              valueType: 'number',
-              source: 'node',
-            },
-            ...workflowVariableOptions,
-          ])
-        : '未配置聚合输出',
-    };
-  }, [id, iterationConfig, workflowVariableOptions]);
-  const loopVariableOptions = useMemo(() => {
-    if (!loopConfig) {
-      return [];
-    }
-
-    return loopConfig.loop_variables
-      .filter(loopVariable => loopVariable.label.trim())
-      .map<VariableOption>((loopVariable) => ({
-        label: `loop.${loopVariable.label.trim()}`,
-        valueSelector: [id, loopVariable.label.trim()],
-        valueType: loopVariable.var_type,
-        source: 'node',
-      }));
-  }, [id, loopConfig]);
-  const loopSummary = useMemo(() => {
-    if (!loopConfig) {
-      return null;
-    }
-
-    return {
-      count: `${loopConfig.loop_count} 轮上限`,
-      variables: `${loopConfig.loop_variables.length} 个上下文变量`,
-      condition: loopConfig.break_conditions[0]
-        ? buildLoopBreakSummary(loopConfig.break_conditions[0], [...loopVariableOptions, ...workflowVariableOptions])
-        : '未配置 break 条件',
-    };
-  }, [loopConfig, loopVariableOptions, workflowVariableOptions]);
   const primaryConditionSummary = useMemo(() => {
     if (!conditionConfig?.cases[0]?.conditions.length) {
       return '添加条件后，这里会显示 IF 分支摘要';
@@ -342,15 +328,15 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const connectedSourceHandleIds = data._connectedSourceHandleIds ?? [];
 
   const appendNode = useCallback(
-    (node: NodeItem, sourceHandle = 'out') => {
-      const sourceNode = getNode(id);
+    (node: NodeItem, sourceHandle = 'out', sourceNodeId = id) => {
+      const sourceNode = getNode(sourceNodeId);
       if (!sourceNode) {
         return;
       }
 
        if (sourceNode.data.kind === 'condition') {
         const hasExistingBranchEdge = getEdges().some(
-          (edge) => edge.source === id && edge.sourceHandle === sourceHandle,
+          (edge) => edge.source === sourceNodeId && edge.sourceHandle === sourceHandle,
         );
         if (hasExistingBranchEdge) {
           setMenuOpen(false);
@@ -360,9 +346,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
       const childCount = sourceNode.parentId
         ? getNodes().filter(candidate => candidate.parentId === sourceNode.parentId).length
-        : getEdges().filter((edge) => edge.source === id).length;
+        : getEdges().filter((edge) => edge.source === sourceNodeId).length;
       const nextNode = createNodeFromSource(sourceNode, node, childCount);
-      const edgeId = `${id}-${sourceHandle}-${nextNode.id}-in`;
+      const edgeId = `${sourceNodeId}-${sourceHandle}-${nextNode.id}-in`;
       const scopeData = getContainerScopeData(getNodes(), sourceNode);
       const sourceBlock = getContainerBlockEnum(sourceNode.data.kind);
       const targetBlock = getContainerBlockEnum(nextNode.data.kind);
@@ -376,7 +362,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       const nextEdge = {
         id: edgeId,
         type: CUSTOM_EDGE,
-        source: id,
+        zIndex: sourceNode.parentId ? ITERATION_CHILDREN_Z_INDEX + 2 : undefined,
+        source: sourceNodeId,
         target: nextNode.id,
         sourceHandle,
         targetHandle: 'in',
@@ -426,25 +413,29 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   }, []);
 
   const nodeWidth = isContainerNode
-    ? CONTAINER_NODE_WIDTH
+    ? Number(currentNode?.style?.width ?? CONTAINER_NODE_WIDTH)
     : isContainerStartNode
-      ? 152
-      : isNestedNode
-        ? 188
+      ? CONTAINER_START_NODE_WIDTH
+      : isContainerEndNode
+        ? CONTAINER_END_NODE_WIDTH
+        : isNestedNode
+          ? CONTAINER_CHILD_NODE_WIDTH
         : NODE_WIDTH;
 
-  const nodeMinHeight = isContainerNode ? CONTAINER_NODE_MIN_HEIGHT : undefined;
+  const nodeMinHeight = isContainerNode
+    ? Number(currentNode?.style?.height ?? CONTAINER_NODE_MIN_HEIGHT)
+    : undefined;
 
   return (
     <div
       className={`group relative bg-white transition ${data.kind === 'condition'
         ? `rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)] ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
         : isContainerStartNode
-          ? 'rounded-2xl border border-sky-200 bg-sky-50/95 px-3 py-2 shadow-[0_10px_24px_-20px_rgba(14,116,144,0.85)]'
+          ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
           : isContainerNode
-            ? `rounded-[28px] border px-4 py-4 shadow-[0_18px_36px_-26px_rgba(15,23,42,0.3)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
+              ? `rounded-[36px] border bg-white shadow-[0_18px_36px_-26px_rgba(15,23,42,0.18)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
             : `rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
-      style={{ width: nodeWidth, minWidth: nodeWidth, maxWidth: nodeWidth, minHeight: nodeMinHeight }}
+      style={{ minWidth: nodeWidth, minHeight: nodeMinHeight }}
     >
       {!['trigger', 'iteration-start', 'loop-start'].includes(data.kind) ? (
         <Handle
@@ -454,7 +445,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           className={`!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500 ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
-      {data.kind !== 'end' && data.kind !== 'condition' ? (
+      {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(data.kind) ? (
         <Handle
           id="out"
           type="source"
@@ -465,36 +456,57 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
       {isContainerStartNode ? (
         <>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-700">{data.subtitle}</p>
+          <Handle
+            id="out"
+            type="source"
+            position={Position.Right}
+            className="!h-0 !w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
+          />
+
+          <div className="flex h-full items-center">
+            <div className="flex items-center">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#2f6feb] text-white shadow-[0_14px_28px_-20px_rgba(47,111,235,0.9)]">
+                {data.kind === 'iteration-start' ? <IconIteration /> : <IconLoop />}
+              </div>
+              {showContainerAddBlock ? (
+                <>
+                  <div className="h-px w-10 bg-slate-300" />
+                  <button
+                    type="button"
+                    className="flex h-16 items-center gap-3 rounded-[24px] border border-slate-300 bg-white px-7 text-[18px] font-semibold text-slate-700 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.35)] transition hover:border-blue-200 hover:text-blue-600"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setAppendSourceHandle('out');
+                      setMenuOpen((prev) => !prev);
+                    }}
+                  >
+                    <span className="text-[18px] leading-none text-slate-400">+</span>
+                    <span>添加节点</span>
+                  </button>
+                </>
+              ) : (
+                <div className="h-px w-12 bg-slate-300" />
+              )}
+            </div>
+          </div>
+
+          <SearchBox
+            isOpen={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+            menuRef={menuRef}
+            scope={searchBoxScope}
+          />
+        </>
+      ) : isContainerEndNode ? (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">{data.subtitle}</p>
           <p className="mt-1 text-[14px] font-semibold text-slate-900">{data.title}</p>
           <p className="mt-1 text-[10px] leading-4 text-slate-500">
-            {data.kind === 'iteration-start'
-              ? '向内部节点暴露 current.item / current.index'
-              : '向内部节点暴露 loop 变量与 index'}
+            {data.kind === 'iteration-end'
+              ? '命中后结束当前 iteration 内部链路'
+              : '命中后结束当前 loop 内部链路'}
           </p>
-
-          {canAppend ? (
-            <div className="absolute -right-3 top-1/2 -translate-y-1/2">
-              <button
-                type="button"
-                className="flex h-6 w-6 items-center justify-center rounded-full border border-sky-200 bg-white text-lg text-sky-700 opacity-100 shadow-sm transition hover:bg-sky-50"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setAppendSourceHandle('out');
-                  setMenuOpen((prev) => !prev);
-                }}
-              >
-                +
-              </button>
-
-              <SearchBox
-                isOpen={menuOpen}
-                onClose={() => setMenuOpen(false)}
-                onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-                menuRef={menuRef}
-              />
-            </div>
-          ) : null}
         </>
       ) : data.kind === 'condition' ? (
         <div>
@@ -591,8 +603,25 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             </div>
           ) : null}
         </div>
+      ) : isContainerNode ? (
+        <div className="relative min-h-full rounded-[36px] bg-white px-6 pb-6 pt-6">
+          <div className="pointer-events-none absolute inset-x-5 bottom-5 top-[118px] z-[1] overflow-hidden rounded-[32px] bg-[#f6f8fc]">
+            <Background
+              id={`${data.kind}-background-${id}`}
+              className="!z-[1] rounded-[32px] opacity-100"
+              gap={[14 / zoom, 14 / zoom]}
+              size={2 / zoom}
+              color="var(--color-workflow-canvas-workflow-dot-color)"
+            />
+          </div>
+
+          <div className="relative z-10 min-h-[86px] pl-2 pt-1">
+            <p className="text-[18px] font-semibold leading-none text-slate-500">{data.subtitle}</p>
+            <p className="mt-4 text-[28px] font-semibold leading-none tracking-[-0.02em] text-slate-950">{data.title}</p>
+          </div>
+        </div>
       ) : (
-        <>
+        <div>
           <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
           <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
           {data.kind === 'knowledge' && data._datasets?.length ? (
@@ -610,43 +639,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               ) : null}
             </div>
           ) : null}
-          {data.kind === 'iteration' && iterationSummary ? (
-            <div className="mt-2 space-y-1">
-              <div className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
-                <span className="line-clamp-1">{iterationSummary.iterator}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                <span>{iterationSummary.mode}</span>
-                <span>•</span>
-                <span className="line-clamp-1">{iterationSummary.output}</span>
-              </div>
-            </div>
-          ) : null}
-          {data.kind === 'loop' && loopSummary ? (
-            <div className="mt-2 space-y-1">
-              <div className="flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">{loopSummary.count}</span>
-                <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-500 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">{loopSummary.variables}</span>
-              </div>
-              <div className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]">
-                <span className="line-clamp-1">{loopSummary.condition}</span>
-              </div>
-            </div>
-          ) : null}
-          {isContainerNode ? (
-            <div className="mt-4 rounded-[22px] border border-dashed border-slate-200 bg-[linear-gradient(180deg,rgba(248,250,252,0.9),rgba(241,245,249,0.75))] px-3 py-2">
-              <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                <span>内部子图</span>
-                <span>{data._children?.length ?? 0} Nodes</span>
-              </div>
-              <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                {data._children && data._children.length > 1
-                  ? '容器入口已生成。继续从 Start 节点右侧添加内部节点，并在容器内部顺序连线。'
-                  : '当前只有内部 Start。点击容器里的 Start 节点右侧 + 添加第一个子节点。'}
-              </p>
-            </div>
-          ) : null}
-        </>
+        </div>
       )}
 
       {!isContainerStartNode ? <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} /> : null}
@@ -670,6 +663,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             onClose={() => setMenuOpen(false)}
             onAppendNode={(node) => appendNode(node, appendSourceHandle)}
             menuRef={menuRef}
+            scope={searchBoxScope}
           />
         </div>
       ) : null}
@@ -715,6 +709,7 @@ export const WorkflowChildren = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
+  const updateNodeInternals = useUpdateNodeInternals();
   const { handleNodeClick, handlePaneClick, handlePanelClose } =
     useNodesInteractions<CanvasNodeData>({
       setNodes,
@@ -807,13 +802,25 @@ export const WorkflowChildren = () => {
     setNodes((currentNodes) => {
       let changed = false;
       const nextNodes = [...currentNodes];
+      const touchedContainerIds = new Set<string>();
 
       const upsertNode = (candidate: Node<CanvasNodeData>) => {
         const currentIndex = nextNodes.findIndex(node => node.id === candidate.id);
+        const normalizedCandidate = currentIndex !== -1 && isContainerStartKind(candidate.data.kind)
+          ? {
+              ...candidate,
+              position: nextNodes[currentIndex].position,
+              draggable: nextNodes[currentIndex].draggable ?? true,
+              selectable: nextNodes[currentIndex].selectable ?? true,
+            }
+          : candidate;
 
         if (currentIndex === -1) {
-          nextNodes.push(candidate);
+          nextNodes.push(normalizedCandidate);
           changed = true;
+          if (normalizedCandidate.parentId) {
+            touchedContainerIds.add(normalizedCandidate.parentId);
+          }
           return;
         }
 
@@ -826,20 +833,23 @@ export const WorkflowChildren = () => {
           selectable: currentNode.selectable,
           data: currentNode.data,
         }) === JSON.stringify({
-          parentId: candidate.parentId,
-          position: candidate.position,
-          extent: candidate.extent,
-          draggable: candidate.draggable,
-          selectable: candidate.selectable,
-          data: candidate.data,
+          parentId: normalizedCandidate.parentId,
+          position: normalizedCandidate.position,
+          extent: normalizedCandidate.extent,
+          draggable: normalizedCandidate.draggable,
+          selectable: normalizedCandidate.selectable,
+          data: normalizedCandidate.data,
         });
 
         if (!isSameNode) {
           nextNodes[currentIndex] = {
             ...currentNode,
-            ...candidate,
+            ...normalizedCandidate,
           };
           changed = true;
+          if (normalizedCandidate.parentId) {
+            touchedContainerIds.add(normalizedCandidate.parentId);
+          }
         }
       };
 
@@ -857,6 +867,42 @@ export const WorkflowChildren = () => {
             });
 
             upsertNode(expectedStartNode);
+            const layout = buildContainerLayout({
+              containerId: node.id,
+              nodes: nextNodes,
+              edges,
+            });
+            nextNodes.forEach((candidate, index) => {
+              if (candidate.parentId !== node.id) {
+                return;
+              }
+
+              const currentStyle = candidate.style ?? {};
+              const nextStyle = {
+                ...currentStyle,
+                width: isContainerStartKind(candidate.data.kind)
+                  ? CONTAINER_START_NODE_WIDTH
+                  : isContainerEndKind(candidate.data.kind)
+                    ? CONTAINER_END_NODE_WIDTH
+                    : undefined,
+              };
+
+              if (
+                candidate.draggable !== true
+                || candidate.zIndex !== ITERATION_CHILDREN_Z_INDEX + 1
+                || JSON.stringify(currentStyle) !== JSON.stringify(nextStyle)
+              ) {
+                nextNodes[index] = {
+                  ...candidate,
+                  extent: 'parent',
+                  draggable: true,
+                  zIndex: ITERATION_CHILDREN_Z_INDEX + 1,
+                  style: nextStyle,
+                };
+                changed = true;
+                touchedContainerIds.add(node.id);
+              }
+            });
 
             const nextChildren = buildContainerChildSummaries(nextNodes, node.id);
             const outputs = node.data.outputs ?? {};
@@ -866,10 +912,18 @@ export const WorkflowChildren = () => {
               JSON.stringify(node.data.inputs ?? null) !== JSON.stringify(normalizedConfig)
               || !areContainerChildrenEqual(node.data._children ?? [], nextChildren)
               || !hasOutputShape
+              || Number(node.style?.width ?? CONTAINER_NODE_WIDTH) !== layout.width
+              || Number(node.style?.height ?? CONTAINER_NODE_MIN_HEIGHT) !== layout.height
             ) {
               const nodeIndex = nextNodes.findIndex(candidate => candidate.id === node.id);
               nextNodes[nodeIndex] = {
                 ...node,
+                zIndex: 1,
+                style: {
+                  ...(node.style ?? {}),
+                  width: layout.width,
+                  height: layout.height,
+                },
                 data: {
                   ...node.data,
                   inputs: normalizedConfig as unknown as Record<string, unknown>,
@@ -882,6 +936,7 @@ export const WorkflowChildren = () => {
                 },
               };
               changed = true;
+              touchedContainerIds.add(node.id);
             }
 
             return;
@@ -896,6 +951,42 @@ export const WorkflowChildren = () => {
           });
 
           upsertNode(expectedStartNode);
+          const layout = buildContainerLayout({
+            containerId: node.id,
+            nodes: nextNodes,
+            edges,
+          });
+          nextNodes.forEach((candidate, index) => {
+            if (candidate.parentId !== node.id) {
+              return;
+            }
+
+            const currentStyle = candidate.style ?? {};
+            const nextStyle = {
+              ...currentStyle,
+              width: isContainerStartKind(candidate.data.kind)
+                ? CONTAINER_START_NODE_WIDTH
+                : isContainerEndKind(candidate.data.kind)
+                  ? CONTAINER_END_NODE_WIDTH
+                  : undefined,
+            };
+
+            if (
+              candidate.draggable !== true
+              || candidate.zIndex !== ITERATION_CHILDREN_Z_INDEX + 1
+              || JSON.stringify(currentStyle) !== JSON.stringify(nextStyle)
+            ) {
+              nextNodes[index] = {
+                ...candidate,
+                extent: 'parent',
+                draggable: true,
+                zIndex: ITERATION_CHILDREN_Z_INDEX + 1,
+                style: nextStyle,
+              };
+              changed = true;
+              touchedContainerIds.add(node.id);
+            }
+          });
 
           const nextChildren = buildContainerChildSummaries(nextNodes, node.id);
           const outputs = node.data.outputs ?? {};
@@ -905,10 +996,18 @@ export const WorkflowChildren = () => {
             JSON.stringify(node.data.inputs ?? null) !== JSON.stringify(normalizedConfig)
             || !areContainerChildrenEqual(node.data._children ?? [], nextChildren)
             || !hasOutputShape
+            || Number(node.style?.width ?? CONTAINER_NODE_WIDTH) !== layout.width
+            || Number(node.style?.height ?? CONTAINER_NODE_MIN_HEIGHT) !== layout.height
           ) {
             const nodeIndex = nextNodes.findIndex(candidate => candidate.id === node.id);
             nextNodes[nodeIndex] = {
               ...node,
+              zIndex: 1,
+              style: {
+                ...(node.style ?? {}),
+                width: layout.width,
+                height: layout.height,
+              },
               data: {
                 ...node.data,
                 inputs: normalizedConfig as unknown as Record<string, unknown>,
@@ -921,12 +1020,44 @@ export const WorkflowChildren = () => {
               },
             };
             changed = true;
+            touchedContainerIds.add(node.id);
           }
         });
 
+      if (changed && touchedContainerIds.size) {
+        requestAnimationFrame(() => {
+          Array.from(touchedContainerIds).forEach(containerId => updateNodeInternals(containerId));
+        });
+      }
+
       return changed ? nextNodes : currentNodes;
     });
-  }, [setNodes]);
+  }, [edges, nodes, setNodes, updateNodeInternals]);
+
+  useEffect(() => {
+    setEdges((currentEdges) => {
+      let changed = false;
+
+      const nextEdges = currentEdges.map((edge) => {
+        const sourceNode = nodes.find(node => node.id === edge.source);
+        const targetNode = nodes.find(node => node.id === edge.target);
+        const isInternalEdge = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId);
+        const nextZIndex = isInternalEdge ? ITERATION_CHILDREN_Z_INDEX + 2 : undefined;
+
+        if (edge.zIndex === nextZIndex) {
+          return edge;
+        }
+
+        changed = true;
+        return {
+          ...edge,
+          zIndex: nextZIndex,
+        };
+      });
+
+      return changed ? nextEdges : currentEdges;
+    });
+  }, [nodes, setEdges]);
 
   useEffect(() => {
     if (!appId)
@@ -988,6 +1119,7 @@ export const WorkflowChildren = () => {
             ...connection,
             id: edgeId,
             type: CUSTOM_EDGE,
+            zIndex: sourceNode.parentId ? ITERATION_CHILDREN_Z_INDEX + 2 : undefined,
             markerEnd: {
               type: MarkerType.ArrowClosed,
               color: '#94a3b8',

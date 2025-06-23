@@ -135,7 +135,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
   const nodeData = data as CanvasNodeData;
   const availableVariables = buildWorkflowVariableOptions(
     id,
-    getNodes().map((node) => ({ id: node.id, data: node.data })),
+    getNodes().map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
   );
   const {
     config,

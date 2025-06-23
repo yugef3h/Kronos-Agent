@@ -6,12 +6,14 @@ export type WorkflowNodeType =
   | 'if'
   | 'loop'
   | 'loop-start'
+  | 'loop-end'
   | 'parallel'
   | 'llm'
   | 'knowledge'
   | 'condition'
   | 'iteration'
-  | 'iteration-start';
+  | 'iteration-start'
+  | 'iteration-end';
 
 export type WorkflowNode = {
   id: string;

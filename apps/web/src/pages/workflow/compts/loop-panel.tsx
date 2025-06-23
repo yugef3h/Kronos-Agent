@@ -226,7 +226,7 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
 
   const variableOptions = useMemo(
-    () => buildWorkflowVariableOptions(id, getNodes().map(node => ({ id: node.id, data: node.data }))),
+    () => buildWorkflowVariableOptions(id, getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))),
     [getNodes, id],
   )
 
@@ -363,12 +363,6 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
             {issues.length ? (
               <PanelAlert type="warning">{issues[0].message}</PanelAlert>
             ) : null}
-            {/* <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              <div className="flex flex-wrap gap-1.5">
-                <PanelToken>start: {config.start_node_id}</PanelToken>
-                <PanelToken>{nodeData._children?.length ?? 1} 个内部入口节点</PanelToken>
-              </div>
-            </PanelCard> */}
           </PanelSection>
 
           <PanelSection

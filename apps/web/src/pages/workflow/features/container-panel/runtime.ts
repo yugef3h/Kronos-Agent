@@ -8,7 +8,9 @@ export type ContainerChildNodeType =
   | 'iteration'
   | 'loop'
   | 'iteration-start'
+  | 'iteration-end'
   | 'loop-start'
+  | 'loop-end'
   | 'trigger'
 
 export type ContainerChildSummary = {

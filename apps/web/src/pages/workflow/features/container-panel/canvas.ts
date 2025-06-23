@@ -3,13 +3,21 @@ import type { VariableOption } from '../llm-panel/types'
 import type { CanvasNodeData, WorkflowCanvasNodeKind } from '../../types/canvas'
 import type { BlockEnum } from '../../types/common'
 import type { ContainerChildSummary, ContainerKind } from './runtime'
+import { NODE_WIDTH } from '../../constants'
 
-export const CONTAINER_NODE_WIDTH = 560
+export const CONTAINER_NODE_WIDTH = NODE_WIDTH
 export const CONTAINER_NODE_MIN_HEIGHT = 260
-export const CONTAINER_CHILD_START_X = 28
-export const CONTAINER_CHILD_START_Y = 96
-export const CONTAINER_CHILD_X_GAP = 198
-export const CONTAINER_CHILD_Y_GAP = 94
+export const CONTAINER_NODE_HORIZONTAL_PADDING = 40
+export const CONTAINER_NODE_RIGHT_PADDING = 72
+export const CONTAINER_NODE_TOP_PADDING = 146
+export const CONTAINER_NODE_BOTTOM_PADDING = 68
+export const CONTAINER_CHILD_X_GAP = 224
+export const CONTAINER_CHILD_Y_GAP = 122
+export const CONTAINER_START_NODE_WIDTH = 208
+export const CONTAINER_END_NODE_WIDTH = 152
+export const CONTAINER_CHILD_NODE_WIDTH = 188
+export const CONTAINER_CHILD_NODE_HEIGHT = 88
+export const CONTAINER_CONDITION_NODE_WIDTH = 240
 
 const OUTPUT_VALUE_TYPES: VariableOption['valueType'][] = ['string', 'number', 'boolean', 'array', 'object', 'file']
 
@@ -21,19 +29,50 @@ export const isContainerStartKind = (kind: WorkflowCanvasNodeKind): kind is 'ite
   return kind === 'iteration-start' || kind === 'loop-start'
 }
 
+export const isContainerEndKind = (kind: WorkflowCanvasNodeKind): kind is 'iteration-end' | 'loop-end' => {
+  return kind === 'iteration-end' || kind === 'loop-end'
+}
+
 export const resolveContainerStartKind = (kind: ContainerKind): 'iteration-start' | 'loop-start' => {
   return kind === 'iteration' ? 'iteration-start' : 'loop-start'
 }
 
+export const resolveContainerEndKind = (kind: ContainerKind): 'iteration-end' | 'loop-end' => {
+  return kind === 'iteration' ? 'iteration-end' : 'loop-end'
+}
+
 export const buildContainerStartPosition = () => ({
-  x: CONTAINER_CHILD_START_X,
-  y: CONTAINER_CHILD_START_Y,
+  x: CONTAINER_NODE_HORIZONTAL_PADDING,
+  y: CONTAINER_NODE_TOP_PADDING,
 })
 
 export const buildContainerChildPosition = (index: number) => ({
-  x: CONTAINER_CHILD_START_X + CONTAINER_CHILD_X_GAP * Math.max(index, 0),
-  y: CONTAINER_CHILD_START_Y + CONTAINER_CHILD_Y_GAP * Math.max(index - 2, 0),
+  x: CONTAINER_NODE_HORIZONTAL_PADDING + CONTAINER_CHILD_X_GAP * Math.max(index, 0),
+  y: CONTAINER_NODE_TOP_PADDING + CONTAINER_CHILD_Y_GAP * Math.max(index, 0),
 })
+
+export const getContainerChildNodeWidth = (kind: WorkflowCanvasNodeKind) => {
+  if (isContainerStartKind(kind))
+    return CONTAINER_START_NODE_WIDTH
+
+  if (isContainerEndKind(kind))
+    return CONTAINER_END_NODE_WIDTH
+
+  if (kind === 'condition')
+    return CONTAINER_CONDITION_NODE_WIDTH
+
+  return CONTAINER_CHILD_NODE_WIDTH
+}
+
+export const getContainerChildNodeHeight = (kind: WorkflowCanvasNodeKind) => {
+  if (isContainerStartKind(kind) || isContainerEndKind(kind))
+    return 72
+
+  if (kind === 'condition')
+    return 140
+
+  return CONTAINER_CHILD_NODE_HEIGHT
+}
 
 const buildIterationStartOutputs = (itemValueType: VariableOption['valueType']) => {
   switch (itemValueType) {
@@ -106,9 +145,10 @@ export const buildContainerStartNode = ({
     type: 'workflow',
     parentId: containerId,
     extent: 'parent',
-    draggable: false,
-    selectable: false,
+    draggable: true,
+    selectable: true,
     position: buildContainerStartPosition(),
+    zIndex: 1003,
     data: {
       kind: resolveContainerStartKind(kind),
       title: isIteration ? 'Iteration Start' : 'Loop Start',
@@ -118,6 +158,40 @@ export const buildContainerStartNode = ({
         _outputTypes: outputTypes,
       },
       outputs,
+    },
+  }
+}
+
+export const buildContainerEndNodeData = (kind: ContainerKind): Pick<CanvasNodeData, 'kind' | 'title' | 'subtitle' | 'inputs' | 'outputs'> => {
+  if (kind === 'iteration') {
+    return {
+      kind: 'iteration-end',
+      title: 'Iteration End',
+      subtitle: '内部结束',
+      inputs: {
+        _outputTypes: {
+          item: 'object',
+          done: 'boolean',
+        },
+      },
+      outputs: {
+        item: null,
+        done: true,
+      },
+    }
+  }
+
+  return {
+    kind: 'loop-end',
+    title: 'Loop End',
+    subtitle: '内部结束',
+    inputs: {
+      _outputTypes: {
+        done: 'boolean',
+      },
+    },
+    outputs: {
+      done: true,
     },
   }
 }
@@ -156,11 +230,42 @@ export const getContainerBlockEnum = (kind: WorkflowCanvasNodeKind): BlockEnum |
       return 'loop' as BlockEnum
     case 'iteration-start':
       return 'iteration-start' as BlockEnum
+    case 'iteration-end':
+      return 'iteration-end' as BlockEnum
     case 'loop-start':
       return 'loop-start' as BlockEnum
+    case 'loop-end':
+      return 'loop-end' as BlockEnum
     case 'end':
       return 'end' as BlockEnum
     default:
       return null
+  }
+}
+
+export const buildContainerLayout = ({
+  containerId,
+  nodes,
+  edges: _edges,
+}: {
+  containerId: string
+  nodes: Array<Node<CanvasNodeData>>
+  edges: Array<{ source: string; target: string }>
+}) => {
+  const childNodes = nodes.filter(node => node.parentId === containerId)
+  const positions = new Map<string, { x: number; y: number }>()
+  let maxRight = CONTAINER_NODE_WIDTH
+  let maxBottom = CONTAINER_NODE_MIN_HEIGHT
+
+  childNodes.forEach((node) => {
+    positions.set(node.id, node.position)
+    maxRight = Math.max(maxRight, node.position.x + getContainerChildNodeWidth(node.data.kind) + CONTAINER_NODE_RIGHT_PADDING)
+    maxBottom = Math.max(maxBottom, node.position.y + getContainerChildNodeHeight(node.data.kind) + CONTAINER_NODE_BOTTOM_PADDING)
+  })
+
+  return {
+    positions,
+    width: Math.max(CONTAINER_NODE_WIDTH, maxRight),
+    height: Math.max(CONTAINER_NODE_MIN_HEIGHT, maxBottom),
   }
 }

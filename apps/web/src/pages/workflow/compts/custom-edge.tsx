@@ -30,13 +30,13 @@ const CustomEdge = ({
   const [
     edgePath,
   ] = getBezierPath({
-    sourceX: sourceX - 8,
+    sourceX: data?.isInIteration || data?.isInLoop ? sourceX - 4 : sourceX - 8,
     sourceY,
     sourcePosition: Position.Right,
-    targetX: targetX + 8,
+    targetX: data?.isInIteration || data?.isInLoop ? targetX + 4 : targetX + 8,
     targetY,
     targetPosition: Position.Left,
-    curvature: 0.16,
+    curvature: data?.isInIteration || data?.isInLoop ? 0.22 : 0.16,
   })
   const {
     _connectedNodeIsHovering,

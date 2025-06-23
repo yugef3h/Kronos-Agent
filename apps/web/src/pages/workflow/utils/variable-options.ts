@@ -35,9 +35,11 @@ const inferVariableType = (
 
 export const buildWorkflowVariableOptions = (
   currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData }>,
+  nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
   extraOptions: VariableOption[] = [],
 ): VariableOption[] => {
+  const currentNode = nodes.find(node => node.id === currentNodeId)
+  const currentParentId = currentNode?.parentId
   const systemVariables: VariableOption[] = [
     {
       label: 'sys.query',
@@ -60,7 +62,18 @@ export const buildWorkflowVariableOptions = (
   ]
 
   const nodeVariables = nodes
-    .filter(node => node.id !== currentNodeId)
+    .filter((node) => {
+      if (node.id === currentNodeId)
+        return false
+
+      const candidateParentId = node.parentId
+
+      if (!currentParentId) {
+        return !candidateParentId || candidateParentId === currentNodeId
+      }
+
+      return !candidateParentId || candidateParentId === currentParentId || node.id === currentParentId
+    })
     .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
     .flatMap((node) => {
       const outputs = node.data.outputs ?? {}

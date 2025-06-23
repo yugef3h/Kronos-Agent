@@ -40,7 +40,7 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
 
   const variableOptions = useMemo(
-    () => buildWorkflowVariableOptions(id, getNodes().map(node => ({ id: node.id, data: node.data }))),
+    () => buildWorkflowVariableOptions(id, getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))),
     [getNodes, id],
   )
 
