@@ -27,7 +27,6 @@ import {
   getLoopLogicalOperatorLabel,
   getLoopValueTypeLabel,
   getLoopVariableTypeLabel,
-  resolveIfElseVariableLabel,
 } from '../features/loop-panel/schema'
 import { useLoopPanelConfig } from '../features/loop-panel/use-loop-panel-config'
 import type { LoopBreakCondition, LoopNodeConfig, LoopVariable } from '../features/loop-panel/types'

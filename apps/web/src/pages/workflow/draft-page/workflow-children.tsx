@@ -11,7 +11,6 @@ import {
   useNodesState,
   useReactFlow,
   useUpdateNodeInternals,
-  useViewport,
   type Connection,
   type Node,
   type NodeProps,
@@ -279,7 +278,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
   const { setNodes, setEdges, getNode, getEdges, getNodes } = useReactFlow<CanvasNodeData, Edge>();
-  const { zoom } = useViewport();
   const currentNode = getNode(id);
   const parentNodeId = currentNode?.parentId;
   const currentParentNode = parentNodeId ? getNode(parentNodeId) : undefined;
@@ -415,7 +413,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeWidth = isContainerNode
     ? Number(currentNode?.style?.width ?? CONTAINER_NODE_WIDTH)
     : isContainerStartNode
-      ? CONTAINER_START_NODE_WIDTH
+      ? Number(currentNode?.style?.width ?? (showContainerAddBlock ? CONTAINER_START_NODE_WIDTH : 64))
       : isContainerEndNode
         ? CONTAINER_END_NODE_WIDTH
         : isNestedNode
@@ -425,17 +423,26 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeMinHeight = isContainerNode
     ? Number(currentNode?.style?.height ?? CONTAINER_NODE_MIN_HEIGHT)
     : undefined;
+  const nodeSurfaceClass = isNestedNode && !isContainerNode ? 'bg-transparent' : 'bg-white';
+  const nestedNodeCardClass = isNestedNode
+    ? 'rounded-[18px] border border-slate-200/70 bg-transparent px-3 py-2 shadow-none'
+    : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
 
   return (
     <div
-      className={`group relative bg-white transition ${data.kind === 'condition'
+      className={`group relative ${nodeSurfaceClass} transition ${data.kind === 'condition'
         ? `rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)] ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
         : isContainerStartNode
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
           : isContainerNode
-              ? `rounded-[36px] border bg-white shadow-[0_18px_36px_-26px_rgba(15,23,42,0.18)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
-            : `rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
-      style={{ minWidth: nodeWidth, minHeight: nodeMinHeight }}
+              ? `rounded-[30px] border bg-white shadow-[0_16px_28px_-24px_rgba(15,23,42,0.16)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
+            : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
+      style={{
+        width: nodeWidth,
+        minWidth: nodeWidth,
+        height: isContainerNode ? nodeMinHeight : undefined,
+        minHeight: nodeMinHeight,
+      }}
     >
       {!['trigger', 'iteration-start', 'loop-start'].includes(data.kind) ? (
         <Handle
@@ -465,28 +472,26 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
           <div className="flex h-full items-center">
             <div className="flex items-center">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#2f6feb] text-white shadow-[0_14px_28px_-20px_rgba(47,111,235,0.9)]">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f6feb] text-white shadow-[0_14px_28px_-20px_rgba(47,111,235,0.9)]">
                 {data.kind === 'iteration-start' ? <IconIteration /> : <IconLoop />}
               </div>
               {showContainerAddBlock ? (
                 <>
-                  <div className="h-px w-10 bg-slate-300" />
+                  <div className="h-px w-4 bg-slate-300" />
                   <button
                     type="button"
-                    className="flex h-16 items-center gap-3 rounded-[24px] border border-slate-300 bg-white px-7 text-[18px] font-semibold text-slate-700 shadow-[0_10px_24px_-22px_rgba(15,23,42,0.35)] transition hover:border-blue-200 hover:text-blue-600"
+                    className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] font-semibold text-slate-700 shadow-[0_8px_18px_-20px_rgba(15,23,42,0.3)] transition hover:border-blue-200 hover:text-blue-600"
                     onClick={(event) => {
                       event.stopPropagation();
                       setAppendSourceHandle('out');
                       setMenuOpen((prev) => !prev);
                     }}
                   >
-                    <span className="text-[18px] leading-none text-slate-400">+</span>
+                    <span className="text-[16px] leading-none text-slate-400">+</span>
                     <span>添加节点</span>
                   </button>
                 </>
-              ) : (
-                <div className="h-px w-12 bg-slate-300" />
-              )}
+              ) : null}
             </div>
           </div>
 
@@ -604,20 +609,19 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           ) : null}
         </div>
       ) : isContainerNode ? (
-        <div className="relative min-h-full rounded-[36px] bg-white px-6 pb-6 pt-6">
-          <div className="pointer-events-none absolute inset-x-5 bottom-5 top-[118px] z-[1] overflow-hidden rounded-[32px] bg-[#f6f8fc]">
-            <Background
-              id={`${data.kind}-background-${id}`}
-              className="!z-[1] rounded-[32px] opacity-100"
-              gap={[14 / zoom, 14 / zoom]}
-              size={2 / zoom}
-              color="var(--color-workflow-canvas-workflow-dot-color)"
-            />
-          </div>
+        <div className="relative h-full w-full rounded-[30px] bg-white px-4 pb-4 pt-4">
+          <div
+            className="pointer-events-none absolute inset-x-4 bottom-4 top-[92px] z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
+            style={{
+              backgroundColor: '#f6f8fc',
+              backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(191, 201, 217, 0.72) 1.3px, transparent 0)',
+              backgroundSize: '20px 20px',
+            }}
+          />
 
-          <div className="relative z-10 min-h-[86px] pl-2 pt-1">
-            <p className="text-[18px] font-semibold leading-none text-slate-500">{data.subtitle}</p>
-            <p className="mt-4 text-[28px] font-semibold leading-none tracking-[-0.02em] text-slate-950">{data.title}</p>
+          <div className="relative z-10 px-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500">{data.subtitle}</p>
+            <p className="mt-1 text-[24px] font-semibold leading-none tracking-[-0.02em] text-slate-950">{data.title}</p>
           </div>
         </div>
       ) : (
@@ -867,6 +871,8 @@ export const WorkflowChildren = () => {
             });
 
             upsertNode(expectedStartNode);
+            const containerChildCount = nextNodes.filter(candidate => candidate.parentId === node.id).length;
+            const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : 64;
             const layout = buildContainerLayout({
               containerId: node.id,
               nodes: nextNodes,
@@ -881,7 +887,7 @@ export const WorkflowChildren = () => {
               const nextStyle = {
                 ...currentStyle,
                 width: isContainerStartKind(candidate.data.kind)
-                  ? CONTAINER_START_NODE_WIDTH
+                  ? startNodeWidth
                   : isContainerEndKind(candidate.data.kind)
                     ? CONTAINER_END_NODE_WIDTH
                     : undefined,
@@ -951,6 +957,8 @@ export const WorkflowChildren = () => {
           });
 
           upsertNode(expectedStartNode);
+          const containerChildCount = nextNodes.filter(candidate => candidate.parentId === node.id).length;
+          const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : 64;
           const layout = buildContainerLayout({
             containerId: node.id,
             nodes: nextNodes,
@@ -965,7 +973,7 @@ export const WorkflowChildren = () => {
             const nextStyle = {
               ...currentStyle,
               width: isContainerStartKind(candidate.data.kind)
-                ? CONTAINER_START_NODE_WIDTH
+                ? startNodeWidth
                 : isContainerEndKind(candidate.data.kind)
                   ? CONTAINER_END_NODE_WIDTH
                   : undefined,

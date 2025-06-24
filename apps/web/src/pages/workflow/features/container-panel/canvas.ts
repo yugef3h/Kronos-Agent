@@ -11,13 +11,13 @@ export const CONTAINER_NODE_HORIZONTAL_PADDING = 40
 export const CONTAINER_NODE_RIGHT_PADDING = 72
 export const CONTAINER_NODE_TOP_PADDING = 146
 export const CONTAINER_NODE_BOTTOM_PADDING = 68
-export const CONTAINER_CHILD_X_GAP = 224
-export const CONTAINER_CHILD_Y_GAP = 122
+export const CONTAINER_CHILD_X_GAP = 208
+export const CONTAINER_CHILD_Y_GAP = 110
 export const CONTAINER_START_NODE_WIDTH = 208
 export const CONTAINER_END_NODE_WIDTH = 152
-export const CONTAINER_CHILD_NODE_WIDTH = 188
+export const CONTAINER_CHILD_NODE_WIDTH = 172
 export const CONTAINER_CHILD_NODE_HEIGHT = 88
-export const CONTAINER_CONDITION_NODE_WIDTH = 240
+export const CONTAINER_CONDITION_NODE_WIDTH = 220
 
 const OUTPUT_VALUE_TYPES: VariableOption['valueType'][] = ['string', 'number', 'boolean', 'array', 'object', 'file']
 
@@ -62,6 +62,22 @@ export const getContainerChildNodeWidth = (kind: WorkflowCanvasNodeKind) => {
     return CONTAINER_CONDITION_NODE_WIDTH
 
   return CONTAINER_CHILD_NODE_WIDTH
+}
+
+export const getContainerNodeRenderedWidth = (node: Node<CanvasNodeData>) => {
+  const styleWidth = Number(node.style?.width)
+  if (!Number.isNaN(styleWidth) && styleWidth > 0)
+    return styleWidth
+
+  return getContainerChildNodeWidth(node.data.kind)
+}
+
+export const getContainerNodeRenderedHeight = (node: Node<CanvasNodeData>) => {
+  const styleHeight = Number(node.style?.height)
+  if (!Number.isNaN(styleHeight) && styleHeight > 0)
+    return styleHeight
+
+  return getContainerChildNodeHeight(node.data.kind)
 }
 
 export const getContainerChildNodeHeight = (kind: WorkflowCanvasNodeKind) => {
@@ -259,8 +275,8 @@ export const buildContainerLayout = ({
 
   childNodes.forEach((node) => {
     positions.set(node.id, node.position)
-    maxRight = Math.max(maxRight, node.position.x + getContainerChildNodeWidth(node.data.kind) + CONTAINER_NODE_RIGHT_PADDING)
-    maxBottom = Math.max(maxBottom, node.position.y + getContainerChildNodeHeight(node.data.kind) + CONTAINER_NODE_BOTTOM_PADDING)
+    maxRight = Math.max(maxRight, node.position.x + getContainerNodeRenderedWidth(node) + CONTAINER_NODE_RIGHT_PADDING)
+    maxBottom = Math.max(maxBottom, node.position.y + getContainerNodeRenderedHeight(node) + CONTAINER_NODE_BOTTOM_PADDING)
   })
 
   return {
