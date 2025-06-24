@@ -52,9 +52,9 @@ const NestedNodeBadge = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
 
 export const NestedPlainNodeCard = ({ data }: { data: CanvasNodeData }) => {
   return (
-    <div className="rounded-[14px] border border-white/45 bg-white/35 px-2.5 py-2 backdrop-blur-[1px]">
+    <div className="rounded-[14px] border border-slate-200 bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)]">
       <div className="flex items-start gap-2.5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-white/85 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.8)]">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-slate-50 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)]">
           <NestedNodeBadge kind={data.kind} />
         </div>
         <div className="min-w-0 flex-1">
@@ -68,7 +68,7 @@ export const NestedPlainNodeCard = ({ data }: { data: CanvasNodeData }) => {
           {data._datasets.slice(0, 2).map(dataset => (
             <div
               key={dataset.id}
-              className="rounded-md bg-white/60 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]"
+              className="rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.72)]"
             >
               <span className="line-clamp-1">{dataset.name}</span>
             </div>
@@ -84,7 +84,7 @@ export const NestedPlainNodeCard = ({ data }: { data: CanvasNodeData }) => {
 
 export const NestedEndNodeCard = ({ data }: { data: CanvasNodeData }) => {
   return (
-    <div className="rounded-[14px] border border-amber-200/80 bg-white/45 px-2.5 py-2 backdrop-blur-[1px]">
+    <div className="rounded-[14px] border border-amber-200/80 bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)]">
       <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.9)]">
           <IconOutput />

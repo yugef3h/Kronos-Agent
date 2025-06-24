@@ -245,18 +245,20 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeMinHeight = isContainerNode
     ? Number(currentNode?.style?.height ?? CONTAINER_NODE_MIN_HEIGHT)
     : undefined;
-  const nodeSurfaceClass = isNestedNode && !isContainerNode ? 'bg-transparent' : 'bg-white';
+  const nodeSurfaceClass = isContainerStartNode || (isNestedNode && !isContainerNode)
+    ? 'bg-transparent'
+    : 'bg-white';
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
   const isNestedPlainNode = isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
   const nestedNodeCardClass = isNestedNode
-    ? 'rounded-[16px] border border-slate-200/65 bg-transparent px-2.5 py-2 shadow-none'
+    ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
 
   return (
     <div
       className={`group relative ${nodeSurfaceClass} transition ${data.kind === 'condition'
         ? `${isNestedConditionNode
-          ? 'rounded-[18px] border border-sky-200/80 bg-transparent px-2.5 py-2 shadow-none'
+          ? 'rounded-[18px] border-0 bg-transparent px-0 py-0 shadow-none'
           : 'rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
         : isContainerStartNode
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
@@ -317,7 +319,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                     <span>添加节点</span>
                   </button>
                 </>
-              ) : null}
+              ) : (
+                <div className="ml-3 h-[2px] w-5 rounded-full bg-[#7ba2f8]" />
+              )}
             </div>
           </div>
 
