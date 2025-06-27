@@ -9,6 +9,7 @@ import {
 } from '../constants';
 import {
   buildContainerEndNodeData,
+  CONTAINER_START_HANDLE_RIGHT_OFFSET,
   getContainerNodeRenderedWidth,
   isContainerNodeKind,
   isContainerStartKind,
@@ -104,7 +105,7 @@ export const createNodeFromSource = (
   const nextPosition = isNestedNode
     ? (() => {
         const targetX = sourceNode.position.x + (isContainerStartKind(sourceNode.data.kind)
-          ? CONTAINER_START_NODE_COLLAPSED_WIDTH
+          ? CONTAINER_START_NODE_COLLAPSED_WIDTH - CONTAINER_START_HANDLE_RIGHT_OFFSET
           : getContainerNodeRenderedWidth(sourceNode)) + X_OFFSET;
 
         return {

@@ -7,14 +7,17 @@ import { NODE_WIDTH } from '../../constants'
 
 export const CONTAINER_NODE_WIDTH = NODE_WIDTH
 export const CONTAINER_NODE_MIN_HEIGHT = 260
-export const CONTAINER_NODE_HORIZONTAL_PADDING = 40
-export const CONTAINER_NODE_RIGHT_PADDING = 72
+export const CONTAINER_NODE_HORIZONTAL_PADDING = 12
+export const CONTAINER_NODE_RIGHT_PADDING = 12
 export const CONTAINER_NODE_TOP_PADDING = 146
 export const CONTAINER_NODE_BOTTOM_PADDING = 68
 export const CONTAINER_CHILD_X_GAP = 208
 export const CONTAINER_CHILD_Y_GAP = 110
-export const CONTAINER_START_NODE_WIDTH = 208
+export const CONTAINER_START_NODE_WIDTH = 216
 export const CONTAINER_START_NODE_COLLAPSED_WIDTH = 64
+export const CONTAINER_START_ICON_OFFSET = 20
+export const CONTAINER_START_ICON_SIZE = 32
+export const CONTAINER_START_HANDLE_RIGHT_OFFSET = CONTAINER_START_NODE_COLLAPSED_WIDTH - (CONTAINER_START_ICON_OFFSET + CONTAINER_START_ICON_SIZE + 4)
 export const CONTAINER_END_NODE_WIDTH = 152
 export const CONTAINER_CHILD_NODE_WIDTH = 172
 export const CONTAINER_CHILD_NODE_HEIGHT = 88
@@ -276,7 +279,13 @@ export const buildContainerLayout = ({
 
   childNodes.forEach((node) => {
     positions.set(node.id, node.position)
-    maxRight = Math.max(maxRight, node.position.x + getContainerNodeRenderedWidth(node) + CONTAINER_NODE_RIGHT_PADDING)
+    maxRight = Math.max(
+      maxRight,
+      node.position.x
+        + getContainerNodeRenderedWidth(node)
+        + CONTAINER_NODE_RIGHT_PADDING
+        + CONTAINER_NODE_HORIZONTAL_PADDING,
+    )
     maxBottom = Math.max(maxBottom, node.position.y + getContainerNodeRenderedHeight(node) + CONTAINER_NODE_BOTTOM_PADDING)
   })
 

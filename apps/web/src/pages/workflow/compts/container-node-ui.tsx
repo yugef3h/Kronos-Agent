@@ -2,6 +2,7 @@ import { IconCondition } from '../assets/condition';
 import { IconLLM } from '../assets/llm';
 import { IconKnowledge } from '../assets/knowledge';
 import { IconOutput } from '../assets/output';
+import { CONTAINER_NODE_HORIZONTAL_PADDING } from '../features/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 
 export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 'subtitle' | 'title'>) => {
@@ -16,8 +17,11 @@ export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 's
 export const ContainerNodeBoard = () => {
   return (
     <div
-      className="pointer-events-none absolute inset-x-4 bottom-4 top-[92px] z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
+      className="pointer-events-none absolute top-[92px] z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
       style={{
+        left: CONTAINER_NODE_HORIZONTAL_PADDING,
+        right: CONTAINER_NODE_HORIZONTAL_PADDING,
+        bottom: CONTAINER_NODE_HORIZONTAL_PADDING,
         backgroundColor: '#f6f8fc',
         backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(191, 201, 217, 0.72) 1.3px, transparent 0)',
         backgroundSize: '20px 20px',

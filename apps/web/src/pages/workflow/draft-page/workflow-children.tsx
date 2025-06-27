@@ -40,8 +40,10 @@ import {
 import {
   CONTAINER_CHILD_NODE_WIDTH,
   CONTAINER_END_NODE_WIDTH,
+  CONTAINER_NODE_HORIZONTAL_PADDING,
   CONTAINER_NODE_MIN_HEIGHT,
   CONTAINER_NODE_WIDTH,
+  CONTAINER_START_HANDLE_RIGHT_OFFSET,
   CONTAINER_START_NODE_COLLAPSED_WIDTH,
   CONTAINER_START_NODE_WIDTH,
   getContainerBlockEnum,
@@ -59,14 +61,13 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import { IconCondition } from '../assets/condition';
-import { IconLoop } from '../assets/loop';
-import { IconIteration } from '../assets/iteration';
 import {
   ContainerNodeBoard,
   ContainerNodeHeader,
   NestedEndNodeCard,
   NestedPlainNodeCard,
 } from '../compts/container-node-ui';
+import { ContainerStartNode } from '../compts/container-start-node';
 import type { VariableOption } from '../features/llm-panel/types';
 import {
   buildIfElseConditionSummary,
@@ -246,6 +247,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeMinHeight = isContainerNode
     ? Number(currentNode?.style?.height ?? CONTAINER_NODE_MIN_HEIGHT)
     : undefined;
+  const containerStartHandleStyle = showContainerAddBlock
+    ? undefined
+    : { right: CONTAINER_START_HANDLE_RIGHT_OFFSET };
   const nodeSurfaceClass = isContainerStartNode || (isNestedNode && !isContainerNode)
     ? 'bg-transparent'
     : 'bg-white';
@@ -297,34 +301,18 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             type="source"
             position={Position.Right}
             className="!h-0 !w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
+            style={containerStartHandleStyle}
           />
 
-          <div className="flex h-full items-center">
-            <div className="flex items-center">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f6feb] text-white shadow-[0_14px_28px_-20px_rgba(47,111,235,0.9)]">
-                {data.kind === 'iteration-start' ? <IconIteration /> : <IconLoop />}
-              </div>
-              {showContainerAddBlock ? (
-                <>
-                  <div className="h-px w-4 bg-slate-300" />
-                  <button
-                    type="button"
-                    className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 text-[15px] font-semibold text-slate-700 shadow-[0_8px_18px_-20px_rgba(15,23,42,0.3)] transition hover:border-blue-200 hover:text-blue-600"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setAppendSourceHandle('out');
-                      setMenuOpen((prev) => !prev);
-                    }}
-                  >
-                    <span className="text-[16px] leading-none text-slate-400">+</span>
-                    <span>添加节点</span>
-                  </button>
-                </>
-              ) : (
-                <div className="ml-3 h-[2px] w-5 rounded-full bg-[#7ba2f8]" />
-              )}
-            </div>
-          </div>
+          <ContainerStartNode
+            kind={data.kind as 'iteration-start' | 'loop-start'}
+            showAddBlock={showContainerAddBlock}
+            onToggleMenu={(event) => {
+              event.stopPropagation();
+              setAppendSourceHandle('out');
+              setMenuOpen((prev) => !prev);
+            }}
+          />
 
           <SearchBox
             isOpen={menuOpen}
@@ -444,7 +432,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           ) : null}
         </div>
       ) : isContainerNode ? (
-        <div className="relative h-full w-full rounded-[30px] bg-white px-4 pb-4 pt-4">
+        <div
+          className="relative h-full w-full rounded-[30px] bg-white pt-4"
+          style={{
+            paddingLeft: CONTAINER_NODE_HORIZONTAL_PADDING,
+            paddingRight: CONTAINER_NODE_HORIZONTAL_PADDING,
+            paddingBottom: CONTAINER_NODE_HORIZONTAL_PADDING,
+          }}
+        >
           <ContainerNodeBoard />
           <ContainerNodeHeader subtitle={data.subtitle} title={data.title} />
         </div>
