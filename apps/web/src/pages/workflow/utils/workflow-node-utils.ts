@@ -5,7 +5,7 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
   NODE_Y_OFFSET,
   X_OFFSET,
-  NODE_WIDTH_X_OFFSET,
+  NODE_WIDTH,
 } from '../constants';
 import {
   buildContainerEndNodeData,
@@ -19,6 +19,19 @@ import { buildCanvasNodeData } from './workflow-dsl';
 
 const COLUMN_X_TOLERANCE = 24;
 const ROW_Y_TOLERANCE = NODE_Y_OFFSET / 2;
+
+const getSourceNodeRenderedWidth = (node: Node<CanvasNodeData>) => {
+  const styleWidth = Number(node.style?.width);
+  if (!Number.isNaN(styleWidth) && styleWidth > 0) {
+    return styleWidth;
+  }
+
+  if (node.parentId) {
+    return getContainerNodeRenderedWidth(node);
+  }
+
+  return NODE_WIDTH;
+};
 
 const findAvailableNestedY = (
   nodes: Node<CanvasNodeData>[],
@@ -120,7 +133,7 @@ export const createNodeFromSource = (
         };
       })()
     : {
-        x: sourceNode.position.x + NODE_WIDTH_X_OFFSET,
+        x: sourceNode.position.x + getSourceNodeRenderedWidth(sourceNode) + X_OFFSET,
         y: sourceNode.position.y + index * NODE_Y_OFFSET,
       };
 

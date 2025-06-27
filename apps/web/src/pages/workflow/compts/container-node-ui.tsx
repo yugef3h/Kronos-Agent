@@ -2,14 +2,17 @@ import { IconCondition } from '../assets/condition';
 import { IconLLM } from '../assets/llm';
 import { IconKnowledge } from '../assets/knowledge';
 import { IconOutput } from '../assets/output';
-import { CONTAINER_NODE_HORIZONTAL_PADDING } from '../features/container-panel/canvas';
+import {
+  CONTAINER_NODE_BOARD_TOP,
+  CONTAINER_NODE_HORIZONTAL_PADDING,
+} from '../features/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 
 export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 'subtitle' | 'title'>) => {
   return (
     <div className="relative z-10 px-1">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500">{subtitle}</p>
-      <p className="mt-1 text-[24px] font-semibold leading-none tracking-[-0.02em] text-slate-950">{title}</p>
+      <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+      <p className="mt-1 text-lg font-semibold leading-none tracking-[-0.02em] text-slate-950">{title}</p>
     </div>
   );
 };
@@ -17,8 +20,9 @@ export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 's
 export const ContainerNodeBoard = () => {
   return (
     <div
-      className="pointer-events-none absolute top-[92px] z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
+      className="pointer-events-none absolute z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
       style={{
+        top: CONTAINER_NODE_BOARD_TOP,
         left: CONTAINER_NODE_HORIZONTAL_PADDING,
         right: CONTAINER_NODE_HORIZONTAL_PADDING,
         bottom: CONTAINER_NODE_HORIZONTAL_PADDING,

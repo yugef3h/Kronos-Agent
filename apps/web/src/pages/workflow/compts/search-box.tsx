@@ -116,10 +116,12 @@ const getScopedNodes = (scope: 'root' | 'iteration' | 'loop') => {
     return NODE_CATEGORIES;
   }
 
+  const blockedContainerKind = scope === 'iteration' ? 'loop' : 'iteration';
   const internalNodes = NODE_CATEGORIES.map(category => ({
     ...category,
     nodes: category.nodes
       .filter(node => node.kind !== 'trigger' && node.kind !== 'end')
+      .filter(node => node.kind !== blockedContainerKind)
       .concat({
         id: scope === 'iteration' ? 'iteration-end' : 'loop-end',
         name: scope === 'iteration' ? '迭代结束' : '循环结束',

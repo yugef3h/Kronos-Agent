@@ -156,6 +156,15 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         return;
       }
 
+      if (
+        (searchBoxScope === 'iteration' && node.kind === 'loop')
+        || (searchBoxScope === 'loop' && node.kind === 'iteration')
+      ) {
+        setMenuOpen(false);
+        setAppendSourceHandle('out');
+        return;
+      }
+
        if (sourceNode.data.kind === 'condition') {
         const hasExistingBranchEdge = getEdges().some(
           (edge) => edge.source === sourceNodeId && edge.sourceHandle === sourceHandle,
@@ -210,7 +219,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       setMenuOpen(false);
       setAppendSourceHandle('out');
     },
-    [getEdges, getNode, getNodes, id, setEdges, setNodes],
+    [getEdges, getNode, getNodes, id, searchBoxScope, setEdges, setNodes],
   );
 
   const deleteNode = useCallback(() => {
