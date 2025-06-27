@@ -42,6 +42,7 @@ import {
   CONTAINER_END_NODE_WIDTH,
   CONTAINER_NODE_MIN_HEIGHT,
   CONTAINER_NODE_WIDTH,
+  CONTAINER_START_NODE_COLLAPSED_WIDTH,
   CONTAINER_START_NODE_WIDTH,
   getContainerBlockEnum,
   isContainerEndKind,
@@ -167,7 +168,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       const childCount = sourceNode.parentId
         ? getNodes().filter(candidate => candidate.parentId === sourceNode.parentId).length
         : getEdges().filter((edge) => edge.source === sourceNodeId).length;
-      const nextNode = createNodeFromSource(sourceNode, node, childCount);
+      const nextNode = createNodeFromSource(sourceNode, node, childCount, getNodes());
       const edgeId = `${sourceNodeId}-${sourceHandle}-${nextNode.id}-in`;
       const scopeData = getContainerScopeData(getNodes(), sourceNode);
       const sourceBlock = getContainerBlockEnum(sourceNode.data.kind);
@@ -235,7 +236,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeWidth = isContainerNode
     ? Number(currentNode?.style?.width ?? CONTAINER_NODE_WIDTH)
     : isContainerStartNode
-      ? Number(currentNode?.style?.width ?? (showContainerAddBlock ? CONTAINER_START_NODE_WIDTH : 64))
+      ? Number(currentNode?.style?.width ?? (showContainerAddBlock ? CONTAINER_START_NODE_WIDTH : CONTAINER_START_NODE_COLLAPSED_WIDTH))
       : isContainerEndNode
         ? CONTAINER_END_NODE_WIDTH
         : isNestedNode

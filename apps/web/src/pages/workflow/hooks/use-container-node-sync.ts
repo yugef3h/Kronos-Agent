@@ -11,6 +11,7 @@ import {
   CONTAINER_END_NODE_WIDTH,
   CONTAINER_NODE_MIN_HEIGHT,
   CONTAINER_NODE_WIDTH,
+  CONTAINER_START_NODE_COLLAPSED_WIDTH,
   CONTAINER_START_NODE_WIDTH,
   isContainerEndKind,
   isContainerStartKind,
@@ -155,7 +156,7 @@ export const useContainerNodeSync = ({
             changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
             const containerChildCount = nextNodes.filter(candidate => candidate.parentId === node.id).length;
-            const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : 64;
+            const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : CONTAINER_START_NODE_COLLAPSED_WIDTH;
             const layout = buildContainerLayout({
               containerId: node.id,
               nodes: nextNodes,
@@ -213,7 +214,7 @@ export const useContainerNodeSync = ({
           changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
           const containerChildCount = nextNodes.filter(candidate => candidate.parentId === node.id).length;
-          const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : 64;
+          const startNodeWidth = containerChildCount <= 1 ? CONTAINER_START_NODE_WIDTH : CONTAINER_START_NODE_COLLAPSED_WIDTH;
           const layout = buildContainerLayout({
             containerId: node.id,
             nodes: nextNodes,

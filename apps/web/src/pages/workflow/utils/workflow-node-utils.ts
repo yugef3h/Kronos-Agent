@@ -3,14 +3,55 @@ import type { NodeItem } from '../compts/search-box';
 import type { CanvasNodeData } from '../types/canvas';
 import {
   ITERATION_CHILDREN_Z_INDEX,
+  NODE_Y_OFFSET,
+  X_OFFSET,
   NODE_WIDTH_X_OFFSET,
 } from '../constants';
 import {
   buildContainerEndNodeData,
-  buildContainerChildPosition,
+  getContainerNodeRenderedWidth,
   isContainerNodeKind,
+  isContainerStartKind,
+  CONTAINER_START_NODE_COLLAPSED_WIDTH,
 } from '../features/container-panel/canvas';
 import { buildCanvasNodeData } from './workflow-dsl';
+
+const COLUMN_X_TOLERANCE = 24;
+const ROW_Y_TOLERANCE = NODE_Y_OFFSET / 2;
+
+const findAvailableNestedY = (
+  nodes: Node<CanvasNodeData>[],
+  parentId: string,
+  targetX: number,
+  preferredY: number,
+  sourceNodeId: string,
+) => {
+  const siblingNodes = nodes.filter(candidate => candidate.parentId === parentId && candidate.id !== sourceNodeId);
+  const isOccupied = (candidateY: number) => {
+    return siblingNodes.some((candidate) => {
+      return Math.abs(candidate.position.x - targetX) <= COLUMN_X_TOLERANCE
+        && Math.abs(candidate.position.y - candidateY) < ROW_Y_TOLERANCE;
+    });
+  };
+
+  if (!isOccupied(preferredY)) {
+    return preferredY;
+  }
+
+  for (let step = 1; step <= 24; step += 1) {
+    const lowerY = preferredY + step * NODE_Y_OFFSET;
+    if (!isOccupied(lowerY)) {
+      return lowerY;
+    }
+
+    const upperY = preferredY - step * NODE_Y_OFFSET;
+    if (!isOccupied(upperY)) {
+      return upperY;
+    }
+  }
+
+  return preferredY;
+};
 
 export const createNodeId = (kind: CanvasNodeData['kind']): string => {
   const random = Math.random().toString(36).slice(2, 7);
@@ -56,14 +97,30 @@ export const createNodeFromSource = (
   sourceNode: Node<CanvasNodeData>,
   node: NodeItem,
   index: number,
+  nodes: Node<CanvasNodeData>[] = [],
 ): Node<CanvasNodeData> => {
   const nextNodeId = createNodeId(node.kind);
   const isNestedNode = Boolean(sourceNode.parentId);
   const nextPosition = isNestedNode
-    ? buildContainerChildPosition(index)
+    ? (() => {
+        const targetX = sourceNode.position.x + (isContainerStartKind(sourceNode.data.kind)
+          ? CONTAINER_START_NODE_COLLAPSED_WIDTH
+          : getContainerNodeRenderedWidth(sourceNode)) + X_OFFSET;
+
+        return {
+          x: targetX,
+          y: findAvailableNestedY(
+            nodes,
+            sourceNode.parentId!,
+            targetX,
+            sourceNode.position.y,
+            sourceNode.id,
+          ),
+        };
+      })()
     : {
         x: sourceNode.position.x + NODE_WIDTH_X_OFFSET,
-        y: sourceNode.position.y + index * 120,
+        y: sourceNode.position.y + index * NODE_Y_OFFSET,
       };
 
   return {
