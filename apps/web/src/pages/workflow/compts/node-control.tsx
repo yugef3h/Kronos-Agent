@@ -10,7 +10,7 @@ type NodeControlProps = Pick<Node, 'id'> & {
 const NodeControl: FC<NodeControlProps> = ({ id, isActive = false, onDelete }) => {
   return (
     <div
-      className={`absolute right-0 top-0 z-10 -translate-y-full pb-2 transition ${isActive ? 'pointer-events-auto visible opacity-100' : 'pointer-events-none invisible opacity-0 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100'}`}
+      className={`absolute right-0 top-0 z-30 -translate-y-full pb-2 transition ${isActive ? 'pointer-events-auto visible opacity-100' : 'pointer-events-none invisible opacity-0 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100'}`}
     >
       <div className="flex items-center gap-1 rounded-lg bg-white px-1 py-1 shadow-md backdrop-blur-[5px]">
         <span className="flex h-4 w-4 items-center justify-center rounded-md text-slate-500">

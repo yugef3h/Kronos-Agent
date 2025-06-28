@@ -157,8 +157,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       }
 
       if (
-        (searchBoxScope === 'iteration' && node.kind === 'loop')
-        || (searchBoxScope === 'loop' && node.kind === 'iteration')
+        (searchBoxScope === 'iteration' || searchBoxScope === 'loop')
+        && (node.kind === 'iteration' || node.kind === 'loop')
       ) {
         setMenuOpen(false);
         setAppendSourceHandle('out');
@@ -265,14 +265,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
   const isNestedPlainNode = isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
   const nestedNodeCardClass = isNestedNode
-    ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
+    ? `rounded-[16px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
 
   return (
     <div
-      className={`group relative ${nodeSurfaceClass} transition ${data.kind === 'condition'
+      className={`group relative overflow-visible ${nodeSurfaceClass} transition ${data.kind === 'condition'
         ? `${isNestedConditionNode
-          ? 'rounded-[18px] border-0 bg-transparent px-0 py-0 shadow-none'
+          ? `rounded-[18px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
           : 'rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
         : isContainerStartNode
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
@@ -291,7 +291,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           id="in"
           type="target"
           position={Position.Left}
-          className={`!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500 ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
+          className={`!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500 ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
       {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(data.kind) ? (
@@ -299,7 +299,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           id="out"
           type="source"
           position={Position.Right}
-          className="!h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
+          className="!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
         />
       ) : null}
 
@@ -333,7 +333,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         </>
       ) : isContainerEndNode ? (
         isNestedNode ? (
-          <NestedEndNodeCard data={data} />
+          <NestedEndNodeCard data={data} isSelected={!!data.selected} />
         ) : (
           <>
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">{data.subtitle}</p>
@@ -454,7 +454,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         </div>
       ) : (
         isNestedPlainNode ? (
-          <NestedPlainNodeCard data={data} />
+          <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
         ) : (
           <div>
             <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
@@ -481,7 +481,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       {!isContainerStartNode ? <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} /> : null}
 
       {canAppend && data.kind !== 'condition' && !isContainerStartNode ? (
-        <div className="absolute -right-3 top-1/2 -translate-y-1/2">
+        <div className="absolute -right-3 top-1/2 z-30 -translate-y-1/2">
           <button
             type="button"
             className="flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-white text-lg text-blue-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-blue-50"

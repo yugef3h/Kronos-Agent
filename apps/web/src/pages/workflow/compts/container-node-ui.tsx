@@ -58,9 +58,15 @@ const NestedNodeBadge = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
   );
 };
 
-export const NestedPlainNodeCard = ({ data }: { data: CanvasNodeData }) => {
+export const NestedPlainNodeCard = ({
+  data,
+  isSelected = false,
+}: {
+  data: CanvasNodeData
+  isSelected?: boolean
+}) => {
   return (
-    <div className="rounded-[14px] border border-slate-200 bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)]">
+    <div className={`rounded-[14px] border bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)] ${isSelected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}>
       <div className="flex items-start gap-2.5">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-slate-50 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)]">
           <NestedNodeBadge kind={data.kind} />
@@ -90,9 +96,15 @@ export const NestedPlainNodeCard = ({ data }: { data: CanvasNodeData }) => {
   );
 };
 
-export const NestedEndNodeCard = ({ data }: { data: CanvasNodeData }) => {
+export const NestedEndNodeCard = ({
+  data,
+  isSelected = false,
+}: {
+  data: CanvasNodeData
+  isSelected?: boolean
+}) => {
   return (
-    <div className="rounded-[14px] border border-amber-200/80 bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)]">
+    <div className={`rounded-[14px] border bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)] ${isSelected ? 'border-components-option-card-option-selected-border' : 'border-amber-200/80 hover:border-blue-300'}`}>
       <div className="flex items-center gap-2">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.9)]">
           <IconOutput />
