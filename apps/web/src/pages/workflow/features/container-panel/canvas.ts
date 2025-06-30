@@ -6,10 +6,10 @@ import type { ContainerChildSummary, ContainerKind } from './runtime'
 import { NODE_WIDTH } from '../../constants'
 
 export const CONTAINER_NODE_WIDTH = NODE_WIDTH
-export const CONTAINER_NODE_MIN_HEIGHT = 168
+export const CONTAINER_NODE_MIN_HEIGHT = 156
 export const CONTAINER_NODE_HORIZONTAL_PADDING = 12
 export const CONTAINER_NODE_RIGHT_PADDING = 12
-export const CONTAINER_NODE_TOP_PADDING = 80
+export const CONTAINER_NODE_TOP_PADDING = 66
 export const CONTAINER_NODE_BOTTOM_PADDING = 18
 export const CONTAINER_NODE_BOARD_TOP = 60
 export const CONTAINER_CHILD_X_GAP = 208

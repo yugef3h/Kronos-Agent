@@ -20,7 +20,7 @@ export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 's
 export const ContainerNodeBoard = () => {
   return (
     <div
-      className="pointer-events-none absolute z-[1] overflow-hidden rounded-[24px] border border-[#edf1f7]"
+      className="pointer-events-none absolute z-[1] overflow-hidden rounded-[16px] border border-[#edf1f7]"
       style={{
         top: CONTAINER_NODE_BOARD_TOP,
         left: CONTAINER_NODE_HORIZONTAL_PADDING,
@@ -67,7 +67,7 @@ export const NestedPlainNodeCard = ({
 }) => {
   return (
     <div className={`rounded-[14px] border bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)] ${isSelected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}>
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-slate-50 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)]">
           <NestedNodeBadge kind={data.kind} />
         </div>

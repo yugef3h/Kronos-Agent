@@ -267,7 +267,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const standardHandleClass = '!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
   const appendHandleButtonClass = 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
   const nestedNodeCardClass = isNestedNode
-    ? `rounded-[16px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
+    ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
 
   return (
@@ -280,7 +280,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
           : isContainerNode
               ? `rounded-[30px] border bg-white shadow-[0_16px_28px_-24px_rgba(15,23,42,0.16)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
-            : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
+            : isNestedNode
+              ? nestedNodeCardClass
+              : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
       style={{
         width: nodeWidth,
         minWidth: nodeWidth,

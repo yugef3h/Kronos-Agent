@@ -128,6 +128,49 @@ const syncContainerChildren = (
   return changed;
 };
 
+const shiftContainerChildrenFromStartBaseline = (
+  nextNodes: Node<CanvasNodeData>[],
+  containerId: string,
+  startNodeId: string,
+  expectedPosition: { x: number; y: number },
+  touchedContainerIds: Set<string>,
+) => {
+  const currentStartNode = nextNodes.find(node => node.id === startNodeId && node.parentId === containerId);
+  if (!currentStartNode) {
+    return false;
+  }
+
+  const deltaX = expectedPosition.x - currentStartNode.position.x;
+  const deltaY = expectedPosition.y - currentStartNode.position.y;
+
+  if (deltaX === 0 && deltaY === 0) {
+    return false;
+  }
+
+  let changed = false;
+
+  nextNodes.forEach((candidate, index) => {
+    if (candidate.parentId !== containerId) {
+      return;
+    }
+
+    nextNodes[index] = {
+      ...candidate,
+      position: {
+        x: candidate.position.x + deltaX,
+        y: candidate.position.y + deltaY,
+      },
+    };
+    changed = true;
+  });
+
+  if (changed) {
+    touchedContainerIds.add(containerId);
+  }
+
+  return changed;
+};
+
 export const useContainerNodeSync = ({
   nodes,
   edges,
@@ -152,6 +195,14 @@ export const useContainerNodeSync = ({
               kind: 'iteration',
               itemValueType,
             });
+
+            changed = shiftContainerChildrenFromStartBaseline(
+              nextNodes,
+              node.id,
+              normalizedConfig.start_node_id,
+              expectedStartNode.position,
+              touchedContainerIds,
+            ) || changed;
 
             changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
@@ -210,6 +261,14 @@ export const useContainerNodeSync = ({
             kind: 'loop',
             loopVariables: normalizedConfig.loop_variables,
           });
+
+          changed = shiftContainerChildrenFromStartBaseline(
+            nextNodes,
+            node.id,
+            normalizedConfig.start_node_id,
+            expectedStartNode.position,
+            touchedContainerIds,
+          ) || changed;
 
           changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
