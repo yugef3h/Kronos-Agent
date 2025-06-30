@@ -264,6 +264,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     : 'bg-white';
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
   const isNestedPlainNode = isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
+  const standardHandleClass = '!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
+  const appendHandleButtonClass = 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
   const nestedNodeCardClass = isNestedNode
     ? `rounded-[16px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
@@ -291,7 +293,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           id="in"
           type="target"
           position={Position.Left}
-          className={`!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500 ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
+          className={`${standardHandleClass} ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
       {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(data.kind) ? (
@@ -299,7 +301,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           id="out"
           type="source"
           position={Position.Right}
-          className="!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-500"
+          className={standardHandleClass}
         />
       ) : null}
 
@@ -321,15 +323,28 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               setAppendSourceHandle('out');
               setMenuOpen((prev) => !prev);
             }}
+            searchBox={showContainerAddBlock ? (
+              <SearchBox
+                isOpen={menuOpen}
+                onClose={() => setMenuOpen(false)}
+                onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+                menuRef={menuRef}
+                scope={searchBoxScope}
+                preferredSide="right"
+                placement="anchored"
+              />
+            ) : null}
           />
 
-          <SearchBox
-            isOpen={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-            menuRef={menuRef}
-            scope={searchBoxScope}
-          />
+          {!showContainerAddBlock ? (
+            <SearchBox
+              isOpen={menuOpen}
+              onClose={() => setMenuOpen(false)}
+              onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+              menuRef={menuRef}
+              scope={searchBoxScope}
+            />
+          ) : null}
         </>
       ) : isContainerEndNode ? (
         isNestedNode ? (
@@ -409,7 +424,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                     <button
                       type="button"
                       disabled={isConnected}
-                      className={`absolute left-0 z-10 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
+                      className={`absolute left-0 z-10 -translate-x-1/2 disabled:cursor-not-allowed disabled:bg-slate-300 ${appendHandleButtonClass} ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         setAppendSourceHandle(branch.id);
@@ -484,7 +499,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         <div className="absolute -right-3 top-1/2 z-30 -translate-y-1/2">
           <button
             type="button"
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-blue-200 bg-white text-lg text-blue-600 opacity-0 shadow-sm transition group-hover:opacity-100 hover:bg-blue-50"
+            className={`${appendHandleButtonClass} opacity-0 group-hover:opacity-100`}
             onClick={(event) => {
               event.stopPropagation();
               setAppendSourceHandle('out');

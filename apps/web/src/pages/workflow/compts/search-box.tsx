@@ -109,6 +109,7 @@ type NodeMenuProps = {
   menuRef: RefObject<HTMLDivElement>;
   preferredSide?: 'left' | 'right';
   scope?: 'root' | 'iteration' | 'loop';
+  placement?: 'floating' | 'anchored';
 };
 
 const getScopedNodes = (scope: 'root' | 'iteration' | 'loop') => {
@@ -139,6 +140,7 @@ export const SearchBox = ({
   menuRef,
   preferredSide = 'right',
   scope = 'root',
+  placement = 'floating',
 }: NodeMenuProps) => {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchText, setSearchText] = useState<string>('');
@@ -227,10 +229,14 @@ export const SearchBox = ({
 
   if (!isOpen) return null;
 
+  const positionClassName = placement === 'anchored'
+    ? actualSide === 'right' ? 'left-full ml-3' : 'right-full mr-3'
+    : actualSide === 'right' ? 'left-8' : 'right-8';
+
   return (
     <div
       ref={menuRef}
-      className={`nowheel nodrag absolute top-1/2 z-50 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur ${actualSide === 'right' ? 'left-8' : 'right-8'}`}
+      className={`nowheel nodrag absolute top-1/2 z-50 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur ${positionClassName}`}
       onClick={(e) => e.stopPropagation()}
       onWheelCapture={(event) => event.stopPropagation()}
     >
