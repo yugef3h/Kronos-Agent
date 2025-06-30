@@ -274,8 +274,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     <div
       className={`group relative overflow-visible ${nodeSurfaceClass} transition ${data.kind === 'condition'
         ? `${isNestedConditionNode
-          ? `rounded-[18px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
-          : 'rounded-[24px] border-[2px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-blue-500'}`
+          ? `rounded-[18px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
+          : 'rounded-[24px] border-[1px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
         : isContainerStartNode
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
           : isContainerNode
