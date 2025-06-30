@@ -22,6 +22,7 @@ export const CONTAINER_START_HANDLE_RIGHT_OFFSET = CONTAINER_START_NODE_COLLAPSE
 export const CONTAINER_END_NODE_WIDTH = 152
 export const CONTAINER_CHILD_NODE_WIDTH = 172
 export const CONTAINER_CHILD_NODE_HEIGHT = 88
+export const CONTAINER_START_END_NODE_HEIGHT = 72
 export const CONTAINER_CONDITION_NODE_WIDTH = 220
 
 const OUTPUT_VALUE_TYPES: VariableOption['valueType'][] = ['string', 'number', 'boolean', 'array', 'object', 'file']
@@ -48,7 +49,7 @@ export const resolveContainerEndKind = (kind: ContainerKind): 'iteration-end' | 
 
 export const buildContainerStartPosition = () => ({
   x: CONTAINER_NODE_HORIZONTAL_PADDING,
-  y: CONTAINER_NODE_TOP_PADDING,
+  y: CONTAINER_NODE_TOP_PADDING + Math.floor((CONTAINER_CHILD_NODE_HEIGHT - CONTAINER_START_END_NODE_HEIGHT) / 2),
 })
 
 export const buildContainerChildPosition = (index: number) => ({
@@ -87,7 +88,7 @@ export const getContainerNodeRenderedHeight = (node: Node<CanvasNodeData>) => {
 
 export const getContainerChildNodeHeight = (kind: WorkflowCanvasNodeKind) => {
   if (isContainerStartKind(kind) || isContainerEndKind(kind))
-    return 72
+    return CONTAINER_START_END_NODE_HEIGHT
 
   if (kind === 'condition')
     return 140

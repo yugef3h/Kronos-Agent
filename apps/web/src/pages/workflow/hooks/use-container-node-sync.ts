@@ -10,6 +10,7 @@ import {
   buildContainerStartNode,
   CONTAINER_END_NODE_WIDTH,
   CONTAINER_NODE_MIN_HEIGHT,
+  CONTAINER_NODE_TOP_PADDING,
   CONTAINER_NODE_WIDTH,
   CONTAINER_START_NODE_COLLAPSED_WIDTH,
   CONTAINER_START_NODE_WIDTH,
@@ -38,12 +39,18 @@ const upsertContainerNode = (
   let changed = false;
   const currentIndex = nextNodes.findIndex(node => node.id === candidate.id);
   const normalizedCandidate = currentIndex !== -1 && isContainerStartKind(candidate.data.kind)
-    ? {
-        ...candidate,
-        position: nextNodes[currentIndex].position,
-        draggable: nextNodes[currentIndex].draggable ?? true,
-        selectable: nextNodes[currentIndex].selectable ?? true,
-      }
+    ? (() => {
+        const currentNode = nextNodes[currentIndex];
+        const shouldRealignLegacyPosition = currentNode.position.x === candidate.position.x
+          && currentNode.position.y === CONTAINER_NODE_TOP_PADDING;
+
+        return {
+          ...candidate,
+          position: shouldRealignLegacyPosition ? candidate.position : currentNode.position,
+          draggable: currentNode.draggable ?? true,
+          selectable: currentNode.selectable ?? true,
+        };
+      })()
     : candidate;
 
   if (currentIndex === -1) {
@@ -128,49 +135,6 @@ const syncContainerChildren = (
   return changed;
 };
 
-const shiftContainerChildrenFromStartBaseline = (
-  nextNodes: Node<CanvasNodeData>[],
-  containerId: string,
-  startNodeId: string,
-  expectedPosition: { x: number; y: number },
-  touchedContainerIds: Set<string>,
-) => {
-  const currentStartNode = nextNodes.find(node => node.id === startNodeId && node.parentId === containerId);
-  if (!currentStartNode) {
-    return false;
-  }
-
-  const deltaX = expectedPosition.x - currentStartNode.position.x;
-  const deltaY = expectedPosition.y - currentStartNode.position.y;
-
-  if (deltaX === 0 && deltaY === 0) {
-    return false;
-  }
-
-  let changed = false;
-
-  nextNodes.forEach((candidate, index) => {
-    if (candidate.parentId !== containerId) {
-      return;
-    }
-
-    nextNodes[index] = {
-      ...candidate,
-      position: {
-        x: candidate.position.x + deltaX,
-        y: candidate.position.y + deltaY,
-      },
-    };
-    changed = true;
-  });
-
-  if (changed) {
-    touchedContainerIds.add(containerId);
-  }
-
-  return changed;
-};
-
 export const useContainerNodeSync = ({
   nodes,
   edges,
@@ -195,14 +159,6 @@ export const useContainerNodeSync = ({
               kind: 'iteration',
               itemValueType,
             });
-
-            changed = shiftContainerChildrenFromStartBaseline(
-              nextNodes,
-              node.id,
-              normalizedConfig.start_node_id,
-              expectedStartNode.position,
-              touchedContainerIds,
-            ) || changed;
 
             changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
@@ -261,14 +217,6 @@ export const useContainerNodeSync = ({
             kind: 'loop',
             loopVariables: normalizedConfig.loop_variables,
           });
-
-          changed = shiftContainerChildrenFromStartBaseline(
-            nextNodes,
-            node.id,
-            normalizedConfig.start_node_id,
-            expectedStartNode.position,
-            touchedContainerIds,
-          ) || changed;
 
           changed = upsertContainerNode(nextNodes, expectedStartNode, touchedContainerIds) || changed;
 
