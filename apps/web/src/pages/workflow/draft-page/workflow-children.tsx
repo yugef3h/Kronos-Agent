@@ -274,7 +274,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     <div
       className={`group relative overflow-visible ${nodeSurfaceClass} transition ${data.kind === 'condition'
         ? `${isNestedConditionNode
-          ? `rounded-[18px] border bg-white px-0 py-0 shadow-none ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
+          ? `rounded-[18px] border bg-white px-3 py-3 shadow-none ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
           : 'rounded-[24px] border-[1px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
         : isContainerStartNode
           ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
@@ -364,7 +364,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         )
       ) : data.kind === 'condition' ? (
         <div>
-          <div className={`flex items-center ${isNestedConditionNode ? 'gap-2 pr-6' : 'gap-3 pr-8'}`}>
+          <div className={`flex items-center ${isNestedConditionNode ? 'gap-2 pr-7' : 'gap-3 pr-8'}`}>
             <div className={`flex shrink-0 items-center justify-center rounded-[4px] bg-[#16b5d8] text-white ${isNestedConditionNode ? 'h-5 w-5 shadow-none' : 'h-6 w-6 shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]'}`}>
               <IconCondition />
             </div>
@@ -373,7 +373,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             </div>
           </div>
 
-          <div className={`${isNestedConditionNode ? 'mt-1 space-y-1' : 'mt-[-6px] space-y-1.5'}`}>
+          <div className={`${isNestedConditionNode ? 'mt-2 space-y-1.5' : 'mt-[-6px] space-y-1.5'}`}>
             {conditionBranches.map((branch, index) => {
               const isConnected = connectedSourceHandleIds.includes(branch.id);
               const isElseBranch = branch.id === 'false';
