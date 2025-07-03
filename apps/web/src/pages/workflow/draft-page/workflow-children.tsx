@@ -16,19 +16,16 @@ import {
   type NodeProps,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-import { getWorkflowAppById, updateWorkflowAppDsl } from '../../../features/workflow/workflowAppStore';
 import {
-  CUSTOM_EDGE,
-  ITERATION_CHILDREN_Z_INDEX,
-  NODE_WIDTH,
-} from '../constants';
+  getWorkflowAppById,
+  updateWorkflowAppDsl,
+} from '../../../features/workflow/workflowAppStore';
+import { CUSTOM_EDGE, ITERATION_CHILDREN_Z_INDEX, NODE_WIDTH } from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
+import DslPreviewDialog from '../compts/dsl-preview-dialog';
 import { type NodeItem, SearchBox } from '../compts/search-box';
-import {
-  type CommonEdgeType,
-  type Edge,
-} from '../types/common';
+import { type CommonEdgeType, type Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import {
   applyConnectedEdgeSelection,
@@ -74,11 +71,12 @@ import {
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema';
+import {} from '../features/iteration-panel/schema';
 import {
-} from '../features/iteration-panel/schema';
-import { getKnowledgeDatasetsByIds, useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store';
-import {
-} from '../features/loop-panel/schema';
+  getKnowledgeDatasetsByIds,
+  useKnowledgeDatasets,
+} from '../features/knowledge-retrieval-panel/dataset-store';
+import {} from '../features/loop-panel/schema';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import {
   areKnowledgeDatasetsEqual,
@@ -93,7 +91,7 @@ import 'reactflow/dist/style.css';
 const buildConditionNodeVariableOptions = (
   currentNodeId: string,
   nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
-) : VariableOption[] => {
+): VariableOption[] => {
   return buildWorkflowVariableOptions(currentNodeId, nodes);
 };
 
@@ -114,6 +112,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     () => resolveSearchBoxScope(getNodes(), currentNode),
     [currentNode, getNodes],
   );
+  const effectiveSearchBoxScope: 'root' | 'iteration' | 'loop' = isContainerNode
+    ? data.kind === 'iteration'
+      ? 'iteration'
+      : 'loop'
+    : searchBoxScope;
   const parentChildCount = currentParentNode?.data._children?.length ?? 0;
   const showContainerAddBlock = isContainerStartNode && parentChildCount <= 1;
   const conditionConfig = useMemo(() => {
@@ -137,7 +140,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
     return buildConditionNodeVariableOptions(
       id,
-      getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId })),
+      getNodes().map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
     );
   }, [data.kind, getNodes, id]);
   const primaryConditionSummary = useMemo(() => {
@@ -145,7 +148,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       return '添加条件后，这里会显示 IF 分支摘要';
     }
 
-    return buildIfElseConditionSummary(conditionConfig.cases[0].conditions[0], conditionVariableOptions);
+    return buildIfElseConditionSummary(
+      conditionConfig.cases[0].conditions[0],
+      conditionVariableOptions,
+    );
   }, [conditionConfig, conditionVariableOptions]);
   const connectedSourceHandleIds = data._connectedSourceHandleIds ?? [];
 
@@ -157,15 +163,15 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       }
 
       if (
-        (searchBoxScope === 'iteration' || searchBoxScope === 'loop')
-        && (node.kind === 'iteration' || node.kind === 'loop')
+        (effectiveSearchBoxScope === 'iteration' || effectiveSearchBoxScope === 'loop') &&
+        (node.kind === 'iteration' || node.kind === 'loop')
       ) {
         setMenuOpen(false);
         setAppendSourceHandle('out');
         return;
       }
 
-       if (sourceNode.data.kind === 'condition') {
+      if (sourceNode.data.kind === 'condition') {
         const hasExistingBranchEdge = getEdges().some(
           (edge) => edge.source === sourceNodeId && edge.sourceHandle === sourceHandle,
         );
@@ -176,7 +182,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       }
 
       const childCount = sourceNode.parentId
-        ? getNodes().filter(candidate => candidate.parentId === sourceNode.parentId).length
+        ? getNodes().filter((candidate) => candidate.parentId === sourceNode.parentId).length
         : getEdges().filter((edge) => edge.source === sourceNodeId).length;
       const nextNode = createNodeFromSource(sourceNode, node, childCount, getNodes());
       const edgeId = `${sourceNodeId}-${sourceHandle}-${nextNode.id}-in`;
@@ -219,7 +225,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       setMenuOpen(false);
       setAppendSourceHandle('out');
     },
-    [getEdges, getNode, getNodes, id, searchBoxScope, setEdges, setNodes],
+    [effectiveSearchBoxScope, getEdges, getNode, getNodes, id, setEdges, setNodes],
   );
 
   const deleteNode = useCallback(() => {
@@ -246,12 +252,17 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const nodeWidth = isContainerNode
     ? Number(currentNode?.style?.width ?? CONTAINER_NODE_WIDTH)
     : isContainerStartNode
-      ? Number(currentNode?.style?.width ?? (showContainerAddBlock ? CONTAINER_START_NODE_WIDTH : CONTAINER_START_NODE_COLLAPSED_WIDTH))
+      ? Number(
+          currentNode?.style?.width ??
+            (showContainerAddBlock
+              ? CONTAINER_START_NODE_WIDTH
+              : CONTAINER_START_NODE_COLLAPSED_WIDTH),
+        )
       : isContainerEndNode
         ? CONTAINER_END_NODE_WIDTH
         : isNestedNode
           ? CONTAINER_CHILD_NODE_WIDTH
-        : NODE_WIDTH;
+          : NODE_WIDTH;
 
   const nodeMinHeight = isContainerNode
     ? Number(currentNode?.style?.height ?? CONTAINER_NODE_MIN_HEIGHT)
@@ -259,30 +270,35 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const containerStartHandleStyle = showContainerAddBlock
     ? undefined
     : { right: CONTAINER_START_HANDLE_RIGHT_OFFSET };
-  const nodeSurfaceClass = isContainerStartNode || (isNestedNode && !isContainerNode)
-    ? 'bg-transparent'
-    : 'bg-white';
+  const nodeSurfaceClass =
+    isContainerStartNode || (isNestedNode && !isContainerNode) ? 'bg-transparent' : 'bg-white';
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
-  const isNestedPlainNode = isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
+  const isNestedPlainNode =
+    isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
   const standardHandleClass = '!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
-  const appendHandleButtonClass = 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
+  const appendHandleButtonClass =
+    'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
   const nestedNodeCardClass = isNestedNode
     ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
 
   return (
     <div
-      className={`group relative overflow-visible ${nodeSurfaceClass} transition ${data.kind === 'condition'
-        ? `${isNestedConditionNode
-          ? `rounded-[18px] border bg-white px-3 py-3 shadow-none ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
-          : 'rounded-[24px] border-[1px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'} ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
-        : isContainerStartNode
-          ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
-          : isContainerNode
+      className={`group relative overflow-visible ${nodeSurfaceClass} transition ${
+        data.kind === 'condition'
+          ? `${
+              isNestedConditionNode
+                ? `rounded-[18px] border bg-white px-3 py-3 shadow-none ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
+                : 'rounded-[24px] border-[1px] px-4 py-4 shadow-[0_14px_32px_-28px_rgba(37,99,235,0.42)]'
+            } ${data.selected ? 'border-blue-600' : 'border-slate-200 hover:border-blue-300'}`
+          : isContainerStartNode
+            ? 'rounded-none border-0 bg-transparent px-0 py-0 shadow-none'
+            : isContainerNode
               ? `rounded-[30px] border bg-white shadow-[0_16px_28px_-24px_rgba(15,23,42,0.16)] ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
-            : isNestedNode
-              ? nestedNodeCardClass
-              : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}`}
+              : isNestedNode
+                ? nestedNodeCardClass
+                : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
+      }`}
       style={{
         width: nodeWidth,
         minWidth: nodeWidth,
@@ -298,13 +314,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           className={`${standardHandleClass} ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
-      {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(data.kind) ? (
-        <Handle
-          id="out"
-          type="source"
-          position={Position.Right}
-          className={standardHandleClass}
-        />
+      {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(
+        data.kind,
+      ) ? (
+        <Handle id="out" type="source" position={Position.Right} className={standardHandleClass} />
       ) : null}
 
       {isContainerStartNode ? (
@@ -325,17 +338,19 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               setAppendSourceHandle('out');
               setMenuOpen((prev) => !prev);
             }}
-            searchBox={showContainerAddBlock ? (
-              <SearchBox
-                isOpen={menuOpen}
-                onClose={() => setMenuOpen(false)}
-                onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-                menuRef={menuRef}
-                scope={searchBoxScope}
-                preferredSide="right"
-                placement="anchored"
-              />
-            ) : null}
+            searchBox={
+              showContainerAddBlock ? (
+                <SearchBox
+                  isOpen={menuOpen}
+                  onClose={() => setMenuOpen(false)}
+                  onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+                  menuRef={menuRef}
+                  scope={effectiveSearchBoxScope}
+                  preferredSide="right"
+                  placement="anchored"
+                />
+              ) : null
+            }
           />
 
           {!showContainerAddBlock ? (
@@ -344,7 +359,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               onClose={() => setMenuOpen(false)}
               onAppendNode={(node) => appendNode(node, appendSourceHandle)}
               menuRef={menuRef}
-              scope={searchBoxScope}
+              scope={effectiveSearchBoxScope}
             />
           ) : null}
         </>
@@ -353,7 +368,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           <NestedEndNodeCard data={data} isSelected={!!data.selected} />
         ) : (
           <>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">{data.subtitle}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">
+              {data.subtitle}
+            </p>
             <p className="mt-1 text-[14px] font-semibold text-slate-900">{data.title}</p>
             <p className="mt-1 text-[10px] leading-4 text-slate-500">
               {data.kind === 'iteration-end'
@@ -364,22 +381,32 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         )
       ) : data.kind === 'condition' ? (
         <div>
-          <div className={`flex items-center ${isNestedConditionNode ? 'gap-2 pr-7' : 'gap-3 pr-8'}`}>
-            <div className={`flex shrink-0 items-center justify-center rounded-[4px] bg-[#16b5d8] text-white ${isNestedConditionNode ? 'h-5 w-5 shadow-none' : 'h-6 w-6 shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]'}`}>
+          <div
+            className={`flex items-center ${isNestedConditionNode ? 'gap-2 pr-7' : 'gap-3 pr-8'}`}
+          >
+            <div
+              className={`flex shrink-0 items-center justify-center rounded-[4px] bg-[#16b5d8] text-white ${isNestedConditionNode ? 'h-5 w-5 shadow-none' : 'h-6 w-6 shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]'}`}
+            >
               <IconCondition />
             </div>
             <div className="min-w-0 pt-0.5">
-              <p className={`${isNestedConditionNode ? 'text-[13px]' : 'text-[16px]'} font-semibold tracking-[0.01em] text-slate-900`}>{data.title}</p>
+              <p
+                className={`${isNestedConditionNode ? 'text-[13px]' : 'text-[16px]'} font-semibold tracking-[0.01em] text-slate-900`}
+              >
+                {data.title}
+              </p>
             </div>
           </div>
 
-          <div className={`${isNestedConditionNode ? 'mt-2 space-y-1.5' : 'mt-[-6px] space-y-1.5'}`}>
+          <div
+            className={`${isNestedConditionNode ? 'mt-2 space-y-1.5' : 'mt-[-6px] space-y-1.5'}`}
+          >
             {conditionBranches.map((branch, index) => {
               const isConnected = connectedSourceHandleIds.includes(branch.id);
               const isElseBranch = branch.id === 'false';
               const branchCase = isElseBranch
                 ? null
-                : conditionConfig?.cases.find(caseItem => caseItem.case_id === branch.id);
+                : conditionConfig?.cases.find((caseItem) => caseItem.case_id === branch.id);
               const branchSummary = isElseBranch
                 ? '未命中其他条件时执行'
                 : branchCase?.conditions[0]
@@ -395,9 +422,15 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                 >
                   {!isElseBranch ? (
                     <div>
-                      <div className={`${isNestedConditionNode ? 'mb-3 min-h-[12px]' : 'mb-4 min-h-[18px]'}`} />
-                      <div className={`rounded-xl ${isNestedConditionNode ? 'bg-white/55 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.8)] backdrop-blur-[1px]' : 'bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]'}`}>
-                        <div className={`flex items-center gap-1.5 rounded-xl text-[11px] font-medium text-slate-700 ${isNestedConditionNode ? 'min-h-[28px] px-2 py-1' : 'min-h-[34px] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]'}`}>
+                      <div
+                        className={`${isNestedConditionNode ? 'mb-3 min-h-[12px]' : 'mb-4 min-h-[18px]'}`}
+                      />
+                      <div
+                        className={`rounded-xl ${isNestedConditionNode ? 'bg-white/55 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.8)] backdrop-blur-[1px]' : 'bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]'}`}
+                      >
+                        <div
+                          className={`flex items-center gap-1.5 rounded-xl text-[11px] font-medium text-slate-700 ${isNestedConditionNode ? 'min-h-[28px] px-2 py-1' : 'min-h-[34px] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]'}`}
+                        >
                           <span className="line-clamp-1">{branchSummary}</span>
                         </div>
                       </div>
@@ -407,16 +440,22 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                   )}
 
                   {isElseBranch ? (
-                    <span className={`absolute right-1 top-1/2 -translate-y-1/2 font-semibold tracking-[0.01em] text-slate-700 ${isNestedConditionNode ? 'text-[9px]' : 'text-[10px]'}`}>
+                    <span
+                      className={`absolute right-1 top-1/2 -translate-y-1/2 font-semibold tracking-[0.01em] text-slate-700 ${isNestedConditionNode ? 'text-[9px]' : 'text-[10px]'}`}
+                    >
                       {branch.name}
                     </span>
                   ) : (
-                    <span className={`absolute right-1 font-semibold tracking-[0.01em] text-slate-700 ${isNestedConditionNode ? 'top-[10px] text-[9px]' : 'top-[14px] text-[10px]'}`}>
+                    <span
+                      className={`absolute right-1 font-semibold tracking-[0.01em] text-slate-700 ${isNestedConditionNode ? 'top-[10px] text-[9px]' : 'top-[14px] text-[10px]'}`}
+                    >
                       {branch.name}
                     </span>
                   )}
 
-                  <div className={`absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}>
+                  <div
+                    className={`absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}
+                  >
                     <Handle
                       id={branch.id}
                       type="source"
@@ -443,6 +482,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                         onAppendNode={(node) => appendNode(node, appendSourceHandle)}
                         menuRef={menuRef}
                         preferredSide="right"
+                        scope={effectiveSearchBoxScope}
                       />
                     ) : null}
                   </div>
@@ -469,33 +509,33 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           <ContainerNodeBoard />
           <ContainerNodeHeader subtitle={data.subtitle} title={data.title} />
         </div>
+      ) : isNestedPlainNode ? (
+        <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
       ) : (
-        isNestedPlainNode ? (
-          <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
-        ) : (
-          <div>
-            <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
-            {data.kind === 'knowledge' && data._datasets?.length ? (
-              <div className="mt-2 space-y-1">
-                {data._datasets.slice(0, 2).map(dataset => (
-                  <div
-                    key={dataset.id}
-                    className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]"
-                  >
-                    <span className="line-clamp-1">{dataset.name}</span>
-                  </div>
-                ))}
-                {data._datasets.length > 2 ? (
-                  <p className="text-[10px] text-slate-400">+{data._datasets.length - 2} 个知识库</p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        )
+        <div>
+          <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
+          {data.kind === 'knowledge' && data._datasets?.length ? (
+            <div className="mt-2 space-y-1">
+              {data._datasets.slice(0, 2).map((dataset) => (
+                <div
+                  key={dataset.id}
+                  className="rounded-lg bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]"
+                >
+                  <span className="line-clamp-1">{dataset.name}</span>
+                </div>
+              ))}
+              {data._datasets.length > 2 ? (
+                <p className="text-[10px] text-slate-400">+{data._datasets.length - 2} 个知识库</p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       )}
 
-      {!isContainerStartNode ? <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} /> : null}
+      {!isContainerStartNode ? (
+        <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
+      ) : null}
 
       {canAppend && data.kind !== 'condition' && !isContainerStartNode ? (
         <div className="absolute -right-3 top-1/2 z-30 -translate-y-1/2">
@@ -516,11 +556,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             onClose={() => setMenuOpen(false)}
             onAppendNode={(node) => appendNode(node, appendSourceHandle)}
             menuRef={menuRef}
-            scope={searchBoxScope}
+            scope={effectiveSearchBoxScope}
           />
         </div>
       ) : null}
-
     </div>
   );
 };
@@ -537,28 +576,25 @@ export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const { datasets } = useKnowledgeDatasets();
+  const currentApp = appId ? getWorkflowAppById(appId) : undefined;
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
-    if (!appId)
-      return [createInitialTriggerNode()]
+    if (!appId) return [createInitialTriggerNode()];
 
-    const app = getWorkflowAppById(appId)
-    if (!app)
-      return [createInitialTriggerNode()]
+    const app = getWorkflowAppById(appId);
+    if (!app) return [createInitialTriggerNode()];
 
-    return hydrateCanvasNodesFromDsl(app.dsl)
+    return hydrateCanvasNodesFromDsl(app.dsl);
   }, [appId]);
 
   const initialEdges = useMemo<Edge[]>(() => {
-    if (!appId)
-      return []
+    if (!appId) return [];
 
-    const app = getWorkflowAppById(appId)
-    if (!app)
-      return []
+    const app = getWorkflowAppById(appId);
+    if (!app) return [];
 
-    return app.dsl.edges as unknown as Edge[]
-  }, [appId])
+    return app.dsl.edges as unknown as Edge[];
+  }, [appId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
@@ -570,19 +606,18 @@ export const WorkflowChildren = () => {
     });
 
   useEffect(() => {
-    if (!appId)
-      return
+    if (!appId) return;
 
-    const app = getWorkflowAppById(appId)
+    const app = getWorkflowAppById(appId);
     if (!app) {
-      setNodes([createInitialTriggerNode()])
-      setEdges([])
-      return
+      setNodes([createInitialTriggerNode()]);
+      setEdges([]);
+      return;
     }
 
-    setNodes(hydrateCanvasNodesFromDsl(app.dsl))
-    setEdges(app.dsl.edges as Edge[])
-  }, [appId, setEdges, setNodes])
+    setNodes(hydrateCanvasNodesFromDsl(app.dsl));
+    setEdges(app.dsl.edges as Edge[]);
+  }, [appId, setEdges, setNodes]);
 
   useEffect(() => {
     setNodes((currentNodes) => {
@@ -593,7 +628,9 @@ export const WorkflowChildren = () => {
           .filter((edge) => edge.source === node.id)
           .map((edge) => edge.sourceHandle ?? 'out');
 
-        if (areStringArraysEqual(node.data._connectedSourceHandleIds ?? [], connectedSourceHandleIds)) {
+        if (
+          areStringArraysEqual(node.data._connectedSourceHandleIds ?? [], connectedSourceHandleIds)
+        ) {
           return node;
         }
 
@@ -622,12 +659,14 @@ export const WorkflowChildren = () => {
         }
 
         const datasetIds = getKnowledgeDatasetIds(node.data);
-        const normalizedDatasetIds = datasetIds.filter(datasetId => datasets.some(dataset => dataset.id === datasetId));
+        const normalizedDatasetIds = datasetIds.filter((datasetId) =>
+          datasets.some((dataset) => dataset.id === datasetId),
+        );
         const nextDatasets = getKnowledgeDatasetsByIds(normalizedDatasetIds);
 
         if (
-          areStringArraysEqual(datasetIds, normalizedDatasetIds)
-          && areKnowledgeDatasetsEqual(node.data._datasets ?? [], nextDatasets)
+          areStringArraysEqual(datasetIds, normalizedDatasetIds) &&
+          areKnowledgeDatasetsEqual(node.data._datasets ?? [], nextDatasets)
         ) {
           return node;
         }
@@ -663,9 +702,11 @@ export const WorkflowChildren = () => {
       let changed = false;
 
       const nextEdges = currentEdges.map((edge) => {
-        const sourceNode = nodes.find(node => node.id === edge.source);
-        const targetNode = nodes.find(node => node.id === edge.target);
-        const isInternalEdge = Boolean(sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId);
+        const sourceNode = nodes.find((node) => node.id === edge.source);
+        const targetNode = nodes.find((node) => node.id === edge.target);
+        const isInternalEdge = Boolean(
+          sourceNode?.parentId && sourceNode.parentId === targetNode?.parentId,
+        );
         const nextZIndex = isInternalEdge ? ITERATION_CHILDREN_Z_INDEX + 2 : undefined;
 
         if (edge.zIndex === nextZIndex) {
@@ -684,15 +725,11 @@ export const WorkflowChildren = () => {
   }, [nodes, setEdges]);
 
   useEffect(() => {
-    if (!appId)
-      return
+    if (!appId) return;
 
-    const app = getWorkflowAppById(appId)
-    updateWorkflowAppDsl(
-      appId,
-      createWorkflowDslFromCanvas(nodes, edges as Edge[], app?.name),
-    )
-  }, [appId, edges, nodes])
+    const app = getWorkflowAppById(appId);
+    updateWorkflowAppDsl(appId, createWorkflowDslFromCanvas(nodes, edges as Edge[], app?.name));
+  }, [appId, edges, nodes]);
 
   const selectedNode = useMemo(() => {
     const currentNode = nodes.find((node) => node.data.selected);
@@ -705,6 +742,11 @@ export const WorkflowChildren = () => {
       data: currentNode.data,
     };
   }, [nodes]);
+
+  const workflowDslPreview = useMemo(
+    () => createWorkflowDslFromCanvas(nodes, edges as Edge[], currentApp?.name),
+    [currentApp?.name, edges, nodes],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -776,9 +818,15 @@ export const WorkflowChildren = () => {
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
             Draft
           </p>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-            应用 ID：{appId}
-          </span>
+          <div className="right-operator">
+            <DslPreviewDialog
+              appId={appId}
+              appName={currentApp?.name}
+              dsl={workflowDslPreview}
+              nodeCount={nodes.length}
+              edgeCount={edges.length}
+            />
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-hidden rounded-b-3xl">
