@@ -18,12 +18,13 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import {
   getWorkflowAppById,
-  updateWorkflowAppDsl,
 } from '../../../features/workflow/workflowAppStore';
+import { useWorkflowDraftStore } from '../../../store/workflowDraftStore';
 import { CUSTOM_EDGE, ITERATION_CHILDREN_Z_INDEX, NODE_WIDTH } from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import DslPreviewDialog from '../compts/dsl-preview-dialog';
+import { EditingTitle } from '../compts/editing-title';
 import { type NodeItem, SearchBox } from '../compts/search-box';
 import { type CommonEdgeType, type Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
@@ -55,6 +56,7 @@ import {
 } from '../utils/workflow-dsl';
 import { useContainerNodeSync } from '../hooks/use-container-node-sync';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
+import { useWorkflowDraftPersistence } from '../hooks/use-workflow-draft-persistence';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import { IconCondition } from '../assets/condition';
@@ -577,6 +579,7 @@ export const WorkflowChildren = () => {
   const appId = searchParams.get('appId');
   const { datasets } = useKnowledgeDatasets();
   const currentApp = appId ? getWorkflowAppById(appId) : undefined;
+  const isSyncingWorkflowDraft = useWorkflowDraftStore((state) => state.isSyncingWorkflowDraft);
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
     if (!appId) return [createInitialTriggerNode()];
@@ -598,6 +601,18 @@ export const WorkflowChildren = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
+  const {
+    handleRefreshWorkflowDraft,
+    handleLoadBackupDraft,
+    hasBackupDraft,
+  } = useWorkflowDraftPersistence({
+    appId,
+    appName: currentApp?.name,
+    nodes,
+    edges: edges as Edge[],
+    setNodes,
+    setEdges,
+  });
   const updateNodeInternals = useUpdateNodeInternals();
   const { handleNodeClick, handlePaneClick, handlePanelClose } =
     useNodesInteractions<CanvasNodeData>({
@@ -724,13 +739,6 @@ export const WorkflowChildren = () => {
     });
   }, [nodes, setEdges]);
 
-  useEffect(() => {
-    if (!appId) return;
-
-    const app = getWorkflowAppById(appId);
-    updateWorkflowAppDsl(appId, createWorkflowDslFromCanvas(nodes, edges as Edge[], app?.name));
-  }, [appId, edges, nodes]);
-
   const selectedNode = useMemo(() => {
     const currentNode = nodes.find((node) => node.data.selected);
 
@@ -815,10 +823,13 @@ export const WorkflowChildren = () => {
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-            Draft
-          </p>
-          <div className="right-operator">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+              Draft
+            </p>
+            <EditingTitle />
+          </div>
+          <div className="right-operator flex items-center gap-2">
             <DslPreviewDialog
               appId={appId}
               appName={currentApp?.name}

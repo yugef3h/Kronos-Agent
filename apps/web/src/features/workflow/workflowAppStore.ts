@@ -58,6 +58,7 @@ export type WorkflowAppRecord = {
   description: string;
   createdAt: number;
   updatedAt: number;
+  publishedAt?: number;
   dsl: WorkflowDSL;
 };
 

@@ -39,3 +39,9 @@
 - 根因：右侧 panel 组件映射没有把当前节点 `id/data` 透传到具体面板，`llm` 节点也没有被 panel resolver 映射到 LLMPanel；同时画布 nodes/edges 仅存在于 ReactFlow 内存，未与 `workflowAppStore.dsl` 双向同步。
 - 现象：LLM 节点即使点开右侧面板，也只能看到占位内容；即便面板后续写了本地 state，刷新页面后配置仍会丢失。
 - 修复：补齐 `workflow -> llm` 的 panel 解析，面板装配链路改为透传节点 `id/data`；新增节点/边与 `workflowAppStore` 的最小 DSL 回填与保存逻辑；LLMPanel 配置统一写入 `node.data.inputs`，并随画布自动持久化。
+
+## 2026-04-08 Zustand selector 返回新对象导致 Maximum update depth exceeded
+
+- 根因：在 `useWorkflowDraftStore((state) => ({ ... }))` 这类 selector 里直接返回新对象时，如果没有做浅比较或缓存，React 会拿到不稳定的 snapshot；在 `useSyncExternalStore` 链路下会触发 “The result of getSnapshot should be cached” 和 `Maximum update depth exceeded`。
+- 现象：页面渲染 `editing-title.tsx` 一类只读状态组件时，控制台报无限更新错误，组件栈会指向 workflow draft 状态展示区域。
+- 修复：对返回对象的 Zustand selector 使用 `useShallow` 包裹，或者拆成多个基础字段 selector，保证 snapshot 可复用；本项目已在 `editing-title.tsx` 中改为 `useWorkflowDraftStore(useShallow(...))`。
