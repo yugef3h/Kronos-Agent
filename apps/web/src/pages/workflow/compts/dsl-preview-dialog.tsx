@@ -10,7 +10,7 @@ type DslPreviewDialogProps = {
 };
 
 export default function DslPreviewDialog({
-  appId,
+//   appId,
   appName,
   dsl,
   nodeCount,
