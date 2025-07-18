@@ -24,6 +24,7 @@ import {
 } from '../features/start-panel/schema'
 import { useStartPanelConfig } from '../features/start-panel/use-start-panel-config'
 import type { StartVariableType } from '../features/start-panel/types'
+import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references'
 
 const START_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: StartVariableType }> = [
   { label: 'Text', value: 'text-input' },
@@ -72,6 +73,22 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
           },
         }
       }))
+    },
+    onVariableRename: ({ previousVariable, nextVariable }) => {
+      setNodes(nodes => rewriteNodesVariableReferences(
+        nodes,
+        [id, previousVariable],
+        [id, nextVariable],
+        id,
+      ))
+    },
+    onVariableRemove: ({ variable }) => {
+      setNodes(nodes => rewriteNodesVariableReferences(
+        nodes,
+        [id, variable],
+        null,
+        id,
+      ))
     },
   })
 
@@ -218,7 +235,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
                       <PanelInput
                         value={variable.variable}
                         placeholder="例如：city"
-                        onChange={event => handleUpdateVariable(variable.id, { variable: event.target.value.trim() })}
+                        onChange={event => handleUpdateVariable(variable.id, { variable: event.target.value })}
                       />
                     </Field>
 

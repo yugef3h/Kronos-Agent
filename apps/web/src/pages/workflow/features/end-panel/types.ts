@@ -1,6 +1,7 @@
 import type { ValueSelector } from '../llm-panel/types'
 
 export type EndOutputValueMode = 'variable' | 'constant'
+export type EndOutputConstantType = 'string' | 'number' | 'boolean' | 'json'
 
 export type EndOutputDefinition = {
   id: string
@@ -8,6 +9,7 @@ export type EndOutputDefinition = {
   value_selector: ValueSelector
   variable_type: EndOutputValueMode
   value: string
+  constant_type: EndOutputConstantType
 }
 
 export type EndNodeConfig = {

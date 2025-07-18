@@ -11,6 +11,7 @@ import {
   PanelInput,
   PanelOutputVarRow,
   PanelSection,
+  PanelTextarea,
   PanelToken,
 } from '../base/panel-form'
 import type { Edge } from '../types/common'
@@ -19,6 +20,14 @@ import { useEndPanelConfig } from '../features/end-panel/use-end-panel-config'
 import { buildEndNodeOutputs, buildEndOutputTypes } from '../features/end-panel/schema'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 import type { VariableOption } from '../features/llm-panel/types'
+import type { EndOutputConstantType } from '../features/end-panel/types'
+
+const END_CONSTANT_TYPE_OPTIONS: Array<{ label: string; value: EndOutputConstantType }> = [
+  { label: 'String', value: 'string' },
+  { label: 'Number', value: 'number' },
+  { label: 'Boolean', value: 'boolean' },
+  { label: 'JSON', value: 'json' },
+]
 
 const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {
   const serialized = serializeValueSelector(valueSelector)
@@ -210,13 +219,44 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
                         />
                       </Field>
                     ) : (
-                      <Field title="常量值" compact>
-                        <PanelInput
-                          value={output.value}
-                          placeholder="输入固定返回内容"
-                          onChange={event => handleUpdateOutput(output.id, { value: event.target.value })}
-                        />
-                      </Field>
+                      <div className="space-y-2">
+                        <Field title="常量类型" compact>
+                          <PanelChoiceGroup
+                            size="sm"
+                            value={output.constant_type}
+                            options={END_CONSTANT_TYPE_OPTIONS}
+                            onChange={value => handleUpdateOutput(output.id, { constant_type: value as EndOutputConstantType })}
+                          />
+                        </Field>
+
+                        <Field title="常量值" compact>
+                          {output.constant_type === 'boolean' ? (
+                            <PanelChoiceGroup
+                              size="sm"
+                              value={output.value === 'true' ? 'true' : 'false'}
+                              options={[
+                                { label: 'TRUE', value: 'true' },
+                                { label: 'FALSE', value: 'false' },
+                              ]}
+                              onChange={value => handleUpdateOutput(output.id, { value })}
+                            />
+                          ) : output.constant_type === 'json' ? (
+                            <PanelTextarea
+                              className="min-h-[88px] px-2 py-1.5 text-[12px] leading-5"
+                              value={output.value}
+                              placeholder={'例如：{\n  "ok": true\n}'}
+                              onChange={event => handleUpdateOutput(output.id, { value: event.target.value })}
+                            />
+                          ) : (
+                            <PanelInput
+                              type={output.constant_type === 'number' ? 'number' : 'text'}
+                              value={output.value}
+                              placeholder={output.constant_type === 'number' ? '输入数字' : '输入固定返回内容'}
+                              onChange={event => handleUpdateOutput(output.id, { value: event.target.value })}
+                            />
+                          )}
+                        </Field>
+                      </div>
                     )}
 
                     {output.variable_type === 'variable' && output.value_selector.length ? (
@@ -250,9 +290,9 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
                   <PanelOutputVarRow
                     key={output.id}
                     name={output.variable || '未命名输出'}
-                    type={output.variable_type === 'constant' ? 'string' : option?.valueType ?? 'string'}
+                    type={output.variable_type === 'constant' ? output.constant_type : option?.valueType ?? 'string'}
                     description={output.variable_type === 'constant'
-                      ? '固定返回当前配置的常量值。'
+                      ? `固定返回当前配置的 ${output.constant_type.toUpperCase()} 常量值。`
                       : `返回上游变量 ${option?.label ?? '未选择变量'} 的结果。`}
                   />
                 )

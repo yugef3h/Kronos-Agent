@@ -41,6 +41,15 @@ export const useEndPanelConfig = ({
 
       if (patch.variable_type === 'variable')
         target.value = ''
+
+      if (patch.constant_type === 'boolean' && target.variable_type === 'constant' && !['true', 'false'].includes(target.value))
+        target.value = 'false'
+
+      if (patch.constant_type === 'number' && target.variable_type === 'constant' && Number.isNaN(Number(target.value)))
+        target.value = '0'
+
+      if (patch.constant_type === 'json' && target.variable_type === 'constant' && !target.value.trim())
+        target.value = '{}'
     })
   }
 

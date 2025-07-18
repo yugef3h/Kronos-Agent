@@ -56,7 +56,7 @@ import {
 } from '../utils/workflow-dsl';
 import { useContainerNodeSync } from '../hooks/use-container-node-sync';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
-// import { useWorkflowDraftPersistence } from '../hooks/use-workflow-draft-persistence';
+import { useWorkflowDraftPersistence } from '../hooks/use-workflow-draft-persistence';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import { IconCondition } from '../assets/condition';
@@ -601,18 +601,14 @@ export const WorkflowChildren = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
-  // const {
-  //   handleRefreshWorkflowDraft,
-  //   handleLoadBackupDraft,
-  //   hasBackupDraft,
-  // } = useWorkflowDraftPersistence({
-  //   appId,
-  //   appName: currentApp?.name,
-  //   nodes,
-  //   edges: edges as Edge[],
-  //   setNodes,
-  //   setEdges,
-  // });
+  useWorkflowDraftPersistence({
+    appId,
+    appName: currentApp?.name,
+    nodes,
+    edges: edges as Edge[],
+    setNodes,
+    setEdges,
+  });
   const updateNodeInternals = useUpdateNodeInternals();
   const { handleNodeClick, handlePaneClick, handlePanelClose } =
     useNodesInteractions<CanvasNodeData>({

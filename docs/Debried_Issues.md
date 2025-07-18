@@ -1,3 +1,9 @@
+# 2026-04-08 Workflow 草稿一直显示“尚未保存”
+
+- 现象：工作流页面编辑后没有自动保存，标题区持续显示“尚未保存”。
+- 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 中 `useWorkflowDraftPersistence()` 被整段注释掉，导致 DSL 变化后不会触发 `schedulePersist()`，`draftUpdatedAt` 也就不会更新到 `useWorkflowDraftStore`。
+- 修复：恢复页面对 `useWorkflowDraftPersistence()` 的接入，仅保留副作用调用，不额外引入未使用变量。
+
 ## 2026-03-28 图片历史恢复失败
 
 - 根因：前端发送态使用 `imagePreviewUrl` 渲染图片，但历史恢复接口返回的是 `messages[].attachments`，恢复阶段没有把附件元数据映射成可渲染图片地址。

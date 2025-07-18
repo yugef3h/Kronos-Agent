@@ -24,6 +24,7 @@ export const createEmptyEndOutput = (): EndOutputDefinition => {
     value_selector: [],
     variable_type: 'variable',
     value: '',
+    constant_type: 'string',
   }
 }
 
@@ -51,6 +52,12 @@ export const createDefaultEndNodeConfig = (existingOutputs?: CanvasNodeData['out
 
 const normalizeEndOutput = (value: unknown): EndOutputDefinition => {
   const record = isRecord(value) ? value : {}
+  const constantType = record.constant_type === 'number'
+    || record.constant_type === 'boolean'
+    || record.constant_type === 'json'
+    || record.constant_type === 'string'
+    ? record.constant_type
+    : 'string'
 
   return {
     id: typeof record.id === 'string' && record.id ? record.id : createRandomId('end-output'),
@@ -58,7 +65,28 @@ const normalizeEndOutput = (value: unknown): EndOutputDefinition => {
     value_selector: sanitizeStringArray(record.value_selector),
     variable_type: record.variable_type === 'constant' ? 'constant' : 'variable',
     value: typeof record.value === 'string' ? record.value : '',
+    constant_type: constantType,
   }
+}
+
+const parseEndConstantValue = (output: EndOutputDefinition) => {
+  if (output.constant_type === 'number') {
+    const parsed = Number(output.value)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+
+  if (output.constant_type === 'boolean')
+    return output.value === 'true'
+
+  if (output.constant_type === 'json') {
+    try {
+      return JSON.parse(output.value || '{}')
+    } catch {
+      return {}
+    }
+  }
+
+  return output.value
 }
 
 export const normalizeEndNodeConfig = (value: unknown, existingOutputs?: CanvasNodeData['outputs']): EndNodeConfig => {
@@ -78,7 +106,7 @@ export const buildEndNodeOutputs = (config: EndNodeConfig): CanvasNodeData['outp
     if (!key)
       return acc
 
-    acc[key] = output.variable_type === 'constant' ? output.value : ''
+    acc[key] = output.variable_type === 'constant' ? parseEndConstantValue(output) : ''
     return acc
   }, {})
 }
@@ -90,7 +118,7 @@ export const buildEndOutputTypes = (config: EndNodeConfig, variableOptions: Vari
       return acc
 
     if (output.variable_type === 'constant') {
-      acc[key] = 'string'
+      acc[key] = output.constant_type === 'json' ? 'object' : output.constant_type
       return acc
     }
 
@@ -125,6 +153,17 @@ export const validateEndNodeConfig = (config: EndNodeConfig): EndValidationIssue
         path: `${basePath}.value_selector`,
         message: `输出变量 ${normalizedVariable || index + 1} 还没有绑定值来源。`,
       })
+    }
+
+    if (output.variable_type === 'constant' && output.constant_type === 'json') {
+      try {
+        JSON.parse(output.value || '{}')
+      } catch {
+        issues.push({
+          path: `${basePath}.value`,
+          message: `输出变量 ${normalizedVariable || index + 1} 的 JSON 常量格式不合法。`,
+        })
+      }
     }
 
     seenVariables.add(normalizedVariable)

@@ -6,11 +6,15 @@ import type { StartNodeConfig, StartVariable } from './types'
 type UseStartPanelConfigOptions = {
   value: unknown
   onChange: (nextValue: StartNodeConfig) => void
+  onVariableRename?: (payload: { previousVariable: string; nextVariable: string }) => void
+  onVariableRemove?: (payload: { variable: string }) => void
 }
 
 export const useStartPanelConfig = ({
   value,
   onChange,
+  onVariableRename,
+  onVariableRemove,
 }: UseStartPanelConfigOptions) => {
   const config = useMemo(() => normalizeStartNodeConfig(value), [value])
   const issues = useMemo(() => validateStartNodeConfig(config), [config])
@@ -27,6 +31,13 @@ export const useStartPanelConfig = ({
   }
 
   const handleUpdateVariable = (variableId: string, patch: Partial<StartVariable>) => {
+    const currentVariable = config.variables.find(variable => variable.id === variableId)
+    if (!currentVariable)
+      return
+
+    const previousVariable = currentVariable.variable.trim()
+    const nextVariable = (patch.variable ?? currentVariable.variable).trim()
+
     update((draft) => {
       const target = draft.variables.find(variable => variable.id === variableId)
       if (!target)
@@ -34,12 +45,21 @@ export const useStartPanelConfig = ({
 
       Object.assign(target, patch)
     })
+
+    if (patch.variable !== undefined && previousVariable && nextVariable && previousVariable !== nextVariable)
+      onVariableRename?.({ previousVariable, nextVariable })
   }
 
   const handleRemoveVariable = (variableId: string) => {
+    const currentVariable = config.variables.find(variable => variable.id === variableId)
+    const removedVariable = currentVariable?.variable.trim()
+
     update((draft) => {
       draft.variables = draft.variables.filter(variable => variable.id !== variableId)
     })
+
+    if (removedVariable)
+      onVariableRemove?.({ variable: removedVariable })
   }
 
   const handleMoveVariable = (variableId: string, direction: 'up' | 'down') => {
