@@ -1,59 +1,63 @@
-# 2026-04-08 Workflow 草稿一直显示“尚未保存”
+## 2025-04-08 StartPanel 变量名输入时第二个字符开始被覆盖
+
+- 现象：在 Start 节点的“变量名”输入框里输入内容时，首个字符可以出现，但继续输入第二个字符后会被回退，看起来像“只能输入一个字母”。
+- 根因：`apps/web/src/pages/workflow/compts/start-panel.tsx` 里的变量名编辑链路会在一次输入中触发两次 `setNodes`。第一次更新当前 Start 节点的 `inputs/outputs`，第二次又通过 `rewriteNodesVariableReferences()` 同步下游引用；两次更新基于不同快照执行，后一次会把前一次刚输入的字符覆盖掉。
+- 修复：将“更新当前 Start 节点配置”和“同步下游 selector 引用”收敛到同一个 `setNodes` updater 中执行，并让 `use-start-panel-config.ts` 通过 `onChange(nextValue, meta)` 传递 rename/remove 元信息，避免连续状态更新互相覆盖。
 
 - 现象：工作流页面编辑后没有自动保存，标题区持续显示“尚未保存”。
 - 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 中 `useWorkflowDraftPersistence()` 被整段注释掉，导致 DSL 变化后不会触发 `schedulePersist()`，`draftUpdatedAt` 也就不会更新到 `useWorkflowDraftStore`。
 - 修复：恢复页面对 `useWorkflowDraftPersistence()` 的接入，仅保留副作用调用，不额外引入未使用变量。
 
-## 2026-04-08 Workflow 第一层容器节点 SearchBox 误用了子图作用域
+## 2025-04-08 Workflow 第一层容器节点 SearchBox 误用了子图作用域
 
 - 现象：第一层的 loop / iteration 节点右侧追加菜单被错误限制成子图菜单，看起来像“根层节点也只能加循环结束 / 迭代结束”，而不是正常根层节点集。
 - 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 里额外生成了 `effectiveSearchBoxScope`，把根层容器节点也强制映射成 `loop` / `iteration` 作用域，覆盖了 `resolveSearchBoxScope()` 基于 `parentId` 的真实判断。
 - 正确规则：只有容器子节点和容器内部 start 节点使用 `loop` / `iteration` 作用域；第一层节点始终是 `root` 作用域。loop / iteration 子图内不允许再追加新的 loop / iteration，只允许追加对应的 `loop-end` / `iteration-end`，而不是通用 `end`。
 - 修复：删除额外的强制作用域映射，统一使用 `resolveSearchBoxScope()` 的结果，并补纯函数测试覆盖根层与子图两种行为。
 
-## 2026-03-28 图片历史恢复失败
+## 2025-03-28 图片历史恢复失败
 
 - 根因：前端发送态使用 `imagePreviewUrl` 渲染图片，但历史恢复接口返回的是 `messages[].attachments`，恢复阶段没有把附件元数据映射成可渲染图片地址。
 - 现象：当前上传后立即可见，刷新页面或切换历史 session 后图片消失，只剩文字消息。
 - 修复：将“附件 -> 图片地址/名称”的解析收口到 `chatStreamHelpers`，恢复与渲染统一走同一逻辑，并保留发送态的 `data:` 预览优先级。
 
-## 2026-03-28 图片历史恢复后与文字混在同一气泡
+## 2025-03-28 图片历史恢复后与文字混在同一气泡
 
 - 根因：图片分析实时发送时，前端本地状态会拆成“图片消息 + 文本消息”两条；但服务端历史落库曾写成一条 `attachments + content` 的用户消息。
 - 现象：切换到历史会话后，图片和提示词一起出现在同一个气泡里，不再保持原来的两个 `article` 展示。
 - 修复：服务端新写入图片历史时改为两条消息；前端恢复阶段增加兼容拆分逻辑，旧历史数据也会自动按两个气泡回显。
 
-## 2026-04-01 工作流连线后边状态未初始化导致 undefined 报错
+## 2025-04-01 工作流连线后边状态未初始化导致 undefined 报错
 
 - 根因：React Flow 新建边时没有注入 `data`，而自定义边组件在首帧直接解构 `_sourceRunningStatus` / `_targetRunningStatus`，节点刚连接时会读取 `undefined`。
 - 现象：节点连接后，自定义边渲染阶段抛错；同时边没有完整承载 Dify 所需的“初始无状态、下游启动再同步上游状态”的运行态语义。
 - 修复：新增边运行态默认值工具，创建边时统一初始化 `_sourceRunningStatus: undefined`、`_targetRunningStatus: undefined`、`_waitingRun: true`，渲染侧改为通过安全默认值读取，避免首帧空数据崩溃。
 
-## 2026-04-01 工作流连线已创建但边线不可见
+## 2025-04-01 工作流连线已创建但边线不可见
 
 - 根因：边颜色依赖 `--color-workflow-link-line-*` CSS 变量，但当前项目没有定义这些变量；自定义边的 `stroke` 会变成无效 CSS 值，SVG 路径不会渲染。
 - 现象：节点连接成功、edge 数据存在，但画布上看不到连线。
 - 修复：在公共样式中补齐工作流边颜色变量，并在边取色函数里增加 fallback 颜色，保证即使主题变量缺失也能正常显示。
 
-## 2026-04-02 工作流节点点击后未弹出对应面板
+## 2025-04-02 工作流节点点击后未弹出对应面板
 
 - 根因：当前画布节点使用的是 `type: 'workflow' + data.kind` 结构，而右侧 panel 仍沿用旧的 `type: 'custom' + data.type` 判断；点击虽然会写入 `data.selected`，但面板解析不到对应组件。
 - 现象：点击开始、LLM、结束等节点后，右侧没有显示对应配置 panel，看起来像点击无效。
 - 修复：抽离统一的节点到 panel 解析函数，同时兼容旧 `custom` 节点和新 `workflow` 节点；右侧容器补齐定位与宽度，并在点击画布空白处时取消选中关闭 panel。
 
-## 2026-04-02 工作流节点 panel 会被画布空白点击误关闭
+## 2025-04-02 工作流节点 panel 会被画布空白点击误关闭
 
 - 根因：React Flow 的 `onPaneClick` 直接复用了“取消节点选中”逻辑，导致点击画布空白区域时会清空 `data.selected`，右侧 panel 也随之卸载。
 - 现象：节点 panel 打开后，只要点到外层画布容器就会失焦并关闭，无法保持当前上下文继续编辑。
 - 修复：将“画布空白点击”与“显式关闭 panel”拆成两条路径；前者不再改动选中态，后者仅由 panel 头部关闭按钮触发，同时补充节点/边选中同步纯函数单测。
 
-## 2026-04-03 工作流 LLMPanel 之前无法真实保存节点配置
+## 2025-04-03 工作流 LLMPanel 之前无法真实保存节点配置
 
 - 根因：右侧 panel 组件映射没有把当前节点 `id/data` 透传到具体面板，`llm` 节点也没有被 panel resolver 映射到 LLMPanel；同时画布 nodes/edges 仅存在于 ReactFlow 内存，未与 `workflowAppStore.dsl` 双向同步。
 - 现象：LLM 节点即使点开右侧面板，也只能看到占位内容；即便面板后续写了本地 state，刷新页面后配置仍会丢失。
 - 修复：补齐 `workflow -> llm` 的 panel 解析，面板装配链路改为透传节点 `id/data`；新增节点/边与 `workflowAppStore` 的最小 DSL 回填与保存逻辑；LLMPanel 配置统一写入 `node.data.inputs`，并随画布自动持久化。
 
-## 2026-04-08 Zustand selector 返回新对象导致 Maximum update depth exceeded
+## 2025-04-08 Zustand selector 返回新对象导致 Maximum update depth exceeded
 
 - 根因：在 `useWorkflowDraftStore((state) => ({ ... }))` 这类 selector 里直接返回新对象时，如果没有做浅比较或缓存，React 会拿到不稳定的 snapshot；在 `useSyncExternalStore` 链路下会触发 “The result of getSnapshot should be cached” 和 `Maximum update depth exceeded`。
 - 现象：页面渲染 `editing-title.tsx` 一类只读状态组件时，控制台报无限更新错误，组件栈会指向 workflow draft 状态展示区域。
