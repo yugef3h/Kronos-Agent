@@ -25,9 +25,10 @@ import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import DslPreviewDialog from '../compts/dsl-preview-dialog';
 import { EditingTitle } from '../compts/editing-title';
-import { type NodeItem, SearchBox } from '../compts/search-box';
+import { SearchBox } from '../compts/search-box';
 import { type CommonEdgeType, type Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
+import type { NodeItem } from '../types/search-box';
 import {
   applyConnectedEdgeSelection,
   applyNodeSelection,
@@ -86,8 +87,8 @@ import {
   createNodeFromSource,
   getContainerScopeData,
   getKnowledgeDatasetIds,
-  resolveSearchBoxScope,
 } from '../utils/workflow-node-utils';
+import { resolveSearchBoxScope } from '../utils/workflow-search-scope';
 import 'reactflow/dist/style.css';
 
 const buildConditionNodeVariableOptions = (
@@ -114,11 +115,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     () => resolveSearchBoxScope(getNodes(), currentNode),
     [currentNode, getNodes],
   );
-  const effectiveSearchBoxScope: 'root' | 'iteration' | 'loop' = isContainerNode
-    ? data.kind === 'iteration'
-      ? 'iteration'
-      : 'loop'
-    : searchBoxScope;
   const parentChildCount = currentParentNode?.data._children?.length ?? 0;
   const showContainerAddBlock = isContainerStartNode && parentChildCount <= 1;
   const conditionConfig = useMemo(() => {
@@ -165,7 +161,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       }
 
       if (
-        (effectiveSearchBoxScope === 'iteration' || effectiveSearchBoxScope === 'loop') &&
+        (searchBoxScope === 'iteration' || searchBoxScope === 'loop') &&
         (node.kind === 'iteration' || node.kind === 'loop')
       ) {
         setMenuOpen(false);
@@ -227,7 +223,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       setMenuOpen(false);
       setAppendSourceHandle('out');
     },
-    [effectiveSearchBoxScope, getEdges, getNode, getNodes, id, setEdges, setNodes],
+    [getEdges, getNode, getNodes, id, searchBoxScope, setEdges, setNodes],
   );
 
   const deleteNode = useCallback(() => {
@@ -347,7 +343,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                   onClose={() => setMenuOpen(false)}
                   onAppendNode={(node) => appendNode(node, appendSourceHandle)}
                   menuRef={menuRef}
-                  scope={effectiveSearchBoxScope}
+                  scope={searchBoxScope}
                   preferredSide="right"
                   placement="anchored"
                 />
@@ -361,7 +357,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               onClose={() => setMenuOpen(false)}
               onAppendNode={(node) => appendNode(node, appendSourceHandle)}
               menuRef={menuRef}
-              scope={effectiveSearchBoxScope}
+              scope={searchBoxScope}
             />
           ) : null}
         </>
@@ -484,7 +480,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                         onAppendNode={(node) => appendNode(node, appendSourceHandle)}
                         menuRef={menuRef}
                         preferredSide="right"
-                        scope={effectiveSearchBoxScope}
+                        scope={searchBoxScope}
                       />
                     ) : null}
                   </div>
@@ -558,7 +554,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             onClose={() => setMenuOpen(false)}
             onAppendNode={(node) => appendNode(node, appendSourceHandle)}
             menuRef={menuRef}
-            scope={effectiveSearchBoxScope}
+            scope={searchBoxScope}
           />
         </div>
       ) : null}

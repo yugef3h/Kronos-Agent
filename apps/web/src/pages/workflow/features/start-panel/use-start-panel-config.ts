@@ -5,23 +5,29 @@ import type { StartNodeConfig, StartVariable } from './types'
 
 type UseStartPanelConfigOptions = {
   value: unknown
-  onChange: (nextValue: StartNodeConfig) => void
-  onVariableRename?: (payload: { previousVariable: string; nextVariable: string }) => void
-  onVariableRemove?: (payload: { variable: string }) => void
+  onChange: (
+    nextValue: StartNodeConfig,
+    meta?:
+      | { type: 'rename-variable'; previousVariable: string; nextVariable: string }
+      | { type: 'remove-variable'; variable: string },
+  ) => void
 }
 
 export const useStartPanelConfig = ({
   value,
   onChange,
-  onVariableRename,
-  onVariableRemove,
 }: UseStartPanelConfigOptions) => {
   const config = useMemo(() => normalizeStartNodeConfig(value), [value])
   const issues = useMemo(() => validateStartNodeConfig(config), [config])
 
-  const update = (recipe: (draft: StartNodeConfig) => void) => {
+  const update = (
+    recipe: (draft: StartNodeConfig) => void,
+    meta?:
+      | { type: 'rename-variable'; previousVariable: string; nextVariable: string }
+      | { type: 'remove-variable'; variable: string },
+  ) => {
     const nextValue = produce(config, recipe)
-    onChange(nextValue)
+    onChange(nextValue, meta)
   }
 
   const handleAddVariable = () => {
@@ -44,10 +50,9 @@ export const useStartPanelConfig = ({
         return
 
       Object.assign(target, patch)
-    })
-
-    if (patch.variable !== undefined && previousVariable && nextVariable && previousVariable !== nextVariable)
-      onVariableRename?.({ previousVariable, nextVariable })
+    }, patch.variable !== undefined && previousVariable && nextVariable && previousVariable !== nextVariable
+      ? { type: 'rename-variable', previousVariable, nextVariable }
+      : undefined)
   }
 
   const handleRemoveVariable = (variableId: string) => {
@@ -56,10 +61,9 @@ export const useStartPanelConfig = ({
 
     update((draft) => {
       draft.variables = draft.variables.filter(variable => variable.id !== variableId)
-    })
-
-    if (removedVariable)
-      onVariableRemove?.({ variable: removedVariable })
+    }, removedVariable
+      ? { type: 'remove-variable', variable: removedVariable }
+      : undefined)
   }
 
   const handleMoveVariable = (variableId: string, direction: 'up' | 'down') => {

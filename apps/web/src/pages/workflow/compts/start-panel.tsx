@@ -53,42 +53,48 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     handleMoveVariable,
   } = useStartPanelConfig({
     value: nodeData.inputs,
-    onChange: (nextValue) => {
+    onChange: (nextValue, meta) => {
       const nextOutputs = buildStartNodeOutputs(nextValue)
       const nextInputs = {
         ...nextValue,
         _outputTypes: buildStartOutputTypes(nextValue),
       }
 
-      setNodes((nodes) => nodes.map((node) => {
-        if (node.id !== id)
-          return node
+      setNodes((nodes) => {
+        const nextNodes = nodes.map((node) => {
+          if (node.id !== id)
+            return node
 
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            inputs: nextInputs as unknown as Record<string, unknown>,
-            outputs: nextOutputs,
-          },
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              inputs: nextInputs as unknown as Record<string, unknown>,
+              outputs: nextOutputs,
+            },
+          }
+        })
+
+        if (meta?.type === 'rename-variable') {
+          return rewriteNodesVariableReferences(
+            nextNodes,
+            [id, meta.previousVariable],
+            [id, meta.nextVariable],
+            id,
+          )
         }
-      }))
-    },
-    onVariableRename: ({ previousVariable, nextVariable }) => {
-      setNodes(nodes => rewriteNodesVariableReferences(
-        nodes,
-        [id, previousVariable],
-        [id, nextVariable],
-        id,
-      ))
-    },
-    onVariableRemove: ({ variable }) => {
-      setNodes(nodes => rewriteNodesVariableReferences(
-        nodes,
-        [id, variable],
-        null,
-        id,
-      ))
+
+        if (meta?.type === 'remove-variable') {
+          return rewriteNodesVariableReferences(
+            nextNodes,
+            [id, meta.variable],
+            null,
+            id,
+          )
+        }
+
+        return nextNodes
+      })
     },
   })
 

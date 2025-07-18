@@ -1,6 +1,6 @@
 import type { Node } from 'reactflow';
-import type { NodeItem } from '../compts/search-box';
 import type { CanvasNodeData } from '../types/canvas';
+import type { NodeItem } from '../types/search-box';
 import {
   ITERATION_CHILDREN_Z_INDEX,
   NODE_Y_OFFSET,
@@ -147,26 +147,6 @@ export const createNodeFromSource = (
     position: nextPosition,
     data: createNodeData(node, nextNodeId),
   };
-};
-
-export const resolveSearchBoxScope = (
-  nodes: Node<CanvasNodeData>[],
-  node: Node<CanvasNodeData> | undefined,
-): 'root' | 'iteration' | 'loop' => {
-  if (!node?.parentId) {
-    return 'root';
-  }
-
-  const containerNode = nodes.find(candidate => candidate.id === node.parentId);
-  if (containerNode?.data.kind === 'iteration') {
-    return 'iteration';
-  }
-
-  if (containerNode?.data.kind === 'loop') {
-    return 'loop';
-  }
-
-  return 'root';
 };
 
 export const getContainerScopeData = (

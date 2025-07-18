@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import type { RefObject } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IconOutput } from '../assets/output';
 import { IconLLM } from '../assets/llm';
@@ -6,20 +6,13 @@ import { IconKnowledge } from '../assets/knowledge';
 import { IconCondition } from '../assets/condition';
 import { IconIteration } from '../assets/iteration';
 import { IconLoop } from '../assets/loop';
-import type { AppendableNodeKind } from '../types/common';
+import type { NodeItem } from '../types/search-box';
 
 // 节点类型定义（完全匹配截图分类）
 type NodeCategory = {
   id: string;
   name: string;
   nodes: NodeItem[];
-};
-
-export type NodeItem = {
-  id: string;
-  name: string;
-  icon: ReactNode;
-  kind: AppendableNodeKind; // 复用你现有类型
 };
 
 const NODE_CATEGORIES: NodeCategory[] = [

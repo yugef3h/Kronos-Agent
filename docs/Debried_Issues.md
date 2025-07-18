@@ -4,6 +4,13 @@
 - 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 中 `useWorkflowDraftPersistence()` 被整段注释掉，导致 DSL 变化后不会触发 `schedulePersist()`，`draftUpdatedAt` 也就不会更新到 `useWorkflowDraftStore`。
 - 修复：恢复页面对 `useWorkflowDraftPersistence()` 的接入，仅保留副作用调用，不额外引入未使用变量。
 
+## 2026-04-08 Workflow 第一层容器节点 SearchBox 误用了子图作用域
+
+- 现象：第一层的 loop / iteration 节点右侧追加菜单被错误限制成子图菜单，看起来像“根层节点也只能加循环结束 / 迭代结束”，而不是正常根层节点集。
+- 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 里额外生成了 `effectiveSearchBoxScope`，把根层容器节点也强制映射成 `loop` / `iteration` 作用域，覆盖了 `resolveSearchBoxScope()` 基于 `parentId` 的真实判断。
+- 正确规则：只有容器子节点和容器内部 start 节点使用 `loop` / `iteration` 作用域；第一层节点始终是 `root` 作用域。loop / iteration 子图内不允许再追加新的 loop / iteration，只允许追加对应的 `loop-end` / `iteration-end`，而不是通用 `end`。
+- 修复：删除额外的强制作用域映射，统一使用 `resolveSearchBoxScope()` 的结果，并补纯函数测试覆盖根层与子图两种行为。
+
 ## 2026-03-28 图片历史恢复失败
 
 - 根因：前端发送态使用 `imagePreviewUrl` 渲染图片，但历史恢复接口返回的是 `messages[].attachments`，恢复阶段没有把附件元数据映射成可渲染图片地址。
