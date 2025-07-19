@@ -278,7 +278,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
               <p className="text-[12px] font-semibold text-slate-700">
                 {virtualModel?.label ?? '智灵'}
               </p>
-              <InfoTooltip content="虚拟 LLM 暂由后端接入层决定" />
+              <InfoTooltip content="虚拟 LLM 默认由后端接入层决定" />
             </div>
             <ExpandCollapseButton
               expanded={isModelParamsExpanded}
