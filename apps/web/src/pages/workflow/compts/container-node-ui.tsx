@@ -7,6 +7,7 @@ import {
   CONTAINER_NODE_HORIZONTAL_PADDING,
 } from '../features/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
+import WorkflowNodeSummary from './workflow-node-summary';
 
 export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 'subtitle' | 'title'>) => {
   return (
@@ -77,21 +78,7 @@ export const NestedPlainNodeCard = ({
         </div>
       </div>
 
-      {data.kind === 'knowledge' && data._datasets?.length ? (
-        <div className="mt-1.5 space-y-1">
-          {data._datasets.slice(0, 2).map(dataset => (
-            <div
-              key={dataset.id}
-              className="rounded-md bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-600 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.72)]"
-            >
-              <span className="line-clamp-1">{dataset.name}</span>
-            </div>
-          ))}
-          {data._datasets.length > 2 ? (
-            <p className="text-[10px] text-slate-400">+{data._datasets.length - 2} 个知识库</p>
-          ) : null}
-        </div>
-      ) : null}
+      <WorkflowNodeSummary data={data} compact />
     </div>
   );
 };

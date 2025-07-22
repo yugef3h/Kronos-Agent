@@ -6,6 +6,5 @@
     "noEmit": true,
     "types": ["node", "jest"]
   },
-  "include": ["src", "vite.config.ts", "tailwind.config.ts"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.spec.tsx"]
+  "include": ["src", "vite.config.ts", "tailwind.config.ts"]
 }
