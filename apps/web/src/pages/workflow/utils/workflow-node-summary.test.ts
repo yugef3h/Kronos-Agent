@@ -33,8 +33,7 @@ describe('workflow node summary', () => {
 
     expect(summary.tags.map(tag => tag.text)).toEqual(['1 个输入', '1 个必填'])
     expect(summary.items[0]).toMatchObject({
-      primary: 'city',
-      secondary: 'Text',
+      primary: 'city · Text',
       meta: '必填',
     })
   })
@@ -60,7 +59,7 @@ describe('workflow node summary', () => {
     }))
 
     expect(summary.tags.map(tag => tag.text)).toEqual(['智灵', 'CHAT'])
-    expect(summary.items[0]?.primary).toContain('请总结用户输入')
+    expect(summary.items[0]?.primary).toBe('Prompt 已配置')
     expect(summary.items[1]?.primary).toContain('上下文 sys.query')
   })
 
@@ -103,9 +102,9 @@ describe('workflow node summary', () => {
     }))
 
     expect(summary.tags.map(tag => tag.text)).toEqual(['多路召回', '2 个知识库'])
-    expect(summary.items[0]?.primary).toBe('查询: sys.query')
-    expect(summary.items[1]?.primary).toContain('AI 机遇分析')
-    expect(summary.items[2]?.primary).toBe('Metadata 过滤 1 条')
+    expect(summary.items[0]?.primary).toBe('查询 sys.query')
+    expect(summary.items[1]?.primary).toBe('知识库 AI 机遇分析 +1')
+    expect(summary.items[2]?.primary).toBe('Metadata 1 条')
   })
 
   it('builds end node output summaries', () => {
@@ -129,8 +128,7 @@ describe('workflow node summary', () => {
 
     expect(summary.tags.map(tag => tag.text)).toEqual(['1 个输出字段'])
     expect(summary.items[0]).toMatchObject({
-      primary: 'result',
-      secondary: '引用 llm-1.text',
+      primary: 'result · 变量 llm-1.text',
       meta: '变量',
     })
   })

@@ -6,6 +6,7 @@ import type { Edge } from '../types/common';
 import { ITERATION_CHILDREN_Z_INDEX } from '../constants';
 import {
   buildContainerChildSummaries,
+  getContainerChildNodeHeight,
   buildContainerLayout,
   buildContainerStartNode,
   CONTAINER_END_NODE_WIDTH,
@@ -113,6 +114,7 @@ const syncContainerChildren = (
         : isContainerEndKind(candidate.data.kind)
           ? CONTAINER_END_NODE_WIDTH
           : undefined,
+      height: getContainerChildNodeHeight(candidate.data.kind),
     };
 
     if (

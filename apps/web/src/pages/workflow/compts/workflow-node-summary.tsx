@@ -38,7 +38,7 @@ export const WorkflowNodeSummary = ({
 
   return (
     <div className={compact ? 'mt-1 space-y-1' : 'mt-2 space-y-1.5'}>
-      {summary.tags.length ? (
+      {!compact && summary.tags.length ? (
         <div className="flex flex-wrap gap-1">
           {summary.tags.map(tag => (
             <span
@@ -56,14 +56,14 @@ export const WorkflowNodeSummary = ({
           {summary.items.map(item => (
             <div
               key={`${item.primary}-${item.secondary ?? ''}-${item.meta ?? ''}`}
-              className={`rounded-md border border-slate-200/70 bg-slate-50/75 ${compact ? 'px-1.5 py-1' : 'px-2 py-1'}`}
+              className={`rounded-md border border-slate-200/70 bg-slate-50/75 ${compact ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
             >
               <div className="flex items-center gap-1.5">
                 <div className="min-w-0 flex-1 truncate">
                   <span className={`truncate font-medium text-slate-700 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
                     {item.primary}
                   </span>
-                  {item.secondary ? (
+                  {!compact && item.secondary ? (
                     <span className={`ml-1 truncate text-slate-400 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
                       {`· ${item.secondary}`}
                     </span>

@@ -28,13 +28,6 @@ export type WorkflowNodeSummary = {
   items: WorkflowNodeSummaryItem[]
 }
 
-const truncateText = (value: string, maxLength = 40) => {
-  if (value.length <= maxLength)
-    return value
-
-  return `${value.slice(0, maxLength - 1)}...`
-}
-
 const buildStartSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
   const config = normalizeStartNodeConfig(data.inputs)
   const variables = config.variables.filter(variable => variable.variable.trim() || variable.label.trim())
@@ -42,14 +35,13 @@ const buildStartSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
   if (!variables.length) {
     return {
       tags: [{ text: '系统输入', tone: 'slate' }],
-      items: [{ primary: 'query / files', secondary: '使用系统注入的默认输入' }],
+      items: [{ primary: 'query / files' }],
     }
   }
 
   const requiredCount = variables.filter(variable => variable.required).length
   const items: WorkflowNodeSummaryItem[] = variables.slice(0, 2).map(variable => ({
-    primary: variable.label.trim() || variable.variable.trim() || '未命名输入',
-    secondary: getStartVariableTypeLabel(variable.type),
+    primary: `${variable.label.trim() || variable.variable.trim() || '未命名输入'} · ${getStartVariableTypeLabel(variable.type)}`,
     meta: variable.required ? '必填' : undefined,
     tone: variable.required ? 'amber' : 'slate',
   }))
@@ -75,51 +67,54 @@ const buildLlmSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
   const modelLabel = getModelCatalogItem(config.model.provider, config.model.name)?.label
     ?? `${config.model.provider}/${config.model.name}`
 
-  const promptText = config.model.mode === 'chat'
-    ? (Array.isArray(config.promptTemplate)
-        ? config.promptTemplate.find(item => item.text.trim())?.text.trim() ?? ''
-        : '')
-    : (!Array.isArray(config.promptTemplate)
-        ? config.promptTemplate.text.trim()
-        : '')
+  const hasPrompt = config.model.mode === 'chat'
+    ? Array.isArray(config.promptTemplate) && config.promptTemplate.some(item => item.text.trim())
+    : !Array.isArray(config.promptTemplate) && !!config.promptTemplate.text.trim()
 
-  const featureParts = [
-    config.context.enabled
-      ? `上下文 ${config.context.variableSelector.length ? serializeValueSelector(config.context.variableSelector) : '已启用'}`
-      : '',
-    config.memory
-      ? `记忆${config.memory.window.enabled ? ` ${config.memory.window.size ?? 50} 轮` : ''}`
-      : '',
-    config.vision.enabled ? '视觉' : '',
-    config.structuredOutputEnabled
-      ? `结构化 ${Object.keys(config.structuredOutput?.schema.properties ?? {}).length} 字段`
-      : '',
-  ].filter(Boolean)
+  const featureParts: WorkflowNodeSummaryItem[] = [{
+    primary: hasPrompt ? 'Prompt 已配置' : 'Prompt 未配置',
+    tone: hasPrompt ? 'slate' : 'amber',
+  }]
+
+  if (config.context.enabled) {
+    featureParts.push({
+      primary: `上下文 ${config.context.variableSelector.length ? serializeValueSelector(config.context.variableSelector) : '已启用'}`,
+    })
+  }
+
+  if (config.memory) {
+    featureParts.push({
+      primary: `记忆${config.memory.window.enabled ? ` ${config.memory.window.size ?? 50} 轮` : ''}`,
+    })
+  }
+
+  if (config.vision.enabled) {
+    featureParts.push({ primary: '视觉已开启' })
+  }
+
+  if (config.structuredOutputEnabled) {
+    featureParts.push({
+      primary: `结构化 ${Object.keys(config.structuredOutput?.schema.properties ?? {}).length} 字段`,
+    })
+  }
 
   return {
     tags: [
       { text: modelLabel, tone: 'blue' },
       { text: config.model.mode === 'chat' ? 'CHAT' : 'COMPLETION', tone: 'slate' },
     ],
-    items: [
-      {
-        primary: promptText ? truncateText(promptText, 34) : '未设置 Prompt',
-        secondary: promptText ? '当前节点 Prompt 摘要' : '打开配置面板补充 Prompt 内容',
-      },
-      ...(featureParts.length
-        ? [{ primary: truncateText(featureParts.join(' · '), 48), tone: 'slate' as WorkflowNodeSummaryTone }]
-        : []),
-    ],
+    items: featureParts,
   }
 }
 
 const buildKnowledgeSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
   const config = normalizeKnowledgeRetrievalNodeConfig(data.inputs)
   const datasets = data._datasets?.length ? data._datasets : getKnowledgeSelectedDatasets(config.dataset_ids)
-  const selectedDatasetLabel = datasets.length
-    ? datasets.slice(0, 2).map(dataset => dataset.name).join('、')
-    : '未选择知识库'
-  const hasMoreDatasets = datasets.length > 2
+  const selectedDatasetLabel = !datasets.length
+    ? '未选择知识库'
+    : datasets.length === 1
+      ? datasets[0].name
+      : `${datasets[0].name} +${datasets.length - 1}`
 
   return {
     tags: [
@@ -128,15 +123,14 @@ const buildKnowledgeSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
     ],
     items: [
       {
-        primary: `查询: ${config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}`,
+        primary: `查询 ${config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}`,
       },
       {
-        primary: truncateText(selectedDatasetLabel, 34),
-        secondary: hasMoreDatasets ? `另有 ${datasets.length - 2} 个知识库` : undefined,
+        primary: `知识库 ${selectedDatasetLabel}`,
       },
       ...(config.metadata_filtering_mode === 'manual' && config.metadata_filtering_conditions.length
         ? [{
-            primary: `Metadata 过滤 ${config.metadata_filtering_conditions.length} 条`,
+            primary: `Metadata ${config.metadata_filtering_conditions.length} 条`,
             tone: 'amber' as WorkflowNodeSummaryTone,
           }]
         : []),
@@ -169,10 +163,9 @@ const buildEndSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
   }
 
   const items: WorkflowNodeSummaryItem[] = outputs.slice(0, 2).map(output => ({
-    primary: output.variable.trim(),
-    secondary: output.variable_type === 'variable'
-      ? `引用 ${serializeValueSelector(output.value_selector) || '未绑定变量'}`
-      : `${getConstantTypeLabel(output.constant_type)} 常量`,
+    primary: `${output.variable.trim()} · ${output.variable_type === 'variable'
+      ? `变量 ${serializeValueSelector(output.value_selector) || '未绑定'}`
+      : `${getConstantTypeLabel(output.constant_type)} 常量`}`,
     meta: output.variable_type === 'variable' ? '变量' : '常量',
   }))
 
