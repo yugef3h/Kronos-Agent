@@ -9,7 +9,6 @@ import {
   PanelChoiceGroup,
   PanelOutputVarRow,
   PanelSection,
-  PanelSelect,
   PanelSliderInput,
   PanelToken,
   PanelToggle,
@@ -19,7 +18,6 @@ import type { CanvasNodeData } from '../types/canvas'
 import { buildIterationChildren, getIterationErrorHandleLabel, getIterationOutputTypeLabel } from '../features/iteration-panel/schema'
 import { useIterationPanelConfig } from '../features/iteration-panel/use-iteration-panel-config'
 import type { IterationErrorHandleMode, IterationNodeConfig } from '../features/iteration-panel/types'
-import { resolveIfElseVariableLabel } from '../features/ifelse-panel/schema'
 import type { VariableOption } from '../features/llm-panel/types'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 

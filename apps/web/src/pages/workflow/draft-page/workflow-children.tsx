@@ -19,8 +19,12 @@ import { useSearchParams } from 'react-router-dom';
 import {
   getWorkflowAppById,
 } from '../../../features/workflow/workflowAppStore';
-// import { useWorkflowDraftStore } from '../../../store/workflowDraftStore';
-import { CUSTOM_EDGE, ITERATION_CHILDREN_Z_INDEX, NODE_WIDTH } from '../constants';
+import {
+  CUSTOM_EDGE,
+  ITERATION_CHILDREN_Z_INDEX,
+  NODE_WIDTH,
+  SEARCH_BOX_NODE_Z_INDEX,
+} from '../constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import DslPreviewDialog from '../compts/dsl-preview-dialog';
@@ -102,8 +106,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
+  const baseZIndexRef = useRef<number | undefined>(undefined);
   const { setNodes, setEdges, getNode, getEdges, getNodes } = useReactFlow<CanvasNodeData, Edge>();
   const currentNode = getNode(id);
+  const currentNodeZIndex = currentNode?.zIndex;
   const parentNodeId = currentNode?.parentId;
   const currentParentNode = parentNodeId ? getNode(parentNodeId) : undefined;
   const isContainerStartNode = isContainerStartKind(data.kind);
@@ -246,6 +252,37 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      baseZIndexRef.current = currentNodeZIndex;
+    }
+  }, [currentNodeZIndex, menuOpen]);
+
+  useEffect(() => {
+    if (!currentNode) {
+      return;
+    }
+
+    const targetZIndex = menuOpen
+      ? Math.max(baseZIndexRef.current ?? 0, SEARCH_BOX_NODE_Z_INDEX)
+      : baseZIndexRef.current;
+
+    if (currentNodeZIndex === targetZIndex) {
+      return;
+    }
+
+    setNodes((nodes) => nodes.map((node) => {
+      if (node.id !== id) {
+        return node;
+      }
+
+      return {
+        ...node,
+        zIndex: targetZIndex,
+      };
+    }));
+  }, [currentNode, currentNodeZIndex, id, menuOpen, setNodes]);
 
   const nodeWidth = isContainerNode
     ? Number(currentNode?.style?.width ?? CONTAINER_NODE_WIDTH)
@@ -575,7 +612,6 @@ export const WorkflowChildren = () => {
   const appId = searchParams.get('appId');
   const { datasets } = useKnowledgeDatasets();
   const currentApp = appId ? getWorkflowAppById(appId) : undefined;
-  // const isSyncingWorkflowDraft = useWorkflowDraftStore((state) => state.isSyncingWorkflowDraft);
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
     if (!appId) return [createInitialTriggerNode()];

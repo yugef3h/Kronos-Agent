@@ -2,6 +2,23 @@ import type { Node } from 'reactflow'
 import type { CanvasNodeData } from '../types/canvas'
 import { rewriteNodesVariableReferences } from './workflow-variable-references'
 
+type LlmLikeInputs = {
+  context?: {
+    variableSelector?: string[]
+  }
+}
+
+type EndLikeInputs = {
+  outputs?: Array<{
+    value_selector?: string[]
+  }>
+}
+
+type IterationLikeInputs = {
+  iterator_selector?: string[]
+  output_selector?: string[]
+}
+
 const createNode = (id: string, kind: CanvasNodeData['kind'], inputs?: Record<string, unknown>): Node<CanvasNodeData> => ({
   id,
   type: 'workflow',
@@ -36,8 +53,11 @@ describe('workflow-variable-references', () => {
       }),
     ], ['trigger-1', 'city'], ['trigger-1', 'destination'], 'trigger-1')
 
-    expect((nodes[1].data.inputs as any).context.variableSelector).toEqual(['trigger-1', 'destination'])
-    expect((nodes[2].data.inputs as any).outputs[0].value_selector).toEqual(['trigger-1', 'destination'])
+    const llmInputs = nodes[1].data.inputs as LlmLikeInputs | undefined
+    const endInputs = nodes[2].data.inputs as EndLikeInputs | undefined
+
+    expect(llmInputs?.context?.variableSelector).toEqual(['trigger-1', 'destination'])
+    expect(endInputs?.outputs?.[0]?.value_selector).toEqual(['trigger-1', 'destination'])
   })
 
   it('clears downstream selector references when a start variable is removed', () => {
@@ -49,7 +69,9 @@ describe('workflow-variable-references', () => {
       }),
     ], ['trigger-1', 'items'], null, 'trigger-1')
 
-    expect((nodes[1].data.inputs as any).iterator_selector).toEqual([])
-    expect((nodes[1].data.inputs as any).output_selector).toEqual([])
+    const iterationInputs = nodes[1].data.inputs as IterationLikeInputs | undefined
+
+    expect(iterationInputs?.iterator_selector).toEqual([])
+    expect(iterationInputs?.output_selector).toEqual([])
   })
 })

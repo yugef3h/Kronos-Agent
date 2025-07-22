@@ -6,6 +6,7 @@ import { IconKnowledge } from '../assets/knowledge';
 import { IconCondition } from '../assets/condition';
 import { IconIteration } from '../assets/iteration';
 import { IconLoop } from '../assets/loop';
+import { SEARCH_BOX_MENU_Z_INDEX } from '../constants';
 import type { NodeItem } from '../types/search-box';
 
 // 节点类型定义（完全匹配截图分类）
@@ -229,7 +230,8 @@ export const SearchBox = ({
   return (
     <div
       ref={menuRef}
-      className={`nowheel nodrag absolute top-1/2 z-50 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur ${positionClassName}`}
+      className={`nowheel nodrag absolute top-1/2 w-[168px] -translate-y-1/2 overflow-hidden rounded-[18px] border border-slate-200/90 bg-white/95 shadow-[0_18px_40px_-20px_rgba(15,23,42,0.35)] ring-1 ring-slate-950/5 backdrop-blur ${positionClassName}`}
+      style={{ zIndex: SEARCH_BOX_MENU_Z_INDEX }}
       onClick={(e) => e.stopPropagation()}
       onWheelCapture={(event) => event.stopPropagation()}
     >
