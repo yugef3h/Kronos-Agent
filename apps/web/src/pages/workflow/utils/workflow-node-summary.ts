@@ -39,7 +39,7 @@ const buildStartSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
     }
   }
 
-  const requiredCount = variables.filter(variable => variable.required).length
+//   const requiredCount = variables.filter(variable => variable.required).length
   const items: WorkflowNodeSummaryItem[] = variables.slice(0, 2).map(variable => ({
     primary: `${variable.label.trim() || variable.variable.trim() || '未命名输入'} · ${getStartVariableTypeLabel(variable.type)}`,
     meta: variable.required ? '必填' : undefined,
@@ -55,8 +55,8 @@ const buildStartSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
 
   return {
     tags: [
-      { text: `${variables.length} 个输入`, tone: 'blue' },
-      ...(requiredCount ? [{ text: `${requiredCount} 个必填`, tone: 'amber' as WorkflowNodeSummaryTone }] : []),
+    //   { text: `${variables.length} 个输入`, tone: 'blue' },
+    //   ...(requiredCount ? [{ text: `${requiredCount} 个必填`, tone: 'amber' as WorkflowNodeSummaryTone }] : []),
     ],
     items,
   }

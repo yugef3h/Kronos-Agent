@@ -56,10 +56,10 @@ export const WorkflowNodeSummary = ({
           {summary.items.map(item => (
             <div
               key={`${item.primary}-${item.secondary ?? ''}-${item.meta ?? ''}`}
-              className={`rounded-md border border-slate-200/70 bg-slate-50/75 ${compact ? 'px-1.5 py-0.5' : 'px-2 py-0.5'}`}
+              className={`rounded-md border border-slate-200/70 bg-slate-50/75 ${compact ? 'px-1.5' : 'px-2'}`}
             >
               <div className="flex items-center gap-1.5">
-                <div className="min-w-0 flex-1 truncate">
+                <div className="min-w-0 flex-1 truncate flex">
                   <span className={`truncate font-medium text-slate-700 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
                     {item.primary}
                   </span>

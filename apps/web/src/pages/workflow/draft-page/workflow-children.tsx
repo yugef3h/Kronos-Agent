@@ -465,7 +465,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                         className={`rounded-xl ${isNestedConditionNode ? 'bg-white/55 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.8)] backdrop-blur-[1px]' : 'bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]'}`}
                       >
                         <div
-                          className={`flex items-center gap-1.5 rounded-xl text-[11px] font-medium text-slate-700 ${isNestedConditionNode ? 'min-h-[28px] px-2 py-1' : 'min-h-[34px] px-2.5 py-1.5 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.9)]'}`}
+                          className={`flex items-center gap-1.5 rounded-md text-[11px] font-medium text-slate-700 min-h-[22px] px-2 py-0}`}
                         >
                           <span className="line-clamp-1">{branchSummary}</span>
                         </div>
@@ -543,7 +543,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           }}
         >
           <ContainerNodeBoard />
-          <ContainerNodeHeader subtitle={data.subtitle} title={data.title} />
+          <ContainerNodeHeader kind={data.kind} title={data.title} />
         </div>
       ) : isNestedPlainNode ? (
         <NestedPlainNodeCard data={data} isSelected={!!data.selected} />

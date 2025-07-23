@@ -1,6 +1,8 @@
 import { IconCondition } from '../assets/condition';
+import { IconIteration } from '../assets/iteration';
 import { IconLLM } from '../assets/llm';
 import { IconKnowledge } from '../assets/knowledge';
+import { IconLoop } from '../assets/loop';
 import { IconOutput } from '../assets/output';
 import {
   CONTAINER_NODE_BOARD_TOP,
@@ -9,11 +11,65 @@ import {
 import type { CanvasNodeData } from '../types/canvas';
 import WorkflowNodeSummary from './workflow-node-summary';
 
-export const ContainerNodeHeader = ({ subtitle, title }: Pick<CanvasNodeData, 'subtitle' | 'title'>) => {
+const WorkflowNodeBadgeIcon = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
+  if (kind === 'llm') {
+    return <IconLLM />;
+  }
+
+  if (kind === 'knowledge') {
+    return <IconKnowledge />;
+  }
+
+  if (kind === 'iteration' || kind === 'iteration-start') {
+    return <IconIteration />;
+  }
+
+  if (kind === 'loop' || kind === 'loop-start') {
+    return <IconLoop />;
+  }
+
+  if (kind === 'end' || kind === 'iteration-end' || kind === 'loop-end') {
+    return <IconOutput />;
+  }
+
+  if (kind === 'condition') {
+    return <IconCondition />;
+  }
+
   return (
-    <div className="relative z-10 px-1">
-      <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
-      <p className="mt-1 text-lg font-semibold leading-none tracking-[-0.02em] text-slate-950">{title}</p>
+    <span className="text-[10px] font-semibold uppercase text-slate-600">
+      {kind.slice(0, 2)}
+    </span>
+  );
+};
+
+const getContainerHeaderBadgeClassName = (kind: CanvasNodeData['kind']) => {
+  if (kind === 'iteration') {
+    return 'bg-amber-500 text-white shadow-[0_10px_20px_-18px_rgba(217,119,6,0.9)]';
+  }
+
+  if (kind === 'loop') {
+    return 'bg-blue-600 text-white shadow-[0_10px_20px_-18px_rgba(37,99,235,0.9)]';
+  }
+
+  if (kind === 'condition') {
+    return 'bg-[#16b5d8] text-white shadow-[0_10px_20px_-18px_rgba(8,145,178,0.9)]';
+  }
+
+  return 'bg-slate-100 text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)]';
+};
+
+export const ContainerNodeHeader = ({ kind, title }: Pick<CanvasNodeData, 'kind' | 'title'>) => {
+  return (
+    <div className="relative z-10 flex items-center gap-3 px-1 pr-8">
+      <div
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] ${getContainerHeaderBadgeClassName(kind)}`}
+      >
+        <WorkflowNodeBadgeIcon kind={kind} />
+      </div>
+      <div className="min-w-0 pt-0.5">
+        <p className="text-[16px] font-semibold tracking-[0.01em] text-slate-900">{title}</p>
+      </div>
     </div>
   );
 };
@@ -36,27 +92,7 @@ export const ContainerNodeBoard = () => {
 };
 
 const NestedNodeBadge = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
-  if (kind === 'llm') {
-    return <IconLLM />;
-  }
-
-  if (kind === 'knowledge') {
-    return <IconKnowledge />;
-  }
-
-  if (kind === 'end' || kind === 'iteration-end' || kind === 'loop-end') {
-    return <IconOutput />;
-  }
-
-  if (kind === 'condition') {
-    return <IconCondition />;
-  }
-
-  return (
-    <span className="text-[10px] font-semibold uppercase text-slate-600">
-      {kind.slice(0, 2)}
-    </span>
-  );
+  return <WorkflowNodeBadgeIcon kind={kind} />;
 };
 
 export const NestedPlainNodeCard = ({
@@ -73,7 +109,7 @@ export const NestedPlainNodeCard = ({
           <NestedNodeBadge kind={data.kind} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">{data.subtitle}</p>
+          {/* <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">{data.subtitle}</p> */}
           <p className="mt-0.5 text-[15px] font-semibold leading-[1.15] text-slate-900">{data.title}</p>
         </div>
       </div>
