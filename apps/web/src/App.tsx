@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/AppShell';
 import { HomePage } from './pages/HomePage';
-import { MemoryPage } from './pages/MemoryPage';
+import { RagPage } from './pages/RagPage';
 import { WorkflowDraftPage } from './pages/workflow/draft-page';
 import { WorkflowPage } from './pages/workflow/list-page';
 
@@ -13,7 +13,7 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/workflow" element={<WorkflowPage />} />
         <Route path="/workflow/draft" element={<WorkflowDraftPage />} />
-        <Route path="/memory" element={<MemoryPage />} />
+        <Route path="/rag" element={<RagPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -13,7 +13,7 @@ type NavItem = {
 const NAV_ITEMS: readonly NavItem[] = [
   { to: '/', label: '首页', icon: 'home', end: true },
   { to: '/workflow', label: '工作流', icon: 'workflow' },
-  { to: '/memory', label: '记忆', icon: 'memory' },
+  { to: '/rag', label: '知识库', icon: 'memory' },
 ];
 
 const renderNavIcon = (icon: NavIcon) => {
