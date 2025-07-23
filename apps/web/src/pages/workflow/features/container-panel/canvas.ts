@@ -3,7 +3,7 @@ import type { VariableOption } from '../llm-panel/types'
 import type { CanvasNodeData, WorkflowCanvasNodeKind } from '../../types/canvas'
 import type { BlockEnum } from '../../types/common'
 import type { ContainerChildSummary, ContainerKind } from './runtime'
-import { NODE_WIDTH } from '../../constants'
+import { NODE_WIDTH } from '../../layout-constants'
 
 export const CONTAINER_NODE_WIDTH = NODE_WIDTH
 export const CONTAINER_NODE_MIN_HEIGHT = 156

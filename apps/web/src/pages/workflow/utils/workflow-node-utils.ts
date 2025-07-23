@@ -6,9 +6,11 @@ import {
   NODE_Y_OFFSET,
   X_OFFSET,
   NODE_WIDTH,
-} from '../constants';
+} from '../layout-constants';
 import {
   buildContainerEndNodeData,
+  CONTAINER_CHILD_NODE_HEIGHT,
+  CONTAINER_NODE_MIN_HEIGHT,
   CONTAINER_START_HANDLE_RIGHT_OFFSET,
   getContainerNodeRenderedWidth,
   isContainerNodeKind,
@@ -19,6 +21,14 @@ import { buildCanvasNodeData } from './workflow-dsl';
 
 const COLUMN_X_TOLERANCE = 24;
 const ROW_Y_TOLERANCE = NODE_Y_OFFSET / 2;
+const ROOT_NODE_MIN_HEIGHT = 96;
+const CONDITION_BRANCH_VERTICAL_GAP = 24;
+
+type BranchPlacementEdge = {
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+};
 
 const getSourceNodeRenderedWidth = (node: Node<CanvasNodeData>) => {
   const styleWidth = Number(node.style?.width);
@@ -31,6 +41,63 @@ const getSourceNodeRenderedWidth = (node: Node<CanvasNodeData>) => {
   }
 
   return NODE_WIDTH;
+};
+
+const getRuntimeNodeHeight = (node: Node<CanvasNodeData>) => {
+  const candidateValues = [
+    node.style?.height,
+    (node as Node<CanvasNodeData> & { height?: number }).height,
+    (node as Node<CanvasNodeData> & { measured?: { height?: number } }).measured?.height,
+  ];
+
+  const runtimeHeight = candidateValues
+    .map((value) => Number(value))
+    .find((value) => !Number.isNaN(value) && value > 0);
+
+  if (runtimeHeight) {
+    return runtimeHeight;
+  }
+
+  if (isContainerNodeKind(node.data.kind)) {
+    return CONTAINER_NODE_MIN_HEIGHT;
+  }
+
+  if (node.parentId) {
+    return CONTAINER_CHILD_NODE_HEIGHT;
+  }
+
+  return ROOT_NODE_MIN_HEIGHT;
+};
+
+const getConditionBranchTargetMinY = (
+  sourceNode: Node<CanvasNodeData>,
+  sourceHandle: string,
+  nodes: Node<CanvasNodeData>[],
+  edges: BranchPlacementEdge[],
+) => {
+  const branchIds = sourceNode.data._targetBranches?.map(branch => branch.id) ?? [];
+  const branchIndex = branchIds.indexOf(sourceHandle);
+
+  if (branchIndex <= 0) {
+    return sourceNode.position.y;
+  }
+
+  return branchIds.slice(0, branchIndex).reduce((minY, branchId) => {
+    const branchEdge = edges.find(edge => edge.source === sourceNode.id && edge.sourceHandle === branchId);
+    if (!branchEdge) {
+      return minY;
+    }
+
+    const targetNode = nodes.find(node => node.id === branchEdge.target);
+    if (!targetNode) {
+      return minY;
+    }
+
+    return Math.max(
+      minY,
+      targetNode.position.y + getRuntimeNodeHeight(targetNode) + CONDITION_BRANCH_VERTICAL_GAP,
+    );
+  }, sourceNode.position.y + branchIndex * NODE_Y_OFFSET);
 };
 
 const findAvailableNestedY = (
@@ -112,6 +179,8 @@ export const createNodeFromSource = (
   node: NodeItem,
   index: number,
   nodes: Node<CanvasNodeData>[] = [],
+  edges: BranchPlacementEdge[] = [],
+  sourceHandle = 'out',
 ): Node<CanvasNodeData> => {
   const nextNodeId = createNodeId(node.kind);
   const isNestedNode = Boolean(sourceNode.parentId);
@@ -134,7 +203,9 @@ export const createNodeFromSource = (
       })()
     : {
         x: sourceNode.position.x + getSourceNodeRenderedWidth(sourceNode) + X_OFFSET,
-        y: sourceNode.position.y + index * NODE_Y_OFFSET,
+        y: sourceNode.data.kind === 'condition'
+          ? getConditionBranchTargetMinY(sourceNode, sourceHandle, nodes, edges)
+          : sourceNode.position.y + index * NODE_Y_OFFSET,
       };
 
   return {

@@ -1,5 +1,9 @@
 ## 2025-04-08 StartPanel 变量名输入时第二个字符开始被覆盖
 
+- 现象：IfElse 节点先给 IF 分支追加了 iteration / loop，后续再从 ELSE 分支追加节点时，新节点的 y 位置可能仍按固定分支间距计算，和前一个已增高的容器节点发生重叠。
+- 根因：`apps/web/src/pages/workflow/utils/workflow-node-utils.ts` 里的 `createNodeFromSource()` 在根层条件分支场景只按 `index * NODE_Y_OFFSET` 计算 y，没有读取前序分支目标节点的真实渲染高度；而 iteration / loop 会在配置后被 `useContainerNodeSync()` 动态拉高 `style.height`。
+- 修复：条件分支新增节点时改为按 `_targetBranches` 顺序检查前序分支已连接节点，取“默认分支行距”和“前序目标节点底部 + 最小安全间距”两者中的较大值，避免 ELSE 压到已扩高的容器节点；同时补充纯函数测试覆盖该场景。
+
 - 现象：在 Start 节点的“变量名”输入框里输入内容时，首个字符可以出现，但继续输入第二个字符后会被回退，看起来像“只能输入一个字母”。
 - 根因：`apps/web/src/pages/workflow/compts/start-panel.tsx` 里的变量名编辑链路会在一次输入中触发两次 `setNodes`。第一次更新当前 Start 节点的 `inputs/outputs`，第二次又通过 `rewriteNodesVariableReferences()` 同步下游引用；两次更新基于不同快照执行，后一次会把前一次刚输入的字符覆盖掉。
 - 修复：将“更新当前 Start 节点配置”和“同步下游 selector 引用”收敛到同一个 `setNodes` updater 中执行，并让 `use-start-panel-config.ts` 通过 `onChange(nextValue, meta)` 传递 rename/remove 元信息，避免连续状态更新互相覆盖。

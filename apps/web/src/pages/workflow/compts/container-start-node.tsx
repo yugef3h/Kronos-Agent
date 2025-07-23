@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { IconIteration } from '../assets/iteration';
 import { IconLoop } from '../assets/loop';
-import { X_OFFSET } from '../constants';
+import { X_OFFSET } from '../layout-constants';
 import { CONTAINER_START_ICON_OFFSET } from '../features/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 

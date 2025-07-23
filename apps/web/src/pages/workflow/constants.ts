@@ -7,19 +7,20 @@ import IfElsePanel from "./compts/ifelse-panel";
 import LoopPanel from "./compts/loop-panel";
 import IterationPanel from "./compts/iteration-panel";
 import KnowledgeRetrievalPanel from "./compts/knowledge-retrieval-panel";
-
-export const NODE_WIDTH = 240;
-export const X_OFFSET = 60;
-export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET;
-export const NODE_Y_OFFSET = 120;
-export const START_INITIAL_POSITION = { x: 80, y: 282 };
-export const ITERATION_CHILDREN_Z_INDEX = 1002;
-export const SEARCH_BOX_NODE_Z_INDEX = ITERATION_CHILDREN_Z_INDEX + 20;
-export const SEARCH_BOX_MENU_Z_INDEX = SEARCH_BOX_NODE_Z_INDEX + 1;
-export const CUSTOM_EDGE = 'custom';
-export const CUSTOM_NODE = 'custom';
-export const CUSTOM_NOTE_NODE = 'custom-note';
-export const CUSTOM_SIMPLE_NODE = 'custom-simple';
+export {
+  CUSTOM_EDGE,
+  CUSTOM_NODE,
+  CUSTOM_NOTE_NODE,
+  CUSTOM_SIMPLE_NODE,
+  ITERATION_CHILDREN_Z_INDEX,
+  NODE_WIDTH,
+  NODE_WIDTH_X_OFFSET,
+  NODE_Y_OFFSET,
+  SEARCH_BOX_MENU_Z_INDEX,
+  SEARCH_BOX_NODE_Z_INDEX,
+  START_INITIAL_POSITION,
+  X_OFFSET,
+} from "./layout-constants";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const PanelComponentMap: Record<string, ComponentType<any>> = {

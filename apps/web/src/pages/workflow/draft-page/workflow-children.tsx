@@ -24,7 +24,7 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
   NODE_WIDTH,
   SEARCH_BOX_NODE_Z_INDEX,
-} from '../constants';
+} from '../layout-constants';
 import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import DslPreviewDialog from '../compts/dsl-preview-dialog';
@@ -189,7 +189,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       const childCount = sourceNode.parentId
         ? getNodes().filter((candidate) => candidate.parentId === sourceNode.parentId).length
         : getEdges().filter((edge) => edge.source === sourceNodeId).length;
-      const nextNode = createNodeFromSource(sourceNode, node, childCount, getNodes());
+      const nextNode = createNodeFromSource(
+        sourceNode,
+        node,
+        childCount,
+        getNodes(),
+        getEdges(),
+        sourceHandle,
+      );
       const edgeId = `${sourceNodeId}-${sourceHandle}-${nextNode.id}-in`;
       const scopeData = getContainerScopeData(getNodes(), sourceNode);
       const sourceBlock = getContainerBlockEnum(sourceNode.data.kind);
@@ -403,17 +410,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         isNestedNode ? (
           <NestedEndNodeCard data={data} isSelected={!!data.selected} />
         ) : (
-          <>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-700">
-              {data.subtitle}
-            </p>
-            <p className="mt-1 text-[14px] font-semibold text-slate-900">{data.title}</p>
+          <div>
+            <ContainerNodeHeader kind={data.kind} title={data.title} />
             <p className="mt-1 text-[10px] leading-4 text-slate-500">
               {data.kind === 'iteration-end'
                 ? '命中后结束当前 iteration 内部链路'
                 : '命中后结束当前 loop 内部链路'}
             </p>
-          </>
+          </div>
         )
       ) : data.kind === 'condition' ? (
         <div>
@@ -549,8 +553,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
       ) : (
         <div>
-          <p className="text-xs font-semibold text-slate-500">{data.subtitle}</p>
-          <p className="mt-1 text-lg font-semibold text-slate-900">{data.title}</p>
+          <ContainerNodeHeader kind={data.kind} title={data.title} />
           <WorkflowNodeSummary data={data} />
         </div>
       )}

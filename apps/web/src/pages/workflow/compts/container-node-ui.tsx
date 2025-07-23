@@ -11,7 +11,33 @@ import {
 import type { CanvasNodeData } from '../types/canvas';
 import WorkflowNodeSummary from './workflow-node-summary';
 
+const IconTrigger = () => {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M5.15625 3.28125C5.15625 2.74724 5.75605 2.4283 6.2015 2.72868L10.6882 5.75455C11.0813 6.01972 11.0813 6.59747 10.6882 6.86264L6.2015 9.88852C5.75605 10.1889 5.15625 9.86995 5.15625 9.33594V3.28125Z"
+        fill="currentColor"
+      />
+      <path
+        d="M2.625 2.625C2.625 2.26256 2.91881 1.96875 3.28125 1.96875C3.64369 1.96875 3.9375 2.26256 3.9375 2.625V10.375C3.9375 10.7374 3.64369 11.0312 3.28125 11.0312C2.91881 11.0312 2.625 10.7374 2.625 10.375V2.625Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+};
+
 const WorkflowNodeBadgeIcon = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
+  if (kind === 'trigger') {
+    return <IconTrigger />;
+  }
+
   if (kind === 'llm') {
     return <IconLLM />;
   }
@@ -38,18 +64,34 @@ const WorkflowNodeBadgeIcon = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
 
   return (
     <span className="text-[10px] font-semibold uppercase text-slate-600">
-      {kind.slice(0, 2)}
+      {String(kind).slice(0, 2)}
     </span>
   );
 };
 
 const getContainerHeaderBadgeClassName = (kind: CanvasNodeData['kind']) => {
+  if (kind === 'trigger') {
+    return 'bg-emerald-600 text-white shadow-[0_10px_20px_-18px_rgba(5,150,105,0.9)]';
+  }
+
   if (kind === 'iteration') {
     return 'bg-amber-500 text-white shadow-[0_10px_20px_-18px_rgba(217,119,6,0.9)]';
   }
 
   if (kind === 'loop') {
     return 'bg-blue-600 text-white shadow-[0_10px_20px_-18px_rgba(37,99,235,0.9)]';
+  }
+
+  if (kind === 'llm') {
+    return 'bg-slate-50 border text-white shadow-[0_10px_20px_-18px_rgba(2,132,199,0.9)]';
+  }
+
+  if (kind === 'knowledge') {
+    return 'bg-violet-600 text-white shadow-[0_10px_20px_-18px_rgba(124,58,237,0.9)]';
+  }
+
+  if (kind === 'end' || kind === 'iteration-end' || kind === 'loop-end') {
+    return 'bg-amber-100 text-white shadow-[0_10px_20px_-18px_rgba(217,119,6,0.9)]';
   }
 
   if (kind === 'condition') {
@@ -133,8 +175,7 @@ export const NestedEndNodeCard = ({
           <IconOutput />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-amber-700">{data.subtitle}</p>
-          <p className="mt-0.5 text-[14px] font-semibold leading-[1.1] text-slate-900">{data.title}</p>
+          <p className="text-[14px] font-semibold leading-[1.1] text-slate-900">{data.title}</p>
         </div>
       </div>
     </div>

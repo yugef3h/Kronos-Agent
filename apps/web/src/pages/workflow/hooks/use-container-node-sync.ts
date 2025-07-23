@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { Node } from 'reactflow';
 import type { CanvasNodeData } from '../types/canvas';
 import type { Edge } from '../types/common';
-import { ITERATION_CHILDREN_Z_INDEX } from '../constants';
+import { ITERATION_CHILDREN_Z_INDEX } from '../layout-constants';
 import {
   buildContainerChildSummaries,
   getContainerChildNodeHeight,

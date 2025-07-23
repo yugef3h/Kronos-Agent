@@ -6,7 +6,7 @@ import { IconKnowledge } from '../assets/knowledge';
 import { IconCondition } from '../assets/condition';
 import { IconIteration } from '../assets/iteration';
 import { IconLoop } from '../assets/loop';
-import { SEARCH_BOX_MENU_Z_INDEX } from '../constants';
+import { SEARCH_BOX_MENU_Z_INDEX } from '../layout-constants';
 import type { NodeItem } from '../types/search-box';
 
 // 节点类型定义（完全匹配截图分类）
