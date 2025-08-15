@@ -1,35 +1,13 @@
 import { env } from '../config/env.js';
 import {
-  getFileExtension,
   normalizeExtractedText,
   parseFileDataUrl,
 } from './fileAnalysisHelpers.js';
+import { extractDocumentText } from './documentTextExtractor.js';
 import { readDoubaoChatStreamReply } from './doubaoChatHelpers.js';
 
 const FILE_TEXT_PREVIEW_LIMIT = 16_000;
 const FILE_REPLY_MAX_TOKENS = 1_200;
-
-const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const PDF_MIME_TYPE = 'application/pdf';
-
-const TEXT_LIKE_MIME_TYPES = new Set([
-  'application/json',
-  'application/ld+json',
-  'application/x-ndjson',
-  'text/csv',
-  'text/markdown',
-  'text/plain',
-]);
-
-const TEXT_LIKE_EXTENSIONS = new Set([
-  'csv',
-  'json',
-  'md',
-  'mdx',
-  'txt',
-  'yaml',
-  'yml',
-]);
 
 type DoubaoMessage = {
   role: 'user' | 'assistant' | 'system';
@@ -52,40 +30,12 @@ const truncateExtractedText = (text: string): string => {
   return `${text.slice(0, FILE_TEXT_PREVIEW_LIMIT)}\n\n[已截断，原文较长]`;
 };
 
-const isTextLikeFile = (mimeType: string, extension: string): boolean => {
-  return TEXT_LIKE_MIME_TYPES.has(mimeType) || TEXT_LIKE_EXTENSIONS.has(extension);
-};
-
 const extractTextFromFile = async (params: {
   buffer: Buffer;
   mimeType: string;
   fileName: string;
 }): Promise<string> => {
-  const extension = getFileExtension(params.fileName);
-
-  if (params.mimeType === PDF_MIME_TYPE || extension === 'pdf') {
-    const { PDFParse } = await import('pdf-parse');
-    const parser = new PDFParse({ data: new Uint8Array(params.buffer) });
-
-    try {
-      const result = await parser.getText();
-      return normalizeExtractedText(result.text || '');
-    } finally {
-      await parser.destroy();
-    }
-  }
-
-  if (params.mimeType === DOCX_MIME_TYPE || extension === 'docx') {
-    const mammoth = await import('mammoth');
-    const result = await mammoth.extractRawText({ buffer: params.buffer });
-    return normalizeExtractedText(result.value || '');
-  }
-
-  if (isTextLikeFile(params.mimeType, extension)) {
-    return normalizeExtractedText(params.buffer.toString('utf8'));
-  }
-
-  throw new Error('暂仅支持 TXT、MD、CSV、JSON、PDF、DOCX 文件');
+  return normalizeExtractedText(await extractDocumentText(params));
 };
 
 const buildFileAnalysisPrompt = (params: {

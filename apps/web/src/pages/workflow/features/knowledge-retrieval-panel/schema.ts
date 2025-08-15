@@ -5,7 +5,6 @@ import type {
   KnowledgeRetrievalNodeConfig,
   KnowledgeValidationIssue,
 } from './types'
-import { KNOWLEDGE_DATASET_CATALOG } from './catalog'
 
 const createConditionId = () => `metadata-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -71,7 +70,7 @@ export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalN
 
 export const getKnowledgeSelectedDatasets = (
   datasetIds: string[],
-  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+  datasetCatalog: KnowledgeDatasetDetail[] = [],
 ): KnowledgeDatasetDetail[] => {
   const idSet = new Set(datasetIds)
   return datasetCatalog.filter(dataset => idSet.has(dataset.id))
@@ -79,14 +78,14 @@ export const getKnowledgeSelectedDatasets = (
 
 export const shouldShowKnowledgeAttachmentSelector = (
   datasetIds: string[],
-  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+  datasetCatalog: KnowledgeDatasetDetail[] = [],
 ) => {
   return getKnowledgeSelectedDatasets(datasetIds, datasetCatalog).some(dataset => dataset.is_multimodal)
 }
 
 export const getKnowledgeMetadataFieldsIntersection = (
   datasetIds: string[],
-  datasetCatalog: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG,
+  datasetCatalog: KnowledgeDatasetDetail[] = [],
 ): KnowledgeMetadataField[] => {
   const selectedDatasets = getKnowledgeSelectedDatasets(datasetIds, datasetCatalog)
   if (!selectedDatasets.length)

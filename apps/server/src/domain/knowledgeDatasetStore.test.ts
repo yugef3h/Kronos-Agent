@@ -27,13 +27,12 @@ describe('knowledgeDatasetStore', () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it('should seed datasets on first init', async () => {
+  it('should start with an empty dataset store on first init', async () => {
     await initKnowledgeDatasetStore();
 
     const items = await listKnowledgeDatasets();
 
-    expect(items.length).toBeGreaterThan(0);
-    expect(items[0].id).toBeTruthy();
+    expect(items).toEqual([]);
   });
 
   it('should create, update and delete datasets with persistence', async () => {

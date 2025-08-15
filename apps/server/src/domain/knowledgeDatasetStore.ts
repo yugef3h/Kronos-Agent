@@ -14,6 +14,7 @@ export type KnowledgeDatasetRecord = {
   is_multimodal: boolean;
   doc_metadata: KnowledgeMetadataField[];
   documentCount: number;
+  chunkCount: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -66,69 +67,6 @@ const slugify = (value: string) => {
   return normalized || `dataset-${Date.now().toString(36)}`;
 };
 
-const createSeedDatasets = (): KnowledgeDatasetRecord[] => {
-  const now = Date.now();
-
-  return [
-    {
-      id: 'support-center',
-      name: '帮助中心',
-      description: 'FAQ、操作说明与客服知识。',
-      is_multimodal: false,
-      doc_metadata: [
-        { key: 'category', label: '分类' },
-        { key: 'language', label: '语言' },
-        { key: 'channel', label: '渠道' },
-      ],
-      documentCount: 126,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 'operations-manual',
-      name: '运营手册',
-      description: 'SOP、流程节点说明与内部规范。',
-      is_multimodal: false,
-      doc_metadata: [
-        { key: 'category', label: '分类' },
-        { key: 'language', label: '语言' },
-        { key: 'channel', label: '渠道' },
-      ],
-      documentCount: 84,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 'catalog-gallery',
-      name: '商品图谱',
-      description: '图文混合的商品卡、图册与属性库。',
-      is_multimodal: true,
-      doc_metadata: [
-        { key: 'category', label: '分类' },
-        { key: 'language', label: '语言' },
-        { key: 'brand', label: '品牌' },
-      ],
-      documentCount: 312,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: 'policy-library',
-      name: '政策文档',
-      description: '政策、条款与制度类文本库。',
-      is_multimodal: false,
-      doc_metadata: [
-        { key: 'category', label: '分类' },
-        { key: 'language', label: '语言' },
-        { key: 'effective_at', label: '生效时间' },
-      ],
-      documentCount: 57,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-};
-
 const normalizeMetadataField = (field: Partial<KnowledgeMetadataField>, index: number): KnowledgeMetadataField | null => {
   const key = typeof field.key === 'string' ? field.key.trim() : '';
   const label = typeof field.label === 'string' ? field.label.trim() : '';
@@ -168,6 +106,9 @@ const normalizeDatasetRecord = (value: unknown): KnowledgeDatasetRecord | null =
     doc_metadata: metadata,
     documentCount: typeof raw.documentCount === 'number' && Number.isFinite(raw.documentCount)
       ? Math.max(0, Math.floor(raw.documentCount))
+      : 0,
+    chunkCount: typeof raw.chunkCount === 'number' && Number.isFinite(raw.chunkCount)
+      ? Math.max(0, Math.floor(raw.chunkCount))
       : 0,
     createdAt: typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt)
       ? raw.createdAt
@@ -226,22 +167,16 @@ export const initKnowledgeDatasetStore = async (): Promise<void> => {
       nextDatasets = [];
     }
 
-    if (!nextDatasets.length) {
-      nextDatasets = createSeedDatasets();
-      datasets.clear();
-      nextDatasets.forEach((dataset) => datasets.set(dataset.id, dataset));
-      initialized = true;
-      await persistDatasets();
-      return;
-    }
-
     datasets.clear();
     nextDatasets.forEach((dataset) => datasets.set(dataset.id, dataset));
     initialized = true;
+
+    if (!nextDatasets.length) {
+      await persistDatasets();
+    }
   } catch (error) {
     console.warn('[knowledgeDatasetStore] init failed:', error);
     datasets.clear();
-    createSeedDatasets().forEach((dataset) => datasets.set(dataset.id, dataset));
     initialized = true;
   }
 };
@@ -249,6 +184,12 @@ export const initKnowledgeDatasetStore = async (): Promise<void> => {
 export const listKnowledgeDatasets = async (): Promise<KnowledgeDatasetRecord[]> => {
   await ensureInitialized();
   return sortDatasets([...datasets.values()]).map(cloneDataset);
+};
+
+export const getKnowledgeDatasetById = async (datasetId: string): Promise<KnowledgeDatasetRecord | null> => {
+  await ensureInitialized();
+  const dataset = datasets.get(datasetId);
+  return dataset ? cloneDataset(dataset) : null;
 };
 
 export const createKnowledgeDataset = async (input: KnowledgeDatasetInput): Promise<KnowledgeDatasetRecord> => {
@@ -271,6 +212,7 @@ export const createKnowledgeDataset = async (input: KnowledgeDatasetInput): Prom
     is_multimodal: input.is_multimodal,
     doc_metadata: input.doc_metadata.map((field) => ({ ...field })),
     documentCount: 0,
+    chunkCount: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -316,6 +258,29 @@ export const deleteKnowledgeDataset = async (datasetId: string): Promise<void> =
 
   datasets.delete(datasetId);
   await enqueuePersist();
+};
+
+export const updateKnowledgeDatasetStats = async (
+  datasetId: string,
+  stats: { documentCount?: number; chunkCount?: number },
+): Promise<KnowledgeDatasetRecord> => {
+  await ensureInitialized();
+
+  const existing = datasets.get(datasetId);
+  if (!existing) {
+    throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+  }
+
+  const updated: KnowledgeDatasetRecord = {
+    ...existing,
+    documentCount: typeof stats.documentCount === 'number' ? Math.max(0, Math.floor(stats.documentCount)) : existing.documentCount,
+    chunkCount: typeof stats.chunkCount === 'number' ? Math.max(0, Math.floor(stats.chunkCount)) : existing.chunkCount,
+    updatedAt: Date.now(),
+  };
+
+  datasets.set(datasetId, updated);
+  await enqueuePersist();
+  return cloneDataset(updated);
 };
 
 export const resetKnowledgeDatasetStoreForTests = () => {

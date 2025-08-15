@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@langchain/core": "^0.3.58",
-    "@langchain/openai": "^0.5.16",
     "@langchain/langgraph": "1.2.6",
+    "@langchain/openai": "^0.5.16",
     "@types/pdf-parse": "^1.1.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -22,6 +22,8 @@
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5",
     "umap-js": "^1.4.0",
+    "word-extractor": "^1.0.4",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {

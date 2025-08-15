@@ -9,6 +9,11 @@ import {
   listKnowledgeDatasets,
   updateKnowledgeDataset,
 } from '../domain/knowledgeDatasetStore.js';
+import {
+  deleteKnowledgeDatasetFiles,
+  importKnowledgeDocument,
+  listKnowledgeDocuments,
+} from '../domain/knowledgeDocumentStore.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
@@ -93,6 +98,14 @@ const knowledgeDatasetInputSchema = z.object({
   description: z.string().trim().max(240).default(''),
   is_multimodal: z.boolean().default(false),
   doc_metadata: z.array(knowledgeMetadataFieldSchema).max(12).default([]),
+});
+
+const knowledgeDocumentImportSchema = z.object({
+  fileName: z.string().trim().min(1).max(240),
+  fileDataUrl: z.string().min(1),
+  mimeType: z.string().trim().max(120).optional(),
+  maxTokens: z.coerce.number().int().min(100).max(4000).default(500),
+  chunkOverlap: z.coerce.number().int().min(0).max(1000).default(80),
 });
 
 export const chatRoutes = Router();
@@ -208,7 +221,9 @@ chatRoutes.put('/workflow/knowledge-datasets/:datasetId', async (request: Reques
 
 chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Request, response: Response) => {
   try {
-    await deleteKnowledgeDataset(String(request.params.datasetId || ''));
+    const datasetId = String(request.params.datasetId || '');
+    await deleteKnowledgeDataset(datasetId);
+    await deleteKnowledgeDatasetFiles(datasetId);
     response.status(204).end();
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
@@ -219,6 +234,48 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
     }
 
     response.status(500).json({ error: `Knowledge dataset delete failed: ${reason}` });
+  }
+});
+
+chatRoutes.get('/workflow/knowledge-datasets/:datasetId/documents', async (request: Request, response: Response) => {
+  try {
+    const items = await listKnowledgeDocuments(String(request.params.datasetId || ''));
+    response.json({ items });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge documents list failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-datasets/:datasetId/documents/import', async (request: Request, response: Response) => {
+  const parsed = knowledgeDocumentImportSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await importKnowledgeDocument({
+      datasetId: String(request.params.datasetId || ''),
+      ...parsed.data,
+    });
+    response.status(201).json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge document import failed: ${reason}` });
   }
 });
 

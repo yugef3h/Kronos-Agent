@@ -6,6 +6,42 @@ import {
   validateKnowledgeRetrievalNodeConfig,
 } from './schema'
 
+const TEST_DATASETS = [
+  {
+    id: 'dataset-a',
+    name: '数据集 A',
+    description: '',
+    is_multimodal: false,
+    doc_metadata: [
+      { key: 'category', label: '分类' },
+      { key: 'language', label: '语言' },
+      { key: 'channel', label: '渠道' },
+    ],
+  },
+  {
+    id: 'dataset-b',
+    name: '数据集 B',
+    description: '',
+    is_multimodal: false,
+    doc_metadata: [
+      { key: 'category', label: '分类' },
+      { key: 'language', label: '语言' },
+      { key: 'channel', label: '渠道' },
+    ],
+  },
+  {
+    id: 'dataset-c',
+    name: '数据集 C',
+    description: '',
+    is_multimodal: true,
+    doc_metadata: [
+      { key: 'category', label: '分类' },
+      { key: 'language', label: '语言' },
+      { key: 'brand', label: '品牌' },
+    ],
+  },
+]
+
 describe('knowledge-retrieval-panel schema', () => {
   it('creates a valid default config shell', () => {
     const config = createDefaultKnowledgeRetrievalNodeConfig()
@@ -20,7 +56,7 @@ describe('knowledge-retrieval-panel schema', () => {
     const config = normalizeKnowledgeRetrievalNodeConfig({
       query_variable_selector: ['sys', 'query'],
       query_attachment_selector: ['sys', 'files'],
-      dataset_ids: ['support-center'],
+      dataset_ids: ['dataset-a'],
       retrieval_mode: 'oneWay',
     })
 
@@ -29,12 +65,12 @@ describe('knowledge-retrieval-panel schema', () => {
   })
 
   it('detects multimodal datasets and exposes the attachment selector', () => {
-    expect(shouldShowKnowledgeAttachmentSelector(['catalog-gallery'])).toBe(true)
-    expect(shouldShowKnowledgeAttachmentSelector(['support-center'])).toBe(false)
+    expect(shouldShowKnowledgeAttachmentSelector(['dataset-c'], TEST_DATASETS)).toBe(true)
+    expect(shouldShowKnowledgeAttachmentSelector(['dataset-a'], TEST_DATASETS)).toBe(false)
   })
 
   it('returns the metadata intersection across selected datasets', () => {
-    const fields = getKnowledgeMetadataFieldsIntersection(['support-center', 'operations-manual'])
+    const fields = getKnowledgeMetadataFieldsIntersection(['dataset-a', 'dataset-b'], TEST_DATASETS)
 
     expect(fields.map(field => field.key)).toEqual(['category', 'language', 'channel'])
   })

@@ -16,6 +16,7 @@ export type KnowledgeDatasetDetail = {
   is_multimodal: boolean
   doc_metadata: KnowledgeMetadataField[]
   documentCount?: number
+  chunkCount?: number
   createdAt?: number
   updatedAt?: number
 }

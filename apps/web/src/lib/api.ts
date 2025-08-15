@@ -181,6 +181,7 @@ export type KnowledgeDatasetResponseItem = {
 	is_multimodal: boolean;
 	doc_metadata: KnowledgeDatasetResponseField[];
 	documentCount?: number;
+	chunkCount?: number;
 	createdAt?: number;
 	updatedAt?: number;
 };
@@ -194,6 +195,41 @@ export type KnowledgeDatasetMutationInput = {
 	description: string;
 	is_multimodal: boolean;
 	doc_metadata: KnowledgeDatasetResponseField[];
+};
+
+export type KnowledgeDocumentResponseItem = {
+	id: string;
+	datasetId: string;
+	name: string;
+	extension: string;
+	mimeType: string;
+	size: number;
+	status: 'completed';
+	createdAt: number;
+	updatedAt: number;
+	chunkCount: number;
+	characterCount: number;
+	previewText: string;
+	sourcePath: string;
+	parsedTextPath: string;
+	chunkPath: string;
+};
+
+export type KnowledgeDocumentChunkPreview = {
+	id: string;
+	index: number;
+	text: string;
+	tokenCount: number;
+	charCount: number;
+};
+
+export type KnowledgeDocumentsResponse = {
+	items: KnowledgeDocumentResponseItem[];
+};
+
+export type KnowledgeDocumentImportResponse = {
+	document: KnowledgeDocumentResponseItem;
+	preview: KnowledgeDocumentChunkPreview[];
 };
 
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
@@ -532,4 +568,48 @@ export const requestDeleteKnowledgeDataset = async (params: {
 	if (!response.ok) {
 		throw new Error('Failed to delete knowledge dataset');
 	}
+};
+
+export const requestKnowledgeDocuments = async (params: {
+	authToken: string;
+	datasetId: string;
+}): Promise<KnowledgeDocumentsResponse> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents`), {
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request knowledge documents');
+	}
+
+	return (await response.json()) as KnowledgeDocumentsResponse;
+};
+
+export const requestImportKnowledgeDocument = async (params: {
+	authToken: string;
+	datasetId: string;
+	input: {
+		fileName: string;
+		fileDataUrl: string;
+		mimeType?: string;
+		maxTokens?: number;
+		chunkOverlap?: number;
+	};
+}): Promise<KnowledgeDocumentImportResponse> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/import`), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to import knowledge document');
+	}
+
+	return (await response.json()) as KnowledgeDocumentImportResponse;
 };

@@ -82,8 +82,7 @@ export const WorkflowPage = () => {
 
   return (
     <>
-      <section className="space-y-4">
-        <section className="rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-[0_24px_60px_-32px_rgba(8,145,178,0.35)]">
+      <section className="min-w-0 flex-1 rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-[0_24px_60px_-32px_rgba(8,145,178,0.35)]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">
               Applications
@@ -91,14 +90,14 @@ export const WorkflowPage = () => {
             <h3 className="mt-2 text-xl font-semibold text-slate-900">工作流应用</h3>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid w-full grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">创建应用</p>
               <div className="mt-3 space-y-2 text-sm">
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left font-medium text-slate-700 transition hover:bg-slate-50 font-bold border"
+                  className="flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left font-bold text-slate-700 transition hover:bg-slate-50"
                 >
                   <span className="text-base leading-none">＋</span>
                   <span>创建空白应用</span>
@@ -158,7 +157,6 @@ export const WorkflowPage = () => {
             ))}
           </div>
         </section>
-      </section>
 
       {isCreateModalOpen ? (
         <div

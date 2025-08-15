@@ -32,7 +32,7 @@ export const prepareFileForAnalyze = async (file: File): Promise<FileSelectionRe
   const extension = getFileExtension(file.name);
 
   if (!isSupportedFileExtension(extension)) {
-    throw new Error('仅支持 TXT、MD、CSV、JSON、PDF、DOCX 文件');
+    throw new Error('仅支持 TXT、DOC、DOCX、PDF、Excel、CSV、MD、JSON 文件');
   }
 
   const normalizedMimeType = isSupportedFileMimeType(file.type)
@@ -44,7 +44,7 @@ export const prepareFileForAnalyze = async (file: File): Promise<FileSelectionRe
   }
 
   if (!isFileSizeAllowed(file.size)) {
-    throw new Error('文件大小需在 8MB 以内');
+    throw new Error('文件大小需在 15MB 以内');
   }
 
   const dataUrl = await readFileAsDataUrl(file);

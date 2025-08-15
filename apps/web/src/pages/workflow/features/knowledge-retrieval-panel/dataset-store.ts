@@ -9,13 +9,12 @@ import {
   type KnowledgeDatasetResponseItem,
 } from '../../../../lib/api'
 import { usePlaygroundStore } from '../../../../store/playgroundStore'
-import { KNOWLEDGE_DATASET_CATALOG } from './catalog'
 import type { KnowledgeDatasetDetail, KnowledgeMetadataField } from './types'
 
 const KNOWLEDGE_DATASETS_UPDATED_EVENT = 'kronos:workflow:knowledge-datasets-updated'
 const KNOWLEDGE_DATASET_AUTH_ERROR = '知识库接口需要 JWT 鉴权'
 
-let knowledgeDatasetCache: KnowledgeDatasetDetail[] = KNOWLEDGE_DATASET_CATALOG
+let knowledgeDatasetCache: KnowledgeDatasetDetail[] = []
 let authTokenRequest: Promise<string> | null = null
 
 const cloneMetadataFields = (fields: KnowledgeMetadataField[]) => {
@@ -37,6 +36,7 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
     description: typeof raw.description === 'string' ? raw.description : '',
     is_multimodal: Boolean(raw.is_multimodal),
     documentCount: typeof raw.documentCount === 'number' ? raw.documentCount : undefined,
+    chunkCount: typeof raw.chunkCount === 'number' ? raw.chunkCount : undefined,
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : undefined,
     updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : undefined,
     doc_metadata: Array.isArray(raw.doc_metadata)
@@ -68,6 +68,7 @@ const buildDatasetSignature = (datasets: KnowledgeDatasetDetail[]) => {
     description: dataset.description,
     is_multimodal: dataset.is_multimodal,
     documentCount: dataset.documentCount ?? 0,
+    chunkCount: dataset.chunkCount ?? 0,
     updatedAt: dataset.updatedAt ?? 0,
     doc_metadata: dataset.doc_metadata,
   })))
@@ -85,7 +86,7 @@ const setKnowledgeDatasetCache = (datasets: KnowledgeDatasetDetail[]) => {
     .map(dataset => normalizeDataset(dataset))
     .filter((dataset): dataset is KnowledgeDatasetDetail => dataset !== null)
 
-  const nextDatasets = normalized.length ? sortDatasets(normalized) : sortDatasets(KNOWLEDGE_DATASET_CATALOG)
+  const nextDatasets = sortDatasets(normalized)
   if (buildDatasetSignature(knowledgeDatasetCache) === buildDatasetSignature(nextDatasets)) {
     return listKnowledgeDatasets()
   }
@@ -103,7 +104,7 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return error instanceof Error && error.message.trim() ? error.message : fallback
 }
 
-const ensureKnowledgeDatasetAuthToken = async () => {
+export const ensureKnowledgeDatasetAuthToken = async () => {
   const currentToken = usePlaygroundStore.getState().authToken.trim()
   if (currentToken) {
     return currentToken
