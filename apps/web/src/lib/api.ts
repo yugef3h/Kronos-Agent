@@ -10,6 +10,27 @@ const API_BASE_URL = readViteApiBaseUrl() || 'http://localhost:3001';
 
 export const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
+const readApiErrorMessage = async (response: Response, fallback: string) => {
+	try {
+		const contentType = response.headers.get('content-type') || '';
+		if (contentType.includes('application/json')) {
+			const payload = await response.json() as { error?: unknown };
+			if (typeof payload.error === 'string' && payload.error.trim()) {
+				return payload.error.trim();
+			}
+		}
+
+		const text = await response.text();
+		if (text.trim()) {
+			return text.trim();
+		}
+	} catch {
+		// noop
+	}
+
+	return fallback;
+};
+
 export type DevTokenResponse = {
 	token: string;
 	tokenType: 'Bearer';
@@ -232,6 +253,34 @@ export type KnowledgeDocumentImportResponse = {
 	preview: KnowledgeDocumentChunkPreview[];
 };
 
+export type KnowledgeDocumentPreviewItem = {
+	fileName: string;
+	mimeType: string;
+	totalChunks: number;
+	preview: KnowledgeDocumentChunkPreview[];
+};
+
+export type KnowledgeDocumentPreviewResponse = {
+	items: KnowledgeDocumentPreviewItem[];
+};
+
+export type DatasetIndexingEstimateResponse = {
+	total_nodes: number;
+	tokens: number;
+	total_price: number;
+	currency: string;
+	total_segments: number;
+	preview: Array<{
+		content: string;
+		child_chunks: string[];
+		summary?: string;
+	}>;
+	qa_preview?: Array<{
+		question: string;
+		answer: string;
+	}>;
+};
+
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
 	const response = await fetch(apiUrl('/api/dev/token'));
 
@@ -253,7 +302,7 @@ export const requestSessionSnapshot = async (params: {
 	});
 
 	if (!response.ok) {
-		throw new Error('Failed to request session snapshot');
+			throw new Error(await readApiErrorMessage(response, 'Failed to request session snapshot'));
 	}
 
 	return (await response.json()) as SessionSnapshotResponse;
@@ -271,7 +320,7 @@ export const requestRecentSessions = async (params: {
 	});
 
 	if (!response.ok) {
-		throw new Error('Failed to request recent sessions');
+			throw new Error(await readApiErrorMessage(response, 'Failed to request recent sessions'));
 	}
 
 	return (await response.json()) as RecentSessionResponse;
@@ -581,7 +630,7 @@ export const requestKnowledgeDocuments = async (params: {
 	});
 
 	if (!response.ok) {
-		throw new Error('Failed to request knowledge documents');
+		throw new Error(await readApiErrorMessage(response, 'Failed to request knowledge documents'));
 	}
 
 	return (await response.json()) as KnowledgeDocumentsResponse;
@@ -596,6 +645,13 @@ export const requestImportKnowledgeDocument = async (params: {
 		mimeType?: string;
 		maxTokens?: number;
 		chunkOverlap?: number;
+		separator?: string;
+		segmentMaxLength?: number;
+		overlapLength?: number;
+		preprocessingRules?: {
+			normalizeWhitespace?: boolean;
+			removeUrlsEmails?: boolean;
+		};
 	};
 }): Promise<KnowledgeDocumentImportResponse> => {
 	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/import`), {
@@ -608,8 +664,98 @@ export const requestImportKnowledgeDocument = async (params: {
 	});
 
 	if (!response.ok) {
-		throw new Error('Failed to import knowledge document');
+		throw new Error(await readApiErrorMessage(response, 'Failed to import knowledge document'));
 	}
 
 	return (await response.json()) as KnowledgeDocumentImportResponse;
+};
+
+export const requestPreviewKnowledgeDocumentChunks = async (params: {
+	authToken: string;
+	input: {
+		inputs: Array<{
+			fileName: string;
+			fileDataUrl: string;
+			mimeType?: string;
+			maxTokens?: number;
+			chunkOverlap?: number;
+			separator?: string;
+			segmentMaxLength?: number;
+			overlapLength?: number;
+			preprocessingRules?: {
+				normalizeWhitespace?: boolean;
+				removeUrlsEmails?: boolean;
+			};
+		}>;
+		previewLimit?: number;
+	};
+}): Promise<KnowledgeDocumentPreviewResponse> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-datasets/preview-chunks'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to preview knowledge document chunks');
+	}
+
+	return (await response.json()) as KnowledgeDocumentPreviewResponse;
+};
+
+export const requestDatasetIndexingEstimate = async (params: {
+	authToken: string;
+	input: {
+		dataset_id: string;
+		doc_form: 'text_model' | 'qa_model' | 'hierarchical_model';
+		doc_language: string;
+		process_rule: {
+			mode: 'custom' | 'hierarchical';
+			rules: {
+				pre_processing_rules: Array<{
+					id: string;
+					enabled: boolean;
+				}>;
+				segmentation: {
+					separator: string;
+					max_tokens: number;
+					chunk_overlap?: number;
+				};
+				parent_mode: 'full-doc' | 'paragraph';
+				subchunk_segmentation: {
+					separator: string;
+					max_tokens: number;
+					chunk_overlap?: number;
+				};
+			};
+		};
+		info_list: {
+			data_source_type: 'upload_file';
+			file_info_list: {
+				files: Array<{
+					file_name: string;
+					file_data_url: string;
+					mime_type?: string;
+				}>;
+			};
+		};
+	};
+}): Promise<DatasetIndexingEstimateResponse> => {
+	const response = await fetch(apiUrl('/api/datasets/indexing-estimate'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+			throw new Error(await readApiErrorMessage(response, 'Failed to request dataset indexing estimate'));
+	}
+
+	return (await response.json()) as DatasetIndexingEstimateResponse;
 };

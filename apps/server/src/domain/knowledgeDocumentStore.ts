@@ -2,8 +2,12 @@ import { existsSync } from 'fs';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { dirname, extname, join } from 'path';
-import { extractDocumentText } from '../services/documentTextExtractor.js';
-import { parseFileDataUrl } from '../services/fileAnalysisHelpers.js';
+import {
+  buildKnowledgeDocumentChunks,
+  type KnowledgeChunkPreview,
+  type KnowledgeDocumentChunkOptions,
+  type KnowledgeDocumentPreprocessingRules,
+} from '../services/knowledgeChunkingService.js';
 import {
   getKnowledgeDatasetById,
   updateKnowledgeDatasetStats,
@@ -28,12 +32,11 @@ export type KnowledgeDocumentRecord = {
   previewText: string;
 };
 
-export type KnowledgeChunkPreview = {
-  id: string;
-  index: number;
-  text: string;
-  tokenCount: number;
-  charCount: number;
+export type KnowledgeDocumentPreviewItem = {
+  fileName: string;
+  mimeType: string;
+  totalChunks: number;
+  preview: KnowledgeChunkPreview[];
 };
 
 type StoredChunk = {
@@ -76,82 +79,6 @@ const getDatasetsDir = () => {
 
 const getDatasetDir = (datasetId: string) => join(getDatasetsDir(), datasetId);
 const getDocumentsIndexPath = (datasetId: string) => join(getDatasetDir(datasetId), 'documents', 'documents.json');
-
-const estimateTokenCount = (text: string) => {
-  return Math.max(1, Math.ceil(text.length / 4));
-};
-
-const splitTextToChunks = (text: string, maxTokens: number, chunkOverlap: number): KnowledgeChunkPreview[] => {
-  const maxChars = Math.max(200, maxTokens * 4);
-  const overlapChars = Math.max(0, chunkOverlap * 4);
-  const normalized = text.replace(/\r\n/g, '\n').trim();
-
-  if (!normalized) {
-    return [];
-  }
-
-  const paragraphs = normalized
-    .split(/\n\s*\n/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const chunks: KnowledgeChunkPreview[] = [];
-  let current = '';
-
-  const pushChunk = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
-
-    chunks.push({
-      id: `chunk_${chunks.length}`,
-      index: chunks.length,
-      text: trimmed,
-      charCount: trimmed.length,
-      tokenCount: estimateTokenCount(trimmed),
-    });
-  };
-
-  paragraphs.forEach((paragraph) => {
-    if (paragraph.length > maxChars) {
-      if (current) {
-        pushChunk(current);
-        current = '';
-      }
-
-      let start = 0;
-      while (start < paragraph.length) {
-        const end = Math.min(start + maxChars, paragraph.length);
-        pushChunk(paragraph.slice(start, end));
-        if (end >= paragraph.length) {
-          break;
-        }
-        start = Math.max(end - overlapChars, start + 1);
-      }
-      return;
-    }
-
-    const nextValue = current ? `${current}\n\n${paragraph}` : paragraph;
-    if (nextValue.length > maxChars) {
-      pushChunk(current);
-      current = paragraph;
-      return;
-    }
-
-    current = nextValue;
-  });
-
-  if (current) {
-    pushChunk(current);
-  }
-
-  return chunks.map((chunk, index) => ({
-    ...chunk,
-    id: `chunk_${index}`,
-    index,
-  }));
-};
 
 const ensureDatasetDirectories = async (datasetId: string) => {
   const documentsDir = join(getDatasetDir(datasetId), 'documents');
@@ -283,6 +210,26 @@ export const deleteKnowledgeDatasetFiles = async (datasetId: string): Promise<vo
   await rm(getDatasetDir(datasetId), { recursive: true, force: true });
 };
 
+export const previewKnowledgeDocuments = async (params: {
+  inputs: KnowledgeDocumentChunkOptions[];
+  previewLimit?: number;
+}) => {
+  const previewLimit = Math.max(1, params.previewLimit ?? 40);
+  const items: KnowledgeDocumentPreviewItem[] = [];
+
+  for (const input of params.inputs) {
+    const result = await buildKnowledgeDocumentChunks(input);
+    items.push({
+      fileName: input.fileName,
+      mimeType: result.mimeType,
+      totalChunks: result.chunks.length,
+      preview: result.chunks.slice(0, previewLimit),
+    });
+  }
+
+  return { items };
+};
+
 export const importKnowledgeDocument = async (params: {
   datasetId: string;
   fileName: string;
@@ -290,53 +237,29 @@ export const importKnowledgeDocument = async (params: {
   mimeType?: string;
   maxTokens?: number;
   chunkOverlap?: number;
+  separator?: string;
+  segmentMaxLength?: number;
+  overlapLength?: number;
+  preprocessingRules?: KnowledgeDocumentPreprocessingRules;
 }) => {
   const dataset = await getKnowledgeDatasetById(params.datasetId);
   if (!dataset) {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const parsedPayload = parseFileDataUrl(params.fileDataUrl);
-  const mimeType = params.mimeType?.trim() || parsedPayload.mimeType;
-  const extension = extname(params.fileName).replace(/^\./, '').toLowerCase();
-  const datasetDir = getDatasetDir(params.datasetId);
-  const tempImportPath = join(datasetDir, `.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension || 'bin'}`);
+  const result = await buildKnowledgeDocumentChunks(params);
 
-  await mkdir(datasetDir, { recursive: true });
-  await writeFile(tempImportPath, parsedPayload.buffer);
+  const persisted = await persistImportedDocument({
+    dataset,
+    fileName: params.fileName,
+    mimeType: result.mimeType,
+    buffer: result.buffer,
+    extractedText: result.processedText,
+    chunks: result.chunks,
+  });
 
-  try {
-    const extractedText = await extractDocumentText({
-      buffer: parsedPayload.buffer,
-      mimeType,
-      fileName: params.fileName,
-      filePath: tempImportPath,
-    });
-
-    const chunks = splitTextToChunks(
-      extractedText,
-      params.maxTokens ?? 500,
-      params.chunkOverlap ?? 80,
-    );
-
-    if (!extractedText) {
-      throw new Error('文件内容为空或暂无法提取文本');
-    }
-
-    const persisted = await persistImportedDocument({
-      dataset,
-      fileName: params.fileName,
-      mimeType,
-      buffer: parsedPayload.buffer,
-      extractedText,
-      chunks,
-    });
-
-    return {
-      document: persisted.record,
-      preview: persisted.preview,
-    };
-  } finally {
-    await rm(tempImportPath, { force: true });
-  }
+  return {
+    document: persisted.record,
+    preview: persisted.preview,
+  };
 };

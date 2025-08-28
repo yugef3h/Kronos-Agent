@@ -13,6 +13,7 @@ import {
   deleteKnowledgeDatasetFiles,
   importKnowledgeDocument,
   listKnowledgeDocuments,
+  previewKnowledgeDocuments,
 } from '../domain/knowledgeDocumentStore.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
@@ -24,6 +25,7 @@ import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
+import { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
 import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
 import { join } from 'path';
 
@@ -106,6 +108,81 @@ const knowledgeDocumentImportSchema = z.object({
   mimeType: z.string().trim().max(120).optional(),
   maxTokens: z.coerce.number().int().min(100).max(4000).default(500),
   chunkOverlap: z.coerce.number().int().min(0).max(1000).default(80),
+  separator: z.string().min(1).max(24).default('\\n\\n'),
+  segmentMaxLength: z.coerce.number().int().min(200).max(12000).default(1024),
+  overlapLength: z.coerce.number().int().min(0).max(4000).default(50),
+  preprocessingRules: z.object({
+    normalizeWhitespace: z.boolean().default(true),
+    removeUrlsEmails: z.boolean().default(false),
+  }).default({
+    normalizeWhitespace: true,
+    removeUrlsEmails: false,
+  }),
+});
+
+const knowledgeDocumentPreviewSchema = z.object({
+  inputs: z.array(knowledgeDocumentImportSchema).min(1).max(30),
+  previewLimit: z.coerce.number().int().min(1).max(100).default(40),
+});
+
+const indexingEstimateFileSchema = z.object({
+  file_id: z.string().trim().min(1).max(120).optional(),
+  file_name: z.string().trim().min(1).max(240),
+  file_data_url: z.string().min(1),
+  mime_type: z.string().trim().max(120).optional(),
+});
+
+const indexingEstimateSegmentationSchema = z.object({
+  separator: z.string().min(1).max(24).default('\n\n'),
+  max_tokens: z.coerce.number().int().min(100).max(4000).default(500),
+  chunk_overlap: z.coerce.number().int().min(0).max(1000).default(80).optional(),
+});
+
+const indexingEstimateSchema = z.object({
+  dataset_id: z.string().trim().min(1),
+  doc_form: z.enum(['text_model', 'qa_model', 'hierarchical_model']).default('text_model'),
+  doc_language: z.string().trim().min(1).max(80).default('Chinese Simplified'),
+  process_rule: z.object({
+    mode: z.enum(['custom', 'hierarchical']).default('custom'),
+    rules: z.object({
+      pre_processing_rules: z.array(z.object({
+        id: z.string().trim().min(1).max(60),
+        enabled: z.boolean().default(true),
+      })).max(20).default([]),
+      segmentation: indexingEstimateSegmentationSchema,
+      parent_mode: z.enum(['full-doc', 'paragraph']).default('paragraph'),
+      subchunk_segmentation: z.object({
+        separator: z.string().min(1).max(24).default('\n'),
+        max_tokens: z.coerce.number().int().min(50).max(2000).default(200),
+        chunk_overlap: z.coerce.number().int().min(0).max(500).default(30).optional(),
+      }).default({
+        separator: '\n',
+        max_tokens: 200,
+        chunk_overlap: 30,
+      }),
+    }),
+    summary_index_setting: z.object({
+      enable: z.boolean().optional(),
+      model_name: z.string().trim().min(1).max(120).optional(),
+      model_provider_name: z.string().trim().min(1).max(120).optional(),
+      summary_prompt: z.string().trim().min(1).max(4000).optional(),
+    }).optional(),
+  }),
+  summary_index_setting: z.object({
+    enable: z.boolean().optional(),
+    model_name: z.string().trim().min(1).max(120).optional(),
+    model_provider_name: z.string().trim().min(1).max(120).optional(),
+    summary_prompt: z.string().trim().min(1).max(4000).optional(),
+  }).optional(),
+  info_list: z.object({
+    data_source_type: z.literal('upload_file'),
+    file_info_list: z.object({
+      file_ids: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
+      files: z.array(indexingEstimateFileSchema).min(1).max(30).optional(),
+    }).refine((value) => (value.files?.length ?? 0) > 0 || (value.file_ids?.length ?? 0) > 0, {
+      message: 'At least one file is required',
+    }),
+  }),
 });
 
 export const chatRoutes = Router();
@@ -276,6 +353,51 @@ chatRoutes.post('/workflow/knowledge-datasets/:datasetId/documents/import', asyn
     }
 
     response.status(500).json({ error: `Knowledge document import failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-datasets/preview-chunks', async (request: Request, response: Response) => {
+  const parsed = knowledgeDocumentPreviewSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await previewKnowledgeDocuments(parsed.data);
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `Knowledge document preview failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/datasets/indexing-estimate', async (request: Request, response: Response) => {
+  const parsed = indexingEstimateSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  try {
+    const result = await runKnowledgeIndexingEstimate(parsed.data);
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    if (reason === 'QA_MODEL_NOT_SUPPORTED' || reason === 'UNSUPPORTED_DATA_SOURCE_TYPE' || reason === 'UNSUPPORTED_FILE_REFERENCE_MODE' || reason === 'MISSING_UPLOAD_FILES') {
+      response.status(400).json({ error: reason });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge indexing estimate failed: ${reason}` });
   }
 });
 
