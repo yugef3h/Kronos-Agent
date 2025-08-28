@@ -248,6 +248,11 @@ export type KnowledgeDocumentsResponse = {
 	items: KnowledgeDocumentResponseItem[];
 };
 
+export type KnowledgeDocumentBlocksResponse = {
+	document: KnowledgeDocumentResponseItem;
+	chunks: KnowledgeDocumentChunkPreview[];
+};
+
 export type KnowledgeDocumentImportResponse = {
 	document: KnowledgeDocumentResponseItem;
 	preview: KnowledgeDocumentChunkPreview[];
@@ -634,6 +639,24 @@ export const requestKnowledgeDocuments = async (params: {
 	}
 
 	return (await response.json()) as KnowledgeDocumentsResponse;
+};
+
+export const requestKnowledgeDocumentBlocks = async (params: {
+	authToken: string;
+	datasetId: string;
+	documentId: string;
+}): Promise<KnowledgeDocumentBlocksResponse> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/${params.documentId}/blocks`), {
+		headers: {
+			Authorization: `Bearer ${params.authToken}`,
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to request knowledge document blocks'));
+	}
+
+	return (await response.json()) as KnowledgeDocumentBlocksResponse;
 };
 
 export const requestImportKnowledgeDocument = async (params: {

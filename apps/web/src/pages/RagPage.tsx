@@ -2,11 +2,13 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import {
   requestDatasetIndexingEstimate,
   requestImportKnowledgeDocument,
+  requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import {
   Dialog,
+  DialogCloseButton,
   DialogContent,
   DialogTitle,
 } from './workflow/base/dialog';
@@ -127,6 +129,16 @@ type LocalImportPreview = {
   skippedFiles: Array<{ fileName: string; reason: string }>;
   chunks: LocalPreviewChunk[];
 };
+
+type DatasetDocumentBlock = {
+  id: string;
+  index: number;
+  text: string;
+  tokenCount: number;
+  charCount: number;
+};
+
+type DatasetDocumentBlocksMap = Record<string, DatasetDocumentBlock[]>;
 
 const isSupportedKnowledgeFile = (file: File) => {
   if (SUPPORTED_DOCUMENT_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix))) {
@@ -260,6 +272,9 @@ export const RagPage = () => {
   }>>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState('');
+  const [documentBlocksMap, setDocumentBlocksMap] = useState<DatasetDocumentBlocksMap>({});
+  const [isDocumentBlocksLoading, setIsDocumentBlocksLoading] = useState(false);
+  const [documentBlocksError, setDocumentBlocksError] = useState('');
 
   useEffect(() => {
     folderInputRef.current?.setAttribute('webkitdirectory', '');
@@ -290,8 +305,23 @@ export const RagPage = () => {
     [datasets, selectedDatasetId],
   );
 
+  const flattenedDocumentBlocks = useMemo(
+    () => datasetDocuments.flatMap((document) => {
+      const blocks = documentBlocksMap[document.id] || [];
+
+      return blocks.map((block) => ({
+        ...block,
+        documentId: document.id,
+        documentName: document.name,
+      }));
+    }),
+    [datasetDocuments, documentBlocksMap],
+  );
+
   const handleDatasetSelection = useCallback((datasetId: string, options?: { openDetail?: boolean }) => {
     setSelectedDatasetId(datasetId);
+    setDocumentBlocksMap({});
+    setDocumentBlocksError('');
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.set('dataset', datasetId);
@@ -310,6 +340,8 @@ export const RagPage = () => {
       return next;
     }, { replace: true });
     setIsDatasetDetailDialogOpen(false);
+    setDocumentBlocksMap({});
+    setDocumentBlocksError('');
   }, [setSearchParams]);
 
   const refreshDatasetDocuments = useCallback(async (datasetId: string) => {
@@ -375,6 +407,88 @@ export const RagPage = () => {
 
     void refreshDatasetDocuments(selectedDatasetId);
   }, [refreshDatasetDocuments, selectedDatasetId]);
+
+  useEffect(() => {
+    if (!isDatasetDetailDialogOpen || !selectedDatasetId || !datasetDocuments.length) {
+      setDocumentBlocksMap({});
+      setDocumentBlocksError('');
+      setIsDocumentBlocksLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setIsDocumentBlocksLoading(true);
+    setDocumentBlocksError('');
+
+    void (async () => {
+      const authToken = await ensureKnowledgeDatasetAuthToken();
+      if (!authToken) {
+        throw new Error('知识库接口需要 JWT 鉴权');
+      }
+
+      const results = await Promise.allSettled(
+        datasetDocuments.map(async (document) => {
+          const response = await requestKnowledgeDocumentBlocks({
+            authToken,
+            datasetId: selectedDatasetId,
+            documentId: document.id,
+          });
+
+          return {
+            documentId: document.id,
+            chunks: response.chunks.map((chunk) => ({
+              id: chunk.id,
+              index: chunk.index,
+              text: chunk.text,
+              tokenCount: chunk.tokenCount,
+              charCount: chunk.charCount,
+            })),
+          };
+        }),
+      );
+
+      return results;
+    })()
+      .then((results) => {
+        if (!isActive) {
+          return;
+        }
+
+        const nextBlocksMap: DatasetDocumentBlocksMap = {};
+        let failedCount = 0;
+
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            nextBlocksMap[result.value.documentId] = result.value.chunks;
+            return;
+          }
+
+          failedCount += 1;
+        });
+
+        setDocumentBlocksMap(nextBlocksMap);
+        setDocumentBlocksError(failedCount ? `有 ${failedCount} 个文档的 blocks 加载失败。` : '');
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return;
+        }
+
+        setDocumentBlocksMap({});
+        setDocumentBlocksError(error instanceof Error ? error.message : '文档 blocks 加载失败');
+      })
+      .finally(() => {
+        if (!isActive) {
+          return;
+        }
+
+        setIsDocumentBlocksLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [datasetDocuments, isDatasetDetailDialogOpen, selectedDatasetId]);
 
   useEffect(() => {
     if (!isImportDialogOpen || !pendingImport?.files.length) {
@@ -911,9 +1025,10 @@ export const RagPage = () => {
 
         setIsImportDialogOpen(true);
       }}>
-        <DialogContent overlayClassName="bg-slate-950/56" className="h-[min(84vh,760px)] w-[min(920px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-hidden !bg-white p-0">
+        <DialogContent overlayClassName="bg-slate-950/56" className="flex h-[min(84vh,760px)] w-[min(920px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden !bg-white p-0">
+          <DialogCloseButton aria-label="关闭导入弹窗" className="right-4 top-3" />
 
-          <div className="border-b border-slate-200 bg-white px-4 py-3">
+          <div className="border-b border-slate-200 bg-white px-4 py-3 pr-14">
             <DialogTitle className="text-base font-semibold text-slate-900">
               导入文件
             </DialogTitle>
@@ -1143,37 +1258,36 @@ export const RagPage = () => {
 
       <Dialog open={isDatasetDetailDialogOpen} onOpenChange={(nextOpen) => {
         setIsDatasetDetailDialogOpen(nextOpen);
+        if (!nextOpen) {
+          setDocumentBlocksMap({});
+          setDocumentBlocksError('');
+          setIsDocumentBlocksLoading(false);
+        }
       }}>
-        <DialogContent overlayClassName="bg-slate-950/56" className="h-[min(82vh,760px)] w-[min(780px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-hidden !bg-white p-0">
-          <div className="border-b border-slate-200 bg-white px-4 py-3">
+        <DialogContent overlayClassName="bg-slate-950/56" className="flex h-[min(82vh,760px)] w-[min(780px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden !bg-white p-0">
+          <DialogCloseButton aria-label="关闭知识库详情弹窗" className="right-4 top-3" />
+          <div className="border-b border-slate-200 bg-white px-4 py-3 pr-14">
             <DialogTitle className="text-base font-semibold text-slate-900">
               {selectedDataset?.name || '知识库详情'}
             </DialogTitle>
-            <p className="mt-1 text-sm text-slate-500">
-              {selectedDataset?.description || '查看当前知识库的文档摘要、chunk 统计和最近更新时间。'}
-            </p>
-          </div>
 
-          <div className="min-h-0 overflow-y-auto bg-slate-50 px-4 py-4">
             {selectedDataset ? (
-              <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 ml-[-10px]">
                 <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.documentCount ?? 0} 文档</span>
                 <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.chunkCount ?? 0} chunks</span>
                 <span className="rounded-full bg-white px-2.5 py-1">更新时间 {formatTimestamp(selectedDataset.updatedAt)}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void refreshDatasetDocuments(selectedDataset.id);
-                  }}
-                  className="ml-auto rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:text-cyan-700"
-                >
-                  刷新详情
-                </button>
               </div>
             ) : null}
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 px-4 py-4">
 
             {documentsError ? (
               <p className="mb-4 text-sm text-rose-600">{documentsError}</p>
+            ) : null}
+
+            {documentBlocksError ? (
+              <p className="mb-4 text-sm text-rose-600">{documentBlocksError}</p>
             ) : null}
 
             <div className="space-y-2">
@@ -1195,22 +1309,31 @@ export const RagPage = () => {
                 </div>
               ) : null}
 
-              {!isDocumentsLoading && datasetDocuments.length ? datasetDocuments.map((document) => (
-                <article key={document.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{document.name}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">更新时间 {formatTimestamp(document.updatedAt)}</p>
+              {isDocumentBlocksLoading ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                  正在从后端加载完整 blocks...
+                </div>
+              ) : null}
+
+              {!isDocumentsLoading && !isDocumentBlocksLoading && datasetDocuments.length && !flattenedDocumentBlocks.length ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+                  暂无可展示的 blocks。
+                </div>
+              ) : null}
+
+              {!isDocumentBlocksLoading && flattenedDocumentBlocks.length ? flattenedDocumentBlocks.map((block) => (
+                <article key={block.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="truncate rounded-full bg-cyan-50 px-2 py-1 font-medium text-cyan-700">{block.documentName}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-700">Block #{block.index + 1}</span>
                     </div>
-                    <span className="shrink-0 text-[11px] text-slate-500">{formatFileSize(document.size)}</span>
+                    <div className="flex flex-wrap gap-2">
+                      <span>{block.charCount} chars</span>
+                      <span>{block.tokenCount} tokens</span>
+                    </div>
                   </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                    <span className="rounded-full bg-slate-100 px-2 py-1">{document.chunkCount} chunks</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-1">{document.characterCount} chars</span>
-                  </div>
-
-                  <p className="mt-3 line-clamp-4 text-xs leading-5 text-slate-600">{document.previewText || '暂无摘要'}</p>
+                  <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{block.text}</p>
                 </article>
               )) : null}
             </div>

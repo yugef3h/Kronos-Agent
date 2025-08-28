@@ -39,6 +39,11 @@ export type KnowledgeDocumentPreviewItem = {
   preview: KnowledgeChunkPreview[];
 };
 
+export type KnowledgeDocumentBlocksResult = {
+  document: KnowledgeDocumentRecord;
+  chunks: KnowledgeChunkPreview[];
+};
+
 type StoredChunk = {
   id: string;
   documentId: string;
@@ -204,6 +209,42 @@ export const listKnowledgeDocuments = async (datasetId: string): Promise<Knowled
   }
 
   return readDocumentsIndex(datasetId);
+};
+
+export const getKnowledgeDocumentBlocks = async (
+  datasetId: string,
+  documentId: string,
+): Promise<KnowledgeDocumentBlocksResult> => {
+  const dataset = await getKnowledgeDatasetById(datasetId);
+  if (!dataset) {
+    throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+  }
+
+  const records = await readDocumentsIndex(datasetId);
+  const document = records.find((item) => item.id === documentId);
+  if (!document) {
+    throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
+  }
+
+  const raw = await readFile(document.chunkPath, 'utf-8');
+  const chunks = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as StoredChunk)
+    .sort((left, right) => left.index - right.index)
+    .map((chunk) => ({
+      id: chunk.id,
+      index: chunk.index,
+      text: chunk.text,
+      tokenCount: chunk.tokenCount,
+      charCount: chunk.charCount,
+    }));
+
+  return {
+    document,
+    chunks,
+  };
 };
 
 export const deleteKnowledgeDatasetFiles = async (datasetId: string): Promise<void> => {

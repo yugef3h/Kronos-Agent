@@ -8,7 +8,11 @@ import {
   listKnowledgeDatasets,
   resetKnowledgeDatasetStoreForTests,
 } from './knowledgeDatasetStore';
-import { importKnowledgeDocument, listKnowledgeDocuments } from './knowledgeDocumentStore';
+import {
+  getKnowledgeDocumentBlocks,
+  importKnowledgeDocument,
+  listKnowledgeDocuments,
+} from './knowledgeDocumentStore';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {
   const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');
@@ -91,5 +95,31 @@ describe('knowledgeDocumentStore', () => {
     const indexPath = join(tempDir, 'knowledge-datasets', dataset.id, 'documents', 'documents.json');
     const persisted = JSON.parse(await readFile(indexPath, 'utf-8')) as Array<{ name: string }>;
     expect(persisted[0]?.name).toBe('faq.xlsx');
+  });
+  
+  it('loads full blocks for a persisted document', async () => {
+    const dataset = await createKnowledgeDataset({
+      name: '块详情知识库',
+      description: '块详情测试',
+      is_multimodal: false,
+      doc_metadata: [],
+    });
+
+    const result = await importKnowledgeDocument({
+      datasetId: dataset.id,
+      fileName: 'detail.txt',
+      mimeType: 'text/plain',
+      fileDataUrl: toDataUrl('text/plain', '第一段内容。\n\n第二段内容。\n\n第三段内容。'),
+      maxTokens: 20,
+      chunkOverlap: 4,
+    });
+
+    const blocks = await getKnowledgeDocumentBlocks(dataset.id, result.document.id);
+
+    expect(blocks.document.id).toBe(result.document.id);
+    expect(blocks.chunks.length).toBeGreaterThan(0);
+    expect(blocks.chunks[0]).toMatchObject({
+      index: 0,
+    });
   });
 });

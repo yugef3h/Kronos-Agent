@@ -11,6 +11,7 @@ import {
 } from '../domain/knowledgeDatasetStore.js';
 import {
   deleteKnowledgeDatasetFiles,
+  getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
   listKnowledgeDocuments,
   previewKnowledgeDocuments,
@@ -327,6 +328,30 @@ chatRoutes.get('/workflow/knowledge-datasets/:datasetId/documents', async (reque
     }
 
     response.status(500).json({ error: `Knowledge documents list failed: ${reason}` });
+  }
+});
+
+chatRoutes.get('/workflow/knowledge-datasets/:datasetId/documents/:documentId/blocks', async (request: Request, response: Response) => {
+  try {
+    const result = await getKnowledgeDocumentBlocks(
+      String(request.params.datasetId || ''),
+      String(request.params.documentId || ''),
+    );
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    if (reason === 'KNOWLEDGE_DOCUMENT_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge document not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge document blocks failed: ${reason}` });
   }
 });
 
