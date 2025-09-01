@@ -211,6 +211,7 @@ export const createNodeFromSource = (
   return {
     id: nextNodeId,
     type: 'workflow',
+    dragHandle: '.workflow-node-drag-surface',
     parentId: sourceNode.parentId,
     extent: sourceNode.parentId ? 'parent' : undefined,
     draggable: sourceNode.parentId ? true : undefined,

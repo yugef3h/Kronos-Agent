@@ -8,278 +8,34 @@ import {
 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Dialog,
-  DialogCloseButton,
-  DialogContent,
-  DialogTitle,
-} from './workflow/base/dialog';
-import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
 } from './workflow/features/knowledge-retrieval-panel/dataset-store';
+import type {
+  DatasetDocumentBlocksMap,
+  DatasetDocumentDetail,
+  FlattenedDatasetDocumentBlock,
+  ImportFormState,
+  LocalImportPreview,
+  PendingImportConfig,
+} from 'pages/rag/types';
+import {
+  buildDocumentMetadata,
+  createImportFormState,
+  createMetadataDrafts,
+  DRAFT_DATASET_ID,
+  DOCUMENT_INPUT_ACCEPT,
+  filterSupportedKnowledgeFiles,
+  formatTimestamp,
+  getDatasetInitial,
+  MAX_SEGMENT_MAX_LENGTH,
+  MIN_SEGMENT_MAX_LENGTH,
+  PREVIEW_CHUNK_LIMIT,
+  readFileAsDataUrl,
+} from './rag/utils';
+import { RagDatasetDetailDialog } from './rag/dataset-detail-dialog';
+import { RagImportDialog } from './rag/import-dialog';
 import { appendTagItems } from './rag/tag-input-utils';
-
-const formatTimestamp = (timestamp?: number): string => {
-  if (!timestamp) {
-    return '未同步';
-  }
-
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(timestamp));
-};
-
-const getFileBaseName = (fileName: string) => {
-  const segments = fileName.split('.');
-  if (segments.length <= 1) {
-    return fileName;
-  }
-
-  return segments.slice(0, -1).join('.');
-};
-
-const getDatasetInitial = (name?: string) => {
-  const initial = name?.trim().charAt(0) || '';
-  return initial || '知';
-};
-
-const formatFileSize = (size: number) => {
-  if (size < 1024) {
-    return `${size} B`;
-  }
-
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const SUPPORTED_DOCUMENT_EXTENSIONS = new Set([
-  'txt',
-  'md',
-  'mdx',
-  'json',
-  'csv',
-  'yaml',
-  'yml',
-  'pdf',
-  'doc',
-  'docx',
-  'xls',
-  'xlsx',
-]);
-
-const SUPPORTED_DOCUMENT_MIME_PREFIXES = [
-  'text/',
-];
-
-const SUPPORTED_DOCUMENT_MIME_TYPES = new Set([
-  'application/json',
-  'application/ld+json',
-  'application/x-ndjson',
-  'application/pdf',
-  'application/msword',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-]);
-
-const DOCUMENT_INPUT_ACCEPT = '.txt,.md,.mdx,.json,.csv,.yaml,.yml,.pdf,.doc,.docx,.xls,.xlsx,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-const MIN_SEGMENT_MAX_LENGTH = 100;
-const MAX_SEGMENT_MAX_LENGTH = 12000;
-const PREVIEW_CHUNK_LIMIT = 48;
-const DRAFT_DATASET_ID = '__draft_preview__';
-
-type PendingImportConfig = {
-  files: File[];
-  datasetId?: string;
-  source: 'file' | 'folder' | 'drop';
-  rejectedFiles: Array<{ fileName: string; reason: string }>;
-};
-
-type ImportFormState = {
-  datasetName: string;
-  description: string;
-  separator: string;
-  segmentMaxLength: string;
-  overlapLength: string;
-  normalizeWhitespace: boolean;
-  removeUrlsEmails: boolean;
-  topK: string;
-  metadataFields: ImportMetadataFieldDraft[];
-};
-
-type ImportMetadataFieldDraft = {
-  id: string;
-  key: string;
-  label: string;
-  value: string;
-};
-
-type LocalPreviewChunk = {
-  id: string;
-  index: number;
-  text: string;
-  tokenCount: number;
-  charCount: number;
-  fileName: string;
-};
-
-type LocalImportPreview = {
-  totalNodes: number;
-  tokens: number;
-  totalChunks: number;
-  previewableFileCount: number;
-  skippedFiles: Array<{ fileName: string; reason: string }>;
-  chunks: LocalPreviewChunk[];
-};
-
-type DatasetDocumentBlock = {
-  id: string;
-  index: number;
-  text: string;
-  tokenCount: number;
-  charCount: number;
-  metadata: Record<string, string>;
-  keywords: string[];
-};
-
-type DatasetDocumentBlocksMap = Record<string, DatasetDocumentBlock[]>;
-
-type DatasetDocumentDetail = {
-  id: string;
-  name: string;
-  chunkCount: number;
-  characterCount: number;
-  size: number;
-  updatedAt: number;
-  previewText: string;
-  metadata: Record<string, string>;
-};
-
-const isSupportedKnowledgeFile = (file: File) => {
-  if (SUPPORTED_DOCUMENT_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix))) {
-    return true;
-  }
-
-  if (SUPPORTED_DOCUMENT_MIME_TYPES.has(file.type)) {
-    return true;
-  }
-
-  const extension = file.name.split('.').pop()?.toLowerCase() || '';
-  return SUPPORTED_DOCUMENT_EXTENSIONS.has(extension);
-};
-
-const filterSupportedKnowledgeFiles = (files: File[]) => {
-  const acceptedFiles: File[] = [];
-  const rejectedFiles: Array<{ fileName: string; reason: string }> = [];
-
-  files.forEach((file) => {
-    if (isSupportedKnowledgeFile(file)) {
-      acceptedFiles.push(file);
-      return;
-    }
-
-    rejectedFiles.push({
-      fileName: file.name,
-      reason: '仅支持 TXT、MD、JSON、CSV、PDF、DOC、DOCX、XLS、XLSX',
-    });
-  });
-
-  return { acceptedFiles, rejectedFiles };
-};
-
-const createImportFormState = (files: File[], datasetName?: string, description?: string): ImportFormState => ({
-  datasetName: datasetName?.trim() || inferDatasetName(files),
-  description: description?.trim() || `${files.length} 个文件导入`,
-  separator: '\\n\\n',
-  segmentMaxLength: '1024',
-  overlapLength: '50',
-  normalizeWhitespace: true,
-  removeUrlsEmails: false,
-  topK: '3',
-  metadataFields: [],
-});
-
-const createMetadataFieldDraftId = () => `metadata-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-
-const createMetadataDrafts = (fields: Array<{ key: string; label: string }>) => {
-  return fields.map((field) => ({
-    id: createMetadataFieldDraftId(),
-    key: field.key,
-    label: field.label,
-    value: '',
-  }));
-};
-
-const buildDocumentMetadata = (fields: ImportMetadataFieldDraft[]) => {
-  return fields.reduce<Record<string, string>>((accumulator, field) => {
-    const key = field.key.trim();
-    const value = field.value.trim();
-
-    if (!key || !value) {
-      return accumulator;
-    }
-
-    accumulator[key] = value;
-    return accumulator;
-  }, {});
-};
-
-const readFileAsDataUrl = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('文件读取失败'));
-        return;
-      }
-
-      resolve(reader.result);
-    };
-
-    reader.onerror = () => {
-      reject(new Error(`读取文件失败：${file.name}`));
-    };
-
-    reader.readAsDataURL(file);
-  });
-};
-
-const getTopFolderName = (file: File): string => {
-  const relativePath = 'webkitRelativePath' in file ? file.webkitRelativePath : '';
-  if (!relativePath.includes('/')) {
-    return '';
-  }
-
-  return relativePath.split('/')[0]?.trim() || '';
-};
-
-const inferDatasetName = (files: File[]): string => {
-  const [firstFile] = files;
-
-  if (!firstFile) {
-    return `知识库-${Date.now().toString(36)}`;
-  }
-
-  const folderName = getTopFolderName(firstFile);
-  if (folderName) {
-    return folderName;
-  }
-
-  if (files.length === 1) {
-    return getFileBaseName(firstFile.name);
-  }
-
-  return `${getFileBaseName(firstFile.name)}-等${files.length}个文件`;
-};
 
 export const RagPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -348,7 +104,7 @@ export const RagPage = () => {
     [datasets, selectedDatasetId],
   );
 
-  const flattenedDocumentBlocks = useMemo(
+  const flattenedDocumentBlocks = useMemo<FlattenedDatasetDocumentBlock[]>(
     () => datasetDocuments.flatMap((document) => {
       const blocks = documentBlocksMap[document.id] || [];
 
@@ -407,7 +163,7 @@ export const RagPage = () => {
   }, [selectedDatasetId]);
 
   const handleBlockKeywordCommit = useCallback(async (
-    block: DatasetDocumentBlock & { documentId: string },
+    block: FlattenedDatasetDocumentBlock,
   ) => {
     const draftValue = blockKeywordDrafts[block.id] || '';
     const nextKeywords = appendTagItems(block.keywords, draftValue);
@@ -428,14 +184,14 @@ export const RagPage = () => {
   }, [blockKeywordDrafts, saveBlockKeywords]);
 
   const handleBlockKeywordRemove = useCallback(async (
-    block: DatasetDocumentBlock & { documentId: string },
+    block: FlattenedDatasetDocumentBlock,
     keyword: string,
   ) => {
     try {
       await saveBlockKeywords({
         blockId: block.id,
         documentId: block.documentId,
-        keywords: block.keywords.filter((item) => item !== keyword),
+        keywords: block.keywords.filter((item: string) => item !== keyword),
       });
     } catch (error) {
       setDocumentBlocksError(error instanceof Error ? error.message : '关键词更新失败');
@@ -796,7 +552,7 @@ export const RagPage = () => {
     setHasRequestedPreview(false);
   };
 
-  const closeImportDialog = () => {
+  const closeImportDialog = useCallback(() => {
     if (isImporting) {
       return;
     }
@@ -810,7 +566,7 @@ export const RagPage = () => {
     setPreviewRefreshTick(0);
     setHasRequestedPreview(false);
     setPendingTargetDatasetId('');
-  };
+  }, [isImporting]);
 
   const handlePickerOpen = (mode: 'file' | 'folder', datasetId?: string) => {
     setPendingTargetDatasetId(datasetId ?? '');
@@ -1014,6 +770,33 @@ export const RagPage = () => {
     }
   };
 
+  const handleImportDialogOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      closeImportDialog();
+      return;
+    }
+
+    setIsImportDialogOpen(true);
+  }, [closeImportDialog]);
+
+  const handleDetailDialogOpenChange = useCallback((nextOpen: boolean) => {
+    setIsDatasetDetailDialogOpen(nextOpen);
+    if (!nextOpen) {
+      setDocumentBlocksMap({});
+      setDocumentBlocksError('');
+      setIsDocumentBlocksLoading(false);
+      setBlockKeywordDrafts({});
+      setSavingBlockKeywordId('');
+    }
+  }, []);
+
+  const handleBlockKeywordDraftChange = useCallback((blockId: string, value: string) => {
+    setBlockKeywordDrafts((current) => ({
+      ...current,
+      [blockId]: value,
+    }));
+  }, []);
+
   return (
     <>
       <section className="min-w-0 flex-1 rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-[0_24px_60px_-32px_rgba(8,145,178,0.35)]">
@@ -1179,390 +962,62 @@ export const RagPage = () => {
         </div>
       </section>
 
-      <Dialog open={isImportDialogOpen} onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          closeImportDialog();
-          return;
-        }
+      <RagImportDialog
+        open={isImportDialogOpen}
+        pendingImport={pendingImport}
+        pendingDataset={pendingDataset}
+        importForm={importForm}
+        setImportForm={setImportForm}
+        importFormError={importFormError}
+        isImporting={isImporting}
+        isMutating={isMutating}
+        localPreview={localPreview}
+        isPreviewLoading={isPreviewLoading}
+        previewError={previewError}
+        hasRequestedPreview={hasRequestedPreview}
+        onOpenChange={handleImportDialogOpenChange}
+        onClose={closeImportDialog}
+        onConfirm={() => {
+          void handleImportFiles();
+        }}
+        onRequestPreview={() => {
+          setHasRequestedPreview(true);
+          setLocalPreview(null);
+          setPreviewError('');
+          setPreviewRefreshTick((current) => current + 1);
+        }}
+        onReset={() => {
+          setImportForm({
+            ...createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description),
+            metadataFields: createMetadataDrafts(pendingDataset?.doc_metadata ?? []),
+          });
+          setHasRequestedPreview(false);
+          setLocalPreview(null);
+          setPreviewError('');
+          setPreviewRefreshTick((current) => current + 1);
+        }}
+      />
 
-        setIsImportDialogOpen(true);
-      }}>
-        <DialogContent overlayClassName="bg-slate-950/56" className="flex h-[min(84vh,760px)] w-[min(920px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden !bg-white p-0">
-          <DialogCloseButton aria-label="关闭导入弹窗" className="right-4 top-3" />
-
-          <div className="border-b border-slate-200 bg-white px-4 py-3 pr-14">
-            <DialogTitle className="text-base font-semibold text-slate-900">
-              导入文件
-            </DialogTitle>
-          </div>
-
-          <div className="grid h-[calc(100%-65px-49px)] min-h-0 gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="min-h-0 overflow-y-auto border-r border-slate-200 bg-white px-4 py-3">
-              <div className="space-y-3">
-                {!pendingDataset ? (
-                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                    <label className="min-w-0">
-                      <span className="mb-1 block text-[11px] font-medium text-slate-600">知识库名称</span>
-                      <input
-                        type="text"
-                        value={importForm.datasetName}
-                        onChange={(event) => setImportForm((current) => ({ ...current, datasetName: event.target.value }))}
-                        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-                    <label className="min-w-0">
-                      <span className="mb-1 block text-[11px] font-medium text-slate-600">描述</span>
-                      <input
-                        type="text"
-                        value={importForm.description}
-                        onChange={(event) => setImportForm((current) => ({ ...current, description: event.target.value }))}
-                        className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                    <span className="truncate">目标知识库</span>
-                    <span className="truncate font-medium text-slate-900">{pendingDataset.name}</span>
-                  </div>
-                )}
-
-                <div className="grid gap-2 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                  <label className="min-w-0">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-600">分段标识符</span>
-                    <input
-                      type="text"
-                      value={importForm.separator}
-                      onChange={(event) => setImportForm((current) => ({ ...current, separator: event.target.value }))}
-                      className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                    />
-                  </label>
-                  <label className="min-w-0">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-600">最大长度</span>
-                    <div className="flex overflow-hidden rounded-md border border-slate-200 bg-white focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100">
-                      <input
-                        type="number"
-                        min={MIN_SEGMENT_MAX_LENGTH}
-                        max={MAX_SEGMENT_MAX_LENGTH}
-                        value={importForm.segmentMaxLength}
-                        onChange={(event) => setImportForm((current) => ({ ...current, segmentMaxLength: event.target.value }))}
-                        className="w-full px-2.5 py-1.5 text-sm text-slate-900 outline-none"
-                      />
-                      <span className="border-l border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500">char</span>
-                    </div>
-                  </label>
-                  <label className="min-w-0">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-600">重叠长度</span>
-                    <div className="flex overflow-hidden rounded-md border border-slate-200 bg-white focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100">
-                      <input
-                        type="number"
-                        min={0}
-                        max={4000}
-                        value={importForm.overlapLength}
-                        onChange={(event) => setImportForm((current) => ({ ...current, overlapLength: event.target.value }))}
-                        className="w-full px-2.5 py-1.5 text-sm text-slate-900 outline-none"
-                      />
-                      <span className="border-l border-slate-200 px-2.5 py-1.5 text-[11px] text-slate-500">char</span>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-700">
-                  <span className="text-[11px] font-medium text-slate-600">文本预处理</span>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={importForm.normalizeWhitespace}
-                      onChange={(event) => setImportForm((current) => ({ ...current, normalizeWhitespace: event.target.checked }))}
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>空白规整</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={importForm.removeUrlsEmails}
-                      onChange={(event) => setImportForm((current) => ({ ...current, removeUrlsEmails: event.target.checked }))}
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>移除 URL / 邮箱</span>
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="shrink-0 text-[11px] font-medium text-slate-600">召回 Top K</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={importForm.topK}
-                    onChange={(event) => setImportForm((current) => ({ ...current, topK: event.target.value }))}
-                    className="w-14 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                  />
-                  <input
-                    type="range"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={Number(importForm.topK) || 1}
-                    onChange={(event) => setImportForm((current) => ({ ...current, topK: event.target.value }))}
-                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-blue-600"
-                  />
-                  <span className="w-5 text-right text-xs text-slate-500">{importForm.topK}</span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasRequestedPreview(true);
-                      setLocalPreview(null);
-                      setPreviewError('');
-                      setPreviewRefreshTick((current) => current + 1);
-                    }}
-                    className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
-                  >
-                    预览块
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImportForm({
-                        ...createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description),
-                        metadataFields: createMetadataDrafts(pendingDataset?.doc_metadata ?? []),
-                      });
-                      setHasRequestedPreview(false);
-                      setLocalPreview(null);
-                      setPreviewError('');
-                      setPreviewRefreshTick((current) => current + 1);
-                    }}
-                    className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-                  >
-                    重置
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <aside className="min-h-0 overflow-hidden bg-slate-50 px-4 py-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">预览</p>
-                  <p className="text-[11px] text-slate-500">
-                    {isPreviewLoading
-                      ? '正在生成预览...'
-                      : !hasRequestedPreview
-                        ? ''
-                      : `${localPreview?.totalNodes ?? (pendingImport?.files.length ?? 0)} 个文件，${localPreview?.totalChunks ?? 0} blocks，${localPreview?.tokens ?? 0} tokens`}
-                  </p>
-                </div>
-                <span className="text-[11px] text-slate-500">
-                  {formatFileSize((pendingImport?.files || []).reduce((sum, file) => sum + file.size, 0))}
-                </span>
-              </div>
-
-              {previewError ? (
-                <p className="mb-2 text-sm text-rose-600">{previewError}</p>
-              ) : null}
-
-              <div className="h-full min-h-0 overflow-y-auto pr-1">
-                <div className="space-y-1.5 pb-12">
-                  {/* {(pendingImport?.files || []).map((file) => (
-                    <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-xs text-slate-700 shadow-sm">
-                      <span className="truncate">{file.name}</span>
-                      <span className="shrink-0 text-[11px] text-slate-500">{formatFileSize(file.size)}</span>
-                    </div>
-                  ))} */}
-
-                  {localPreview?.chunks.length ? localPreview.chunks.map((chunk) => (
-                    <div key={chunk.id} className="rounded-md bg-white px-2.5 py-2 shadow-sm">
-                      <div className="flex items-center justify-between gap-3 text-[11px] text-slate-500">
-                        <span className="truncate">{chunk.fileName}</span>
-                        <span>#{chunk.index + 1}</span>
-                      </div>
-                      <p className="mt-1.5 text-xs leading-5 text-slate-700">{chunk.text}</p>
-                    </div>
-                  )) : (
-                    <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-5 text-center text-sm text-slate-500">
-                      暂无预览块
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-          </div>
-
-          <div className="border-t border-slate-200 bg-white px-4 py-3">
-            {importFormError ? (
-              <p className="mb-2 text-sm text-rose-600">{importFormError}</p>
-            ) : null}
-
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeImportDialog}
-                disabled={isImporting}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleImportFiles();
-                }}
-                disabled={isImporting || isMutating}
-                className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isImporting ? '处理中...' : '保存并处理'}
-              </button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDatasetDetailDialogOpen} onOpenChange={(nextOpen) => {
-        setIsDatasetDetailDialogOpen(nextOpen);
-        if (!nextOpen) {
-          setDocumentBlocksMap({});
-          setDocumentBlocksError('');
-          setIsDocumentBlocksLoading(false);
-          setBlockKeywordDrafts({});
-          setSavingBlockKeywordId('');
-        }
-      }}>
-        <DialogContent overlayClassName="bg-slate-950/56" className="flex h-[min(82vh,760px)] w-[min(780px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden !bg-white p-0">
-          <DialogCloseButton aria-label="关闭知识库详情弹窗" className="right-4 top-3" />
-          <div className="border-b border-slate-200 bg-white px-4 py-3 pr-14">
-            <DialogTitle className="text-base font-semibold text-slate-900">
-              {selectedDataset?.name || '知识库详情'}
-            </DialogTitle>
-
-            {selectedDataset ? (
-              <div className="ml-[-10px] flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.documentCount ?? 0} 文档</span>
-                <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.chunkCount ?? 0} chunks</span>
-                <span className="rounded-full bg-white px-2.5 py-1">更新时间 {formatTimestamp(selectedDataset.updatedAt)}</span>
-                {selectedDataset.doc_metadata.length ? selectedDataset.doc_metadata.map((field) => (
-                  <span key={field.key} className="rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700">字段 {field.label}</span>
-                )) : null}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50 px-4 py-4">
-
-            {documentsError ? (
-              <p className="mb-4 text-sm text-rose-600">{documentsError}</p>
-            ) : null}
-
-            {documentBlocksError ? (
-              <p className="mb-4 text-sm text-rose-600">{documentBlocksError}</p>
-            ) : null}
-
-            <div className="space-y-2">
-              {isDocumentsLoading ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  正在加载知识库详情...
-                </div>
-              ) : null}
-
-              {!isDocumentsLoading && !selectedDataset ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  还没有可查看的知识库。
-                </div>
-              ) : null}
-
-              {!isDocumentsLoading && selectedDataset && !datasetDocuments.length ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  这个知识库还没有文档，保存并处理后会在这里显示文档详情。
-                </div>
-              ) : null}
-
-              {isDocumentBlocksLoading ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  正在从后端加载完整 blocks...
-                </div>
-              ) : null}
-
-              {!isDocumentsLoading && !isDocumentBlocksLoading && datasetDocuments.length && !flattenedDocumentBlocks.length ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-                  暂无可展示的 blocks。
-                </div>
-              ) : null}
-
-              {!isDocumentBlocksLoading && flattenedDocumentBlocks.length ? flattenedDocumentBlocks.map((block) => (
-                <article key={block.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="truncate rounded-full bg-cyan-50 px-2 py-1 font-medium text-cyan-700">{block.documentName}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-700">Block #{block.index + 1}</span>
-                      {Object.entries(block.metadata).map(([key, value]) => (
-                        <span key={`${block.id}-${key}`} className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700">{key}: {value}</span>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <span>{block.charCount} chars</span>
-                      <span>{block.tokenCount} tokens</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/70 px-2.5 py-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium text-slate-600">Keywords</span>
-                      {savingBlockKeywordId === block.id ? (
-                        <span className="text-[11px] text-slate-400">保存中...</span>
-                      ) : null}
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {block.keywords.map((keyword) => (
-                        <span key={`${block.id}-${keyword}`} className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-1 text-[11px] font-medium text-cyan-700">
-                          <span>{keyword}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              void handleBlockKeywordRemove(block, keyword);
-                            }}
-                            className="text-cyan-500 transition hover:text-cyan-800"
-                            aria-label={`删除关键词 ${keyword}`}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        type="text"
-                        value={blockKeywordDrafts[block.id] || ''}
-                        placeholder={block.keywords.length ? '继续输入关键词' : '输入关键词后按回车'}
-                        onChange={(event) => setBlockKeywordDrafts((current) => ({
-                          ...current,
-                          [block.id]: event.target.value,
-                        }))}
-                        onBlur={() => {
-                          void handleBlockKeywordCommit(block);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === 'Tab' || event.key === ',' || event.key === '，') {
-                            event.preventDefault();
-                            void handleBlockKeywordCommit(block);
-                            return;
-                          }
-
-                          if (event.key === 'Backspace' && !(blockKeywordDrafts[block.id] || '').trim() && block.keywords.length) {
-                            event.preventDefault();
-                            void handleBlockKeywordRemove(block, block.keywords[block.keywords.length - 1]);
-                          }
-                        }}
-                        className="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-xs text-slate-700 outline-none placeholder:text-slate-400"
-                      />
-                    </div>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{block.text}</p>
-                </article>
-              )) : null}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RagDatasetDetailDialog
+        open={isDatasetDetailDialogOpen}
+        selectedDataset={selectedDataset}
+        datasetDocuments={datasetDocuments}
+        documentsError={documentsError}
+        documentBlocksError={documentBlocksError}
+        isDocumentsLoading={isDocumentsLoading}
+        isDocumentBlocksLoading={isDocumentBlocksLoading}
+        flattenedDocumentBlocks={flattenedDocumentBlocks}
+        savingBlockKeywordId={savingBlockKeywordId}
+        blockKeywordDrafts={blockKeywordDrafts}
+        onOpenChange={handleDetailDialogOpenChange}
+        onKeywordDraftChange={handleBlockKeywordDraftChange}
+        onKeywordCommit={(block) => {
+          void handleBlockKeywordCommit(block);
+        }}
+        onKeywordRemove={(block, keyword) => {
+          void handleBlockKeywordRemove(block, keyword);
+        }}
+      />
     </>
   );
 };

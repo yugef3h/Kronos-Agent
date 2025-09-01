@@ -165,6 +165,7 @@ export const buildContainerStartNode = ({
   return {
     id: startNodeId,
     type: 'workflow',
+    dragHandle: '.workflow-node-drag-surface',
     parentId: containerId,
     extent: 'parent',
     draggable: true,

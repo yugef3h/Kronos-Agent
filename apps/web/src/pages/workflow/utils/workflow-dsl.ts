@@ -130,6 +130,7 @@ const isCanvasNodeKind = (kind: unknown): kind is CanvasNodeData['kind'] => {
 export const createInitialTriggerNode = (): Node<CanvasNodeData> => ({
   id: 'trigger-1',
   type: 'workflow',
+  dragHandle: '.workflow-node-drag-surface',
   position: { x: 80, y: 282 },
   data: {
     kind: 'trigger',
@@ -185,6 +186,7 @@ export const hydrateCanvasNodesFromDsl = (dsl: WorkflowDSL): Node<CanvasNodeData
     return [{
       id: node.id,
       type: 'workflow',
+      dragHandle: '.workflow-node-drag-surface',
       position: node.position,
       parentId: node.parentId,
       data: buildCanvasNodeData({

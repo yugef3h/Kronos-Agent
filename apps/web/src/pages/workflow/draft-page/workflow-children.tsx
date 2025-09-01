@@ -336,9 +336,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
   const isNestedPlainNode =
     isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
-  const standardHandleClass = '!z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
+  const standardHandleClass = 'nodrag nopan !z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
   const appendHandleButtonClass =
-    'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
+    'nodrag nopan flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
   const nestedNodeCardClass = isNestedNode
     ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
@@ -372,73 +372,94 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           id="in"
           type="target"
           position={Position.Left}
+          isConnectable
+          isConnectableStart={false}
+          isConnectableEnd
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
           className={`${standardHandleClass} ${data.kind === 'condition' ? '!left-[-7px]' : ''}`}
         />
       ) : null}
       {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(
         data.kind,
       ) ? (
-        <Handle id="out" type="source" position={Position.Right} className={standardHandleClass} />
+        <Handle
+          id="out"
+          type="source"
+          position={Position.Right}
+          isConnectable
+          isConnectableStart
+          isConnectableEnd={false}
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
+          className={standardHandleClass}
+        />
       ) : null}
 
-      {isContainerStartNode ? (
-        <>
-          <Handle
-            id="out"
-            type="source"
-            position={Position.Right}
-            className="!h-0 !w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
-            style={containerStartHandleStyle}
-          />
-
-          <ContainerStartNode
-            kind={data.kind as 'iteration-start' | 'loop-start'}
-            showAddBlock={showContainerAddBlock}
-            onToggleMenu={(event) => {
-              event.stopPropagation();
-              setAppendSourceHandle('out');
-              setMenuOpen((prev) => !prev);
-            }}
-            searchBox={
-              showContainerAddBlock ? (
-                <SearchBox
-                  isOpen={menuOpen}
-                  onClose={() => setMenuOpen(false)}
-                  onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-                  menuRef={menuRef}
-                  scope={searchBoxScope}
-                  preferredSide="right"
-                  placement="anchored"
-                />
-              ) : null
-            }
-          />
-
-          {!showContainerAddBlock ? (
-            <SearchBox
-              isOpen={menuOpen}
-              onClose={() => setMenuOpen(false)}
-              onAppendNode={(node) => appendNode(node, appendSourceHandle)}
-              menuRef={menuRef}
-              scope={searchBoxScope}
+      <div className="workflow-node-drag-surface">
+        {isContainerStartNode ? (
+          <>
+            <Handle
+              id="out"
+              type="source"
+              position={Position.Right}
+              isConnectable
+              isConnectableStart
+              isConnectableEnd={false}
+              onMouseDown={(event) => event.stopPropagation()}
+              onTouchStart={(event) => event.stopPropagation()}
+              className="nodrag nopan !h-0 !w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
+              style={containerStartHandleStyle}
             />
-          ) : null}
-        </>
-      ) : isContainerEndNode ? (
-        isNestedNode ? (
-          <NestedEndNodeCard data={data} isSelected={!!data.selected} />
-        ) : (
+
+            <ContainerStartNode
+              kind={data.kind as 'iteration-start' | 'loop-start'}
+              showAddBlock={showContainerAddBlock}
+              onToggleMenu={(event) => {
+                event.stopPropagation();
+                setAppendSourceHandle('out');
+                setMenuOpen((prev) => !prev);
+              }}
+              searchBox={
+                showContainerAddBlock ? (
+                  <SearchBox
+                    isOpen={menuOpen}
+                    onClose={() => setMenuOpen(false)}
+                    onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+                    menuRef={menuRef}
+                    scope={searchBoxScope}
+                    preferredSide="right"
+                    placement="anchored"
+                  />
+                ) : null
+              }
+            />
+
+            {!showContainerAddBlock ? (
+              <SearchBox
+                isOpen={menuOpen}
+                onClose={() => setMenuOpen(false)}
+                onAppendNode={(node) => appendNode(node, appendSourceHandle)}
+                menuRef={menuRef}
+                scope={searchBoxScope}
+              />
+            ) : null}
+          </>
+        ) : isContainerEndNode ? (
+          isNestedNode ? (
+            <NestedEndNodeCard data={data} isSelected={!!data.selected} />
+          ) : (
+            <div>
+              <ContainerNodeHeader kind={data.kind} title={data.title} />
+              <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                {data.kind === 'iteration-end'
+                  ? '命中后结束当前 iteration 内部链路'
+                  : '命中后结束当前 loop 内部链路'}
+              </p>
+            </div>
+          )
+        ) : data.kind === 'condition' ? (
           <div>
-            <ContainerNodeHeader kind={data.kind} title={data.title} />
-            <p className="mt-1 text-[10px] leading-4 text-slate-500">
-              {data.kind === 'iteration-end'
-                ? '命中后结束当前 iteration 内部链路'
-                : '命中后结束当前 loop 内部链路'}
-            </p>
-          </div>
-        )
-      ) : data.kind === 'condition' ? (
-        <div>
           <div
             className={`flex items-center ${isNestedConditionNode ? 'gap-2 pr-7' : 'gap-3 pr-8'}`}
           >
@@ -512,18 +533,25 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                   )}
 
                   <div
-                    className={`absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}
+                    className={`nodrag nopan absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}
                   >
                     <Handle
                       id={branch.id}
                       type="source"
                       position={Position.Right}
-                      className={`!right-0 !h-6 !w-6 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100 ${isElseBranch ? '!top-1/2 !-translate-y-1/2' : '!top-0 !translate-y-0'}`}
+                      isConnectable={!isConnected}
+                      isConnectableStart={!isConnected}
+                      isConnectableEnd={false}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      onTouchStart={(event) => event.stopPropagation()}
+                      className={`nodrag nopan !right-0 !h-6 !w-6 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100 ${isElseBranch ? '!top-1/2 !-translate-y-1/2' : '!top-0 !translate-y-0'}`}
                     />
                     <button
                       type="button"
                       disabled={isConnected}
                       className={`absolute left-0 z-10 -translate-x-1/2 disabled:cursor-not-allowed disabled:bg-slate-300 ${appendHandleButtonClass} ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      onTouchStart={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
                         setAppendSourceHandle(branch.id);
@@ -554,37 +582,40 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               {`含 ${conditionConfig.cases.length - 1} 个额外 ELIF 分支`}
             </div>
           ) : null}
-        </div>
-      ) : isContainerNode ? (
-        <div
-          className="relative h-full w-full rounded-[30px] bg-white pt-4"
-          style={{
-            paddingLeft: CONTAINER_NODE_HORIZONTAL_PADDING,
-            paddingRight: CONTAINER_NODE_HORIZONTAL_PADDING,
-            paddingBottom: CONTAINER_NODE_HORIZONTAL_PADDING,
-          }}
-        >
-          <ContainerNodeBoard />
-          <ContainerNodeHeader kind={data.kind} title={data.title} />
-        </div>
-      ) : isNestedPlainNode ? (
-        <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
-      ) : (
-        <div>
-          <ContainerNodeHeader kind={data.kind} title={data.title} />
-          <WorkflowNodeSummary data={data} />
-        </div>
-      )}
+          </div>
+        ) : isContainerNode ? (
+          <div
+            className="relative h-full w-full rounded-[30px] bg-white pt-4"
+            style={{
+              paddingLeft: CONTAINER_NODE_HORIZONTAL_PADDING,
+              paddingRight: CONTAINER_NODE_HORIZONTAL_PADDING,
+              paddingBottom: CONTAINER_NODE_HORIZONTAL_PADDING,
+            }}
+          >
+            <ContainerNodeBoard />
+            <ContainerNodeHeader kind={data.kind} title={data.title} />
+          </div>
+        ) : isNestedPlainNode ? (
+          <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
+        ) : (
+          <div>
+            <ContainerNodeHeader kind={data.kind} title={data.title} />
+            <WorkflowNodeSummary data={data} />
+          </div>
+        )}
+      </div>
 
       {!isContainerStartNode ? (
         <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
       ) : null}
 
       {canAppend && data.kind !== 'condition' && !isContainerStartNode ? (
-        <div className="absolute -right-3 top-1/2 z-30 -translate-y-1/2">
+        <div className="nodrag nopan absolute -right-3 top-1/2 z-30 -translate-y-1/2">
           <button
             type="button"
             className={`${appendHandleButtonClass} opacity-0 group-hover:opacity-100`}
+            onMouseDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
               setAppendSourceHandle('out');
