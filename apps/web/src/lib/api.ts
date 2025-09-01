@@ -359,6 +359,7 @@ export type KnowledgeDocumentChunkPreview = {
 	tokenCount: number;
 	charCount: number;
 	metadata?: Record<string, string>;
+	keywords?: string[];
 };
 
 export type KnowledgeDocumentsResponse = {
@@ -373,6 +374,11 @@ export type KnowledgeDocumentBlocksResponse = {
 export type KnowledgeDocumentImportResponse = {
 	document: KnowledgeDocumentResponseItem;
 	preview: KnowledgeDocumentChunkPreview[];
+};
+
+export type KnowledgeDocumentBlockKeywordUpdateResponse = {
+	document: KnowledgeDocumentResponseItem;
+	chunk: KnowledgeDocumentChunkPreview;
 };
 
 export type KnowledgeDocumentPreviewItem = {
@@ -858,6 +864,29 @@ export const requestImportKnowledgeDocument = async (params: {
 	}
 
 	return (await response.json()) as KnowledgeDocumentImportResponse;
+};
+
+export const requestUpdateKnowledgeDocumentBlockKeywords = async (params: {
+	authToken: string;
+	datasetId: string;
+	documentId: string;
+	blockId: string;
+	keywords: string[];
+}): Promise<KnowledgeDocumentBlockKeywordUpdateResponse> => {
+	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/${params.documentId}/blocks/${params.blockId}/keywords`), {
+		method: 'PUT',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({ keywords: params.keywords }),
+	});
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to update knowledge document block keywords'));
+	}
+
+	return (await response.json()) as KnowledgeDocumentBlockKeywordUpdateResponse;
 };
 
 export const requestPreviewKnowledgeDocumentChunks = async (params: {

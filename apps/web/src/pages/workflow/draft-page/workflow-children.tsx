@@ -93,6 +93,7 @@ import {
   getContainerScopeData,
   getKnowledgeDatasetIds,
 } from '../utils/workflow-node-utils';
+import { resolveBridgeEdgeAfterNodeRemoval } from '../utils/node-removal-bridge';
 import { resolveSearchBoxScope } from '../utils/workflow-search-scope';
 import 'reactflow/dist/style.css';
 
@@ -242,10 +243,27 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
   const deleteNode = useCallback(() => {
     setMenuOpen(false);
-    const removedNodeIds = [id, ...getDescendantNodeIds(getNodes(), id)];
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+    const removedNodeIds = [id, ...getDescendantNodeIds(currentNodes, id)];
+    const bridgeEdge = resolveBridgeEdgeAfterNodeRemoval({
+      nodes: currentNodes,
+      edges: currentEdges as Edge[],
+      removedNodeId: id,
+      removedNodeIds,
+    });
+
     setNodes((currentNodes) => removeNodeById(currentNodes, id));
-    setEdges((currentEdges) => removeConnectedEdges(currentEdges, removedNodeIds));
-  }, [getNodes, id, setEdges, setNodes]);
+    setEdges((currentEdges) => {
+      const nextEdges = removeConnectedEdges(currentEdges, removedNodeIds);
+
+      if (!bridgeEdge) {
+        return nextEdges;
+      }
+
+      return applyConnectedEdgeSelection(addEdge(bridgeEdge, nextEdges));
+    });
+  }, [getEdges, getNodes, id, setEdges, setNodes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -875,7 +893,8 @@ export const WorkflowChildren = () => {
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
             nodesDraggable
-            nodesConnectable={false}
+            nodesConnectable
+            connectOnClick={false}
             nodesFocusable={false}
             edgesFocusable={false}
             panOnScroll={false}

@@ -9,6 +9,10 @@ import {
   type KnowledgeDocumentPreprocessingRules,
 } from '../services/knowledgeChunkingService.js';
 import {
+  extractKnowledgeKeywords,
+  normalizeKeywords,
+} from '../services/knowledgeKeywordService.js';
+import {
   getKnowledgeDatasetById,
   updateKnowledgeDatasetStats,
   type KnowledgeDatasetRecord,
@@ -42,7 +46,7 @@ export type KnowledgeDocumentPreviewItem = {
 
 export type KnowledgeDocumentBlocksResult = {
   document: KnowledgeDocumentRecord;
-  chunks: Array<KnowledgeChunkPreview & { metadata: Record<string, string> }>;
+  chunks: Array<KnowledgeChunkPreview & { metadata: Record<string, string>; keywords: string[] }>;
 };
 
 export type StoredChunk = {
@@ -54,10 +58,13 @@ export type StoredChunk = {
   tokenCount: number;
   charCount: number;
   metadata: Record<string, string>;
+  keywords: string[];
   source: {
     title: string;
   };
 };
+
+type StoredChunkLike = Omit<StoredChunk, 'keywords'> & { keywords?: unknown };
 
 export type KnowledgeDatasetChunkRecord = {
   chunk: StoredChunk;
@@ -120,8 +127,25 @@ const readStoredChunks = async (chunkPath: string): Promise<StoredChunk[]> => {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as StoredChunk)
+    .map((line) => {
+      const parsed = JSON.parse(line) as StoredChunkLike;
+
+      return {
+        ...parsed,
+        keywords: Array.isArray(parsed.keywords)
+          ? normalizeKeywords(parsed.keywords.filter((item): item is string => typeof item === 'string'))
+          : extractKnowledgeKeywords(parsed.text),
+      } satisfies StoredChunk;
+    })
     .sort((left, right) => left.index - right.index);
+};
+
+const writeStoredChunks = async (chunkPath: string, chunks: StoredChunk[]) => {
+  await writeFile(
+    chunkPath,
+    chunks.map((chunk) => JSON.stringify(chunk)).join('\n'),
+    'utf-8',
+  );
 };
 
 const buildPreviewText = (text: string) => {
@@ -172,16 +196,13 @@ const persistImportedDocument = async (params: {
     tokenCount: chunk.tokenCount,
     charCount: chunk.charCount,
     metadata: { ...params.metadata },
+    keywords: extractKnowledgeKeywords(chunk.text),
     source: {
       title: params.fileName,
     },
   }));
 
-  await writeFile(
-    chunksFilePath,
-    storedChunks.map((chunk) => JSON.stringify(chunk)).join('\n'),
-    'utf-8',
-  );
+  await writeStoredChunks(chunksFilePath, storedChunks);
   await writeFile(
     previewFilePath,
     JSON.stringify({ chunks: params.chunks.slice(0, 8) }, null, 2),
@@ -253,6 +274,7 @@ export const getKnowledgeDocumentBlocks = async (
       tokenCount: chunk.tokenCount,
       charCount: chunk.charCount,
       metadata: { ...chunk.metadata },
+      keywords: [...chunk.keywords],
     }));
 
   return {
@@ -340,5 +362,65 @@ export const importKnowledgeDocument = async (params: {
   return {
     document: persisted.record,
     preview: persisted.preview,
+  };
+};
+
+export const updateKnowledgeDocumentBlockKeywords = async (params: {
+  datasetId: string;
+  documentId: string;
+  chunkId: string;
+  keywords: string[];
+}) => {
+  const dataset = await getKnowledgeDatasetById(params.datasetId);
+  if (!dataset) {
+    throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+  }
+
+  const records = await readDocumentsIndex(params.datasetId);
+  const document = records.find((item) => item.id === params.documentId);
+  if (!document) {
+    throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
+  }
+
+  const chunks = await readStoredChunks(document.chunkPath);
+  const nextKeywords = normalizeKeywords(params.keywords);
+  const targetChunk = chunks.find((chunk) => chunk.id === params.chunkId);
+
+  if (!targetChunk) {
+    throw new Error('KNOWLEDGE_DOCUMENT_BLOCK_NOT_FOUND');
+  }
+
+  const nextChunks = chunks.map((chunk) => {
+    if (chunk.id !== params.chunkId) {
+      return chunk;
+    }
+
+    return {
+      ...chunk,
+      keywords: nextKeywords,
+    };
+  });
+
+  await writeStoredChunks(document.chunkPath, nextChunks);
+
+  const updatedAt = Date.now();
+  const nextRecords = records.map((item) => {
+    if (item.id !== document.id) {
+      return item;
+    }
+
+    return {
+      ...item,
+      updatedAt,
+    };
+  });
+  await writeDocumentsIndex(params.datasetId, nextRecords);
+
+  return {
+    document: nextRecords.find((item) => item.id === document.id) ?? { ...document, updatedAt },
+    chunk: {
+      ...targetChunk,
+      keywords: nextKeywords,
+    },
   };
 };

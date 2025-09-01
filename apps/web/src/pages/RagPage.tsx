@@ -4,6 +4,7 @@ import {
   requestImportKnowledgeDocument,
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
+  requestUpdateKnowledgeDocumentBlockKeywords,
 } from '../lib/api';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -16,6 +17,7 @@ import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
 } from './workflow/features/knowledge-retrieval-panel/dataset-store';
+import { appendTagItems } from './rag/tag-input-utils';
 
 const formatTimestamp = (timestamp?: number): string => {
   if (!timestamp) {
@@ -145,6 +147,7 @@ type DatasetDocumentBlock = {
   tokenCount: number;
   charCount: number;
   metadata: Record<string, string>;
+  keywords: string[];
 };
 
 type DatasetDocumentBlocksMap = Record<string, DatasetDocumentBlock[]>;
@@ -214,13 +217,6 @@ const createMetadataDrafts = (fields: Array<{ key: string; label: string }>) => 
     value: '',
   }));
 };
-
-const createEmptyMetadataDraft = (): ImportMetadataFieldDraft => ({
-  id: createMetadataFieldDraftId(),
-  key: '',
-  label: '',
-  value: '',
-});
 
 const buildDocumentMetadata = (fields: ImportMetadataFieldDraft[]) => {
   return fields.reduce<Record<string, string>>((accumulator, field) => {
@@ -320,6 +316,8 @@ export const RagPage = () => {
   const [documentBlocksMap, setDocumentBlocksMap] = useState<DatasetDocumentBlocksMap>({});
   const [isDocumentBlocksLoading, setIsDocumentBlocksLoading] = useState(false);
   const [documentBlocksError, setDocumentBlocksError] = useState('');
+  const [blockKeywordDrafts, setBlockKeywordDrafts] = useState<Record<string, string>>({});
+  const [savingBlockKeywordId, setSavingBlockKeywordId] = useState('');
 
   useEffect(() => {
     folderInputRef.current?.setAttribute('webkitdirectory', '');
@@ -359,10 +357,90 @@ export const RagPage = () => {
         documentId: document.id,
         documentName: document.name,
         metadata: block.metadata ?? document.metadata,
+        keywords: block.keywords ?? [],
       }));
     }),
     [datasetDocuments, documentBlocksMap],
   );
+
+  const saveBlockKeywords = useCallback(async (
+    params: { blockId: string; documentId: string; keywords: string[] },
+  ) => {
+    if (!selectedDatasetId) {
+      return;
+    }
+
+    const authToken = await ensureKnowledgeDatasetAuthToken();
+    if (!authToken) {
+      throw new Error('知识库接口需要 JWT 鉴权');
+    }
+
+    setSavingBlockKeywordId(params.blockId);
+
+    try {
+      const result = await requestUpdateKnowledgeDocumentBlockKeywords({
+        authToken,
+        datasetId: selectedDatasetId,
+        documentId: params.documentId,
+        blockId: params.blockId,
+        keywords: params.keywords,
+      });
+
+      setDocumentBlocksMap((current) => ({
+        ...current,
+        [params.documentId]: (current[params.documentId] || []).map((block) => {
+          if (block.id !== params.blockId) {
+            return block;
+          }
+
+          return {
+            ...block,
+            keywords: result.chunk.keywords ?? [],
+          };
+        }),
+      }));
+      setBlockKeywordDrafts((current) => ({ ...current, [params.blockId]: '' }));
+      setDocumentBlocksError('');
+    } finally {
+      setSavingBlockKeywordId('');
+    }
+  }, [selectedDatasetId]);
+
+  const handleBlockKeywordCommit = useCallback(async (
+    block: DatasetDocumentBlock & { documentId: string },
+  ) => {
+    const draftValue = blockKeywordDrafts[block.id] || '';
+    const nextKeywords = appendTagItems(block.keywords, draftValue);
+
+    if (nextKeywords.length === block.keywords.length && !draftValue.trim()) {
+      return;
+    }
+
+    try {
+      await saveBlockKeywords({
+        blockId: block.id,
+        documentId: block.documentId,
+        keywords: nextKeywords,
+      });
+    } catch (error) {
+      setDocumentBlocksError(error instanceof Error ? error.message : '关键词更新失败');
+    }
+  }, [blockKeywordDrafts, saveBlockKeywords]);
+
+  const handleBlockKeywordRemove = useCallback(async (
+    block: DatasetDocumentBlock & { documentId: string },
+    keyword: string,
+  ) => {
+    try {
+      await saveBlockKeywords({
+        blockId: block.id,
+        documentId: block.documentId,
+        keywords: block.keywords.filter((item) => item !== keyword),
+      });
+    } catch (error) {
+      setDocumentBlocksError(error instanceof Error ? error.message : '关键词更新失败');
+    }
+  }, [saveBlockKeywords]);
 
   const handleDatasetSelection = useCallback((datasetId: string, options?: { openDetail?: boolean }) => {
     setSelectedDatasetId(datasetId);
@@ -490,6 +568,7 @@ export const RagPage = () => {
               tokenCount: chunk.tokenCount,
               charCount: chunk.charCount,
               metadata: chunk.metadata ?? document.metadata,
+              keywords: chunk.keywords ?? [],
             })),
           };
         }),
@@ -1148,85 +1227,6 @@ export const RagPage = () => {
                   </div>
                 )}
 
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-700">文档标签</p>
-                      <p className="text-[11px] text-slate-500">本次导入的文件会共用这些标签值。</p>
-                    </div>
-                    {!pendingDataset ? (
-                      <button
-                        type="button"
-                        onClick={() => setImportForm((current) => ({
-                          ...current,
-                          metadataFields: [...current.metadataFields, createEmptyMetadataDraft()],
-                        }))}
-                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-                      >
-                        添加标签
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {importForm.metadataFields.length ? (
-                    <div className="space-y-2">
-                      {importForm.metadataFields.map((field, index) => (
-                        <div key={field.id} className={`grid gap-2 ${pendingDataset ? 'md:grid-cols-[140px_minmax(0,1fr)]' : 'md:grid-cols-[120px_140px_minmax(0,1fr)_auto]'}`}>
-                          {!pendingDataset ? (
-                            <input
-                              type="text"
-                              value={field.key}
-                              placeholder="key"
-                              onChange={(event) => setImportForm((current) => ({
-                                ...current,
-                                metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, key: event.target.value } : item),
-                              }))}
-                              className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                            />
-                          ) : null}
-                          <input
-                            type="text"
-                            value={field.label}
-                            placeholder="标签名"
-                            disabled={Boolean(pendingDataset)}
-                            onChange={(event) => setImportForm((current) => ({
-                              ...current,
-                              metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, label: event.target.value } : item),
-                            }))}
-                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-500"
-                          />
-                          <input
-                            type="text"
-                            value={field.value}
-                            placeholder={`${field.label || `标签 ${index + 1}`} 的值`}
-                            onChange={(event) => setImportForm((current) => ({
-                              ...current,
-                              metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item),
-                            }))}
-                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
-                          />
-                          {!pendingDataset ? (
-                            <button
-                              type="button"
-                              onClick={() => setImportForm((current) => ({
-                                ...current,
-                                metadataFields: current.metadataFields.filter((item) => item.id !== field.id),
-                              }))}
-                              className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
-                            >
-                              删除
-                            </button>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-xs text-slate-500">
-                      {pendingDataset ? '当前知识库未定义标签字段。' : '可选：添加标签字段和值，导入后会显示在详情并参与 metadata 过滤。'}
-                    </div>
-                  )}
-                </div>
-
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <label className="min-w-0">
                     <span className="mb-1 block text-[11px] font-medium text-slate-600">分段标识符</span>
@@ -1427,6 +1427,8 @@ export const RagPage = () => {
           setDocumentBlocksMap({});
           setDocumentBlocksError('');
           setIsDocumentBlocksLoading(false);
+          setBlockKeywordDrafts({});
+          setSavingBlockKeywordId('');
         }
       }}>
         <DialogContent overlayClassName="bg-slate-950/56" className="flex h-[min(82vh,760px)] w-[min(780px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden !bg-white p-0">
@@ -1502,6 +1504,56 @@ export const RagPage = () => {
                     <div className="flex flex-wrap gap-2">
                       <span>{block.charCount} chars</span>
                       <span>{block.tokenCount} tokens</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/70 px-2.5 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-slate-600">Keywords</span>
+                      {savingBlockKeywordId === block.id ? (
+                        <span className="text-[11px] text-slate-400">保存中...</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {block.keywords.map((keyword) => (
+                        <span key={`${block.id}-${keyword}`} className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-1 text-[11px] font-medium text-cyan-700">
+                          <span>{keyword}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleBlockKeywordRemove(block, keyword);
+                            }}
+                            className="text-cyan-500 transition hover:text-cyan-800"
+                            aria-label={`删除关键词 ${keyword}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        type="text"
+                        value={blockKeywordDrafts[block.id] || ''}
+                        placeholder={block.keywords.length ? '继续输入关键词' : '输入关键词后按回车'}
+                        onChange={(event) => setBlockKeywordDrafts((current) => ({
+                          ...current,
+                          [block.id]: event.target.value,
+                        }))}
+                        onBlur={() => {
+                          void handleBlockKeywordCommit(block);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === 'Tab' || event.key === ',' || event.key === '，') {
+                            event.preventDefault();
+                            void handleBlockKeywordCommit(block);
+                            return;
+                          }
+
+                          if (event.key === 'Backspace' && !(blockKeywordDrafts[block.id] || '').trim() && block.keywords.length) {
+                            event.preventDefault();
+                            void handleBlockKeywordRemove(block, block.keywords[block.keywords.length - 1]);
+                          }
+                        }}
+                        className="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-xs text-slate-700 outline-none placeholder:text-slate-400"
+                      />
                     </div>
                   </div>
                   <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">{block.text}</p>

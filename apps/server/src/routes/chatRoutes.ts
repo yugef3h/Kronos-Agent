@@ -15,6 +15,7 @@ import {
   importKnowledgeDocument,
   listKnowledgeDocuments,
   previewKnowledgeDocuments,
+  updateKnowledgeDocumentBlockKeywords,
 } from '../domain/knowledgeDocumentStore.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
@@ -221,6 +222,10 @@ const knowledgeDocumentImportSchema = z.object({
     removeUrlsEmails: false,
   }),
   metadata: z.record(z.string().trim().min(1).max(240)).default({}),
+});
+
+const knowledgeDocumentKeywordsUpdateSchema = z.object({
+  keywords: z.array(z.string().trim().min(1).max(80)).max(12).default([]),
 });
 
 const knowledgeDocumentPreviewSchema = z.object({
@@ -507,6 +512,44 @@ chatRoutes.get('/workflow/knowledge-datasets/:datasetId/documents/:documentId/bl
     }
 
     response.status(500).json({ error: `Knowledge document blocks failed: ${reason}` });
+  }
+});
+
+chatRoutes.put('/workflow/knowledge-datasets/:datasetId/documents/:documentId/blocks/:blockId/keywords', async (request: Request, response: Response) => {
+  const parsed = knowledgeDocumentKeywordsUpdateSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    sendValidationError(response, parsed.error);
+    return;
+  }
+
+  try {
+    const result = await updateKnowledgeDocumentBlockKeywords({
+      datasetId: String(request.params.datasetId || ''),
+      documentId: String(request.params.documentId || ''),
+      chunkId: String(request.params.blockId || ''),
+      keywords: parsed.data.keywords,
+    });
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    if (reason === 'KNOWLEDGE_DOCUMENT_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge document not found' });
+      return;
+    }
+
+    if (reason === 'KNOWLEDGE_DOCUMENT_BLOCK_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge document block not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge block keyword update failed: ${reason}` });
   }
 });
 

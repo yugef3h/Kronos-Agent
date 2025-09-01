@@ -12,6 +12,7 @@ import {
   getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
   listKnowledgeDocuments,
+  updateKnowledgeDocumentBlockKeywords,
 } from './knowledgeDocumentStore';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {
@@ -147,5 +148,36 @@ describe('knowledgeDocumentStore', () => {
     const blocks = await getKnowledgeDocumentBlocks(dataset.id, result.document.id);
     expect(blocks.document.metadata).toEqual({ category: '售后' });
     expect(blocks.chunks[0]?.metadata).toEqual({ category: '售后' });
+  });
+
+  it('extracts and updates chunk keywords', async () => {
+    const dataset = await createKnowledgeDataset({
+      name: '关键词知识库',
+      description: 'keywords 测试',
+      is_multimodal: false,
+      doc_metadata: [],
+    });
+
+    const result = await importKnowledgeDocument({
+      datasetId: dataset.id,
+      fileName: 'keywords.txt',
+      mimeType: 'text/plain',
+      fileDataUrl: toDataUrl('text/plain', 'RAG 检索增强生成可以帮助知识库问答提升召回效果。'),
+    });
+
+    const initialBlocks = await getKnowledgeDocumentBlocks(dataset.id, result.document.id);
+    expect(initialBlocks.chunks[0]?.keywords.length).toBeGreaterThan(0);
+
+    const updated = await updateKnowledgeDocumentBlockKeywords({
+      datasetId: dataset.id,
+      documentId: result.document.id,
+      chunkId: initialBlocks.chunks[0]!.id,
+      keywords: ['RAG', '知识库', '问答'],
+    });
+
+    expect(updated.chunk.keywords).toEqual(['RAG', '知识库', '问答']);
+
+    const nextBlocks = await getKnowledgeDocumentBlocks(dataset.id, result.document.id);
+    expect(nextBlocks.chunks[0]?.keywords).toEqual(['RAG', '知识库', '问答']);
   });
 });
