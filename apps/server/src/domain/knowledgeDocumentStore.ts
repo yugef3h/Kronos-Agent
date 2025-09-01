@@ -30,6 +30,7 @@ export type KnowledgeDocumentRecord = {
   chunkCount: number;
   characterCount: number;
   previewText: string;
+  metadata: Record<string, string>;
 };
 
 export type KnowledgeDocumentPreviewItem = {
@@ -41,10 +42,10 @@ export type KnowledgeDocumentPreviewItem = {
 
 export type KnowledgeDocumentBlocksResult = {
   document: KnowledgeDocumentRecord;
-  chunks: KnowledgeChunkPreview[];
+  chunks: Array<KnowledgeChunkPreview & { metadata: Record<string, string> }>;
 };
 
-type StoredChunk = {
+export type StoredChunk = {
   id: string;
   documentId: string;
   datasetId: string;
@@ -56,6 +57,11 @@ type StoredChunk = {
   source: {
     title: string;
   };
+};
+
+export type KnowledgeDatasetChunkRecord = {
+  chunk: StoredChunk;
+  document: KnowledgeDocumentRecord;
 };
 
 const resolveDefaultDatasetsDir = () => {
@@ -107,6 +113,17 @@ const writeDocumentsIndex = async (datasetId: string, records: KnowledgeDocument
   await writeFile(getDocumentsIndexPath(datasetId), JSON.stringify(records, null, 2), 'utf-8');
 };
 
+const readStoredChunks = async (chunkPath: string): Promise<StoredChunk[]> => {
+  const raw = await readFile(chunkPath, 'utf-8');
+
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as StoredChunk)
+    .sort((left, right) => left.index - right.index);
+};
+
 const buildPreviewText = (text: string) => {
   return text.length > 220 ? `${text.slice(0, 220).trim()}...` : text;
 };
@@ -118,6 +135,7 @@ const persistImportedDocument = async (params: {
   buffer: Buffer;
   extractedText: string;
   chunks: KnowledgeChunkPreview[];
+  metadata: Record<string, string>;
 }) => {
   const now = Date.now();
   const documentId = randomUUID();
@@ -153,7 +171,7 @@ const persistImportedDocument = async (params: {
     text: chunk.text,
     tokenCount: chunk.tokenCount,
     charCount: chunk.charCount,
-    metadata: {},
+    metadata: { ...params.metadata },
     source: {
       title: params.fileName,
     },
@@ -186,6 +204,7 @@ const persistImportedDocument = async (params: {
     chunkCount: params.chunks.length,
     characterCount: params.extractedText.length,
     previewText: buildPreviewText(params.extractedText),
+    metadata: { ...params.metadata },
   };
 
   const records = await readDocumentsIndex(params.dataset.id);
@@ -226,25 +245,42 @@ export const getKnowledgeDocumentBlocks = async (
     throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
   }
 
-  const raw = await readFile(document.chunkPath, 'utf-8');
-  const chunks = raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as StoredChunk)
-    .sort((left, right) => left.index - right.index)
+  const chunks = (await readStoredChunks(document.chunkPath))
     .map((chunk) => ({
       id: chunk.id,
       index: chunk.index,
       text: chunk.text,
       tokenCount: chunk.tokenCount,
       charCount: chunk.charCount,
+      metadata: { ...chunk.metadata },
     }));
 
   return {
     document,
     chunks,
   };
+};
+
+export const listKnowledgeDatasetChunks = async (
+  datasetId: string,
+): Promise<KnowledgeDatasetChunkRecord[]> => {
+  const dataset = await getKnowledgeDatasetById(datasetId);
+  if (!dataset) {
+    throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+  }
+
+  const documents = await readDocumentsIndex(datasetId);
+  const results = await Promise.all(
+    documents.map(async (document) => {
+      const chunks = await readStoredChunks(document.chunkPath);
+      return chunks.map((chunk) => ({
+        chunk,
+        document,
+      }));
+    }),
+  );
+
+  return results.flat();
 };
 
 export const deleteKnowledgeDatasetFiles = async (datasetId: string): Promise<void> => {
@@ -282,6 +318,7 @@ export const importKnowledgeDocument = async (params: {
   segmentMaxLength?: number;
   overlapLength?: number;
   preprocessingRules?: KnowledgeDocumentPreprocessingRules;
+  metadata?: Record<string, string>;
 }) => {
   const dataset = await getKnowledgeDatasetById(params.datasetId);
   if (!dataset) {
@@ -297,6 +334,7 @@ export const importKnowledgeDocument = async (params: {
     buffer: result.buffer,
     extractedText: result.processedText,
     chunks: result.chunks,
+    metadata: { ...(params.metadata ?? {}) },
   });
 
   return {

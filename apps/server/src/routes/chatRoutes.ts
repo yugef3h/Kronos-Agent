@@ -27,6 +27,7 @@ import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
 import { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
+import { runKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
 import { join } from 'path';
 
@@ -219,11 +220,44 @@ const knowledgeDocumentImportSchema = z.object({
     normalizeWhitespace: true,
     removeUrlsEmails: false,
   }),
+  metadata: z.record(z.string().trim().min(1).max(240)).default({}),
 });
 
 const knowledgeDocumentPreviewSchema = z.object({
   inputs: z.array(knowledgeDocumentImportSchema).min(1).max(30),
   previewLimit: z.coerce.number().int().min(1).max(100).default(40),
+});
+
+const knowledgeRetrievalQuerySchema = z.object({
+  query: z.string().trim().min(1).max(4000),
+  dataset_ids: z.array(z.string().trim().min(1).max(120)).min(1).max(20),
+  retrieval_mode: z.enum(['oneWay', 'multiWay']).default('multiWay'),
+  single_retrieval_config: z.object({
+    model: z.string().trim().min(1).max(120).default('default-vector'),
+    top_k: z.coerce.number().int().min(1).max(20).default(3),
+    score_threshold: z.coerce.number().min(0).max(1).nullable().default(null),
+  }).default({
+    model: 'default-vector',
+    top_k: 3,
+    score_threshold: null,
+  }),
+  multiple_retrieval_config: z.object({
+    top_k: z.coerce.number().int().min(1).max(20).default(5),
+    score_threshold: z.coerce.number().min(0).max(1).nullable().default(null),
+    reranking_enable: z.boolean().default(false),
+    reranking_model: z.string().trim().min(1).max(120).optional(),
+  }).default({
+    top_k: 5,
+    score_threshold: null,
+    reranking_enable: false,
+  }),
+  metadata_filtering_mode: z.enum(['disabled', 'manual']).default('disabled'),
+  metadata_filtering_conditions: z.array(z.object({
+    id: z.string().trim().min(1).max(120).optional(),
+    field: z.string().trim().min(1).max(80),
+    operator: z.enum(['contains', 'equals', 'not_equals']).default('contains'),
+    value: z.string().trim().min(1).max(240),
+  })).max(20).default([]),
 });
 
 const indexingEstimateFileSchema = z.object({
@@ -516,6 +550,29 @@ chatRoutes.post('/workflow/knowledge-datasets/preview-chunks', async (request: R
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Knowledge document preview failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-retrieval/query', async (request: Request, response: Response) => {
+  const parsed = knowledgeRetrievalQuerySchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    sendValidationError(response, parsed.error);
+    return;
+  }
+
+  try {
+    const result = await runKnowledgeRetrievalQuery(parsed.data);
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge retrieval failed: ${reason}` });
   }
 });
 

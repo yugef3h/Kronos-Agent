@@ -110,6 +110,14 @@ type ImportFormState = {
   normalizeWhitespace: boolean;
   removeUrlsEmails: boolean;
   topK: string;
+  metadataFields: ImportMetadataFieldDraft[];
+};
+
+type ImportMetadataFieldDraft = {
+  id: string;
+  key: string;
+  label: string;
+  value: string;
 };
 
 type LocalPreviewChunk = {
@@ -136,9 +144,21 @@ type DatasetDocumentBlock = {
   text: string;
   tokenCount: number;
   charCount: number;
+  metadata: Record<string, string>;
 };
 
 type DatasetDocumentBlocksMap = Record<string, DatasetDocumentBlock[]>;
+
+type DatasetDocumentDetail = {
+  id: string;
+  name: string;
+  chunkCount: number;
+  characterCount: number;
+  size: number;
+  updatedAt: number;
+  previewText: string;
+  metadata: Record<string, string>;
+};
 
 const isSupportedKnowledgeFile = (file: File) => {
   if (SUPPORTED_DOCUMENT_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix))) {
@@ -181,7 +201,40 @@ const createImportFormState = (files: File[], datasetName?: string, description?
   normalizeWhitespace: true,
   removeUrlsEmails: false,
   topK: '3',
+  metadataFields: [],
 });
+
+const createMetadataFieldDraftId = () => `metadata-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+const createMetadataDrafts = (fields: Array<{ key: string; label: string }>) => {
+  return fields.map((field) => ({
+    id: createMetadataFieldDraftId(),
+    key: field.key,
+    label: field.label,
+    value: '',
+  }));
+};
+
+const createEmptyMetadataDraft = (): ImportMetadataFieldDraft => ({
+  id: createMetadataFieldDraftId(),
+  key: '',
+  label: '',
+  value: '',
+});
+
+const buildDocumentMetadata = (fields: ImportMetadataFieldDraft[]) => {
+  return fields.reduce<Record<string, string>>((accumulator, field) => {
+    const key = field.key.trim();
+    const value = field.value.trim();
+
+    if (!key || !value) {
+      return accumulator;
+    }
+
+    accumulator[key] = value;
+    return accumulator;
+  }, {});
+};
 
 const readFileAsDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -261,15 +314,7 @@ export const RagPage = () => {
   const [hasRequestedPreview, setHasRequestedPreview] = useState(false);
   const [selectedDatasetId, setSelectedDatasetId] = useState(() => searchParams.get('dataset') || '');
   const [isDatasetDetailDialogOpen, setIsDatasetDetailDialogOpen] = useState(false);
-  const [datasetDocuments, setDatasetDocuments] = useState<Array<{
-    id: string;
-    name: string;
-    chunkCount: number;
-    characterCount: number;
-    size: number;
-    updatedAt: number;
-    previewText: string;
-  }>>([]);
+  const [datasetDocuments, setDatasetDocuments] = useState<DatasetDocumentDetail[]>([]);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(false);
   const [documentsError, setDocumentsError] = useState('');
   const [documentBlocksMap, setDocumentBlocksMap] = useState<DatasetDocumentBlocksMap>({});
@@ -313,6 +358,7 @@ export const RagPage = () => {
         ...block,
         documentId: document.id,
         documentName: document.name,
+        metadata: block.metadata ?? document.metadata,
       }));
     }),
     [datasetDocuments, documentBlocksMap],
@@ -363,6 +409,7 @@ export const RagPage = () => {
         size: item.size,
         updatedAt: item.updatedAt,
         previewText: item.previewText,
+        metadata: item.metadata ?? {},
       })));
     } catch (error) {
       setDatasetDocuments([]);
@@ -442,6 +489,7 @@ export const RagPage = () => {
               text: chunk.text,
               tokenCount: chunk.tokenCount,
               charCount: chunk.charCount,
+              metadata: chunk.metadata ?? document.metadata,
             })),
           };
         }),
@@ -651,13 +699,14 @@ export const RagPage = () => {
 
     const dataset = datasets.find((item) => item.id === datasetId);
     setPendingImport({ files: acceptedFiles, datasetId, source, rejectedFiles });
-    setImportForm(
-      createImportFormState(
+    setImportForm({
+      ...createImportFormState(
         acceptedFiles,
         dataset?.name,
         dataset?.description || `${acceptedFiles.length} 个文件导入`,
       ),
-    );
+      metadataFields: createMetadataDrafts(dataset?.doc_metadata ?? []),
+    });
     setPageError(
       rejectedFiles.length
         ? `已跳过 ${rejectedFiles.length} 个不支持的文件：${rejectedFiles.slice(0, 3).map((item) => item.fileName).join('、')}`
@@ -728,6 +777,18 @@ export const RagPage = () => {
       return;
     }
 
+    if (!pendingImport.datasetId) {
+      const invalidMetadataField = importForm.metadataFields.find((field) => {
+        const hasAnyValue = field.key.trim() || field.label.trim() || field.value.trim();
+        return Boolean(hasAnyValue && (!field.key.trim() || !field.label.trim()));
+      });
+
+      if (invalidMetadataField) {
+        setImportFormError('新增标签字段时，字段 key 和标签名称都需要填写。');
+        return;
+      }
+    }
+
     if (!Number.isInteger(topK) || topK < 1 || topK > 10) {
       setImportFormError('Top K 需在 1 到 10 之间。');
       return;
@@ -746,11 +807,17 @@ export const RagPage = () => {
 
       if (!targetDatasetId) {
         const nextDatasetName = importForm.datasetName.trim();
+        const metadataDefinitions = importForm.metadataFields
+          .filter((field) => field.key.trim())
+          .map((field) => ({
+            key: field.key.trim(),
+            label: field.label.trim() || field.key.trim(),
+          }));
         const created = await createDataset({
           name: nextDatasetName || `知识库-${Date.now().toString(36)}`,
           description: importForm.description.trim() || `${files.length} 个文件导入`,
           is_multimodal: false,
-          doc_metadata: [],
+          doc_metadata: metadataDefinitions,
         });
         targetDatasetId = created.id;
         createdDatasetId = created.id;
@@ -785,6 +852,7 @@ export const RagPage = () => {
                 normalizeWhitespace: importForm.normalizeWhitespace,
                 removeUrlsEmails: importForm.removeUrlsEmails,
               },
+              metadata: buildDocumentMetadata(importForm.metadataFields),
             },
           });
 
@@ -1080,6 +1148,85 @@ export const RagPage = () => {
                   </div>
                 )}
 
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-700">文档标签</p>
+                      <p className="text-[11px] text-slate-500">本次导入的文件会共用这些标签值。</p>
+                    </div>
+                    {!pendingDataset ? (
+                      <button
+                        type="button"
+                        onClick={() => setImportForm((current) => ({
+                          ...current,
+                          metadataFields: [...current.metadataFields, createEmptyMetadataDraft()],
+                        }))}
+                        className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                      >
+                        添加标签
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {importForm.metadataFields.length ? (
+                    <div className="space-y-2">
+                      {importForm.metadataFields.map((field, index) => (
+                        <div key={field.id} className={`grid gap-2 ${pendingDataset ? 'md:grid-cols-[140px_minmax(0,1fr)]' : 'md:grid-cols-[120px_140px_minmax(0,1fr)_auto]'}`}>
+                          {!pendingDataset ? (
+                            <input
+                              type="text"
+                              value={field.key}
+                              placeholder="key"
+                              onChange={(event) => setImportForm((current) => ({
+                                ...current,
+                                metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, key: event.target.value } : item),
+                              }))}
+                              className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                            />
+                          ) : null}
+                          <input
+                            type="text"
+                            value={field.label}
+                            placeholder="标签名"
+                            disabled={Boolean(pendingDataset)}
+                            onChange={(event) => setImportForm((current) => ({
+                              ...current,
+                              metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, label: event.target.value } : item),
+                            }))}
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100 disabled:text-slate-500"
+                          />
+                          <input
+                            type="text"
+                            value={field.value}
+                            placeholder={`${field.label || `标签 ${index + 1}`} 的值`}
+                            onChange={(event) => setImportForm((current) => ({
+                              ...current,
+                              metadataFields: current.metadataFields.map((item) => item.id === field.id ? { ...item, value: event.target.value } : item),
+                            }))}
+                            className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                          />
+                          {!pendingDataset ? (
+                            <button
+                              type="button"
+                              onClick={() => setImportForm((current) => ({
+                                ...current,
+                                metadataFields: current.metadataFields.filter((item) => item.id !== field.id),
+                              }))}
+                              className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                            >
+                              删除
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-xs text-slate-500">
+                      {pendingDataset ? '当前知识库未定义标签字段。' : '可选：添加标签字段和值，导入后会显示在详情并参与 metadata 过滤。'}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid gap-2 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                   <label className="min-w-0">
                     <span className="mb-1 block text-[11px] font-medium text-slate-600">分段标识符</span>
@@ -1180,7 +1327,10 @@ export const RagPage = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setImportForm(createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description));
+                      setImportForm({
+                        ...createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description),
+                        metadataFields: createMetadataDrafts(pendingDataset?.doc_metadata ?? []),
+                      });
                       setHasRequestedPreview(false);
                       setLocalPreview(null);
                       setPreviewError('');
@@ -1287,10 +1437,13 @@ export const RagPage = () => {
             </DialogTitle>
 
             {selectedDataset ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 ml-[-10px]">
+              <div className="ml-[-10px] flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.documentCount ?? 0} 文档</span>
                 <span className="rounded-full bg-white px-2.5 py-1">{selectedDataset.chunkCount ?? 0} chunks</span>
                 <span className="rounded-full bg-white px-2.5 py-1">更新时间 {formatTimestamp(selectedDataset.updatedAt)}</span>
+                {selectedDataset.doc_metadata.length ? selectedDataset.doc_metadata.map((field) => (
+                  <span key={field.key} className="rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700">字段 {field.label}</span>
+                )) : null}
               </div>
             ) : null}
           </div>
@@ -1342,6 +1495,9 @@ export const RagPage = () => {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="truncate rounded-full bg-cyan-50 px-2 py-1 font-medium text-cyan-700">{block.documentName}</span>
                       <span className="rounded-full bg-slate-100 px-2 py-1 font-medium text-slate-700">Block #{block.index + 1}</span>
+                      {Object.entries(block.metadata).map(([key, value]) => (
+                        <span key={`${block.id}-${key}`} className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-700">{key}: {value}</span>
+                      ))}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <span>{block.charCount} chars</span>

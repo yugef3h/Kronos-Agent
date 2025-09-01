@@ -346,6 +346,7 @@ export type KnowledgeDocumentResponseItem = {
 	chunkCount: number;
 	characterCount: number;
 	previewText: string;
+	metadata: Record<string, string>;
 	sourcePath: string;
 	parsedTextPath: string;
 	chunkPath: string;
@@ -357,6 +358,7 @@ export type KnowledgeDocumentChunkPreview = {
 	text: string;
 	tokenCount: number;
 	charCount: number;
+	metadata?: Record<string, string>;
 };
 
 export type KnowledgeDocumentsResponse = {
@@ -382,6 +384,55 @@ export type KnowledgeDocumentPreviewItem = {
 
 export type KnowledgeDocumentPreviewResponse = {
 	items: KnowledgeDocumentPreviewItem[];
+};
+
+export type KnowledgeRetrievalQueryInput = {
+	query: string;
+	dataset_ids: string[];
+	retrieval_mode: 'oneWay' | 'multiWay';
+	single_retrieval_config: {
+		model: string;
+		top_k: number;
+		score_threshold: number | null;
+	};
+	multiple_retrieval_config: {
+		top_k: number;
+		score_threshold: number | null;
+		reranking_enable: boolean;
+		reranking_model?: string;
+	};
+	metadata_filtering_mode: 'disabled' | 'manual';
+	metadata_filtering_conditions: Array<{
+		id?: string;
+		field: string;
+		operator: 'contains' | 'equals' | 'not_equals';
+		value: string;
+	}>;
+};
+
+export type KnowledgeRetrievalQueryResponse = {
+	query: string;
+	items: Array<{
+		dataset_id: string;
+		dataset_name: string;
+		document_id: string;
+		document_name: string;
+		chunk_id: string;
+		chunk_index: number;
+		text: string;
+		score: number;
+		search_method: 'semantic_search' | 'full_text_search' | 'keyword_search' | 'hybrid_search';
+		matched_terms: string[];
+		metadata: Record<string, string>;
+		token_count: number;
+		char_count: number;
+	}>;
+	diagnostics: {
+		retrieval_mode: 'oneWay' | 'multiWay';
+		dataset_count: number;
+		total_chunk_count: number;
+		filtered_chunk_count: number;
+	};
 };
 
 export type DatasetIndexingEstimateResponse = {
@@ -790,6 +841,7 @@ export const requestImportKnowledgeDocument = async (params: {
 			normalizeWhitespace?: boolean;
 			removeUrlsEmails?: boolean;
 		};
+		metadata?: Record<string, string>;
 	};
 }): Promise<KnowledgeDocumentImportResponse> => {
 	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/import`), {
@@ -842,6 +894,26 @@ export const requestPreviewKnowledgeDocumentChunks = async (params: {
 	}
 
 	return (await response.json()) as KnowledgeDocumentPreviewResponse;
+};
+
+export const requestKnowledgeRetrievalQuery = async (params: {
+	authToken: string;
+	input: KnowledgeRetrievalQueryInput;
+}): Promise<KnowledgeRetrievalQueryResponse> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-retrieval/query'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to run knowledge retrieval query'));
+	}
+
+	return (await response.json()) as KnowledgeRetrievalQueryResponse;
 };
 
 export const requestDatasetIndexingEstimate = async (params: {

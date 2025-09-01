@@ -122,4 +122,30 @@ describe('knowledgeDocumentStore', () => {
       index: 0,
     });
   });
+
+  it('persists document metadata onto document records and chunks', async () => {
+    const dataset = await createKnowledgeDataset({
+      name: '标签知识库',
+      description: 'metadata 持久化测试',
+      is_multimodal: false,
+      doc_metadata: [{ key: 'category', label: '分类' }],
+    });
+
+    const result = await importKnowledgeDocument({
+      datasetId: dataset.id,
+      fileName: 'meta.txt',
+      mimeType: 'text/plain',
+      fileDataUrl: toDataUrl('text/plain', '售后退款处理说明。'),
+      metadata: {
+        category: '售后',
+      },
+    });
+
+    const documents = await listKnowledgeDocuments(dataset.id);
+    expect(documents[0]?.metadata).toEqual({ category: '售后' });
+
+    const blocks = await getKnowledgeDocumentBlocks(dataset.id, result.document.id);
+    expect(blocks.document.metadata).toEqual({ category: '售后' });
+    expect(blocks.chunks[0]?.metadata).toEqual({ category: '售后' });
+  });
 });
