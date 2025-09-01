@@ -247,12 +247,67 @@ export type KnowledgeDatasetResponseField = {
 	label: string;
 };
 
+export type KnowledgeSegmentationRule = {
+	separator: string;
+	max_tokens: number;
+	chunk_overlap: number;
+	segment_max_length?: number;
+	overlap_length?: number;
+};
+
+export type KnowledgePreProcessingRule = {
+	id: string;
+	enabled: boolean;
+};
+
+export type KnowledgeProcessRule = {
+	mode: 'custom' | 'hierarchical' | 'automatic';
+	rules: {
+		pre_processing_rules: KnowledgePreProcessingRule[];
+		segmentation: KnowledgeSegmentationRule;
+		parent_mode: 'full-doc' | 'paragraph';
+		subchunk_segmentation: KnowledgeSegmentationRule;
+	};
+};
+
+export type KnowledgeRetrievalWeights = {
+	semantic: number;
+	keyword: number;
+	full_text: number;
+};
+
+export type KnowledgeRetrievalModel = {
+	search_method: 'semantic_search' | 'full_text_search' | 'keyword_search' | 'hybrid_search';
+	top_k: number;
+	score_threshold_enabled: boolean;
+	score_threshold: number | null;
+	reranking_enable: boolean;
+	reranking_model?: string;
+	reranking_mode: 'weighted_score' | 'model_rerank';
+	weights: KnowledgeRetrievalWeights;
+};
+
+export type KnowledgeSummaryIndexSetting = {
+	enable: boolean;
+	model_name?: string;
+	model_provider_name?: string;
+	summary_prompt?: string;
+};
+
 export type KnowledgeDatasetResponseItem = {
 	id: string;
 	name: string;
 	description: string;
 	is_multimodal: boolean;
 	doc_metadata: KnowledgeDatasetResponseField[];
+	indexing_technique: 'economy' | 'high_quality';
+	embedding_model: string;
+	embedding_model_provider: string;
+	retrieval_model: KnowledgeRetrievalModel;
+	process_rule: KnowledgeProcessRule;
+	summary_index_setting: KnowledgeSummaryIndexSetting;
+	doc_form: 'text_model' | 'qa_model' | 'hierarchical_model';
+	doc_language: string;
 	documentCount?: number;
 	chunkCount?: number;
 	createdAt?: number;
@@ -268,6 +323,14 @@ export type KnowledgeDatasetMutationInput = {
 	description: string;
 	is_multimodal: boolean;
 	doc_metadata: KnowledgeDatasetResponseField[];
+	indexing_technique?: 'economy' | 'high_quality';
+	embedding_model?: string;
+	embedding_model_provider?: string;
+	retrieval_model?: KnowledgeRetrievalModel;
+	process_rule?: KnowledgeProcessRule;
+	summary_index_setting?: KnowledgeSummaryIndexSetting;
+	doc_form?: 'text_model' | 'qa_model' | 'hierarchical_model';
+	doc_language?: string;
 };
 
 export type KnowledgeDocumentResponseItem = {

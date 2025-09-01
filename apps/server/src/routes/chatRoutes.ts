@@ -96,11 +96,111 @@ const knowledgeMetadataFieldSchema = z.object({
   label: z.string().trim().min(1).max(40),
 });
 
+const knowledgeSegmentationRuleSchema = z.object({
+  separator: z.string().min(1).max(24).default('\n\n'),
+  max_tokens: z.coerce.number().int().min(50).max(4000).default(500),
+  chunk_overlap: z.coerce.number().int().min(0).max(1000).default(80),
+  segment_max_length: z.coerce.number().int().min(50).max(12000).optional(),
+  overlap_length: z.coerce.number().int().min(0).max(4000).optional(),
+});
+
+const knowledgeRetrievalWeightsSchema = z.object({
+  semantic: z.coerce.number().min(0).max(1).default(1),
+  keyword: z.coerce.number().min(0).max(1).default(0),
+  full_text: z.coerce.number().min(0).max(1).default(0),
+}).default({
+  semantic: 1,
+  keyword: 0,
+  full_text: 0,
+});
+
+const knowledgeRetrievalModelSchema = z.object({
+  search_method: z.enum(['semantic_search', 'full_text_search', 'keyword_search', 'hybrid_search']).default('semantic_search'),
+  top_k: z.coerce.number().int().min(1).max(20).default(5),
+  score_threshold_enabled: z.boolean().default(false),
+  score_threshold: z.coerce.number().min(0).max(1).nullable().default(null),
+  reranking_enable: z.boolean().default(false),
+  reranking_model: z.string().trim().min(1).max(120).optional(),
+  reranking_mode: z.enum(['weighted_score', 'model_rerank']).default('weighted_score'),
+  weights: knowledgeRetrievalWeightsSchema,
+}).default({
+  search_method: 'semantic_search',
+  top_k: 5,
+  score_threshold_enabled: false,
+  score_threshold: null,
+  reranking_enable: false,
+  reranking_mode: 'weighted_score',
+  weights: {
+    semantic: 1,
+    keyword: 0,
+    full_text: 0,
+  },
+});
+
+const knowledgeProcessRuleSchema = z.object({
+  mode: z.enum(['custom', 'hierarchical', 'automatic']).default('custom'),
+  rules: z.object({
+    pre_processing_rules: z.array(z.object({
+      id: z.string().trim().min(1).max(60),
+      enabled: z.boolean().default(true),
+    })).max(20).default([]),
+    segmentation: knowledgeSegmentationRuleSchema,
+    parent_mode: z.enum(['full-doc', 'paragraph']).default('paragraph'),
+    subchunk_segmentation: knowledgeSegmentationRuleSchema.default({
+      separator: '\n',
+      max_tokens: 200,
+      chunk_overlap: 30,
+      segment_max_length: 512,
+      overlap_length: 25,
+    }),
+  }),
+}).default({
+  mode: 'custom',
+  rules: {
+    pre_processing_rules: [
+      { id: 'remove_extra_spaces', enabled: true },
+      { id: 'remove_urls_emails', enabled: false },
+    ],
+    segmentation: {
+      separator: '\n\n',
+      max_tokens: 500,
+      chunk_overlap: 80,
+      segment_max_length: 1024,
+      overlap_length: 50,
+    },
+    parent_mode: 'paragraph',
+    subchunk_segmentation: {
+      separator: '\n',
+      max_tokens: 200,
+      chunk_overlap: 30,
+      segment_max_length: 512,
+      overlap_length: 25,
+    },
+  },
+});
+
+const knowledgeSummaryIndexSettingSchema = z.object({
+  enable: z.boolean().default(false),
+  model_name: z.string().trim().min(1).max(120).optional(),
+  model_provider_name: z.string().trim().min(1).max(120).optional(),
+  summary_prompt: z.string().trim().min(1).max(4000).optional(),
+}).default({
+  enable: false,
+});
+
 const knowledgeDatasetInputSchema = z.object({
   name: z.string().trim().min(1).max(60),
   description: z.string().trim().max(240).default(''),
   is_multimodal: z.boolean().default(false),
   doc_metadata: z.array(knowledgeMetadataFieldSchema).max(12).default([]),
+  indexing_technique: z.enum(['economy', 'high_quality']).default('high_quality'),
+  embedding_model: z.string().trim().min(1).max(120).default('default-embedding'),
+  embedding_model_provider: z.string().trim().min(1).max(120).default('default'),
+  retrieval_model: knowledgeRetrievalModelSchema,
+  process_rule: knowledgeProcessRuleSchema,
+  summary_index_setting: knowledgeSummaryIndexSettingSchema,
+  doc_form: z.enum(['text_model', 'qa_model', 'hierarchical_model']).default('text_model'),
+  doc_language: z.string().trim().min(1).max(80).default('Chinese Simplified'),
 });
 
 const knowledgeDocumentImportSchema = z.object({

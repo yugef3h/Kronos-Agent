@@ -35,6 +35,20 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
     name: raw.name,
     description: typeof raw.description === 'string' ? raw.description : '',
     is_multimodal: Boolean(raw.is_multimodal),
+    indexing_technique: raw.indexing_technique === 'economy' ? 'economy' : 'high_quality',
+    embedding_model: typeof raw.embedding_model === 'string' ? raw.embedding_model : 'default-embedding',
+    embedding_model_provider: typeof raw.embedding_model_provider === 'string' ? raw.embedding_model_provider : 'default',
+    retrieval_model: raw.retrieval_model && typeof raw.retrieval_model === 'object'
+      ? raw.retrieval_model as KnowledgeDatasetDetail['retrieval_model']
+      : undefined,
+    process_rule: raw.process_rule && typeof raw.process_rule === 'object'
+      ? raw.process_rule as KnowledgeDatasetDetail['process_rule']
+      : undefined,
+    summary_index_setting: raw.summary_index_setting && typeof raw.summary_index_setting === 'object'
+      ? raw.summary_index_setting as KnowledgeDatasetDetail['summary_index_setting']
+      : undefined,
+    doc_form: raw.doc_form === 'qa_model' || raw.doc_form === 'hierarchical_model' ? raw.doc_form : 'text_model',
+    doc_language: typeof raw.doc_language === 'string' ? raw.doc_language : 'Chinese Simplified',
     documentCount: typeof raw.documentCount === 'number' ? raw.documentCount : undefined,
     chunkCount: typeof raw.chunkCount === 'number' ? raw.chunkCount : undefined,
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : undefined,
@@ -67,6 +81,14 @@ const buildDatasetSignature = (datasets: KnowledgeDatasetDetail[]) => {
     name: dataset.name,
     description: dataset.description,
     is_multimodal: dataset.is_multimodal,
+    indexing_technique: dataset.indexing_technique,
+    embedding_model: dataset.embedding_model,
+    embedding_model_provider: dataset.embedding_model_provider,
+    retrieval_model: dataset.retrieval_model,
+    process_rule: dataset.process_rule,
+    summary_index_setting: dataset.summary_index_setting,
+    doc_form: dataset.doc_form,
+    doc_language: dataset.doc_language,
     documentCount: dataset.documentCount ?? 0,
     chunkCount: dataset.chunkCount ?? 0,
     updatedAt: dataset.updatedAt ?? 0,
