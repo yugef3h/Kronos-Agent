@@ -2,6 +2,7 @@ import { Panel as NodePanel } from "../compts/custom-node";
 import type { PanelProps as NodePanelProps } from '../compts/custom-node'
 import React, { memo, useCallback, useEffect, useRef } from "react";
 import { cn } from "../utils/classnames";
+import { PANEL_Z_INDEX } from '../layout-constants'
 
 type PanelProps = {
   selectedNode?: NodePanelProps
@@ -56,6 +57,11 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
   if (!selectedNode)
     return null
 
+  const stopPanelEvent = (event: React.MouseEvent<HTMLDivElement | HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
   const panelTitle = typeof selectedNode.data.title === 'string'
     ? selectedNode.data.title
     : '节点配置'
@@ -65,15 +71,24 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
     <div
       tabIndex={-1}
       className={cn('pointer-events-none absolute inset-y-4 right-4 z-10 flex items-start outline-none')}
+      style={{ zIndex: PANEL_Z_INDEX }}
     >
-      <div className="pointer-events-auto flex h-full w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_50px_-28px_rgba(15,23,42,0.45)]">
+      <div
+        className="pointer-events-auto flex h-full w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_50px_-28px_rgba(15,23,42,0.45)]"
+        onMouseDown={stopPanelEvent}
+        onClick={stopPanelEvent}
+      >
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
           <div className="min-w-0">
             <p className="mt-1 truncate text-sm font-semibold text-slate-900">{panelTitle}</p>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onMouseDown={stopPanelEvent}
+            onClick={(event) => {
+              stopPanelEvent(event)
+              onClose()
+            }}
             className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
           >
             关闭

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react'
 import type { Node, NodeMouseHandler } from 'reactflow';
 import type { Edge as WorkflowEdge } from '../types/common'
@@ -18,6 +18,7 @@ type UseNodesInteractionsOptions<
 export const useNodesInteractions = <
   TNodeData extends SelectableNodeData,
 >({ setNodes, setEdges }: UseNodesInteractionsOptions<TNodeData>) => {
+  const ignoreNextNodeClickRef = useRef(false)
 
   const handleNodeSelect = useCallback(
     (nodeId?: string) => {
@@ -37,6 +38,11 @@ export const useNodesInteractions = <
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
+      if (ignoreNextNodeClickRef.current) {
+        ignoreNextNodeClickRef.current = false
+        return
+      }
+
       handleNodeSelect(node.id);
     },
     [handleNodeSelect],
@@ -51,7 +57,14 @@ export const useNodesInteractions = <
 
   return {
     handleNodeClick,
-    handlePanelClose: () => handleNodeSelect(),
+    handlePanelClose: () => {
+      ignoreNextNodeClickRef.current = true
+      handleNodeSelect()
+
+      requestAnimationFrame(() => {
+        ignoreNextNodeClickRef.current = false
+      })
+    },
     handlePaneClick,
   };
 };

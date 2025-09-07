@@ -6,6 +6,7 @@ export const START_INITIAL_POSITION = { x: 80, y: 282 };
 export const ITERATION_CHILDREN_Z_INDEX = 1002;
 export const SEARCH_BOX_NODE_Z_INDEX = ITERATION_CHILDREN_Z_INDEX + 20;
 export const SEARCH_BOX_MENU_Z_INDEX = SEARCH_BOX_NODE_Z_INDEX + 1;
+export const PANEL_Z_INDEX = SEARCH_BOX_MENU_Z_INDEX + 10;
 export const CUSTOM_EDGE = 'custom';
 export const CUSTOM_NODE = 'custom';
 export const CUSTOM_NOTE_NODE = 'custom-note';
