@@ -15,7 +15,7 @@ import {
 } from '../base/panel-form'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
-import { buildIterationChildren, getIterationErrorHandleLabel, getIterationOutputTypeLabel } from '../features/iteration-panel/schema'
+import { getIterationErrorHandleLabel, getIterationOutputTypeLabel } from '../features/iteration-panel/schema'
 import { useIterationPanelConfig } from '../features/iteration-panel/use-iteration-panel-config'
 import type { IterationErrorHandleMode, IterationNodeConfig } from '../features/iteration-panel/types'
 import type { VariableOption } from '../features/llm-panel/types'
@@ -98,7 +98,6 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
               count: 0,
               ...(node.data.outputs ?? {}),
             },
-            _children: buildIterationChildren(nextValue.start_node_id),
           },
         }
       }))
@@ -108,12 +107,10 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
   useEffect(() => {
     const rawInputs = JSON.stringify(nodeData.inputs ?? null)
     const normalizedInputs = JSON.stringify(config)
-    const rawChildren = JSON.stringify(nodeData._children ?? [])
-    const normalizedChildren = JSON.stringify(buildIterationChildren(config.start_node_id))
     const outputs = nodeData.outputs ?? {}
     const hasOutputShape = 'items' in outputs && 'count' in outputs
 
-    if (rawInputs !== normalizedInputs || rawChildren !== normalizedChildren || !hasOutputShape) {
+    if (rawInputs !== normalizedInputs || !hasOutputShape) {
       setNodes(nodes => nodes.map((node) => {
         if (node.id !== id)
           return node
@@ -128,12 +125,11 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
               count: 0,
               ...(node.data.outputs ?? {}),
             },
-            _children: buildIterationChildren(config.start_node_id),
           },
         }
       }))
     }
-  }, [config, id, nodeData._children, nodeData.inputs, nodeData.outputs, setNodes])
+  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes])
 
   return (
     <div className="space-y-3">

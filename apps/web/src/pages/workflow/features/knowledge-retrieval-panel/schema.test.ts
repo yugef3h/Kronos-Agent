@@ -1,6 +1,5 @@
 import {
   createDefaultKnowledgeRetrievalNodeConfig,
-  getKnowledgeMetadataFieldsIntersection,
   normalizeKnowledgeRetrievalNodeConfig,
   shouldShowKnowledgeAttachmentSelector,
   validateKnowledgeRetrievalNodeConfig,
@@ -49,10 +48,10 @@ describe('knowledge-retrieval-panel schema', () => {
     expect(config.query_variable_selector).toEqual(['sys', 'query'])
     expect(config.dataset_ids).toEqual([])
     expect(config.retrieval_mode).toBe('multiWay')
-    expect(config.metadata_filtering_conditions).toEqual([])
+    expect(config.multiple_retrieval_config.reranking_enable).toBe(false)
   })
 
-  it('normalizes invalid inputs and clears attachment selector when datasets are not multimodal', () => {
+  it('normalizes invalid inputs and preserves saved attachment selectors', () => {
     const config = normalizeKnowledgeRetrievalNodeConfig({
       query_variable_selector: ['sys', 'query'],
       query_attachment_selector: ['sys', 'files'],
@@ -61,7 +60,7 @@ describe('knowledge-retrieval-panel schema', () => {
     })
 
     expect(config.retrieval_mode).toBe('oneWay')
-    expect(config.query_attachment_selector).toEqual([])
+    expect(config.query_attachment_selector).toEqual(['sys', 'files'])
   })
 
   it('detects multimodal datasets and exposes the attachment selector', () => {
@@ -69,29 +68,11 @@ describe('knowledge-retrieval-panel schema', () => {
     expect(shouldShowKnowledgeAttachmentSelector(['dataset-a'], TEST_DATASETS)).toBe(false)
   })
 
-  it('returns the metadata intersection across selected datasets', () => {
-    const fields = getKnowledgeMetadataFieldsIntersection(['dataset-a', 'dataset-b'], TEST_DATASETS)
-
-    expect(fields.map(field => field.key)).toEqual(['category', 'language', 'channel'])
-  })
-
-  it('validates missing datasets and incomplete metadata conditions', () => {
+  it('validates missing datasets', () => {
     const issues = validateKnowledgeRetrievalNodeConfig({
       ...createDefaultKnowledgeRetrievalNodeConfig(),
-      metadata_filtering_mode: 'manual',
-      metadata_filtering_conditions: [{
-        id: 'condition-1',
-        field: '',
-        operator: 'contains',
-        value: '',
-      }],
     })
 
-    expect(issues.map(issue => issue.path)).toEqual([
-      'dataset_ids',
-      'metadata_filtering_conditions',
-      'metadata_filtering_conditions.0.field',
-      'metadata_filtering_conditions.0.value',
-    ])
+    expect(issues.map(issue => issue.path)).toEqual(['dataset_ids'])
   })
 })

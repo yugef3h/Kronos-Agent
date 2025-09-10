@@ -128,12 +128,6 @@ const buildKnowledgeSummary = (data: CanvasNodeData): WorkflowNodeSummary => {
       {
         primary: `知识库 ${selectedDatasetLabel}`,
       },
-      ...(config.metadata_filtering_mode === 'manual' && config.metadata_filtering_conditions.length
-        ? [{
-            primary: `Metadata ${config.metadata_filtering_conditions.length} 条`,
-            tone: 'amber' as WorkflowNodeSummaryTone,
-          }]
-        : []),
     ],
   }
 }

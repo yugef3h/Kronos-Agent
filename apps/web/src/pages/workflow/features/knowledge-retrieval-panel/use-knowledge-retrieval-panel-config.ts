@@ -1,8 +1,6 @@
 import { useMemo } from 'react'
 import { produce } from 'immer'
 import {
-  createEmptyKnowledgeMetadataCondition,
-  getKnowledgeMetadataFieldsIntersection,
   getKnowledgeSelectedDatasets,
   normalizeKnowledgeRetrievalNodeConfig,
   shouldShowKnowledgeAttachmentSelector,
@@ -10,8 +8,6 @@ import {
 } from './schema'
 import type { KnowledgeDatasetDetail } from './types'
 import type {
-  KnowledgeMetadataCondition,
-  KnowledgeMetadataFilteringMode,
   KnowledgeRetrievalMode,
   KnowledgeRetrievalNodeConfig,
 } from './types'
@@ -25,25 +21,17 @@ type UseKnowledgeRetrievalPanelConfigOptions = {
 export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: UseKnowledgeRetrievalPanelConfigOptions) => {
   const config = useMemo(() => normalizeKnowledgeRetrievalNodeConfig(value), [value])
   const selectedDatasets = useMemo(() => getKnowledgeSelectedDatasets(config.dataset_ids, datasets), [config.dataset_ids, datasets])
-  const metadataFields = useMemo(() => getKnowledgeMetadataFieldsIntersection(config.dataset_ids, datasets), [config.dataset_ids, datasets])
   const showImageQueryVarSelector = useMemo(
     () => shouldShowKnowledgeAttachmentSelector(config.dataset_ids, datasets),
     [config.dataset_ids, datasets],
   )
-  const issues = useMemo(() => validateKnowledgeRetrievalNodeConfig(config, metadataFields), [config, metadataFields])
+  const issues = useMemo(() => validateKnowledgeRetrievalNodeConfig(config), [config])
 
   const update = (recipe: (draft: KnowledgeRetrievalNodeConfig) => void) => {
     const nextValue = produce(config, recipe)
 
     if (!shouldShowKnowledgeAttachmentSelector(nextValue.dataset_ids, datasets)) {
       nextValue.query_attachment_selector = []
-    }
-
-    const nextMetadataFields = getKnowledgeMetadataFieldsIntersection(nextValue.dataset_ids, datasets)
-    if (nextValue.metadata_filtering_mode === 'manual') {
-      nextValue.metadata_filtering_conditions = nextValue.metadata_filtering_conditions.filter((condition) => {
-        return nextMetadataFields.some(field => field.key === condition.field)
-      })
     }
 
     onChange(nextValue)
@@ -94,41 +82,10 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
     })
   }
 
-  const handleMetadataFilteringModeChange = (mode: KnowledgeMetadataFilteringMode) => {
-    update((draft) => {
-      draft.metadata_filtering_mode = mode
-      if (mode === 'disabled')
-        draft.metadata_filtering_conditions = []
-    })
-  }
-
-  const handleAddMetadataCondition = () => {
-    update((draft) => {
-      draft.metadata_filtering_conditions.push(createEmptyKnowledgeMetadataCondition(metadataFields[0]?.key ?? ''))
-    })
-  }
-
-  const handleUpdateMetadataCondition = (conditionId: string, patch: Partial<KnowledgeMetadataCondition>) => {
-    update((draft) => {
-      const condition = draft.metadata_filtering_conditions.find(item => item.id === conditionId)
-      if (!condition)
-        return
-
-      Object.assign(condition, patch)
-    })
-  }
-
-  const handleRemoveMetadataCondition = (conditionId: string) => {
-    update((draft) => {
-      draft.metadata_filtering_conditions = draft.metadata_filtering_conditions.filter(item => item.id !== conditionId)
-    })
-  }
-
   return {
     config,
     issues,
     selectedDatasets,
-    metadataFields,
     showImageQueryVarSelector,
     handleQueryVariableChange,
     handleQueryAttachmentChange,
@@ -136,9 +93,5 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
     handleRetrievalModeChange,
     handleSingleRetrievalConfigChange,
     handleMultipleRetrievalConfigChange,
-    handleMetadataFilteringModeChange,
-    handleAddMetadataCondition,
-    handleUpdateMetadataCondition,
-    handleRemoveMetadataCondition,
   }
 }

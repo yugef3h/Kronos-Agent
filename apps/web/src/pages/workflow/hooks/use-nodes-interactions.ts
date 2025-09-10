@@ -19,6 +19,7 @@ export const useNodesInteractions = <
   TNodeData extends SelectableNodeData,
 >({ setNodes, setEdges }: UseNodesInteractionsOptions<TNodeData>) => {
   const ignoreNextNodeClickRef = useRef(false)
+  const panelCloseGuardTimerRef = useRef<number | null>(null)
 
   const handleNodeSelect = useCallback(
     (nodeId?: string) => {
@@ -50,21 +51,28 @@ export const useNodesInteractions = <
 
   const handlePaneClick = useCallback(
     () => {
-      return undefined
+      handleNodeSelect()
     },
-    [],
+    [handleNodeSelect],
   )
+
+  const handlePanelClose = useCallback(() => {
+    ignoreNextNodeClickRef.current = true
+    handleNodeSelect()
+
+    if (panelCloseGuardTimerRef.current !== null) {
+      window.clearTimeout(panelCloseGuardTimerRef.current)
+    }
+
+    panelCloseGuardTimerRef.current = window.setTimeout(() => {
+      ignoreNextNodeClickRef.current = false
+      panelCloseGuardTimerRef.current = null
+    }, 180)
+  }, [handleNodeSelect])
 
   return {
     handleNodeClick,
-    handlePanelClose: () => {
-      ignoreNextNodeClickRef.current = true
-      handleNodeSelect()
-
-      requestAnimationFrame(() => {
-        ignoreNextNodeClickRef.current = false
-      })
-    },
+    handlePanelClose,
     handlePaneClick,
   };
 };

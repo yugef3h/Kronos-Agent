@@ -21,6 +21,9 @@ import {
   PanelToggle,
   PanelToken,
 } from '../base/panel-form'
+import {
+  requestKnowledgeRetrievalQuery,
+} from '../../../lib/api'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import type { VariableOption } from '../features/llm-panel/types'
@@ -28,14 +31,17 @@ import {
   KNOWLEDGE_ONE_WAY_MODEL_OPTIONS,
   KNOWLEDGE_RERANK_MODEL_OPTIONS,
 } from '../features/knowledge-retrieval-panel/catalog'
-import { useKnowledgeDatasets } from '../features/knowledge-retrieval-panel/dataset-store'
+import {
+  ensureKnowledgeDatasetAuthToken,
+  useKnowledgeDatasets,
+} from '../features/knowledge-retrieval-panel/dataset-store'
 import { useKnowledgeRetrievalPanelConfig } from '../features/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
 import type {
   KnowledgeDatasetDetail,
-  KnowledgeMetadataCondition,
-  KnowledgeMetadataOperator,
+  KnowledgeRetrievalDebugRun,
   KnowledgeRetrievalNodeConfig,
 } from '../features/knowledge-retrieval-panel/types'
+import { serializeValueSelector } from '../utils/variable-options'
 
 type DatasetFormState = {
   name: string
@@ -57,17 +63,6 @@ const createDatasetFormFromDetail = (dataset?: KnowledgeDatasetDetail | null): D
   is_multimodal: dataset?.is_multimodal ?? false,
   doc_metadata: dataset?.doc_metadata.map(field => ({ ...field })) ?? [],
 })
-
-const buildMetadataKey = (value: string, index: number) => {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/_{2,}/g, '_')
-
-  return normalized || `field_${index + 1}`
-}
 
 const formatDatasetUpdatedAt = (value?: number) => {
   if (!value)
@@ -131,63 +126,6 @@ const buildVariableOptions = (
   return [...systemVariables, ...nodeVariables]
 }
 
-const METADATA_OPERATOR_OPTIONS: Array<{ label: string; value: KnowledgeMetadataOperator }> = [
-  { label: '包含', value: 'contains' },
-  { label: '等于', value: 'equals' },
-  { label: '不等于', value: 'not_equals' },
-]
-
-const MetadataConditionEditor = ({
-  condition,
-  metadataFields,
-  onChange,
-  onRemove,
-}: {
-  condition: KnowledgeMetadataCondition
-  metadataFields: Array<{ key: string; label: string }>
-  onChange: (patch: Partial<KnowledgeMetadataCondition>) => void
-  onRemove: () => void
-}) => {
-  return (
-    <PanelCard className="space-y-2 border-[#e8edf5] bg-white p-2.5 shadow-none">
-      <div className="grid gap-1.5 md:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)_auto]">
-        <PanelSelect
-          value={condition.field}
-          onChange={(event) => onChange({ field: event.target.value })}
-        >
-          <option value="">选择 metadata</option>
-          {metadataFields.map(field => (
-            <option key={field.key} value={field.key}>{field.label}</option>
-          ))}
-        </PanelSelect>
-
-        <PanelSelect
-          value={condition.operator}
-          onChange={(event) => onChange({ operator: event.target.value as KnowledgeMetadataOperator })}
-        >
-          {METADATA_OPERATOR_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </PanelSelect>
-
-        <PanelInput
-          value={condition.value}
-          placeholder="过滤值"
-          onChange={(event) => onChange({ value: event.target.value })}
-        />
-
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition hover:border-rose-200 hover:text-rose-600"
-        >
-          删除
-        </button>
-      </div>
-    </PanelCard>
-  )
-}
-
 const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const { getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>()
   const nodeData = data as CanvasNodeData
@@ -213,14 +151,16 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
   const [editingDatasetId, setEditingDatasetId] = useState<string>('')
   const [datasetForm, setDatasetForm] = useState<DatasetFormState>(() => createEmptyDatasetForm())
-  const [metadataDraft, setMetadataDraft] = useState({ key: '', label: '' })
   const [datasetFormError, setDatasetFormError] = useState('')
   const [datasetActionMessage, setDatasetActionMessage] = useState('')
+  const [debugQuery, setDebugQuery] = useState('')
+  const [debugRunError, setDebugRunError] = useState('')
+  const [isDebugRunning, setIsDebugRunning] = useState(false)
+  const lastRun = nodeData._knowledgeLastRun ?? null
   const {
     config,
     issues,
     selectedDatasets,
-    metadataFields,
     showImageQueryVarSelector,
     handleQueryVariableChange,
     handleQueryAttachmentChange,
@@ -228,10 +168,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     handleRetrievalModeChange,
     handleSingleRetrievalConfigChange,
     handleMultipleRetrievalConfigChange,
-    handleMetadataFilteringModeChange,
-    handleAddMetadataCondition,
-    handleUpdateMetadataCondition,
-    handleRemoveMetadataCondition,
   } = useKnowledgeRetrievalPanelConfig({
     value: nodeData.inputs,
     datasets,
@@ -266,7 +202,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const openCreateDataset = () => {
     setEditingDatasetId('new')
     setDatasetForm(createEmptyDatasetForm())
-    setMetadataDraft({ key: '', label: '' })
     setDatasetFormError('')
     setDatasetActionMessage('')
     setIsDatasetDialogOpen(true)
@@ -275,7 +210,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const selectDatasetForEdit = (dataset: KnowledgeDatasetDetail) => {
     setEditingDatasetId(dataset.id)
     setDatasetForm(createDatasetFormFromDetail(dataset))
-    setMetadataDraft({ key: '', label: '' })
     setDatasetFormError('')
     setDatasetActionMessage('')
     setIsDatasetDialogOpen(true)
@@ -338,28 +272,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     }
   }, [datasets, editingDataset, editingDatasetId, isDatasetDialogOpen])
 
-  const handleAddMetadataField = () => {
-    const nextLabel = metadataDraft.label.trim()
-    const nextKey = buildMetadataKey(metadataDraft.key || nextLabel, datasetForm.doc_metadata.length)
-
-    if (!nextLabel && !metadataDraft.key.trim()) {
-      setDatasetFormError('metadata 字段至少需要 key 或 label。')
-      return
-    }
-
-    if (datasetForm.doc_metadata.some(field => field.key === nextKey)) {
-      setDatasetFormError('metadata key 不能重复。')
-      return
-    }
-
-    setDatasetForm((current) => ({
-      ...current,
-      doc_metadata: [...current.doc_metadata, { key: nextKey, label: nextLabel || nextKey }],
-    }))
-    setMetadataDraft({ key: '', label: '' })
-    setDatasetFormError('')
-  }
-
   const handleSaveDataset = async () => {
     const nextName = datasetForm.name.trim()
 
@@ -412,6 +324,68 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     }
   }
 
+  const handleRunDebugQuery = async () => {
+    const nextQuery = debugQuery.trim()
+    if (!nextQuery) {
+      setDebugRunError('请输入调试查询内容。')
+      return
+    }
+
+    if (!config.dataset_ids.length) {
+      setDebugRunError('请先至少选择一个知识库。')
+      return
+    }
+
+    setIsDebugRunning(true)
+    setDebugRunError('')
+
+    try {
+      const authToken = await ensureKnowledgeDatasetAuthToken()
+      if (!authToken) {
+        throw new Error('知识库接口需要 JWT 鉴权')
+      }
+
+      const result = await requestKnowledgeRetrievalQuery({
+        authToken,
+        input: {
+          query: nextQuery,
+          dataset_ids: config.dataset_ids,
+          retrieval_mode: config.retrieval_mode,
+          single_retrieval_config: config.single_retrieval_config,
+          multiple_retrieval_config: config.multiple_retrieval_config,
+          metadata_filtering_mode: 'disabled',
+          metadata_filtering_conditions: [],
+        },
+      })
+
+      const nextRun: KnowledgeRetrievalDebugRun = {
+        requestedAt: Date.now(),
+        query: nextQuery,
+        items: result.items,
+        diagnostics: result.diagnostics,
+      }
+
+      setNodes((nodes) => nodes.map((node) => {
+        if (node.id !== id)
+          return node
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            _knowledgeLastRun: nextRun,
+          },
+        }
+      }))
+    }
+    catch (error) {
+      setDebugRunError(error instanceof Error ? error.message : '知识检索调试失败。')
+    }
+    finally {
+      setIsDebugRunning(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="space-y-2 border-b border-slate-100 pb-3">
@@ -443,11 +417,104 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
         </div>
 
         {activeTab === 'last-run' ? (
-          <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-            <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-            <p className="text-[11px] leading-5 text-slate-500">
-              运行工作流后，这里会展示查询变量、命中的知识库和检索返回结果，便于排查召回链路。
-            </p>
+          <PanelCard className="space-y-3 bg-slate-50/70 p-3">
+            <div className="space-y-1">
+              <p className="text-[12px] font-semibold text-slate-800">手动检索调试</p>
+              <p className="text-[11px] leading-5 text-slate-500">
+                这里直接调用服务端知识检索接口，先验证当前节点绑定的知识库与召回参数是否有效。
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-500">
+                <p>查询变量：{config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}</p>
+                <p>检索模式：{config.retrieval_mode === 'oneWay' ? '单路召回' : '混合召回'}</p>
+              </div>
+
+              {selectedDatasets.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedDatasets.map(dataset => (
+                    <PanelToken key={dataset.id}>{dataset.name}</PanelToken>
+                  ))}
+                </div>
+              ) : null}
+
+              <Field title="调试查询" compact>
+                <textarea
+                  value={debugQuery}
+                  rows={3}
+                  placeholder="输入一段查询文本，验证当前知识库配置是否能召回结果。"
+                  onChange={event => setDebugQuery(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </Field>
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] text-slate-400">
+                  {lastRun ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.requestedAt)}` : '还没有调试记录'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleRunDebugQuery()}
+                  disabled={isDebugRunning || isDatasetLoading}
+                  className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDebugRunning ? '检索中...' : '运行检索'}
+                </button>
+              </div>
+
+              {debugRunError ? (
+                <PanelAlert type="warning">{debugRunError}</PanelAlert>
+              ) : null}
+
+              {lastRun ? (
+                <div className="space-y-2">
+                  <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                    <p className="text-[12px] font-semibold text-slate-800">{lastRun.query}</p>
+                    <div className="mt-1 grid gap-1 text-[10px] text-slate-500 md:grid-cols-3">
+                      <span>知识库 {lastRun.diagnostics.dataset_count} 个</span>
+                      <span>扫描分块 {lastRun.diagnostics.total_chunk_count}</span>
+                      <span>参与排序 {lastRun.diagnostics.filtered_chunk_count}</span>
+                    </div>
+                  </div>
+
+                  {lastRun.items.length ? (
+                    <div className="space-y-2">
+                      {lastRun.items.map((item) => (
+                        <PanelCard
+                          key={item.chunk_id}
+                          className="space-y-1.5 border border-slate-200 bg-white p-2.5 shadow-none"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-[12px] font-semibold text-slate-800">
+                                {item.dataset_name} / {item.document_name}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                chunk #{item.chunk_index + 1} · {item.search_method}
+                              </p>
+                            </div>
+                            <PanelToken className="border-blue-100 text-blue-600">
+                              score {item.score.toFixed(3)}
+                            </PanelToken>
+                          </div>
+                          <p className="text-[11px] leading-5 text-slate-600">{item.text}</p>
+                          {item.matched_terms.length ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.matched_terms.map(term => (
+                                <PanelToken key={`${item.chunk_id}-${term}`}>{term}</PanelToken>
+                              ))}
+                            </div>
+                          ) : null}
+                        </PanelCard>
+                      ))}
+                    </div>
+                  ) : (
+                    <PanelAlert type="info">本次检索没有命中结果。</PanelAlert>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </PanelCard>
         ) : null}
       </div>
@@ -654,61 +721,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             </PanelCard>
           </PanelSection>
 
-          <PanelSection title="Metadata 过滤">
-            <PanelCard className="space-y-2.5 bg-white p-2.5 shadow-none">
-              <Field title="过滤模式" compact>
-                <PanelChoiceGroup
-                  size="sm"
-                  value={config.metadata_filtering_mode}
-                  options={[
-                    { label: '关闭', value: 'disabled' },
-                    { label: '条件过滤', value: 'manual' },
-                  ]}
-                  onChange={(value) => handleMetadataFilteringModeChange(value)}
-                />
-              </Field>
-
-              {config.metadata_filtering_mode === 'manual' ? (
-                metadataFields.length ? (
-                  <>
-                    <div className="flex flex-wrap gap-1.5">
-                      {metadataFields.map(field => (
-                        <PanelToken key={field.key}>{field.label}</PanelToken>
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      {config.metadata_filtering_conditions.map(condition => (
-                        <MetadataConditionEditor
-                          key={condition.id}
-                          condition={condition}
-                          metadataFields={metadataFields}
-                          onChange={patch => handleUpdateMetadataCondition(condition.id, patch)}
-                          onRemove={() => handleRemoveMetadataCondition(condition.id)}
-                        />
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddMetadataCondition}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
-                    >
-                      <span className="text-sm leading-none">+</span>
-                      添加条件
-                    </button>
-                  </>
-                ) : (
-                  <PanelAlert type="warning">
-                    当前所选知识库没有公共 metadata 字段，无法配置条件过滤。
-                  </PanelAlert>
-                )
-              ) : (
-                <p className="text-[11px] leading-5 text-slate-500">
-                  关闭后将不过滤 metadata，直接交给检索引擎完成召回。
-                </p>
-              )}
-            </PanelCard>
-          </PanelSection>
-
           <PanelSection title="输出变量">
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               <PanelOutputVarRow
@@ -852,62 +864,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                         checked={datasetForm.is_multimodal}
                         onChange={checked => setDatasetForm(current => ({ ...current, is_multimodal: checked }))}
                       />
-                    </div>
-                  </PanelCard>
-
-                  <PanelCard className="space-y-2.5 bg-white p-3 shadow-none">
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-[12px] font-semibold text-slate-800">Metadata 字段</p>
-                        <p className="text-[10px] text-slate-500">这些字段会进入条件过滤交集计算。</p>
-                      </div>
-                      <span className="text-[10px] text-slate-400">{datasetForm.doc_metadata.length} 个字段</span>
-                    </div>
-
-                    {datasetForm.doc_metadata.length ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {datasetForm.doc_metadata.map((field, index) => (
-                          <span
-                            key={field.key}
-                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-600"
-                          >
-                            <span>{field.label}</span>
-                            <span className="text-slate-400">/{field.key}</span>
-                            <button
-                              type="button"
-                              onClick={() => setDatasetForm(current => ({
-                                ...current,
-                                doc_metadata: current.doc_metadata.filter((_, currentIndex) => currentIndex !== index),
-                              }))}
-                              className="text-slate-400 transition hover:text-rose-600"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[11px] text-slate-500">当前还没有 metadata 字段，过滤区会自动隐藏。</p>
-                    )}
-
-                    <div className="grid gap-2 md:grid-cols-[minmax(0,120px)_minmax(0,1fr)_auto]">
-                      <PanelInput
-                        value={metadataDraft.key}
-                        placeholder="key，例如 brand"
-                        onChange={event => setMetadataDraft(current => ({ ...current, key: event.target.value }))}
-                      />
-                      <PanelInput
-                        value={metadataDraft.label}
-                        placeholder="显示名，例如 品牌"
-                        onChange={event => setMetadataDraft(current => ({ ...current, label: event.target.value }))}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddMetadataField}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
-                      >
-                        添加字段
-                      </button>
                     </div>
                   </PanelCard>
 

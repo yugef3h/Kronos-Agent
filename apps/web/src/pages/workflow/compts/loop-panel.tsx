@@ -20,7 +20,6 @@ import type { VariableOption } from '../features/llm-panel/types'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 import {
   buildLoopBreakSummary,
-  buildLoopChildren,
   comparisonOperatorRequiresValue,
   getComparisonOperatorLabel,
   getComparisonOptionsByVariableType,
@@ -260,7 +259,6 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
               count: 0,
               ...(node.data.outputs ?? {}),
             },
-            _children: buildLoopChildren(nextValue.start_node_id),
           },
         }
       }))
@@ -286,12 +284,10 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
   useEffect(() => {
     const rawInputs = JSON.stringify(nodeData.inputs ?? null)
     const normalizedInputs = JSON.stringify(config)
-    const rawChildren = JSON.stringify(nodeData._children ?? [])
-    const normalizedChildren = JSON.stringify(buildLoopChildren(config.start_node_id))
     const outputs = nodeData.outputs ?? {}
     const hasOutputShape = 'steps' in outputs && 'count' in outputs
 
-    if (rawInputs !== normalizedInputs || rawChildren !== normalizedChildren || !hasOutputShape) {
+    if (rawInputs !== normalizedInputs || !hasOutputShape) {
       setNodes(nodes => nodes.map((node) => {
         if (node.id !== id)
           return node
@@ -306,12 +302,11 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
               count: 0,
               ...(node.data.outputs ?? {}),
             },
-            _children: buildLoopChildren(config.start_node_id),
           },
         }
       }))
     }
-  }, [config, id, nodeData._children, nodeData.inputs, nodeData.outputs, setNodes])
+  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes])
 
   return (
     <div className="space-y-3">

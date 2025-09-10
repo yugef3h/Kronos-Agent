@@ -1,12 +1,8 @@
 import type {
   KnowledgeDatasetDetail,
-  KnowledgeMetadataCondition,
-  KnowledgeMetadataField,
   KnowledgeRetrievalNodeConfig,
   KnowledgeValidationIssue,
 } from './types'
-
-const createConditionId = () => `metadata-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
 const toStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value))
@@ -27,27 +23,6 @@ const toNumberOrNull = (value: unknown): number | null => {
   return null
 }
 
-const normalizeMetadataCondition = (value: unknown): KnowledgeMetadataCondition | null => {
-  if (!value || typeof value !== 'object')
-    return null
-
-  const raw = value as Record<string, unknown>
-
-  return {
-    id: typeof raw.id === 'string' && raw.id ? raw.id : createConditionId(),
-    field: typeof raw.field === 'string' ? raw.field : '',
-    operator: raw.operator === 'equals' || raw.operator === 'not_equals' ? raw.operator : 'contains',
-    value: typeof raw.value === 'string' ? raw.value : '',
-  }
-}
-
-export const createEmptyKnowledgeMetadataCondition = (field = ''): KnowledgeMetadataCondition => ({
-  id: createConditionId(),
-  field,
-  operator: 'contains',
-  value: '',
-})
-
 export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalNodeConfig => ({
   query_variable_selector: ['sys', 'query'],
   query_attachment_selector: [],
@@ -64,8 +39,6 @@ export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalN
     reranking_enable: false,
     reranking_model: 'default-rerank',
   },
-  metadata_filtering_mode: 'disabled',
-  metadata_filtering_conditions: [],
 })
 
 export const getKnowledgeSelectedDatasets = (
@@ -83,28 +56,6 @@ export const shouldShowKnowledgeAttachmentSelector = (
   return getKnowledgeSelectedDatasets(datasetIds, datasetCatalog).some(dataset => dataset.is_multimodal)
 }
 
-export const getKnowledgeMetadataFieldsIntersection = (
-  datasetIds: string[],
-  datasetCatalog: KnowledgeDatasetDetail[] = [],
-): KnowledgeMetadataField[] => {
-  const selectedDatasets = getKnowledgeSelectedDatasets(datasetIds, datasetCatalog)
-  if (!selectedDatasets.length)
-    return []
-
-  const [firstDataset, ...restDatasets] = selectedDatasets
-
-  return firstDataset.doc_metadata.filter((field) => {
-    return restDatasets.every(dataset => dataset.doc_metadata.some(item => item.key === field.key))
-  })
-}
-
-export const getKnowledgeMetadataFieldLabel = (
-  fieldKey: string,
-  metadataFields: KnowledgeMetadataField[],
-) => {
-  return metadataFields.find(field => field.key === fieldKey)?.label ?? fieldKey
-}
-
 export const normalizeKnowledgeRetrievalNodeConfig = (value: unknown): KnowledgeRetrievalNodeConfig => {
   const defaults = createDefaultKnowledgeRetrievalNodeConfig()
 
@@ -114,11 +65,10 @@ export const normalizeKnowledgeRetrievalNodeConfig = (value: unknown): Knowledge
   const raw = value as Record<string, unknown>
 
   const datasetIds = toStringArray(raw.dataset_ids)
-  const showAttachmentSelector = shouldShowKnowledgeAttachmentSelector(datasetIds)
 
   return {
     query_variable_selector: toStringArray(raw.query_variable_selector),
-    query_attachment_selector: showAttachmentSelector ? toStringArray(raw.query_attachment_selector) : [],
+    query_attachment_selector: toStringArray(raw.query_attachment_selector),
     dataset_ids: datasetIds,
     retrieval_mode: raw.retrieval_mode === 'oneWay' ? 'oneWay' : 'multiWay',
     single_retrieval_config: {
@@ -146,18 +96,11 @@ export const normalizeKnowledgeRetrievalNodeConfig = (value: unknown): Knowledge
         ? ((raw.multiple_retrieval_config as Record<string, string>).reranking_model)
         : defaults.multiple_retrieval_config.reranking_model,
     },
-    metadata_filtering_mode: raw.metadata_filtering_mode === 'manual' ? 'manual' : 'disabled',
-    metadata_filtering_conditions: Array.isArray(raw.metadata_filtering_conditions)
-      ? raw.metadata_filtering_conditions
-          .map(item => normalizeMetadataCondition(item))
-          .filter((item): item is KnowledgeMetadataCondition => item !== null)
-      : defaults.metadata_filtering_conditions,
   }
 }
 
 export const validateKnowledgeRetrievalNodeConfig = (
   config: KnowledgeRetrievalNodeConfig,
-  metadataFields = getKnowledgeMetadataFieldsIntersection(config.dataset_ids),
 ): KnowledgeValidationIssue[] => {
   const issues: KnowledgeValidationIssue[] = []
 
@@ -186,31 +129,6 @@ export const validateKnowledgeRetrievalNodeConfig = (
     issues.push({
       path: 'multiple_retrieval_config.reranking_model',
       message: '开启 Rerank 后必须选择 Rerank 模型。',
-    })
-  }
-
-  if (config.metadata_filtering_mode === 'manual') {
-    if (!metadataFields.length) {
-      issues.push({
-        path: 'metadata_filtering_conditions',
-        message: '当前已选知识库没有公共 metadata 字段，无法配置过滤条件。',
-      })
-    }
-
-    config.metadata_filtering_conditions.forEach((condition, index) => {
-      if (!condition.field) {
-        issues.push({
-          path: `metadata_filtering_conditions.${index}.field`,
-          message: '请选择 metadata 字段。',
-        })
-      }
-
-      if (!condition.value.trim()) {
-        issues.push({
-          path: `metadata_filtering_conditions.${index}.value`,
-          message: 'metadata 过滤值不能为空。',
-        })
-      }
     })
   }
 

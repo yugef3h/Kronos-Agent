@@ -80,8 +80,6 @@ describe('workflow node summary', () => {
           top_k: 3,
           score_threshold: null,
         },
-        metadata_filtering_mode: 'manual',
-        metadata_filtering_conditions: [{ id: 'm1', field: 'category', operator: 'contains', value: 'ai' }],
       },
       _datasets: [
         {
@@ -104,7 +102,6 @@ describe('workflow node summary', () => {
     expect(summary.tags.map(tag => tag.text)).toEqual(['多路召回', '2 个知识库'])
     expect(summary.items[0]?.primary).toBe('查询 sys.query')
     expect(summary.items[1]?.primary).toBe('知识库 AI 机遇分析 +1')
-    expect(summary.items[2]?.primary).toBe('Metadata 1 条')
   })
 
   it('builds end node output summaries', () => {

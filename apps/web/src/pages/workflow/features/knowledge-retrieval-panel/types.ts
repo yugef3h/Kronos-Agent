@@ -1,8 +1,6 @@
 import type { ValueSelector } from '../llm-panel/types'
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay'
-export type KnowledgeMetadataFilteringMode = 'disabled' | 'manual'
-export type KnowledgeMetadataOperator = 'contains' | 'equals' | 'not_equals'
 
 export type KnowledgeMetadataField = {
   key: string
@@ -67,13 +65,6 @@ export type KnowledgeDatasetDetail = {
   updatedAt?: number
 }
 
-export type KnowledgeMetadataCondition = {
-  id: string
-  field: string
-  operator: KnowledgeMetadataOperator
-  value: string
-}
-
 export type KnowledgeRetrievalModelConfig = {
   model: string
   top_k: number
@@ -94,11 +85,35 @@ export type KnowledgeRetrievalNodeConfig = {
   retrieval_mode: KnowledgeRetrievalMode
   single_retrieval_config: KnowledgeRetrievalModelConfig
   multiple_retrieval_config: KnowledgeMultiRetrievalConfig
-  metadata_filtering_mode: KnowledgeMetadataFilteringMode
-  metadata_filtering_conditions: KnowledgeMetadataCondition[]
 }
 
 export type KnowledgeValidationIssue = {
   path: string
   message: string
+}
+
+export type KnowledgeRetrievalDebugRun = {
+  requestedAt: number
+  query: string
+  items: Array<{
+    dataset_id: string
+    dataset_name: string
+    document_id: string
+    document_name: string
+    chunk_id: string
+    chunk_index: number
+    text: string
+    score: number
+    search_method: 'semantic_search' | 'full_text_search' | 'keyword_search' | 'hybrid_search'
+    matched_terms: string[]
+    metadata: Record<string, string>
+    token_count: number
+    char_count: number
+  }>
+  diagnostics: {
+    retrieval_mode: 'oneWay' | 'multiWay'
+    dataset_count: number
+    total_chunk_count: number
+    filtered_chunk_count: number
+  }
 }
