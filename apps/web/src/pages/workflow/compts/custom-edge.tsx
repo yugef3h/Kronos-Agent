@@ -13,6 +13,11 @@ import {
   NodeRunningStatus,
 } from '../types/common'
 import { getEdgeColor } from '../utils/edge'
+import {
+  WORKFLOW_EDGE_CURVATURE,
+  WORKFLOW_EDGE_STROKE_WIDTH,
+  resolveWorkflowSourceX,
+} from '../utils/edge-geometry'
 import { resolveEdgeRuntimeData } from '../utils/edge-data'
 import { ErrorHandleTypeEnum } from '../types/error-handle'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
@@ -30,13 +35,13 @@ const CustomEdge = ({
   const [
     edgePath,
   ] = getBezierPath({
-    sourceX: sourceX - 8,
+    sourceX: resolveWorkflowSourceX(sourceX),
     sourceY,
     sourcePosition: Position.Right,
-    targetX: targetX + 8,
+    targetX,
     targetY,
     targetPosition: Position.Left,
-    curvature: 0.16,
+    curvature: WORKFLOW_EDGE_CURVATURE,
   })
   const {
     _connectedNodeIsHovering,
@@ -84,7 +89,7 @@ const CustomEdge = ({
             startColor={getEdgeColor(_sourceRunningStatus)}
             stopColor={getEdgeColor(_targetRunningStatus)}
             position={{
-              x1: sourceX,
+              x1: resolveWorkflowSourceX(sourceX),
               y1: sourceY,
               x2: targetX,
               y2: targetY,
@@ -97,7 +102,7 @@ const CustomEdge = ({
         path={edgePath}
         style={{
           stroke,
-          strokeWidth: 2,
+          strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
           opacity: _waitingRun ? 0.7 : 1,
         }}
       />

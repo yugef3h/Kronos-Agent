@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import {
   Background,
   Handle,
@@ -93,15 +103,116 @@ import {
   getContainerScopeData,
   getKnowledgeDatasetIds,
 } from '../utils/workflow-node-utils';
-import { resolveBridgeEdgeAfterNodeRemoval } from '../utils/node-removal-bridge';
+import {
+  beginAppendHandlePointerState,
+  consumeAppendHandleClick,
+  createAppendHandlePointerState,
+  endAppendHandlePointerState,
+  updateAppendHandlePointerState,
+} from '../utils/append-handle-pointer';
 import { resolveSearchBoxScope } from '../utils/workflow-search-scope';
 import 'reactflow/dist/style.css';
+import { WORKFLOW_EDGE_STROKE_WIDTH } from '../utils/edge-geometry';
+
+const normalizeWorkflowEdge = (edge: Edge): Edge => {
+  return {
+    ...edge,
+    type: CUSTOM_EDGE,
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: '#94a3b8',
+    },
+    style: {
+      stroke: '#94a3b8',
+      strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
+      ...(edge.style ?? {}),
+    },
+  };
+};
 
 const buildConditionNodeVariableOptions = (
   currentNodeId: string,
   nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
 ): VariableOption[] => {
   return buildWorkflowVariableOptions(currentNodeId, nodes);
+};
+
+const appendTriggerHandleStyle: CSSProperties = {
+  top: 0,
+  right: 0,
+  width: '100%',
+  height: '100%',
+  transform: 'none',
+};
+
+type AppendConnectorTriggerProps = {
+  handleId: string;
+  isDisabled?: boolean;
+  wrapperClassName: string;
+  visual: ReactNode;
+  onTriggerClick: () => void;
+};
+
+const AppendConnectorTrigger = ({
+  handleId,
+  isDisabled = false,
+  wrapperClassName,
+  visual,
+  onTriggerClick,
+}: AppendConnectorTriggerProps) => {
+  const pointerStateRef = useRef(createAppendHandlePointerState());
+
+  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    pointerStateRef.current = beginAppendHandlePointerState({
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    pointerStateRef.current = updateAppendHandlePointerState(pointerStateRef.current, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
+
+  const handlePointerEnd = useCallback(() => {
+    pointerStateRef.current = endAppendHandlePointerState(pointerStateRef.current);
+  }, []);
+
+  const handleClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+
+    const result = consumeAppendHandleClick(pointerStateRef.current);
+    pointerStateRef.current = result.nextState;
+
+    if (!isDisabled && result.shouldOpen) {
+      onTriggerClick();
+    }
+  }, [isDisabled, onTriggerClick]);
+
+  return (
+    <div
+      className={wrapperClassName}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onClick={handleClick}
+    >
+      {visual}
+      <Handle
+        id={handleId}
+        type="source"
+        position={Position.Right}
+        isConnectable={!isDisabled}
+        isConnectableStart={!isDisabled}
+        isConnectableEnd={false}
+        style={appendTriggerHandleStyle}
+        className="nodrag nopan !z-20 !border-0 !bg-transparent !opacity-0"
+      />
+    </div>
+  );
 };
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
@@ -223,7 +334,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         },
         style: {
           stroke: '#94a3b8',
-          strokeWidth: 1.6,
+          strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
         },
         data: createWorkflowEdgeData({
           sourceType: sourceBlock,
@@ -244,26 +355,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const deleteNode = useCallback(() => {
     setMenuOpen(false);
     const currentNodes = getNodes();
-    const currentEdges = getEdges();
     const removedNodeIds = [id, ...getDescendantNodeIds(currentNodes, id)];
-    const bridgeEdge = resolveBridgeEdgeAfterNodeRemoval({
-      nodes: currentNodes,
-      edges: currentEdges as Edge[],
-      removedNodeId: id,
-      removedNodeIds,
-    });
 
     setNodes((currentNodes) => removeNodeById(currentNodes, id));
-    setEdges((currentEdges) => {
-      const nextEdges = removeConnectedEdges(currentEdges, removedNodeIds);
-
-      if (!bridgeEdge) {
-        return nextEdges;
-      }
-
-      return applyConnectedEdgeSelection(addEdge(bridgeEdge, nextEdges));
-    });
-  }, [getEdges, getNodes, id, setEdges, setNodes]);
+    setEdges((currentEdges) => removeConnectedEdges(currentEdges, removedNodeIds));
+  }, [getNodes, id, setEdges, setNodes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -339,6 +435,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const standardHandleClass = 'nodrag nopan !z-10 !h-2.5 !w-2.5 !border-2 !border-white !bg-blue-600';
   const appendHandleButtonClass =
     'nodrag nopan flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-blue-600 text-[14px] leading-none text-white shadow-[0_8px_16px_-14px_rgba(37,99,235,1)] transition hover:bg-blue-500';
+  const appendTriggerVisibilityClass =
+    menuOpen && appendSourceHandle === 'out'
+      ? 'pointer-events-auto opacity-100'
+      : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100';
   const nestedNodeCardClass = isNestedNode
     ? 'rounded-[16px] border-0 bg-transparent px-0 py-0 shadow-none'
     : 'rounded-2xl border px-4 py-3 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.55)]';
@@ -383,16 +483,18 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       {!['end', 'condition', 'iteration-start', 'loop-start', 'iteration-end', 'loop-end'].includes(
         data.kind,
       ) ? (
-        <Handle
-          id="out"
-          type="source"
-          position={Position.Right}
-          isConnectable
-          isConnectableStart
-          isConnectableEnd={false}
-          onMouseDown={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
-          className={standardHandleClass}
+        <AppendConnectorTrigger
+          handleId="out"
+          wrapperClassName={`absolute -right-3 top-1/2 z-30 h-6 w-6 -translate-y-1/2 ${appendTriggerVisibilityClass}`}
+          visual={
+            <span aria-hidden className={`${appendHandleButtonClass} pointer-events-none`}>
+              +
+            </span>
+          }
+          onTriggerClick={() => {
+            setAppendSourceHandle('out');
+            setMenuOpen((prev) => !prev || appendSourceHandle !== 'out');
+          }}
         />
       ) : null}
 
@@ -408,7 +510,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               isConnectableEnd={false}
               onMouseDown={(event) => event.stopPropagation()}
               onTouchStart={(event) => event.stopPropagation()}
-              className="nodrag nopan !h-0 !w-0 !border-0 !bg-transparent !opacity-0 !pointer-events-none"
+              className="nodrag nopan !z-20 !h-6 !w-6 !border-0 !bg-transparent !opacity-0"
               style={containerStartHandleStyle}
             />
 
@@ -535,31 +637,23 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                   <div
                     className={`nodrag nopan absolute right-[-16px] h-0 w-0 overflow-visible ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-[9px]'}`}
                   >
-                    <Handle
-                      id={branch.id}
-                      type="source"
-                      position={Position.Right}
-                      isConnectable={!isConnected}
-                      isConnectableStart={!isConnected}
-                      isConnectableEnd={false}
-                      onMouseDown={(event) => event.stopPropagation()}
-                      onTouchStart={(event) => event.stopPropagation()}
-                      className={`nodrag nopan !right-0 !h-6 !w-6 !translate-x-1/2 !rounded-full !border-2 !border-white !bg-blue-600 !opacity-100 ${isElseBranch ? '!top-1/2 !-translate-y-1/2' : '!top-0 !translate-y-0'}`}
-                    />
-                    <button
-                      type="button"
-                      disabled={isConnected}
-                      className={`absolute left-0 z-10 -translate-x-1/2 disabled:cursor-not-allowed disabled:bg-slate-300 ${appendHandleButtonClass} ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
-                      onMouseDown={(event) => event.stopPropagation()}
-                      onTouchStart={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                    <AppendConnectorTrigger
+                      handleId={branch.id}
+                      isDisabled={isConnected}
+                      wrapperClassName={`absolute left-0 z-10 h-6 w-6 -translate-x-1/2 ${isElseBranch ? 'top-1/2 -translate-y-1/2' : 'top-0 -translate-y-0'}`}
+                      visual={
+                        <span
+                          aria-hidden
+                          className={`${appendHandleButtonClass} pointer-events-none ${isConnected ? 'cursor-not-allowed bg-slate-300 hover:bg-slate-300' : ''}`}
+                        >
+                          +
+                        </span>
+                      }
+                      onTriggerClick={() => {
                         setAppendSourceHandle(branch.id);
                         setMenuOpen((prev) => !prev || appendSourceHandle !== branch.id);
                       }}
-                    >
-                      +
-                    </button>
+                    />
 
                     {menuOpen && appendSourceHandle === branch.id ? (
                       <SearchBox
@@ -611,20 +705,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
       {canAppend && data.kind !== 'condition' && !isContainerStartNode ? (
         <div className="nodrag nopan absolute -right-3 top-1/2 z-30 -translate-y-1/2">
-          <button
-            type="button"
-            className={`${appendHandleButtonClass} opacity-0 group-hover:opacity-100`}
-            onMouseDown={(event) => event.stopPropagation()}
-            onTouchStart={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              setAppendSourceHandle('out');
-              setMenuOpen((prev) => !prev);
-            }}
-          >
-            +
-          </button>
-
           <SearchBox
             isOpen={menuOpen}
             onClose={() => setMenuOpen(false)}
@@ -667,7 +747,7 @@ export const WorkflowChildren = () => {
     const app = getWorkflowAppById(appId);
     if (!app) return [];
 
-    return app.dsl.edges as unknown as Edge[];
+    return (app.dsl.edges as unknown as Edge[]).map(normalizeWorkflowEdge);
   }, [appId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
@@ -698,7 +778,7 @@ export const WorkflowChildren = () => {
     }
 
     setNodes(hydrateCanvasNodesFromDsl(app.dsl));
-    setEdges(app.dsl.edges as Edge[]);
+    setEdges((app.dsl.edges as Edge[]).map(normalizeWorkflowEdge));
   }, [appId, setEdges, setNodes]);
 
   useEffect(() => {
@@ -867,7 +947,7 @@ export const WorkflowChildren = () => {
             },
             style: {
               stroke: '#94a3b8',
-              strokeWidth: 1.6,
+              strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
             },
             data: createWorkflowEdgeData({
               sourceType,
@@ -919,6 +999,10 @@ export const WorkflowChildren = () => {
             onNodeClick={handleNodeClick}
             onPaneClick={handlePaneClick}
             connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
+            connectionLineStyle={{
+              stroke: '#94a3b8',
+              strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
+            }}
             selectionMode={SelectionMode.Partial}
             minZoom={0.25}
             multiSelectionKeyCode={null}

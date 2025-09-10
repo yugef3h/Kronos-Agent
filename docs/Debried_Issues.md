@@ -4,12 +4,6 @@
 - 根因：前一版实现更偏向“上传后立即预览”的流程设计，没有严格复用 workflow/list-page 的信息架构，导致创建入口、列表展示和配置方式都偏离了预期。
 - 修复：RAG 页面改成 4 列卡片网格，第一个卡片固定为“创建知识库”，后续卡片展示知识库列表；创建和继续导入统一收口到弹窗，只保留文本导入，移除 notion / web 同步入口。
 
-## 2026-04-09 Jest matcher 选择不当导致 GitHub CI 失败
-
-- 现象：AI 生成或修改的测试在本地看起来语义接近，但 CI 中因为 `toBe` / `toEqual` / `toMatchObject` 选错，出现断言失败或快照不一致，尤其容易发生在数组、对象和部分字段断言上。
-- 根因：`toBe` 适合原始值和引用同一性，`toEqual` 适合深比较，`toMatchObject` 适合部分字段校验；如果把对象/数组误写成 `toBe`，或者把只需部分比对的场景写成全量 `toEqual`，在 CI 上很容易炸。
-- 修复：在 Copilot 仓库规则中补充 Jest matcher 选择约束：原始值/枚举/布尔值/精确字符串优先 `toBe`，数组和对象结构比较用 `toEqual`，部分字段校验用 `toMatchObject`。后续生成测试时按这条规则执行。
-
 ## 2025-04-08 RAG 数据源不应依赖 catalog 与 seed 数据
 
 - 现象：知识库页面和 workflow 知识检索链路虽然已经接到真实后端，但前端仍会把 `KNOWLEDGE_DATASET_CATALOG` 当默认数据，后端空库时也会自动生成 4 条 seed 数据，看起来仍像 mock 演示环境。
@@ -36,12 +30,6 @@
 - 根因：`apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 里额外生成了 `effectiveSearchBoxScope`，把根层容器节点也强制映射成 `loop` / `iteration` 作用域，覆盖了 `resolveSearchBoxScope()` 基于 `parentId` 的真实判断。
 - 正确规则：只有容器子节点和容器内部 start 节点使用 `loop` / `iteration` 作用域；第一层节点始终是 `root` 作用域。loop / iteration 子图内不允许再追加新的 loop / iteration，只允许追加对应的 `loop-end` / `iteration-end`，而不是通用 `end`。
 - 修复：删除额外的强制作用域映射，统一使用 `resolveSearchBoxScope()` 的结果，并补纯函数测试覆盖根层与子图两种行为。
-
-## 2026-04-09 Workflow 删除中间节点后缺少安全自动桥接
-
-- 现象：线性链路 `A -> B -> C` 中删除中间普通节点 `B` 后，画布会直接删掉两条边，用户必须手动从 `A` 再连回 `C`。
-- 根因：删除逻辑只调用了 `removeConnectedEdges()` 清理相连边，没有在“单入单出、同层级、普通节点”场景下补一条安全桥接边。
-- 修复：新增删除后桥接纯函数，只对 `llm` / `knowledge` 这类线性节点启用自动补边；条件分支、容器节点、跨层级、多入多出和带子节点场景继续保持不自动桥接，并补 Jest 覆盖避免误连。
 
 ## 2025-03-28 图片历史恢复失败
 
@@ -90,3 +78,10 @@
 - 根因：在 `useWorkflowDraftStore((state) => ({ ... }))` 这类 selector 里直接返回新对象时，如果没有做浅比较或缓存，React 会拿到不稳定的 snapshot；在 `useSyncExternalStore` 链路下会触发 “The result of getSnapshot should be cached” 和 `Maximum update depth exceeded`。
 - 现象：页面渲染 `editing-title.tsx` 一类只读状态组件时，控制台报无限更新错误，组件栈会指向 workflow draft 状态展示区域。
 - 修复：对返回对象的 Zustand selector 使用 `useShallow` 包裹，或者拆成多个基础字段 selector，保证 snapshot 可复用；本项目已在 `editing-title.tsx` 中改为 `useWorkflowDraftStore(useShallow(...))`。
+
+## 2025-04-09 Workflow 节点追加入口同时支持点击与拖拽时互相打架
+
+- 现象：工作流节点右侧追加入口一度出现两类相反问题。旧实现里点击 `+` 会覆盖拖拽连线起手；改成“透明 Handle 覆盖整块区域”后，拖拽虽然能起手，但点击又失效，只会选中节点，SearchBox 打不开。
+- 根因：React Flow 的 `Handle` 适合承接拖拽起手，但并不可靠地向业务层透传最终 `click`；同时如果把菜单打开逻辑绑在 `pointerdown/mousedown`，或者在这阶段 `stopPropagation/preventDefault`，就会干扰 React Flow 自己的连接生命周期。额外盖在 Handle 上方的装饰层如果抢事件，也会让拖拽失败。
+- 原理：这类“同一热区既能 click 又能 drag”的稳定实现不是把两种行为绑到同一个前置事件上，而是分层处理。拖拽连线继续交给 `Handle`；点击打开 SearchBox 放在外层 wrapper 的 `onClick`。wrapper 只在 `click` 阶段 `stopPropagation`，不在 `pointerdown` 阶段抢事件；同时记录一个极小拖拽阈值，只有移动未超过阈值时才把这次交互判成 click。
+- 修复：在 `apps/web/src/pages/workflow/draft-page/workflow-children.tsx` 中新增 `AppendConnectorTrigger`，由 wrapper 处理 click 与拖拽阈值判断，内部透明 `Handle` 专职拖拽连线；另将阈值逻辑抽到 `apps/web/src/pages/workflow/utils/append-handle-pointer.ts` 并补单测，避免后续再次把 click/drag 混回同一前置事件链。

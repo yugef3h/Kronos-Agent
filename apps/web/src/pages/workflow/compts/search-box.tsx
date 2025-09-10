@@ -224,8 +224,8 @@ export const SearchBox = ({
   if (!isOpen) return null;
 
   const positionClassName = placement === 'anchored'
-    ? actualSide === 'right' ? 'left-full ml-3' : 'right-full mr-3'
-    : actualSide === 'right' ? 'left-8' : 'right-8';
+    ? actualSide === 'right' ? 'left-full ml-2' : 'right-full mr-2'
+    : actualSide === 'right' ? 'left-5' : 'right-5';
 
   return (
     <div
