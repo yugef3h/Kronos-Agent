@@ -28,11 +28,13 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
   const issues = useMemo(() => validateKnowledgeRetrievalNodeConfig(config), [config])
 
   const update = (recipe: (draft: KnowledgeRetrievalNodeConfig) => void) => {
-    const nextValue = produce(config, recipe)
+    const nextValue = produce(config, (draft) => {
+      recipe(draft)
 
-    if (!shouldShowKnowledgeAttachmentSelector(nextValue.dataset_ids, datasets)) {
-      nextValue.query_attachment_selector = []
-    }
+      if (!shouldShowKnowledgeAttachmentSelector(draft.dataset_ids, datasets)) {
+        draft.query_attachment_selector = []
+      }
+    })
 
     onChange(nextValue)
   }
@@ -55,6 +57,12 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
       draft.dataset_ids = exists
         ? draft.dataset_ids.filter(id => id !== datasetId)
         : [...draft.dataset_ids, datasetId]
+    })
+  }
+
+  const handleDatasetIdsChange = (datasetIds: string[]) => {
+    update((draft) => {
+      draft.dataset_ids = [...new Set(datasetIds)]
     })
   }
 
@@ -89,6 +97,7 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
     showImageQueryVarSelector,
     handleQueryVariableChange,
     handleQueryAttachmentChange,
+    handleDatasetIdsChange,
     handleDatasetToggle,
     handleRetrievalModeChange,
     handleSingleRetrievalConfigChange,

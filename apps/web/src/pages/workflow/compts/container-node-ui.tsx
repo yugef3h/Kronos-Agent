@@ -87,7 +87,7 @@ const getContainerHeaderBadgeClassName = (kind: CanvasNodeData['kind']) => {
   }
 
   if (kind === 'knowledge') {
-    return 'bg-violet-600 text-white shadow-[0_10px_20px_-18px_rgba(124,58,237,0.9)]';
+    return 'bg-slate-50 border text-white shadow-[0_10px_20px_-18px_rgba(124,58,237,0.9)]';
   }
 
   if (kind === 'end' || kind === 'iteration-end' || kind === 'loop-end') {

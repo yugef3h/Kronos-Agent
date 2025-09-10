@@ -12,7 +12,7 @@ const envSchema = z.object({
   DOUBAO_EMBEDDING_MODEL: z.string().optional(),
   DOUBAO_PLAN_TIMEOUT_MS: z.coerce.number().int().positive().default(1500),
   DOUBAO_FIRST_TOKEN_WARN_MS: z.coerce.number().int().positive().default(3000),
-  ALLOWED_ORIGIN: z.string().default('http://localhost:5173'),
+  ALLOWED_ORIGIN: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   LANGGRAPH_ENABLED: z.coerce.boolean().default(false),
   ATTENTION_PY_ENABLED: z.coerce.boolean().default(false),
   ATTENTION_PY_BASE_URL: z.string().url().default('http://127.0.0.1:8008'),
@@ -20,3 +20,16 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+const LOCAL_DEV_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+]
+
+export const allowedOrigins = [...new Set([
+  ...env.ALLOWED_ORIGIN
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean),
+  ...LOCAL_DEV_ORIGINS,
+])]

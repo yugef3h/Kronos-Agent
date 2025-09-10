@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import { env } from './config/env.js';
+import { allowedOrigins, env } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
@@ -11,7 +11,19 @@ const app = express();
 
 app.use(
   cors({
-    origin: env.ALLOWED_ORIGIN,
+    origin: (requestOrigin, callback) => {
+      if (!requestOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(requestOrigin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS origin not allowed: ${requestOrigin}`));
+    },
   }),
 );
 app.use(express.json({ limit: '15mb' }));

@@ -13,11 +13,9 @@ import {
 } from '../base/dialog'
 import {
   PanelCard,
-  PanelChoiceGroup,
   PanelInput,
   PanelOutputVarRow,
   PanelSection,
-  PanelSelect,
   PanelToggle,
   PanelToken,
 } from '../base/panel-form'
@@ -26,11 +24,6 @@ import {
 } from '../../../lib/api'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
-import type { VariableOption } from '../features/llm-panel/types'
-import {
-  KNOWLEDGE_ONE_WAY_MODEL_OPTIONS,
-  KNOWLEDGE_RERANK_MODEL_OPTIONS,
-} from '../features/knowledge-retrieval-panel/catalog'
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
@@ -41,7 +34,7 @@ import type {
   KnowledgeRetrievalDebugRun,
   KnowledgeRetrievalNodeConfig,
 } from '../features/knowledge-retrieval-panel/types'
-import { serializeValueSelector } from '../utils/variable-options'
+import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 
 type DatasetFormState = {
   name: string
@@ -76,63 +69,112 @@ const formatDatasetUpdatedAt = (value?: number) => {
   }).format(value)
 }
 
-const buildVariableOptions = (
-  currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData }>,
-): VariableOption[] => {
-  const systemVariables: VariableOption[] = [
-    {
-      label: 'sys.query',
-      valueSelector: ['sys', 'query'],
-      valueType: 'string',
-      source: 'system',
-    },
-    {
-      label: 'sys.files',
-      valueSelector: ['sys', 'files'],
-      valueType: 'file',
-      source: 'system',
-    },
-    {
-      label: 'sys.conversation_id',
-      valueSelector: ['sys', 'conversation_id'],
-      valueType: 'string',
-      source: 'system',
-    },
-  ]
+const getDatasetPickerBadgeLabel = (dataset: KnowledgeDatasetDetail) => {
+  const indexingLabel = dataset.indexing_technique === 'high_quality' ? '高质量' : '经济'
+  const searchMethodLabelMap = {
+    semantic_search: '向量检索',
+    full_text_search: '全文检索',
+    keyword_search: '关键词检索',
+    hybrid_search: '混合检索',
+  } as const
 
-  const nodeVariables = nodes
-    .filter(node => node.id !== currentNodeId)
-    .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
-    .flatMap((node) => {
-      const outputs = Object.keys(node.data.outputs ?? {})
-      if (!outputs.length)
-        return []
+  const searchMethodLabel = dataset.retrieval_model?.search_method
+    ? searchMethodLabelMap[dataset.retrieval_model.search_method]
+    : '向量检索'
 
-      return outputs.map<VariableOption>((outputKey) => ({
-        label: `${node.data.title}.${outputKey}`,
-        valueSelector: [node.id, outputKey],
-        valueType: outputKey.includes('file')
-          ? 'file'
-          : outputKey === 'usage'
-            ? 'object'
-            : outputKey === 'result' || outputKey === 'documents'
-              ? 'array'
-              : 'string',
-        source: 'node',
-      }))
-    })
+  return `${indexingLabel} · ${searchMethodLabel}`
+}
 
-  return [...systemVariables, ...nodeVariables]
+const collectUpstreamNodeIds = (currentNodeId: string, edges: Array<{ source: string; target: string }>) => {
+  const visited = new Set<string>()
+  const pending = [currentNodeId]
+
+  while (pending.length) {
+    const targetNodeId = pending.pop()
+    if (!targetNodeId)
+      continue
+
+    edges
+      .filter(edge => edge.target === targetNodeId)
+      .forEach((edge) => {
+        if (visited.has(edge.source))
+          return
+
+        visited.add(edge.source)
+        pending.push(edge.source)
+      })
+  }
+
+  return visited
+}
+
+const TopKControl = ({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (value: number) => void
+}) => {
+  const [draftValue, setDraftValue] = useState(String(value))
+
+  useEffect(() => {
+    setDraftValue(String(value))
+  }, [value])
+
+  const commitValue = (rawValue: string) => {
+    const parsedValue = Number(rawValue.trim())
+    const nextValue = Number.isFinite(parsedValue) ? Math.max(1, Math.round(parsedValue)) : value
+    onChange(nextValue)
+    setDraftValue(String(nextValue))
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(1, value - 1))}
+        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-[14px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+      >
+        -
+      </button>
+      <PanelInput
+        type="text"
+        inputMode="numeric"
+        value={draftValue}
+        className="bg-white text-center"
+        onChange={event => setDraftValue(event.target.value)}
+        onBlur={event => commitValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter')
+            commitValue((event.target as HTMLInputElement).value)
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => onChange(value + 1)}
+        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-[14px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+      >
+        +
+      </button>
+    </div>
+  )
 }
 
 const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
-  const { getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const { getEdges, getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>()
   const nodeData = data as CanvasNodeData
-  const availableVariables = buildVariableOptions(
-    id,
-    getNodes().map(node => ({ id: node.id, data: node.data })),
-  )
+  const availableVariables = useMemo(() => {
+    const nodes = getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))
+    const upstreamNodeIds = collectUpstreamNodeIds(id, getEdges())
+    const variableOptions = buildWorkflowVariableOptions(id, nodes)
+
+    return variableOptions.filter((option) => {
+      if (option.source === 'system')
+        return true
+
+      return upstreamNodeIds.has(option.valueSelector[0] ?? '')
+    })
+  }, [getEdges, getNodes, id])
   const {
     datasets,
     isLoading: isDatasetLoading,
@@ -149,13 +191,16 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   )
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
   const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
+  const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
   const [editingDatasetId, setEditingDatasetId] = useState<string>('')
+  const [pendingDatasetIds, setPendingDatasetIds] = useState<string[]>([])
   const [datasetForm, setDatasetForm] = useState<DatasetFormState>(() => createEmptyDatasetForm())
   const [datasetFormError, setDatasetFormError] = useState('')
   const [datasetActionMessage, setDatasetActionMessage] = useState('')
   const [debugQuery, setDebugQuery] = useState('')
   const [debugRunError, setDebugRunError] = useState('')
   const [isDebugRunning, setIsDebugRunning] = useState(false)
+  const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false)
   const lastRun = nodeData._knowledgeLastRun ?? null
   const {
     config,
@@ -164,8 +209,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     showImageQueryVarSelector,
     handleQueryVariableChange,
     handleQueryAttachmentChange,
-    handleDatasetToggle,
-    handleRetrievalModeChange,
+    handleDatasetIdsChange,
     handleSingleRetrievalConfigChange,
     handleMultipleRetrievalConfigChange,
   } = useKnowledgeRetrievalPanelConfig({
@@ -198,6 +242,35 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     () => datasets.find(dataset => dataset.id === editingDatasetId) ?? null,
     [datasets, editingDatasetId],
   )
+
+  const topKValue = config.retrieval_mode === 'oneWay'
+    ? config.single_retrieval_config.top_k
+    : config.multiple_retrieval_config.top_k
+
+  const openDatasetPicker = () => {
+    setPendingDatasetIds(config.dataset_ids)
+    setIsDatasetPickerOpen(true)
+  }
+
+  const handlePendingDatasetToggle = (datasetId: string) => {
+    setPendingDatasetIds((current) => {
+      const exists = current.includes(datasetId)
+      return exists
+        ? current.filter(id => id !== datasetId)
+        : [...current, datasetId]
+    })
+  }
+
+  const handleConfirmDatasetSelection = () => {
+    handleDatasetIdsChange(pendingDatasetIds)
+    setIsDatasetPickerOpen(false)
+  }
+
+  const handleTopKChange = (value: number | null) => {
+    const nextValue = Math.max(1, Math.round(value ?? 1))
+    handleSingleRetrievalConfigChange('top_k', nextValue)
+    handleMultipleRetrievalConfigChange('top_k', nextValue)
+  }
 
   const openCreateDataset = () => {
     setEditingDatasetId('new')
@@ -428,7 +501,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             <div className="grid gap-2">
               <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-500">
                 <p>查询变量：{config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}</p>
-                <p>检索模式：{config.retrieval_mode === 'oneWay' ? '单路召回' : '混合召回'}</p>
+                <p>Top K：{topKValue}</p>
               </div>
 
               {selectedDatasets.length ? (
@@ -550,196 +623,202 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             </PanelCard>
           </PanelSection>
 
-          <PanelSection title="知识库">
+          <PanelSection
+            title="知识库"
+            aside={(
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={openDatasetPicker}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-[16px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+                  aria-label="添加知识库"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDatasetDialogOpen(true)
+                    if (datasets[0] && !editingDatasetId) {
+                      setEditingDatasetId(datasets[0].id)
+                      setDatasetForm(createDatasetFormFromDetail(datasets[0]))
+                    }
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                >
+                  管理
+                </button>
+              </div>
+            )}
+          >
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2">
                 <div>
-                  <p className="text-[12px] font-semibold text-slate-800">服务端知识库目录</p>
+                  <p className="text-[12px] font-semibold text-slate-800">已引用知识库</p>
                   <p className="text-[10px] text-slate-500">
-                    {isDatasetLoading ? '正在同步最新知识库...' : `共 ${datasets.length} 个知识库`}
+                    {isDatasetLoading ? '正在同步最新知识库...' : `${selectedDatasets.length} 个知识库被选中`}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => void refreshDatasets()}
-                    disabled={isDatasetLoading || isDatasetMutating}
-                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    刷新
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsDatasetDialogOpen(true)
-                      if (datasets[0] && !editingDatasetId) {
-                        setEditingDatasetId(datasets[0].id)
-                        setDatasetForm(createDatasetFormFromDetail(datasets[0]))
-                      }
-                    }}
-                    className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
-                  >
-                    管理
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => void refreshDatasets()}
+                  disabled={isDatasetLoading || isDatasetMutating}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  刷新
+                </button>
               </div>
               {datasetErrorMessage ? (
                 <PanelAlert type="warning">{datasetErrorMessage}</PanelAlert>
               ) : null}
-              <div className="grid gap-2">
-                {datasets.map(dataset => {
-                  const selected = config.dataset_ids.includes(dataset.id)
-
-                  return (
-                    <button
+              {selectedDatasets.length ? (
+                <div className="grid gap-2">
+                  {selectedDatasets.map(dataset => (
+                    <div
                       key={dataset.id}
-                      type="button"
-                      onClick={() => handleDatasetToggle(dataset.id)}
-                      className={`rounded-xl border px-3 py-2 text-left transition ${selected
-                        ? 'border-blue-300 bg-blue-50/60 shadow-[0_6px_14px_rgba(59,130,246,0.12)]'
-                        : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white'}`}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
-                          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description}</p>
-                          {typeof dataset.documentCount === 'number' ? (
-                            <p className="mt-1 text-[10px] text-slate-400">{dataset.documentCount} 条文档</p>
-                          ) : null}
+                          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
                         </div>
                         {dataset.is_multimodal ? (
                           <PanelToken className="border-amber-100 text-amber-600">多模态</PanelToken>
                         ) : null}
                       </div>
-                    </button>
-                  )
-                })}
-              </div>
-              {selectedDatasets.length ? (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {selectedDatasets.map(dataset => (
-                    <PanelToken key={dataset.id}>{dataset.name}</PanelToken>
+                    </div>
                   ))}
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-[11px] text-slate-500">
+                  还没有引用知识库，点击右上角 + 添加。
+                </div>
+              )}
             </PanelCard>
           </PanelSection>
 
           <PanelSection title="检索策略">
             <PanelCard className="space-y-2.5 bg-white p-2.5 shadow-none">
-              <Field title="检索模式" compact>
-                <PanelChoiceGroup
-                  size="sm"
-                  value={config.retrieval_mode}
-                  options={[
-                    { label: '单路召回', value: 'oneWay' },
-                    { label: '混合召回', value: 'multiWay' },
-                  ]}
-                  onChange={value => handleRetrievalModeChange(value)}
+              <Field title="Top K" compact>
+                <TopKControl
+                  value={topKValue}
+                  onChange={handleTopKChange}
                 />
               </Field>
+            </PanelCard>
+          </PanelSection>
 
-              {config.retrieval_mode === 'oneWay' ? (
-                <>
-                  <Field title="检索模型" compact>
-                    <PanelSelect
-                      value={config.single_retrieval_config.model}
-                      onChange={(event) => handleSingleRetrievalConfigChange('model', event.target.value)}
-                    >
-                      {KNOWLEDGE_ONE_WAY_MODEL_OPTIONS.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </PanelSelect>
-                  </Field>
-                  <div className="grid gap-1.5 md:grid-cols-2">
-                    <Field title="Top K" compact>
-                      <PanelInput
-                        type="number"
-                        value={config.single_retrieval_config.top_k}
-                        onChange={(event) => handleSingleRetrievalConfigChange('top_k', Number(event.target.value) || 1)}
-                      />
-                    </Field>
-                    <Field title="Score Threshold" compact>
-                      <PanelInput
-                        type="number"
-                        step="0.01"
-                        value={config.single_retrieval_config.score_threshold ?? ''}
-                        onChange={(event) => handleSingleRetrievalConfigChange(
-                          'score_threshold',
-                          event.target.value === '' ? null : Number(event.target.value),
-                        )}
-                      />
-                    </Field>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="grid gap-1.5 md:grid-cols-2">
-                    <Field title="Top K" compact>
-                      <PanelInput
-                        type="number"
-                        value={config.multiple_retrieval_config.top_k}
-                        onChange={(event) => handleMultipleRetrievalConfigChange('top_k', Number(event.target.value) || 1)}
-                      />
-                    </Field>
-                    <Field title="Score Threshold" compact>
-                      <PanelInput
-                        type="number"
-                        step="0.01"
-                        value={config.multiple_retrieval_config.score_threshold ?? ''}
-                        onChange={(event) => handleMultipleRetrievalConfigChange(
-                          'score_threshold',
-                          event.target.value === '' ? null : Number(event.target.value),
-                        )}
-                      />
-                    </Field>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/60 px-2.5 py-2">
-                    <div>
-                      <p className="text-[12px] font-semibold text-slate-800">启用 Rerank</p>
-                      <p className="text-[10px] text-slate-500">多知识库或召回结果较杂时建议开启。</p>
-                    </div>
-                    <PanelToggle
-                      checked={config.multiple_retrieval_config.reranking_enable}
-                      onChange={(checked) => handleMultipleRetrievalConfigChange('reranking_enable', checked)}
-                    />
-                  </div>
-                  {config.multiple_retrieval_config.reranking_enable ? (
-                    <Field title="Rerank 模型" compact>
-                      <PanelSelect
-                        value={config.multiple_retrieval_config.reranking_model}
-                        onChange={(event) => handleMultipleRetrievalConfigChange('reranking_model', event.target.value)}
-                      >
-                        {KNOWLEDGE_RERANK_MODEL_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </PanelSelect>
-                    </Field>
+          <PanelSection
+            title="输出变量"
+            aside={(
+              <button
+                type="button"
+                onClick={() => setIsOutputVarsExpanded(expanded => !expanded)}
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                aria-label={isOutputVarsExpanded ? '收起输出变量' : '展开输出变量'}
+              >
+                <svg
+                  viewBox="0 0 1024 1024"
+                  width="14"
+                  height="14"
+                  className={`transition-transform ${isOutputVarsExpanded ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                >
+                  <path d="M512 640l-181.034667-180.992 60.373334-60.330667L512 519.338667l120.661333-120.661334 60.373334 60.330667L512 640.042667z" fill="currentColor"></path>
+                </svg>
+              </button>
+            )}
+          >
+            {isOutputVarsExpanded ? (
+              <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
+                <PanelOutputVarRow
+                  name="result"
+                  type="Array[Object]"
+                  description="知识检索主输出，包含内容、标题、来源地址、metadata 与关联文件。"
+                />
+                <PanelOutputVarRow
+                  name="documents"
+                  type="Array[Object]"
+                  description="兼容型输出，保留召回文档列表，便于老节点继续引用。"
+                />
+                <PanelOutputVarRow
+                  name="files"
+                  type="Array[File]"
+                  description="检索命中后附带返回的文件对象或图片资源。"
+                />
+              </PanelCard>
+            ) : null}
+          </PanelSection>
+
+          <Dialog open={isDatasetPickerOpen} onOpenChange={setIsDatasetPickerOpen}>
+            <DialogContent className="w-[760px] max-w-[calc(100vw-1rem)] p-0">
+              <div className="px-5 py-5">
+                <DialogTitle>
+                  <span className="text-[15px] font-semibold text-slate-900">选择引用知识库</span>
+                </DialogTitle>
+
+                <div className="mt-5 space-y-3">
+                  {datasetErrorMessage ? (
+                    <PanelAlert type="warning">{datasetErrorMessage}</PanelAlert>
                   ) : null}
-                </>
-              )}
-            </PanelCard>
-          </PanelSection>
 
-          <PanelSection title="输出变量">
-            <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              <PanelOutputVarRow
-                name="result"
-                type="Array[Object]"
-                description="知识检索主输出，包含内容、标题、来源地址、metadata 与关联文件。"
-              />
-              <PanelOutputVarRow
-                name="documents"
-                type="Array[Object]"
-                description="兼容型输出，保留召回文档列表，便于老节点继续引用。"
-              />
-              <PanelOutputVarRow
-                name="files"
-                type="Array[File]"
-                description="检索命中后附带返回的文件对象或图片资源。"
-              />
-            </PanelCard>
-          </PanelSection>
+                  <div className="grid gap-3">
+                    {datasets.map((dataset) => {
+                      const selected = pendingDatasetIds.includes(dataset.id)
+
+                      return (
+                        <button
+                          key={dataset.id}
+                          type="button"
+                          onClick={() => handlePendingDatasetToggle(dataset.id)}
+                          className={`rounded-2xl border px-4 py-3 text-left transition ${selected
+                            ? 'border-blue-500 bg-blue-50 shadow-[0_10px_24px_-20px_rgba(59,130,246,0.45)]'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'}`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <path d="M6 5.5h12v13H6z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                  <path d="M9 9.5h6M9 13h6M9 16.5h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
+                                <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
+                              </div>
+                            </div>
+                            <PanelToken className="border-slate-200 text-slate-500">{getDatasetPickerBadgeLabel(dataset)}</PanelToken>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-4">
+                    <p className="text-[11px] font-semibold text-slate-700">{pendingDatasetIds.length} 个知识库被选中</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsDatasetPickerOpen(false)}
+                        className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-slate-300"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConfirmDatasetSelection}
+                        className="rounded-xl border border-blue-300 bg-blue-600 px-5 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500"
+                      >
+                        添加
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={isDatasetDialogOpen} onOpenChange={setIsDatasetDialogOpen}>
             <DialogContent className="w-[760px] max-w-[calc(100vw-1rem)] overflow-hidden p-0">

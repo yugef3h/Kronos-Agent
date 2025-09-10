@@ -1,3 +1,9 @@
+# 2026-04-09 Workflow Knowledge Panel CORS
+
+- 现象：工作流页面从 `http://127.0.0.1:5173` 打开时，knowledge retrieval panel 的数据集列表、调试检索、JWT dev token 请求都表现为“无法交互”。
+- 根因：`apps/server/src/index.ts` 的 CORS 只允许单个 `ALLOWED_ORIGIN`，默认是 `http://localhost:5173`，导致 `127.0.0.1` 来源被浏览器拦截。
+- 修复：`ALLOWED_ORIGIN` 默认值改为同时包含 `localhost` 和 `127.0.0.1`，服务端改成支持逗号分隔白名单并按请求来源动态放行。
+
 ## 2025-04-08 RAG 页面布局与交互目标偏差
 
 - 现象：RAG 页面一度做成了“导入流程页”，包含数据源选择、切片预览和侧边文档列表，但用户最终希望它和 workflow/list-page 一样，直接是满宽卡片列表布局。
