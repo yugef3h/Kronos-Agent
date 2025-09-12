@@ -498,7 +498,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         />
       ) : null}
 
-      <div className="workflow-node-drag-surface">
+      <div className={`workflow-node-drag-surface ${isContainerNode ? 'h-full' : ''}`}>
         {isContainerStartNode ? (
           <>
             <Handle
