@@ -13,6 +13,7 @@ import {
 } from '../base/dialog'
 import {
   PanelCard,
+  PanelFieldRenderer,
   PanelInput,
   PanelOutputVarRow,
   PanelSection,
@@ -34,7 +35,10 @@ import type {
   KnowledgeRetrievalDebugRun,
   KnowledgeRetrievalNodeConfig,
 } from '../features/knowledge-retrieval-panel/types'
+import type { PanelFieldControl } from '../base/panel-form'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
+
+type NumberSliderFieldConfig = Extract<PanelFieldControl, { controlType: 'numberSlider' }>
 
 type DatasetFormState = {
   name: string
@@ -115,48 +119,19 @@ const TopKControl = ({
   value: number
   onChange: (value: number) => void
 }) => {
-  const [draftValue, setDraftValue] = useState(String(value))
-
-  useEffect(() => {
-    setDraftValue(String(value))
-  }, [value])
-
-  const commitValue = (rawValue: string) => {
-    const parsedValue = Number(rawValue.trim())
-    const nextValue = Number.isFinite(parsedValue) ? Math.max(1, Math.round(parsedValue)) : value
-    onChange(nextValue)
-    setDraftValue(String(nextValue))
+  const field: NumberSliderFieldConfig = {
+    controlType: 'numberSlider',
+    value,
+    min: 1,
+    max: 20,
+    step: 1,
+    inputMin: 1,
+    inputMax: 100,
+    onChange: (nextValue) => onChange(Math.max(1, Math.round(nextValue ?? value))),
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(1, value - 1))}
-        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-[14px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
-      >
-        -
-      </button>
-      <PanelInput
-        type="text"
-        inputMode="numeric"
-        value={draftValue}
-        className="bg-white text-center"
-        onChange={event => setDraftValue(event.target.value)}
-        onBlur={event => commitValue(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter')
-            commitValue((event.target as HTMLInputElement).value)
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => onChange(value + 1)}
-        className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-[14px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
-      >
-        +
-      </button>
-    </div>
+    <PanelFieldRenderer field={field} />
   )
 }
 
@@ -180,7 +155,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     isLoading: isDatasetLoading,
     isMutating: isDatasetMutating,
     errorMessage: datasetErrorMessage,
-    refresh: refreshDatasets,
     createDataset,
     updateDataset,
     deleteDataset,
@@ -262,6 +236,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   }
 
   const handleConfirmDatasetSelection = () => {
+    if (!pendingDatasetIds.length)
+      return
+
     handleDatasetIdsChange(pendingDatasetIds)
     setIsDatasetPickerOpen(false)
   }
@@ -595,9 +572,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection title="查询输入">
-            <PanelAlert type="info">
-              查询文本和附件都来自变量。多模态知识库被选中后，附件输入会自动出现。
-            </PanelAlert>
             {issues.length ? (
               <PanelAlert type="warning">{issues[0].message}</PanelAlert>
             ) : null}
@@ -630,7 +604,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                 <button
                   type="button"
                   onClick={openDatasetPicker}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-[16px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-[16px] transition hover:bg-[#c8ceda33]"
                   aria-label="添加知识库"
                 >
                   +
@@ -652,22 +626,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             )}
           >
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-800">已引用知识库</p>
-                  <p className="text-[10px] text-slate-500">
-                    {isDatasetLoading ? '正在同步最新知识库...' : `${selectedDatasets.length} 个知识库被选中`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void refreshDatasets()}
-                  disabled={isDatasetLoading || isDatasetMutating}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  刷新
-                </button>
-              </div>
               {datasetErrorMessage ? (
                 <PanelAlert type="warning">{datasetErrorMessage}</PanelAlert>
               ) : null}
@@ -680,8 +638,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
-                          <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
+                          <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name} <span className='text-[11px] text-slate-400 ml-2'>{dataset.description || '未填写描述'}</span></p>
                         </div>
                         {dataset.is_multimodal ? (
                           <PanelToken className="border-amber-100 text-amber-600">多模态</PanelToken>
@@ -752,7 +709,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           </PanelSection>
 
           <Dialog open={isDatasetPickerOpen} onOpenChange={setIsDatasetPickerOpen}>
-            <DialogContent className="w-[760px] max-w-[calc(100vw-1rem)] p-0">
+            <DialogContent className="w-[360px] max-w-[calc(100vw-1rem)] p-0">
               <div className="px-5 py-5">
                 <DialogTitle>
                   <span className="text-[15px] font-semibold text-slate-900">选择引用知识库</span>
@@ -774,7 +731,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                           onClick={() => handlePendingDatasetToggle(dataset.id)}
                           className={`rounded-2xl border px-4 py-3 text-left transition ${selected
                             ? 'border-blue-500 bg-blue-50 shadow-[0_10px_24px_-20px_rgba(59,130,246,0.45)]'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'}`}
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'} focus:outline-none focus-visible:ring-0 focus-visible:ring-blue-100`}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0 flex items-center gap-3">
@@ -789,7 +746,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                                 <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
                               </div>
                             </div>
-                            <PanelToken className="border-slate-200 text-slate-500">{getDatasetPickerBadgeLabel(dataset)}</PanelToken>
+                            <PanelToken className="!border-slate-200 !text-slate-500">{getDatasetPickerBadgeLabel(dataset)}</PanelToken>
                           </div>
                         </button>
                       )
@@ -797,7 +754,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-4">
-                    <p className="text-[11px] font-semibold text-slate-700">{pendingDatasetIds.length} 个知识库被选中</p>
+                    <p className={`text-[11px] font-semibold ${pendingDatasetIds.length ? 'text-slate-700' : 'text-amber-700'}`}>
+                      {pendingDatasetIds.length ? `${pendingDatasetIds.length} 个知识库被选中` : '至少选择 1 个知识库'}
+                    </p>
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
@@ -809,7 +768,8 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                       <button
                         type="button"
                         onClick={handleConfirmDatasetSelection}
-                        className="rounded-xl border border-blue-300 bg-blue-600 px-5 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500"
+                        disabled={!pendingDatasetIds.length}
+                        className="rounded-xl border border-blue-300 bg-blue-600 px-5 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400"
                       >
                         添加
                       </button>
@@ -821,7 +781,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           </Dialog>
 
           <Dialog open={isDatasetDialogOpen} onOpenChange={setIsDatasetDialogOpen}>
-            <DialogContent className="w-[760px] max-w-[calc(100vw-1rem)] overflow-hidden p-0">
+            <DialogContent className="w-[600px] max-w-[calc(100vw-1rem)] overflow-hidden p-0">
               <div className="flex items-start justify-between border-b border-slate-100 px-4 py-4">
                 <div className="pr-8">
                   <DialogTitle>
