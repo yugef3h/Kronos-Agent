@@ -2,6 +2,7 @@ import {
   createDefaultKnowledgeRetrievalNodeConfig,
   normalizeKnowledgeRetrievalNodeConfig,
   shouldShowKnowledgeAttachmentSelector,
+  syncKnowledgeTopK,
   validateKnowledgeRetrievalNodeConfig,
 } from './schema'
 
@@ -74,5 +75,29 @@ describe('knowledge-retrieval-panel schema', () => {
     })
 
     expect(issues.map(issue => issue.path)).toEqual(['dataset_ids'])
+  })
+
+  it('syncs top k for both retrieval configs', () => {
+    const config = {
+      ...createDefaultKnowledgeRetrievalNodeConfig(),
+      retrieval_mode: 'oneWay' as const,
+      single_retrieval_config: {
+        model: 'single-model',
+        top_k: 3,
+        score_threshold: null,
+      },
+      multiple_retrieval_config: {
+        top_k: 5,
+        score_threshold: null,
+        reranking_enable: false,
+        reranking_model: 'rerank-model',
+      },
+    }
+
+    const nextConfig = syncKnowledgeTopK(config, 9)
+
+    expect(nextConfig.single_retrieval_config.top_k).toBe(9)
+    expect(nextConfig.multiple_retrieval_config.top_k).toBe(9)
+    expect(nextConfig.retrieval_mode).toBe('oneWay')
   })
 })

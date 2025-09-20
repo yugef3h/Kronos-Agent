@@ -82,7 +82,7 @@ export const PanelSection = ({
 
 export const PanelCard = ({ children, className }: { children: ReactNode; className?: string }) => {
   return (
-    <div className={cn('rounded-[16px] border border-[#e9edf4] bg-[#f7f9fc] p-2.5', className)}>{children}</div>
+    <div className={cn('rounded-[8px] border border-[#e9edf4] bg-[#f7f9fc] p-2.5', className)}>{children}</div>
   )
 }
 
@@ -226,7 +226,7 @@ export const PanelSliderInput = ({
           onChange(Number.isNaN(nextValue) ? null : nextValue)
         }}
         className={cn(
-          'h-2 w-full cursor-pointer appearance-none rounded-full bg-[#dfe5f1] accent-[#2f66ff] disabled:cursor-not-allowed disabled:opacity-50',
+          'h-[3px] w-full cursor-pointer appearance-none rounded-full bg-[#dfe5f1] accent-[#2f66ff] disabled:cursor-not-allowed disabled:opacity-50',
           sliderClassName,
         )}
       />

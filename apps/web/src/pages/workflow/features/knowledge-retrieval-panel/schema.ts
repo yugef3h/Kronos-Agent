@@ -56,6 +56,21 @@ export const shouldShowKnowledgeAttachmentSelector = (
   return getKnowledgeSelectedDatasets(datasetIds, datasetCatalog).some(dataset => dataset.is_multimodal)
 }
 
+export const syncKnowledgeTopK = (
+  config: KnowledgeRetrievalNodeConfig,
+  value: number,
+): KnowledgeRetrievalNodeConfig => ({
+  ...config,
+  single_retrieval_config: {
+    ...config.single_retrieval_config,
+    top_k: value,
+  },
+  multiple_retrieval_config: {
+    ...config.multiple_retrieval_config,
+    top_k: value,
+  },
+})
+
 export const normalizeKnowledgeRetrievalNodeConfig = (value: unknown): KnowledgeRetrievalNodeConfig => {
   const defaults = createDefaultKnowledgeRetrievalNodeConfig()
 

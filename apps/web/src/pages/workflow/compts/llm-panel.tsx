@@ -288,7 +288,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
             />
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
+          {/* <div className="flex flex-wrap gap-1.5">
             {COMPLETION_PARAM_DEFINITIONS.map((param, index) => {
               const field = parameterFields[index];
               return (
@@ -300,7 +300,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
                 </PanelToken>
               );
             })}
-          </div>
+          </div> */}
 
           {isModelParamsExpanded && (
             <div className="space-y-2 border-t border-slate-200/50 pt-2.5">

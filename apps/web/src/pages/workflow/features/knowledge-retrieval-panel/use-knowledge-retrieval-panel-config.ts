@@ -4,6 +4,7 @@ import {
   getKnowledgeSelectedDatasets,
   normalizeKnowledgeRetrievalNodeConfig,
   shouldShowKnowledgeAttachmentSelector,
+  syncKnowledgeTopK,
   validateKnowledgeRetrievalNodeConfig,
 } from './schema'
 import type { KnowledgeDatasetDetail } from './types'
@@ -90,6 +91,10 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
     })
   }
 
+  const handleTopKChange = (value: number) => {
+    onChange(syncKnowledgeTopK(config, value))
+  }
+
   return {
     config,
     issues,
@@ -100,6 +105,7 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
     handleDatasetIdsChange,
     handleDatasetToggle,
     handleRetrievalModeChange,
+    handleTopKChange,
     handleSingleRetrievalConfigChange,
     handleMultipleRetrievalConfigChange,
   }
