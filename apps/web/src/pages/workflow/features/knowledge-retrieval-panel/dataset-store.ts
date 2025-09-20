@@ -12,6 +12,7 @@ import { usePlaygroundStore } from '../../../../store/playgroundStore'
 import type { KnowledgeDatasetDetail, KnowledgeMetadataField } from './types'
 
 const KNOWLEDGE_DATASETS_UPDATED_EVENT = 'kronos:workflow:knowledge-datasets-updated'
+const KNOWLEDGE_DATASETS_UPDATED_AT_STORAGE_KEY = 'kronos:workflow:knowledge-datasets-updated-at'
 const KNOWLEDGE_DATASET_AUTH_ERROR = '知识库接口需要 JWT 鉴权'
 
 let knowledgeDatasetCache: KnowledgeDatasetDetail[] = []
@@ -99,6 +100,13 @@ const buildDatasetSignature = (datasets: KnowledgeDatasetDetail[]) => {
 const publishKnowledgeDatasetsUpdate = () => {
   if (typeof window === 'undefined')
     return
+
+  try {
+    window.localStorage.setItem(KNOWLEDGE_DATASETS_UPDATED_AT_STORAGE_KEY, String(Date.now()))
+  }
+  catch {
+    // Ignore localStorage failures and keep same-tab updates working.
+  }
 
   window.dispatchEvent(new Event(KNOWLEDGE_DATASETS_UPDATED_EVENT))
 }
@@ -303,11 +311,19 @@ export const useKnowledgeDatasets = () => {
       return undefined
 
     const handleUpdate = () => syncFromCache()
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== KNOWLEDGE_DATASETS_UPDATED_AT_STORAGE_KEY || !event.newValue)
+        return
+
+      void refresh()
+    }
 
     window.addEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
+    window.addEventListener('storage', handleStorage)
 
     return () => {
       window.removeEventListener(KNOWLEDGE_DATASETS_UPDATED_EVENT, handleUpdate)
+      window.removeEventListener('storage', handleStorage)
     }
   }, [refresh, syncFromCache])
 

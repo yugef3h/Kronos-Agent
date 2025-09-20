@@ -149,9 +149,6 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection title="输出映射">
-            <PanelAlert type="info">
-              End 节点决定工作流最终返回给外部的字段。每个输出项都可以引用上游变量，或者先写一个固定常量占位。
-            </PanelAlert>
             {issues.length ? <PanelAlert type="warning">{issues[0].message}</PanelAlert> : null}
 
             {config.outputs.length ? (

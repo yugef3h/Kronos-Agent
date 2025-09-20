@@ -351,9 +351,6 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection title="容器入口">
-            <PanelAlert type="info">
-              Loop 会自动生成内部 start_node_id。当前画布没有 loop 子图编辑器，但 DSL 和后端执行依赖字段已经在这里稳定持久化。
-            </PanelAlert>
             {issues.length ? (
               <PanelAlert type="warning">{issues[0].message}</PanelAlert>
             ) : null}

@@ -170,9 +170,6 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection title="系统变量">
-            <PanelAlert type="info">
-              Start 节点内置了系统输入变量。它们始终可被下游节点引用，不参与自定义变量编辑和排序。
-            </PanelAlert>
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               {START_SYSTEM_VARIABLES.map((item) => (
                 <PanelOutputVarRow

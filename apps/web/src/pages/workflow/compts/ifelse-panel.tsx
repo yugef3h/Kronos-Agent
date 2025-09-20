@@ -282,16 +282,6 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
 
       {activeTab === 'settings' ? (
         <>
-          <PanelSection title="分支规则">
-            <PanelAlert type="info">
-              IF / ELIF 分支按顺序命中，未命中时自动进入 ELSE。分支 ID 会同步用于节点出口和 edge.sourceHandle。
-            </PanelAlert>
-            {issues.length ? (
-              <PanelAlert type="warning">
-                {issues[0].message}
-              </PanelAlert>
-            ) : null}
-          </PanelSection>
 
           {config.cases.map((caseItem, index) => (
             <PanelSection

@@ -174,9 +174,6 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection title="容器入口">
-            <PanelAlert type="info">
-              Iteration 是容器节点。当前轻量版工作流会自动补齐内部 start_node_id，并把容器入口保持为稳定 DSL 字段。
-            </PanelAlert>
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               <div className="flex flex-wrap gap-1.5">
                 <PanelToken>start: {config.start_node_id}</PanelToken>

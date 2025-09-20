@@ -6,18 +6,14 @@ import Field from '../base/field'
 import PanelAlert from '../base/panel-alert'
 import {
   Dialog,
-  DialogCloseButton,
   DialogContent,
-  DialogDescription,
   DialogTitle,
 } from '../base/dialog'
 import {
   PanelCard,
   PanelFieldRenderer,
-  PanelInput,
   PanelOutputVarRow,
   PanelSection,
-  PanelToggle,
   PanelToken,
 } from '../base/panel-form'
 import {
@@ -37,29 +33,9 @@ import type {
 } from '../features/knowledge-retrieval-panel/types'
 import type { PanelFieldControl } from '../base/panel-form'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
+import { buildKnowledgeDatasetPagePath } from '../features/knowledge-retrieval-panel/navigation'
 
 type NumberSliderFieldConfig = Extract<PanelFieldControl, { controlType: 'numberSlider' }>
-
-type DatasetFormState = {
-  name: string
-  description: string
-  is_multimodal: boolean
-  doc_metadata: Array<{ key: string; label: string }>
-}
-
-const createEmptyDatasetForm = (): DatasetFormState => ({
-  name: '',
-  description: '',
-  is_multimodal: false,
-  doc_metadata: [],
-})
-
-const createDatasetFormFromDetail = (dataset?: KnowledgeDatasetDetail | null): DatasetFormState => ({
-  name: dataset?.name ?? '',
-  description: dataset?.description ?? '',
-  is_multimodal: dataset?.is_multimodal ?? false,
-  doc_metadata: dataset?.doc_metadata.map(field => ({ ...field })) ?? [],
-})
 
 const formatDatasetUpdatedAt = (value?: number) => {
   if (!value)
@@ -153,24 +129,16 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const {
     datasets,
     isLoading: isDatasetLoading,
-    isMutating: isDatasetMutating,
     errorMessage: datasetErrorMessage,
-    createDataset,
-    updateDataset,
-    deleteDataset,
+    refresh: refreshDatasets,
   } = useKnowledgeDatasets()
   const fileVariables = useMemo(
     () => availableVariables.filter(option => option.valueType === 'file'),
     [availableVariables],
   )
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
-  const [isDatasetDialogOpen, setIsDatasetDialogOpen] = useState(false)
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
-  const [editingDatasetId, setEditingDatasetId] = useState<string>('')
   const [pendingDatasetIds, setPendingDatasetIds] = useState<string[]>([])
-  const [datasetForm, setDatasetForm] = useState<DatasetFormState>(() => createEmptyDatasetForm())
-  const [datasetFormError, setDatasetFormError] = useState('')
-  const [datasetActionMessage, setDatasetActionMessage] = useState('')
   const [debugQuery, setDebugQuery] = useState('')
   const [debugRunError, setDebugRunError] = useState('')
   const [isDebugRunning, setIsDebugRunning] = useState(false)
@@ -211,11 +179,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     },
   })
 
-  const editingDataset = useMemo(
-    () => datasets.find(dataset => dataset.id === editingDatasetId) ?? null,
-    [datasets, editingDatasetId],
-  )
-
   const topKValue = config.retrieval_mode === 'oneWay'
     ? config.single_retrieval_config.top_k
     : config.multiple_retrieval_config.top_k
@@ -223,6 +186,14 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const openDatasetPicker = () => {
     setPendingDatasetIds(config.dataset_ids)
     setIsDatasetPickerOpen(true)
+    void refreshDatasets()
+  }
+
+  const openKnowledgeDatasetPage = () => {
+    const targetPath = buildKnowledgeDatasetPagePath(config.dataset_ids[0] ?? datasets[0]?.id)
+    const openedWindow = window.open(targetPath, '_blank', 'noopener,noreferrer')
+    if (!openedWindow)
+      window.location.assign(targetPath)
   }
 
   const handlePendingDatasetToggle = (datasetId: string) => {
@@ -245,22 +216,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const handleTopKValueChange = (value: number | null) => {
     const nextValue = Math.max(1, Math.round(value ?? 1))
     handleTopKChange(nextValue)
-  }
-
-  const openCreateDataset = () => {
-    setEditingDatasetId('new')
-    setDatasetForm(createEmptyDatasetForm())
-    setDatasetFormError('')
-    setDatasetActionMessage('')
-    setIsDatasetDialogOpen(true)
-  }
-
-  const selectDatasetForEdit = (dataset: KnowledgeDatasetDetail) => {
-    setEditingDatasetId(dataset.id)
-    setDatasetForm(createDatasetFormFromDetail(dataset))
-    setDatasetFormError('')
-    setDatasetActionMessage('')
-    setIsDatasetDialogOpen(true)
   }
 
   useEffect(() => {
@@ -293,84 +248,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
       }))
     }
   }, [config, id, nodeData._datasets, nodeData.inputs, nodeData.outputs, selectedDatasets, setNodes])
-
-  useEffect(() => {
-    if (!isDatasetDialogOpen)
-      return
-
-    if (editingDatasetId === 'new')
-      return
-
-    if (!editingDatasetId) {
-      if (datasets[0]) {
-        setEditingDatasetId(datasets[0].id)
-        setDatasetForm(createDatasetFormFromDetail(datasets[0]))
-      }
-      return
-    }
-
-    if (!editingDataset && datasets[0]) {
-      setEditingDatasetId(datasets[0].id)
-      setDatasetForm(createDatasetFormFromDetail(datasets[0]))
-      return
-    }
-
-    if (editingDataset) {
-      setDatasetForm(createDatasetFormFromDetail(editingDataset))
-    }
-  }, [datasets, editingDataset, editingDatasetId, isDatasetDialogOpen])
-
-  const handleSaveDataset = async () => {
-    const nextName = datasetForm.name.trim()
-
-    if (!nextName) {
-      setDatasetFormError('知识库名称不能为空。')
-      return
-    }
-
-    setDatasetFormError('')
-    setDatasetActionMessage('')
-
-    const payload = {
-      name: nextName,
-      description: datasetForm.description.trim(),
-      is_multimodal: datasetForm.is_multimodal,
-      doc_metadata: datasetForm.doc_metadata,
-    }
-
-    try {
-      const savedDataset = editingDatasetId === 'new'
-        ? await createDataset(payload)
-        : await updateDataset(editingDatasetId, payload)
-
-      setEditingDatasetId(savedDataset.id)
-      setDatasetForm(createDatasetFormFromDetail(savedDataset))
-      setDatasetActionMessage(editingDatasetId === 'new' ? '知识库已创建。' : '知识库已更新。')
-    }
-    catch (error) {
-      setDatasetFormError(error instanceof Error ? error.message : '知识库保存失败。')
-    }
-  }
-
-  const handleDeleteDataset = async (datasetId: string) => {
-    const targetDataset = datasets.find(dataset => dataset.id === datasetId)
-    if (!targetDataset)
-      return
-
-    if (!window.confirm(`确认删除知识库“${targetDataset.name}”？`)) {
-      return
-    }
-
-    try {
-      await deleteDataset(datasetId)
-      setDatasetActionMessage('知识库已删除。')
-      setDatasetFormError('')
-      setEditingDatasetId('')
-    }
-    catch (error) {
-      setDatasetFormError(error instanceof Error ? error.message : '知识库删除失败。')
-    }
-  }
 
   const handleRunDebugQuery = async () => {
     const nextQuery = debugQuery.trim()
@@ -573,7 +450,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             {issues.length ? (
               <PanelAlert type="warning">{issues[0].message}</PanelAlert>
             ) : null}
-            <PanelCard className="space-y-2.5 bg-white p-2.5 shadow-none">
+            <PanelCard className="space-y-2.5 bg-white shadow-none">
               <Field title="查询变量" compact>
                 <VariableSelect
                   value={config.query_variable_selector}
@@ -602,23 +479,10 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                 <button
                   type="button"
                   onClick={openDatasetPicker}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-[16px] transition hover:bg-[#c8ceda33]"
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white text-[15px] text-slate-600 transition hover:bg-[#c8ceda33]"
                   aria-label="添加知识库"
                 >
                   +
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDatasetDialogOpen(true)
-                    if (datasets[0] && !editingDatasetId) {
-                      setEditingDatasetId(datasets[0].id)
-                      setDatasetForm(createDatasetFormFromDetail(datasets[0]))
-                    }
-                  }}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-                >
-                  管理
                 </button>
               </div>
             )}
@@ -707,49 +571,93 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
           </PanelSection>
 
           <Dialog open={isDatasetPickerOpen} onOpenChange={setIsDatasetPickerOpen}>
-            <DialogContent className="w-[360px] max-w-[calc(100vw-1rem)] p-0">
+            <DialogContent className="w-[420px] max-w-[calc(100vw-1rem)] p-0">
               <div className="px-5 py-5">
-                <DialogTitle>
-                  <span className="text-[15px] font-semibold text-slate-900">选择引用知识库</span>
-                </DialogTitle>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <DialogTitle>
+                      <span className="text-[15px] font-semibold text-slate-900">关联知识库</span>
+                    </DialogTitle>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void refreshDatasets()}
+                      disabled={isDatasetLoading}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="刷新知识库列表"
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                        <path d="M20 12a8 8 0 1 1-2.343-5.657" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M20 4v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openKnowledgeDatasetPage}
+                      className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                    >
+                      新建/管理
+                    </button>
+                  </div>
+                </div>
 
                 <div className="mt-5 space-y-3">
                   {datasetErrorMessage ? (
                     <PanelAlert type="warning">{datasetErrorMessage}</PanelAlert>
                   ) : null}
 
-                  <div className="grid gap-3">
-                    {datasets.map((dataset) => {
-                      const selected = pendingDatasetIds.includes(dataset.id)
+                  {datasets.length ? (
+                    <div className="grid max-h-[360px] gap-3 overflow-y-auto pr-1">
+                      {datasets.map((dataset) => {
+                        const selected = pendingDatasetIds.includes(dataset.id)
 
-                      return (
-                        <button
-                          key={dataset.id}
-                          type="button"
-                          onClick={() => handlePendingDatasetToggle(dataset.id)}
-                          className={`rounded-2xl border px-4 py-3 text-left transition ${selected
-                            ? 'border-blue-500 bg-blue-50 shadow-[0_10px_24px_-20px_rgba(59,130,246,0.45)]'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'} focus:outline-none focus-visible:ring-0 focus-visible:ring-blue-100`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0 flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                  <path d="M6 5.5h12v13H6z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                                  <path d="M9 9.5h6M9 13h6M9 16.5h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
+                        return (
+                          <button
+                            key={dataset.id}
+                            type="button"
+                            onClick={() => handlePendingDatasetToggle(dataset.id)}
+                            className={`rounded-2xl border px-4 py-3 text-left transition ${selected
+                              ? 'border-blue-500 bg-blue-50 shadow-[0_10px_24px_-20px_rgba(59,130,246,0.45)]'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'} focus:outline-none focus-visible:ring-0 focus-visible:ring-blue-100`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M6 5.5h12v13H6z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M9 9.5h6M9 13h6M9 16.5h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
+                                  <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                                    <span>{dataset.documentCount ?? 0} 文档</span>
+                                    <span>{dataset.chunkCount ?? 0} chunks</span>
+                                    <span>{formatDatasetUpdatedAt(dataset.updatedAt)}</span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
-                                <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
-                              </div>
+                              <PanelToken className="!border-slate-200 !text-slate-500">{getDatasetPickerBadgeLabel(dataset)}</PanelToken>
                             </div>
-                            <PanelToken className="!border-slate-200 !text-slate-500">{getDatasetPickerBadgeLabel(dataset)}</PanelToken>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-center">
+                      <p className="text-[12px] font-semibold text-slate-700">还没有可关联的知识库</p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-500">去知识库页面新建或导入后，这里会自动刷新并列出已有项。</p>
+                      <button
+                        type="button"
+                        onClick={openKnowledgeDatasetPage}
+                        className="mt-3 inline-flex h-8 items-center rounded-lg border border-blue-300 bg-blue-600 px-3 text-[12px] font-semibold text-white transition hover:bg-blue-500"
+                      >
+                        去知识库页创建
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-3 pt-4">
                     <p className={`text-[11px] font-semibold ${pendingDatasetIds.length ? 'text-slate-700' : 'text-amber-700'}`}>
@@ -770,159 +678,6 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                         className="rounded-xl border border-blue-300 bg-blue-600 px-5 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400"
                       >
                         添加
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isDatasetDialogOpen} onOpenChange={setIsDatasetDialogOpen}>
-            <DialogContent className="w-[600px] max-w-[calc(100vw-1rem)] overflow-hidden p-0">
-              <div className="flex items-start justify-between border-b border-slate-100 px-4 py-4">
-                <div className="pr-8">
-                  <DialogTitle>
-                    <span className="text-[15px] font-semibold text-slate-900">知识库管理</span>
-                  </DialogTitle>
-                  <DialogDescription>
-                    <span className="mt-1 block text-[12px] leading-5 text-slate-500">
-                      这里维护知识检索节点可选的数据集。保存后会同步到服务端，并自动更新当前工作流节点。
-                    </span>
-                  </DialogDescription>
-                </div>
-                <DialogCloseButton className="right-4 top-4" />
-              </div>
-
-              <div className="grid min-h-[460px] md:grid-cols-[230px_minmax(0,1fr)]">
-                <div className="border-b border-slate-100 bg-slate-50/70 p-3 md:border-b-0 md:border-r">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Datasets</p>
-                    <button
-                      type="button"
-                      onClick={openCreateDataset}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
-                    >
-                      新建
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    {datasets.map(dataset => {
-                      const isActive = editingDatasetId === dataset.id
-
-                      return (
-                        <button
-                          key={dataset.id}
-                          type="button"
-                          onClick={() => selectDatasetForEdit(dataset)}
-                          className={`w-full rounded-xl border px-2.5 py-2 text-left transition ${isActive
-                            ? 'border-blue-300 bg-white shadow-[0_10px_22px_-18px_rgba(59,130,246,0.35)]'
-                            : 'border-transparent bg-white/70 hover:border-slate-200 hover:bg-white'}`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-[12px] font-semibold text-slate-800">{dataset.name}</p>
-                              <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-slate-500">{dataset.description || '未填写描述'}</p>
-                            </div>
-                            {dataset.is_multimodal ? (
-                              <PanelToken className="border-amber-100 text-amber-600">图文</PanelToken>
-                            ) : null}
-                          </div>
-                          <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                            <span>{dataset.documentCount ?? 0} 条文档</span>
-                            <span>{formatDatasetUpdatedAt(dataset.updatedAt)}</span>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="space-y-3 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[13px] font-semibold text-slate-900">
-                        {editingDatasetId === 'new' ? '新建知识库' : editingDataset?.name || '编辑知识库'}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">
-                        {editingDatasetId === 'new'
-                          ? '保存后会生成稳定 dataset id，并立即出现在选择区。'
-                          : `数据集 ID：${editingDataset?.id || '未选中'}`}
-                      </p>
-                    </div>
-                    {editingDatasetId !== 'new' && editingDataset ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteDataset(editingDataset.id)}
-                        disabled={isDatasetMutating}
-                        className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        删除
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {datasetFormError ? (
-                    <PanelAlert type="warning">{datasetFormError}</PanelAlert>
-                  ) : null}
-                  {datasetActionMessage ? (
-                    <PanelAlert type="info">{datasetActionMessage}</PanelAlert>
-                  ) : null}
-                  {datasetErrorMessage && !datasetFormError ? (
-                    <PanelAlert type="warning">{datasetErrorMessage}</PanelAlert>
-                  ) : null}
-
-                  <PanelCard className="space-y-2.5 bg-white p-3 shadow-none">
-                    <Field title="知识库名称" compact>
-                      <PanelInput
-                        value={datasetForm.name}
-                        placeholder="例如：售后案例库"
-                        onChange={event => setDatasetForm(current => ({ ...current, name: event.target.value }))}
-                      />
-                    </Field>
-
-                    <Field title="描述" compact>
-                      <textarea
-                        value={datasetForm.description}
-                        rows={3}
-                        placeholder="说明这个知识库覆盖的业务域、文档来源和适用范围。"
-                        onChange={event => setDatasetForm(current => ({ ...current, description: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </Field>
-
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2">
-                      <div>
-                        <p className="text-[12px] font-semibold text-slate-800">多模态知识库</p>
-                        <p className="text-[10px] text-slate-500">开启后，节点会展示附件变量入口。</p>
-                      </div>
-                      <PanelToggle
-                        checked={datasetForm.is_multimodal}
-                        onChange={checked => setDatasetForm(current => ({ ...current, is_multimodal: checked }))}
-                      />
-                    </div>
-                  </PanelCard>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-1">
-                    <p className="text-[10px] text-slate-400">
-                      {isDatasetMutating ? '正在写入服务端...' : '保存后立即同步到 dataset API'}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsDatasetDialogOpen(false)}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-600 transition hover:border-slate-300"
-                      >
-                        关闭
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleSaveDataset()}
-                        disabled={isDatasetMutating}
-                        className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {editingDatasetId === 'new' ? '创建知识库' : '保存修改'}
                       </button>
                     </div>
                   </div>
