@@ -1,4 +1,8 @@
-# 2026-04-09 Workflow Knowledge Panel CORS
+## 2025-04-10 Workflow 右侧 Panel 表单控件事件被画布交互吞掉
+
+- 现象：右侧节点配置面板里的共享表单控件在多个面板中都出现“点击无效、Slider 不能拖、数字框难以编辑”的问题，看起来像组件本身失效。
+- 根因：右侧 panel 容器为了阻断事件冒泡，曾在容器级 `mousedown/click` 里调用 `preventDefault()`。这会连带取消子控件的原生默认行为，导致 range 不能拖动、number/input 难以聚焦和编辑。
+- 修复：把事件隔离收口到 `apps/web/src/pages/workflow/compts/panel.tsx`，只做 `stopPropagation()`，不再对 panel 容器或子控件调用 `preventDefault()`；同时保留 panel 的高层级 `PANEL_Z_INDEX`，确保事件命中侧栏本身而不是底层画布。
 
 - 现象：工作流页面从 `http://127.0.0.1:5173` 打开时，knowledge retrieval panel 的数据集列表、调试检索、JWT dev token 请求都表现为“无法交互”。
 - 根因：`apps/server/src/index.ts` 的 CORS 只允许单个 `ALLOWED_ORIGIN`，默认是 `http://localhost:5173`，导致 `127.0.0.1` 来源被浏览器拦截。
