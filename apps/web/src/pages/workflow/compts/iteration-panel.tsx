@@ -176,7 +176,6 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
           <PanelSection title="容器入口">
             <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
               <div className="flex flex-wrap gap-1.5">
-                <PanelToken>start: {config.start_node_id}</PanelToken>
                 <PanelToken>{nodeData._children?.length ?? 1} 个内部入口节点</PanelToken>
               </div>
               <p className="text-[11px] leading-5 text-slate-500">
