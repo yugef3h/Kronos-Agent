@@ -1,5 +1,9 @@
-import { useMemo, useState } from 'react';
+import { cloneElement, isValidElement, useMemo, useState, type MouseEventHandler, type ReactElement } from 'react';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../base/dialog';
+
+type DslDialogTriggerProps = {
+  onClick?: MouseEventHandler<HTMLElement>;
+};
 
 type DslPreviewDialogProps = {
   appId: string;
@@ -7,6 +11,7 @@ type DslPreviewDialogProps = {
   dsl: unknown;
   nodeCount: number;
   edgeCount: number;
+  trigger?: ReactElement<DslDialogTriggerProps>;
 };
 
 export default function DslPreviewDialog({
@@ -15,6 +20,7 @@ export default function DslPreviewDialog({
   dsl,
   nodeCount,
   edgeCount,
+  trigger,
 }: DslPreviewDialogProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -31,28 +37,40 @@ export default function DslPreviewDialog({
     }
   };
 
+  const openDialog = () => {
+    setOpen(true);
+  };
+
+  const triggerNode = isValidElement(trigger)
+    ? cloneElement(trigger, {
+        onClick: openDialog,
+      })
+    : (
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-full border border-[#d8d3c7] bg-[linear-gradient(180deg,#fffdf8_0%,#f5efe4_100%)] px-3 py-1.5 text-[12px] font-semibold text-[#4b5563] shadow-[0_12px_28px_-22px_rgba(120,113,108,0.8)] transition hover:border-[#c7bfb1] hover:text-[#1f2937]"
+          onClick={openDialog}
+        >
+          <svg
+            viewBox="0 0 1024 1024"
+            version="1.1"
+            xmlns="http://www.w3.org/2000/svg"
+            p-id="6734"
+            width="16"
+            height="16"
+          >
+            <path
+              d="M747.392 736.192a34.88 34.88 0 0 1-24.768-59.712l153.856-153.856-153.408-153.408a35.008 35.008 0 0 1 49.536-49.536l178.176 178.176a35.008 35.008 0 0 1 0 49.472l-178.624 178.56a34.88 34.88 0 0 1-24.768 10.24z m-463.744 0a34.944 34.944 0 0 1-24.704-10.24l-178.624-178.56a35.008 35.008 0 0 1 0-49.536l178.112-178.176a35.008 35.008 0 0 1 49.536 49.536L154.56 522.624l153.856 153.856a35.008 35.008 0 0 1-24.768 59.712zM427.52 886.4a35.008 35.008 0 0 1-33.92-44.032L570.752 181.632a35.008 35.008 0 0 1 67.648 18.112L461.312 860.416a35.008 35.008 0 0 1-33.792 25.92z"
+              p-id="6735"
+            ></path>
+          </svg>
+          <span>DSL</span>
+        </button>
+      );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <button
-        type="button"
-        className="inline-flex items-center gap-2 rounded-full border border-[#d8d3c7] bg-[linear-gradient(180deg,#fffdf8_0%,#f5efe4_100%)] px-3 py-1.5 text-[12px] font-semibold text-[#4b5563] shadow-[0_12px_28px_-22px_rgba(120,113,108,0.8)] transition hover:border-[#c7bfb1] hover:text-[#1f2937]"
-        onClick={() => setOpen(true)}
-      >
-        <svg
-          viewBox="0 0 1024 1024"
-          version="1.1"
-          xmlns="http://www.w3.org/2000/svg"
-          p-id="6734"
-          width="16"
-          height="16"
-        >
-          <path
-            d="M747.392 736.192a34.88 34.88 0 0 1-24.768-59.712l153.856-153.856-153.408-153.408a35.008 35.008 0 0 1 49.536-49.536l178.176 178.176a35.008 35.008 0 0 1 0 49.472l-178.624 178.56a34.88 34.88 0 0 1-24.768 10.24z m-463.744 0a34.944 34.944 0 0 1-24.704-10.24l-178.624-178.56a35.008 35.008 0 0 1 0-49.536l178.112-178.176a35.008 35.008 0 0 1 49.536 49.536L154.56 522.624l153.856 153.856a35.008 35.008 0 0 1-24.768 59.712zM427.52 886.4a35.008 35.008 0 0 1-33.92-44.032L570.752 181.632a35.008 35.008 0 0 1 67.648 18.112L461.312 860.416a35.008 35.008 0 0 1-33.792 25.92z"
-            p-id="6735"
-          ></path>
-        </svg>
-        <span>DSL</span>
-      </button>
+      {triggerNode}
 
       <DialogContent className="h-[min(84dvh,860px)] w-[min(960px,calc(100vw-2rem))] max-w-[min(960px,calc(100vw-2rem))] overflow-hidden p-0">
         <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-[#fcfaf5]">
