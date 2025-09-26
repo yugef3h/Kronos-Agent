@@ -65,29 +65,6 @@ const getDatasetPickerBadgeLabel = (dataset: KnowledgeDatasetDetail) => {
   return `${indexingLabel} · ${searchMethodLabel}`
 }
 
-const collectUpstreamNodeIds = (currentNodeId: string, edges: Array<{ source: string; target: string }>) => {
-  const visited = new Set<string>()
-  const pending = [currentNodeId]
-
-  while (pending.length) {
-    const targetNodeId = pending.pop()
-    if (!targetNodeId)
-      continue
-
-    edges
-      .filter(edge => edge.target === targetNodeId)
-      .forEach((edge) => {
-        if (visited.has(edge.source))
-          return
-
-        visited.add(edge.source)
-        pending.push(edge.source)
-      })
-  }
-
-  return visited
-}
-
 const TopKControl = ({
   value,
   onChange,
@@ -118,15 +95,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const nodeData = data as CanvasNodeData
   const availableVariables = useMemo(() => {
     const nodeSnapshots = nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))
-    const upstreamNodeIds = collectUpstreamNodeIds(id, edges)
-    const variableOptions = buildWorkflowVariableOptions(id, nodeSnapshots)
-
-    return variableOptions.filter((option) => {
-      if (option.source === 'system')
-        return true
-
-      return upstreamNodeIds.has(option.valueSelector[0] ?? '')
-    })
+    return buildWorkflowVariableOptions(id, nodeSnapshots, edges)
   }, [edges, id, nodes])
   const {
     datasets,

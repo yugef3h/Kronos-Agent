@@ -131,8 +131,9 @@ const normalizeWorkflowEdge = (edge: Edge): Edge => {
 const buildConditionNodeVariableOptions = (
   currentNodeId: string,
   nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
+  edges: Array<{ source: string; target: string }>,
 ): VariableOption[] => {
-  return buildWorkflowVariableOptions(currentNodeId, nodes);
+  return buildWorkflowVariableOptions(currentNodeId, nodes, edges);
 };
 
 const appendTriggerHandleStyle: CSSProperties = {
@@ -259,8 +260,9 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     return buildConditionNodeVariableOptions(
       id,
       getNodes().map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
+      getEdges(),
     );
-  }, [data.kind, getNodes, id]);
+  }, [data.kind, getEdges, getNodes, id]);
   const primaryConditionSummary = useMemo(() => {
     if (!conditionConfig?.cases[0]?.conditions.length) {
       return '添加条件后，这里会显示 IF 分支摘要';

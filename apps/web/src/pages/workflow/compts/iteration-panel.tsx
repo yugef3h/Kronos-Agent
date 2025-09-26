@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNodes, useReactFlow } from 'reactflow'
+import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../base/variable-select'
 import Field from '../base/field'
@@ -35,12 +35,13 @@ const findVariableOption = (valueSelector: string[], options: VariableOption[]) 
 const IterationPanel = ({ id, data }: NodePanelProps) => {
   const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
   const nodes = useNodes<CanvasNodeData>()
+  const edges = useEdges<Edge>()
   const nodeData = data as CanvasNodeData
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
 
   const variableOptions = useMemo(
-    () => buildWorkflowVariableOptions(id, nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))),
-    [id, nodes],
+    () => buildWorkflowVariableOptions(id, nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId })), edges),
+    [edges, id, nodes],
   )
 
   const iteratorOption = useMemo(

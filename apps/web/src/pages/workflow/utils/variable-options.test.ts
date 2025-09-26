@@ -40,6 +40,11 @@ describe('buildWorkflowVariableOptions', () => {
         id: 'end-1',
         data: createNodeData('end', { title: 'End', outputs: { result: '' } }),
       },
+    ], [
+      {
+        source: 'llm-1',
+        target: 'end-1',
+      },
     ])
 
     expect(options).toEqual(expect.arrayContaining([
@@ -74,6 +79,15 @@ describe('buildWorkflowVariableOptions', () => {
         parentId: 'other-container',
         data: createNodeData('llm', { title: 'Other Child', outputs: { text: '' } }),
       },
+    ], [
+      {
+        source: 'root-1',
+        target: 'iteration-1',
+      },
+      {
+        source: 'child-1',
+        target: 'child-2',
+      },
     ])
 
     expect(options.map(option => option.valueSelector.join('.'))).toEqual(expect.arrayContaining([
@@ -85,5 +99,46 @@ describe('buildWorkflowVariableOptions', () => {
     ]))
     expect(options.map(option => option.valueSelector.join('.'))).not.toContain('other-child.text')
     expect(options.map(option => option.valueSelector.join('.'))).not.toContain('child-2.result')
+  })
+
+  it('excludes downstream nodes from selectable variables', () => {
+    const options = buildWorkflowVariableOptions('knowledge-1', [
+      {
+        id: 'trigger-1',
+        data: createNodeData('trigger', { title: 'Start', outputs: { query: '' } }),
+      },
+      {
+        id: 'llm-1',
+        data: createNodeData('llm', { title: 'LLM', outputs: { text: '' } }),
+      },
+      {
+        id: 'knowledge-1',
+        data: createNodeData('knowledge', { title: 'Knowledge', outputs: { result: [] } }),
+      },
+      {
+        id: 'end-1',
+        data: createNodeData('end', { title: 'End', outputs: { result: '' } }),
+      },
+    ], [
+      {
+        source: 'trigger-1',
+        target: 'llm-1',
+      },
+      {
+        source: 'llm-1',
+        target: 'knowledge-1',
+      },
+      {
+        source: 'knowledge-1',
+        target: 'end-1',
+      },
+    ])
+
+    expect(options.map(option => option.valueSelector.join('.'))).toEqual(expect.arrayContaining([
+      'sys.query',
+      'trigger-1.query',
+      'llm-1.text',
+    ]))
+    expect(options.map(option => option.valueSelector.join('.'))).not.toContain('end-1.result')
   })
 })

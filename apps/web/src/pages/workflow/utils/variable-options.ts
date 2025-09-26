@@ -1,10 +1,13 @@
 import type { VariableOption, ValueSelector } from '../features/llm-panel/types'
 import type { CanvasNodeData } from '../types/canvas'
 
+type WorkflowNodeSnapshot = { id: string; data: CanvasNodeData; parentId?: string }
+type WorkflowEdgeSnapshot = { source: string; target: string }
+
 export const serializeValueSelector = (valueSelector: ValueSelector) => valueSelector.join('.')
 
 const inferVariableType = (
-  node: { id: string; data: CanvasNodeData },
+  node: WorkflowNodeSnapshot,
   outputKey: string,
   outputValue: unknown,
 ): VariableOption['valueType'] => {
@@ -33,13 +36,44 @@ const inferVariableType = (
   return 'string'
 }
 
+const collectUpstreamNodeIds = (
+  currentNodeId: string,
+  edges: WorkflowEdgeSnapshot[],
+) => {
+  const visited = new Set<string>()
+  const pending = [currentNodeId]
+
+  while (pending.length) {
+    const targetNodeId = pending.pop()
+    if (!targetNodeId)
+      continue
+
+    edges
+      .filter(edge => edge.target === targetNodeId)
+      .forEach((edge) => {
+        if (visited.has(edge.source))
+          return
+
+        visited.add(edge.source)
+        pending.push(edge.source)
+      })
+  }
+
+  return visited
+}
+
 export const buildWorkflowVariableOptions = (
   currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
+  nodes: WorkflowNodeSnapshot[],
+  edges: WorkflowEdgeSnapshot[] = [],
   extraOptions: VariableOption[] = [],
 ): VariableOption[] => {
   const currentNode = nodes.find(node => node.id === currentNodeId)
   const currentParentId = currentNode?.parentId
+  const upstreamNodeIds = edges.length ? collectUpstreamNodeIds(currentNodeId, edges) : null
+  const upstreamContainerNodeIds = currentParentId && edges.length
+    ? collectUpstreamNodeIds(currentParentId, edges)
+    : null
   const systemVariables: VariableOption[] = [
     {
       label: 'sys.query',
@@ -69,10 +103,24 @@ export const buildWorkflowVariableOptions = (
       const candidateParentId = node.parentId
 
       if (!currentParentId) {
-        return !candidateParentId || candidateParentId === currentNodeId
+        const isInRootScope = !candidateParentId || candidateParentId === currentNodeId
+        if (!isInRootScope)
+          return false
+
+        return upstreamNodeIds ? upstreamNodeIds.has(node.id) : true
       }
 
-      return !candidateParentId || candidateParentId === currentParentId || node.id === currentParentId
+      const isInSharedScope = !candidateParentId || candidateParentId === currentParentId || node.id === currentParentId
+      if (!isInSharedScope)
+        return false
+
+      if (node.id === currentParentId)
+        return true
+
+      if (upstreamNodeIds?.has(node.id))
+        return true
+
+      return upstreamContainerNodeIds ? upstreamContainerNodeIds.has(node.id) : true
     })
     .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
     .flatMap((node) => {

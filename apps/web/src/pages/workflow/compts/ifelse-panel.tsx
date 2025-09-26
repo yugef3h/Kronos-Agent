@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow'
+import { useEdges, useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../base/variable-select'
 import {
@@ -127,14 +127,16 @@ const ConditionEditor = ({
 const IfElsePanel = ({ id, data }: NodePanelProps) => {
   const { setNodes, setEdges } = useReactFlow<CanvasNodeData, Edge>()
   const nodes = useNodes<CanvasNodeData>()
+  const edges = useEdges<Edge>()
   const updateNodeInternals = useUpdateNodeInternals()
   const nodeData = data as CanvasNodeData
   const variableOptions = useMemo(
     () => buildWorkflowVariableOptions(
       id,
       nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId })),
+      edges,
     ),
-    [id, nodes],
+    [edges, id, nodes],
   )
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
   const {

@@ -5,7 +5,7 @@ import ExpandCollapseButton from '../base/expand-collapse-button';
 import PanelAlert from '../base/panel-alert';
 import AddItemButton from '../base/add-item-button';
 import JSONSchemaInput from '../base/json-schema-input';
-import { useNodes, useReactFlow } from 'reactflow';
+import { useEdges, useNodes, useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import {
@@ -134,10 +134,12 @@ const CompletionPromptEditor = ({
 const LLMPanel = ({ id, data }: NodePanelProps) => {
   const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
   const nodes = useNodes<CanvasNodeData>();
+  const edges = useEdges<Edge>();
   const nodeData = data as CanvasNodeData;
   const availableVariables = buildWorkflowVariableOptions(
     id,
     nodes.map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
+    edges,
   );
   const {
     config,
