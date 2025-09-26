@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../base/variable-select'
 import Field from '../base/field'
@@ -112,12 +112,14 @@ const TopKControl = ({
 }
 
 const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
-  const { getEdges, getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const nodes = useNodes<CanvasNodeData>()
+  const edges = useEdges<Edge>()
   const nodeData = data as CanvasNodeData
   const availableVariables = useMemo(() => {
-    const nodes = getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))
-    const upstreamNodeIds = collectUpstreamNodeIds(id, getEdges())
-    const variableOptions = buildWorkflowVariableOptions(id, nodes)
+    const nodeSnapshots = nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))
+    const upstreamNodeIds = collectUpstreamNodeIds(id, edges)
+    const variableOptions = buildWorkflowVariableOptions(id, nodeSnapshots)
 
     return variableOptions.filter((option) => {
       if (option.source === 'system')
@@ -125,7 +127,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
 
       return upstreamNodeIds.has(option.valueSelector[0] ?? '')
     })
-  }, [getEdges, getNodes, id])
+  }, [edges, id, nodes])
   const {
     datasets,
     isLoading: isDatasetLoading,

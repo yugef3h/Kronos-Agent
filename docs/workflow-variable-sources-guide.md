@@ -5,6 +5,274 @@
 1. LLM 节点里的 `text`、`reasoning_content` 为什么会变成后续 workflow 节点可选变量。
 2. Dify workflow 里“可选变量”到底有哪些来源，分别怎么定义、聚合、显示、运行时解析，以及后续怎么维护。
 
+## 0. 当前项目实现版速记
+
+上面两点主要是在解释 Dify 的完整变量体系。当前仓库里的 workflow 编辑器不是 Dify 原仓实现，而是一套更轻量的前端变量系统，所以先给出本项目的真实口径，避免把两套机制混在一起。
+
+### 0.1 当前项目的 source of truth 在哪里
+
+当前项目前端里，变量选择器的主入口是：
+
+- `apps/web/src/pages/workflow/utils/variable-options.ts`
+
+核心函数：
+
+- `buildWorkflowVariableOptions(currentNodeId, nodes, extraOptions)`
+
+它负责产出 `VariableOption[]`，也就是大多数节点面板里真正喂给 `VariableSelect` 的数据源。
+
+当前项目没有 Dify 那种：
+
+- `SUPPORT_OUTPUT_VARS_NODE`
+- `use-workflow-variables`
+- `VariablePool` 前后端完整对齐的统一聚合层
+
+当前项目的规则更直接：
+
+1. 系统变量直接写死在 `buildWorkflowVariableOptions(...)`。
+2. 节点变量来自各节点 `node.data.outputs`。
+3. 类型优先读 `node.data.inputs._outputTypes`，否则从 `outputs` 的默认值推断。
+4. 不同面板再按自己的业务场景做二次过滤或追加额外变量。
+
+### 0.2 当前项目的共享变量来源
+
+目前共享来源只有 2 大类。
+
+#### A. 系统变量
+
+定义位置：
+
+- `apps/web/src/pages/workflow/utils/variable-options.ts`
+
+当前固定包含：
+
+- `sys.query`
+- `sys.files`
+- `sys.conversation_id`
+
+说明：
+
+- 当前项目没有 `env`、`conversation`、`rag.shared` 这类独立命名空间。
+- 也没有 Dify 那种更完整的全局系统变量集合。
+
+#### B. 节点 outputs
+
+来源：
+
+- `node.data.outputs`
+
+类型来源：
+
+- `node.data.inputs._outputTypes`
+- 如果没有 `_outputTypes`，就退化成默认值推断
+
+类型推断规则在：
+
+- `apps/web/src/pages/workflow/utils/variable-options.ts` 的 `inferVariableType(...)`
+
+当前推断逻辑大致是：
+
+- number -> `number`
+- boolean -> `boolean`
+- Array -> `array`
+- key 包含 `file` -> `file`
+- `usage` 或对象 -> `object`
+- 其他 -> `string`
+
+### 0.3 当前项目的可见范围规则
+
+当前项目不是按“拓扑上游节点”全局统一求变量可见范围，而是按面板场景分两层处理。
+
+第一层是共享默认规则：
+
+- `buildWorkflowVariableOptions(...)`
+
+默认规则：
+
+- 当前节点自己的 outputs 不会进入可选列表。
+- 如果当前节点在根层：
+  - 可看到所有根层节点 outputs。
+  - 对容器类节点自身面板，还允许看到它的直接子节点 outputs。
+- 如果当前节点在容器内部：
+  - 可看到所有根层节点 outputs。
+  - 可看到同一个 `parentId` 下的兄弟节点 outputs。
+  - 可看到父容器节点本身的 outputs。
+  - 看不到别的容器内部节点 outputs。
+
+第二层是节点面板自己的业务过滤：
+
+- `knowledge-retrieval-panel.tsx`
+  - 额外按 edge 追溯，只允许真正上游节点的变量进入查询变量列表。
+- `iteration-panel.tsx`
+  - 迭代源只允许数组变量或 `sys.files`。
+  - 另外会手动补 `current.item`、`current.index` 供当前 iteration 节点配置使用。
+- `loop-panel.tsx`
+  - break condition 会额外追加当前 loop 的 `loop_variables`。
+- `ifelse-panel.tsx`
+  - 现在已经改成复用共享的 `buildWorkflowVariableOptions(...)`，不再单独维护一套偏离的变量构造逻辑。
+
+### 0.4 当前项目里“哪些节点会暴露变量”
+
+当前项目没有显式的“支持输出变量节点白名单”。
+
+实际规则是：
+
+- 只要节点 `data.outputs` 非空，就可能被聚合进变量列表。
+
+结合 `apps/web/src/pages/workflow/utils/workflow-dsl.ts`、各 panel 的同步逻辑，当前主要节点暴露如下。
+
+#### Start / Trigger 节点
+
+来源：
+
+- `apps/web/src/pages/workflow/features/start-panel/schema.ts`
+
+暴露变量：
+
+- 固定：`query`、`files`
+- 自定义开始变量：`variables[].variable`
+
+说明：
+
+- `query` / `files` 既作为 start outputs，也和共享 `sys.query` / `sys.files` 并存。
+- 下游通常更常用系统变量路径，但 start 输出路径同样可能存在于 DSL 中。
+
+#### LLM 节点
+
+默认暴露变量：
+
+- `text`
+- `reasoning_content`
+- `usage`
+
+开启 structured output 后追加：
+
+- `structured_output`
+
+相关实现：
+
+- `apps/web/src/pages/workflow/features/llm-panel/schema.ts`
+- `apps/web/src/pages/workflow/compts/llm-panel.tsx`
+
+说明：
+
+- 现在 `structured_output` 已经同步写入 `node.data.outputs` 和 `_outputTypes`，下游节点可以真实选到。
+
+#### Knowledge Retrieval 节点
+
+暴露变量：
+
+- `result`
+- `documents`
+- `files`
+
+说明：
+
+- 查询变量候选会再经过“只保留真正上游节点”的过滤，不是单纯使用共享列表。
+
+#### If/Else 节点
+
+当前默认 outputs：
+
+- `matched`
+
+说明：
+
+- 这意味着下游理论上可以引用 `conditionNodeId.matched`。
+- 条件编辑器自身现在也复用了共享变量来源和类型推断。
+
+#### Iteration 节点
+
+容器根节点暴露变量：
+
+- `items`
+- `count`
+
+容器内部的 `iteration-start` 节点暴露变量：
+
+- `item`
+- `index`
+
+说明：
+
+- 容器内部子节点能拿到 `iteration-start.item` / `iteration-start.index`。
+- `iteration` 根节点面板自身还会手动追加 `current.item` / `current.index` 作为配置辅助变量。
+
+#### Loop 节点
+
+容器根节点暴露变量：
+
+- `steps`
+- `count`
+
+容器内部的 `loop-start` 节点暴露变量：
+
+- 固定：`index`
+- 动态：`loop_variables[].label`
+
+说明：
+
+- `loop_variables` 当前主要供 loop 容器内部节点和 break condition 使用。
+- 它们不会自动挂到 loop 根节点 outputs 上。
+
+#### End 节点
+
+来源：
+
+- `apps/web/src/pages/workflow/features/end-panel/schema.ts`
+
+暴露变量：
+
+- 用户在 End 面板里定义的每一个输出字段
+
+说明：
+
+- End 节点本身一般是 workflow 终点，但从前端数据结构上它确实会形成 outputs。
+
+#### Iteration End / Loop End 节点
+
+默认暴露变量：
+
+- `iteration-end`: `item`, `done`
+- `loop-end`: `done`
+
+### 0.5 当前项目里“每个节点能获取到哪些可选变量”
+
+按节点面板视角，可以概括成下面这张表。
+
+| 节点 | 默认可选变量来源 | 额外规则 |
+| --- | --- | --- |
+| LLM | `sys.*` + 共享作用域内所有节点 outputs | 视觉变量通常再从中筛 `file` |
+| Knowledge Retrieval | `sys.*` + 真正上游节点 outputs | 查询附件只筛 `file` |
+| If/Else | `sys.*` + 共享作用域内所有节点 outputs | 比较操作符按变量类型切换 |
+| Iteration | `sys.*` + 共享作用域内所有节点 outputs | iterator 只允许 array / `sys.files`；额外补 `current.item` / `current.index` |
+| Loop | `sys.*` + 共享作用域内所有节点 outputs | break condition 额外补当前 loop 变量 |
+| End | `sys.*` + 共享作用域内所有节点 outputs | 用于把上游变量映射为最终输出 |
+
+### 0.6 当前项目相对 Dify 的关键差异
+
+如果后面继续迭代这套系统，最重要的是先意识到当前项目和附件里的 Dify 设计差异很大。
+
+当前项目还没有：
+
+- 统一的变量命名空间聚合器
+- 环境变量 / 会话变量分组
+- 节点输出 schema 与变量系统完全单一 source of truth
+- 前后端统一 variable pool 对齐
+
+当前项目已经具备：
+
+- 基于 `outputs` 的轻量变量选择器
+- 基于 `_outputTypes` 的显式类型标注
+- 容器内外分作用域可见
+- 知识检索、iteration、loop 这些场景的局部增强过滤
+
+所以本项目后续如果要继续完善，优先级建议是：
+
+1. 继续减少面板里重复定义 outputs 的代码。
+2. 把更多节点输出类型写入 `_outputTypes`，减少默认值推断误差。
+3. 如果以后接后端运行态，再决定是否引入真正的 variable pool 抽象。
+
 ## 1. 先回答当前问题：`text` / `reasoning_content` 为什么能被后续节点选到
 
 结论先说：

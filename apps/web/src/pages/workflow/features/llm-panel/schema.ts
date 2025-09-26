@@ -65,6 +65,24 @@ export const createDefaultLLMNodeConfig = (): LLMNodeConfig => ({
   },
 })
 
+export const buildLLMNodeOutputs = (config: LLMNodeConfig) => {
+  return {
+    text: '',
+    reasoning_content: '',
+    usage: {},
+    ...(config.structuredOutputEnabled ? { structured_output: {} } : {}),
+  }
+}
+
+export const buildLLMOutputTypes = (config: LLMNodeConfig) => {
+  return {
+    text: 'string',
+    reasoning_content: 'string',
+    usage: 'object',
+    ...(config.structuredOutputEnabled ? { structured_output: 'object' } : {}),
+  }
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

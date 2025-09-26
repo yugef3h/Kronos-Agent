@@ -1,5 +1,7 @@
 import { filterCompletionParamsByModel, MODEL_CATALOG, reconcileVisionConfig } from './catalog'
 import {
+  buildLLMNodeOutputs,
+  buildLLMOutputTypes,
   createDefaultLLMNodeConfig,
   createPromptTemplateForMode,
   normalizeLLMNodeConfig,
@@ -76,6 +78,34 @@ describe('llm-panel schema', () => {
   it('creates different prompt templates for chat and completion modes', () => {
     expect(Array.isArray(createPromptTemplateForMode('chat'))).toBe(true)
     expect(Array.isArray(createPromptTemplateForMode('completion'))).toBe(false)
+  })
+
+  it('adds structured_output to exposed outputs when structured output is enabled', () => {
+    const config = createDefaultLLMNodeConfig()
+    config.structuredOutputEnabled = true
+    config.structuredOutput = {
+      schema: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string' },
+        },
+        required: ['answer'],
+        additionalProperties: false,
+      },
+    }
+
+    expect(buildLLMNodeOutputs(config)).toEqual({
+      text: '',
+      reasoning_content: '',
+      usage: {},
+      structured_output: {},
+    })
+    expect(buildLLMOutputTypes(config)).toEqual({
+      text: 'string',
+      reasoning_content: 'string',
+      usage: 'object',
+      structured_output: 'object',
+    })
   })
 })
 

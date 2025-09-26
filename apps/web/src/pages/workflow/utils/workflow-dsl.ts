@@ -12,6 +12,7 @@ import {
   createDefaultIterationNodeConfig,
   normalizeIterationNodeConfig,
 } from '../features/iteration-panel/schema'
+import { buildLLMNodeOutputs, buildLLMOutputTypes, normalizeLLMNodeConfig } from '../features/llm-panel/schema'
 import { createDefaultKnowledgeRetrievalNodeConfig } from '../features/knowledge-retrieval-panel/schema'
 import { getKnowledgeDatasetsByIds } from '../features/knowledge-retrieval-panel/dataset-store'
 import {
@@ -20,7 +21,7 @@ import {
   normalizeLoopNodeConfig,
 } from '../features/loop-panel/schema'
 
-const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown> | undefined => {
+const getDefaultOutputs = (kind: CanvasNodeData['kind'], inputs?: Record<string, unknown>): Record<string, unknown> | undefined => {
   switch (kind) {
     case 'trigger':
       return {
@@ -28,11 +29,7 @@ const getDefaultOutputs = (kind: CanvasNodeData['kind']): Record<string, unknown
         files: [],
       }
     case 'llm':
-      return {
-        text: '',
-        reasoning_content: '',
-        usage: {},
-      }
+      return buildLLMNodeOutputs(normalizeLLMNodeConfig(inputs))
     case 'knowledge':
       return {
         result: [],
@@ -143,36 +140,51 @@ export const createInitialTriggerNode = (): Node<CanvasNodeData> => ({
 
 export const buildCanvasNodeData = (
   partial: Partial<CanvasNodeData> & Pick<CanvasNodeData, 'kind' | 'title' | 'subtitle'> & { nodeId?: string },
-): CanvasNodeData => ({
-  kind: partial.kind,
-  title: partial.title,
-  subtitle: partial.subtitle,
-  selected: partial.selected ?? false,
-  inputs: partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId),
-  outputs: partial.outputs ?? getDefaultOutputs(partial.kind),
-  _targetBranches: partial.kind === 'condition'
-    ? buildIfElseTargetBranches(
-        normalizeIfElseNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId)).cases,
-      )
-    : undefined,
-  _datasets: partial.kind === 'knowledge'
-    ? getKnowledgeDatasetsByIds(
-        Array.isArray((partial.inputs as Record<string, unknown> | undefined)?.dataset_ids)
-          ? ((partial.inputs as Record<string, unknown>).dataset_ids as string[])
-          : [],
-      )
-    : undefined,
-  _children: partial.kind === 'iteration'
-    ? buildIterationChildren(
-        normalizeIterationNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId), partial.nodeId).start_node_id,
-      )
-    : partial.kind === 'loop'
-      ? buildLoopChildren(
-          normalizeLoopNodeConfig(partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId), partial.nodeId).start_node_id,
+): CanvasNodeData => {
+  const defaultInputs = partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId)
+  let nextInputs = defaultInputs
+  let nextOutputs = partial.outputs ?? getDefaultOutputs(partial.kind, partial.inputs)
+
+  if (partial.kind === 'llm') {
+    const normalizedLlmConfig = normalizeLLMNodeConfig(defaultInputs)
+    nextInputs = {
+      ...normalizedLlmConfig,
+      _outputTypes: buildLLMOutputTypes(normalizedLlmConfig),
+    } as unknown as Record<string, unknown>
+    nextOutputs = buildLLMNodeOutputs(normalizedLlmConfig)
+  }
+
+  return {
+    kind: partial.kind,
+    title: partial.title,
+    subtitle: partial.subtitle,
+    selected: partial.selected ?? false,
+    inputs: nextInputs,
+    outputs: nextOutputs,
+    _targetBranches: partial.kind === 'condition'
+      ? buildIfElseTargetBranches(
+          normalizeIfElseNodeConfig(defaultInputs).cases,
         )
       : undefined,
-  _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],
-})
+    _datasets: partial.kind === 'knowledge'
+      ? getKnowledgeDatasetsByIds(
+          Array.isArray((defaultInputs as Record<string, unknown> | undefined)?.dataset_ids)
+            ? ((defaultInputs as Record<string, unknown>).dataset_ids as string[])
+            : [],
+        )
+      : undefined,
+    _children: partial.kind === 'iteration'
+      ? buildIterationChildren(
+          normalizeIterationNodeConfig(defaultInputs, partial.nodeId).start_node_id,
+        )
+      : partial.kind === 'loop'
+        ? buildLoopChildren(
+            normalizeLoopNodeConfig(defaultInputs, partial.nodeId).start_node_id,
+          )
+        : undefined,
+    _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],
+  }
+}
 
 export const hydrateCanvasNodesFromDsl = (dsl: WorkflowDSL): Node<CanvasNodeData>[] => {
   if (!dsl.nodes.length)

@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { useReactFlow, useUpdateNodeInternals } from 'reactflow'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
-import PanelAlert from '../base/panel-alert'
 import VariableSelect from '../base/variable-select'
 import {
   PanelCard,
@@ -25,54 +24,7 @@ import {
 } from '../features/ifelse-panel/schema'
 import { useIfElsePanelConfig } from '../features/ifelse-panel/use-ifelse-panel-config'
 import type { IfElseCondition, IfElseNodeConfig } from '../features/ifelse-panel/types'
-
-const buildVariableOptions = (
-  currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData }>,
-): VariableOption[] => {
-  const systemVariables: VariableOption[] = [
-    {
-      label: 'sys.query',
-      valueSelector: ['sys', 'query'],
-      valueType: 'string',
-      source: 'system',
-    },
-    {
-      label: 'sys.files',
-      valueSelector: ['sys', 'files'],
-      valueType: 'file',
-      source: 'system',
-    },
-    {
-      label: 'sys.conversation_id',
-      valueSelector: ['sys', 'conversation_id'],
-      valueType: 'string',
-      source: 'system',
-    },
-  ]
-
-  const nodeVariables = nodes
-    .filter(node => node.id !== currentNodeId)
-    .sort((left, right) => left.data.title.localeCompare(right.data.title, 'zh-CN'))
-    .flatMap((node) => {
-      const outputs = Object.keys(node.data.outputs ?? {})
-      if (!outputs.length)
-        return []
-
-      return outputs.map<VariableOption>((outputKey) => ({
-        label: `${node.data.title}.${outputKey}`,
-        valueSelector: [node.id, outputKey],
-        valueType: outputKey.includes('file')
-          ? 'file'
-          : outputKey === 'usage'
-            ? 'object'
-            : 'string',
-        source: 'node',
-      }))
-    })
-
-  return [...systemVariables, ...nodeVariables]
-}
+import { buildWorkflowVariableOptions } from '../utils/variable-options'
 
 const serializeValueSelector = (valueSelector: string[]) => valueSelector.join('.')
 
@@ -173,17 +125,20 @@ const ConditionEditor = ({
 }
 
 const IfElsePanel = ({ id, data }: NodePanelProps) => {
-  const { getNodes, setNodes, setEdges } = useReactFlow<CanvasNodeData, Edge>()
+  const { setNodes, setEdges } = useReactFlow<CanvasNodeData, Edge>()
+  const nodes = useNodes<CanvasNodeData>()
   const updateNodeInternals = useUpdateNodeInternals()
   const nodeData = data as CanvasNodeData
-  const variableOptions = buildVariableOptions(
-    id,
-    getNodes().map(node => ({ id: node.id, data: node.data })),
+  const variableOptions = useMemo(
+    () => buildWorkflowVariableOptions(
+      id,
+      nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId })),
+    ),
+    [id, nodes],
   )
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
   const {
     config,
-    issues,
     handleAddCase,
     handleRemoveCase,
     handleMoveCase,

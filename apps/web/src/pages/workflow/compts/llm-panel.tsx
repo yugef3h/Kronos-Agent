@@ -5,7 +5,7 @@ import ExpandCollapseButton from '../base/expand-collapse-button';
 import PanelAlert from '../base/panel-alert';
 import AddItemButton from '../base/add-item-button';
 import JSONSchemaInput from '../base/json-schema-input';
-import { useReactFlow } from 'reactflow';
+import { useNodes, useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import {
@@ -24,6 +24,7 @@ import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { useLLMPanelConfig } from '../features/llm-panel/use-llm-panel-config';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
+import { buildLLMNodeOutputs, buildLLMOutputTypes } from '../features/llm-panel/schema';
 import type {
   ChatPromptItem,
   CompletionPromptItem,
@@ -131,11 +132,12 @@ const CompletionPromptEditor = ({
 
 
 const LLMPanel = ({ id, data }: NodePanelProps) => {
-  const { getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const nodes = useNodes<CanvasNodeData>();
   const nodeData = data as CanvasNodeData;
   const availableVariables = buildWorkflowVariableOptions(
     id,
-    getNodes().map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
+    nodes.map((node) => ({ id: node.id, data: node.data, parentId: node.parentId })),
   );
   const {
     config,
@@ -169,6 +171,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     value: nodeData.inputs,
     availableVariables,
     onChange: (nextValue: LLMNodeConfig) => {
+      const nextOutputs = buildLLMNodeOutputs(nextValue);
       setNodes((nodes) =>
         nodes.map((node) =>
           node.id === id
@@ -176,7 +179,11 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
                 ...node,
                 data: {
                   ...node.data,
-                  inputs: nextValue,
+                  inputs: {
+                    ...nextValue,
+                    _outputTypes: buildLLMOutputTypes(nextValue),
+                  },
+                  outputs: nextOutputs,
                 },
               }
             : node,
@@ -196,8 +203,14 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
 
   useEffect(() => {
     const raw = JSON.stringify(nodeData.inputs ?? null);
-    const normalized = JSON.stringify(config);
-    if (raw !== normalized) {
+    const normalized = JSON.stringify({
+      ...config,
+      _outputTypes: buildLLMOutputTypes(config),
+    });
+    const rawOutputs = JSON.stringify(nodeData.outputs ?? null);
+    const normalizedOutputs = JSON.stringify(buildLLMNodeOutputs(config));
+
+    if (raw !== normalized || rawOutputs !== normalizedOutputs) {
       setNodes((nodes) =>
         nodes.map((node) =>
           node.id === id
@@ -205,14 +218,18 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
                 ...node,
                 data: {
                   ...node.data,
-                  inputs: config,
+                  inputs: {
+                    ...config,
+                    _outputTypes: buildLLMOutputTypes(config),
+                  },
+                  outputs: buildLLMNodeOutputs(config),
                 },
               }
             : node,
         ),
       );
     }
-  }, [config, id, nodeData.inputs, setNodes]);
+  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes]);
 
   const promptHasContextBlock = useMemo(() => {
     if (Array.isArray(config.promptTemplate)) {

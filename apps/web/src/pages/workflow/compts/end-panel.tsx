@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import AddItemButton from '../base/add-item-button'
 import Field from '../base/field'
@@ -35,13 +35,14 @@ const findVariableOption = (valueSelector: string[], options: VariableOption[]) 
 }
 
 const EndPanel = ({ id, data }: NodePanelProps) => {
-  const { getNodes, setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const nodes = useNodes<CanvasNodeData>()
   const nodeData = data as CanvasNodeData
   const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
 
   const variableOptions = useMemo(
-    () => buildWorkflowVariableOptions(id, getNodes().map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))),
-    [getNodes, id],
+    () => buildWorkflowVariableOptions(id, nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))),
+    [id, nodes],
   )
 
   const {
