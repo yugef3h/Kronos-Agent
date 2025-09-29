@@ -264,7 +264,7 @@ const VariableSelect: React.FC<{
           </div>
 
           <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-            <button
+            {/* <button
               type="button"
               role="option"
               aria-selected={serializedValue === ''}
@@ -280,17 +280,16 @@ const VariableSelect: React.FC<{
               }}
             >
               <span className="truncate">{placeholder}</span>
-            </button>
+            </button> */}
 
             {groupedOptions.length ? groupedOptions.map((group) => (
-              <section key={group.key} className="space-y-1.5">
-                <div className={cn('px-2.5 text-[11px] font-bold uppercase tracking-[0.04em]', GROUP_TONE_STYLES[group.tone])}>
+              <section key={group.key} className="space-y-1">
+                <div className={cn('px-2.5 pt-1.5 text-[11px] font-bold uppercase tracking-[0.04em]', GROUP_TONE_STYLES[group.tone])}>
                   {group.title}
                 </div>
                 <div className="space-y-1">
                   {group.options.map((option) => {
                     const serializedOption = serializeValueSelector(option.valueSelector)
-                    const typeStyle = TYPE_STYLES[option.valueType]
 
                     return (
                       <button
@@ -299,7 +298,7 @@ const VariableSelect: React.FC<{
                         role="option"
                         aria-selected={serializedOption === serializedValue}
                         className={cn(
-                          'flex w-full items-center gap-2 rounded-[12px] px-2.5 py-2 text-left text-[12px] transition',
+                          'flex w-full items-center gap-2 rounded-[12px] px-2.5 py-[1px] text-left text-[12px] transition',
                           serializedOption === serializedValue
                             ? 'bg-blue-50/80 text-slate-900 ring-1 ring-blue-100'
                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
@@ -309,10 +308,10 @@ const VariableSelect: React.FC<{
                           setIsOpen(false)
                         }}
                       >
-                        <span className="min-w-0 flex-1 truncate font-medium text-[10px] text-slate-800">
+                        <span className="min-w-0 flex-1 truncate font-semibold text-[10px] text-slate-800">
                           {option.displayLabel}
                         </span>
-                        <span className={cn('shrink-0 text-[11px] font-semibold', typeStyle.textClassName)}>
+                        <span className={cn('shrink-0 text-[11px] font-medium')}>
                           {option.typeLabel}
                         </span>
                       </button>
