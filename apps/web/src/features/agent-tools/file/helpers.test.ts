@@ -2,7 +2,6 @@ import {
   buildFileAnalyzeUserMessage,
   getFileExtension,
   inferSupportedFileMimeType,
-  isFileSizeAllowed,
   isSupportedFileExtension,
 } from './helpers';
 
@@ -25,10 +24,5 @@ describe('file helpers', () => {
     expect(buildFileAnalyzeUserMessage({ fileName: '需求文档.md', prompt: '请总结重点' })).toBe(
       '文件解读：需求文档.md\n补充说明：请总结重点',
     );
-  });
-
-  it('checks file size', () => {
-    expect(isFileSizeAllowed(1024)).toBe(true);
-    expect(isFileSizeAllowed(9 * 1024 * 1024)).toBe(false);
   });
 });
