@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { useReactFlow } from 'reactflow'
-import type { PanelProps as NodePanelProps } from './custom-node'
-import AddItemButton from '../base/add-item-button'
-import Field from '../base/field'
-import PanelAlert from '../base/panel-alert'
+import React, { useEffect, useState } from 'react';
+import { useReactFlow } from 'reactflow';
+import type { PanelProps as NodePanelProps } from './custom-node';
+import AddItemButton from '../base/add-item-button';
+import Field from '../base/field';
+import PanelAlert from '../base/panel-alert';
 import {
   PanelCard,
   // PanelChoiceGroup,
@@ -13,18 +13,18 @@ import {
   PanelSelect,
   PanelToken,
   PanelToggle,
-} from '../base/panel-form'
-import type { Edge } from '../types/common'
-import type { CanvasNodeData } from '../types/canvas'
+} from '../base/panel-form';
+import type { Edge } from '../types/common';
+import type { CanvasNodeData } from '../types/canvas';
 import {
   buildStartNodeOutputs,
   buildStartOutputTypes,
   getStartVariableTypeLabel,
   START_SYSTEM_VARIABLES,
-} from '../features/start-panel/schema'
-import { useStartPanelConfig } from '../features/start-panel/use-start-panel-config'
-import type { StartVariableType } from '../features/start-panel/types'
-import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references'
+} from '../features/start-panel/schema';
+import { useStartPanelConfig } from '../features/start-panel/use-start-panel-config';
+import type { StartVariableType } from '../features/start-panel/types';
+import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
 
 const START_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: StartVariableType }> = [
   { label: 'Text', value: 'text-input' },
@@ -37,12 +37,13 @@ const START_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: StartVariableTy
   { label: 'File', value: 'file' },
   { label: 'File List', value: 'file-list' },
   { label: 'Boolean', value: 'checkbox' },
-]
+];
 
 const StartPanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
-  const nodeData = data as CanvasNodeData
-  const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
+  const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const nodeData = data as CanvasNodeData;
+  const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings');
+  const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
 
   const {
     config,
@@ -54,16 +55,15 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   } = useStartPanelConfig({
     value: nodeData.inputs,
     onChange: (nextValue, meta) => {
-      const nextOutputs = buildStartNodeOutputs(nextValue)
+      const nextOutputs = buildStartNodeOutputs(nextValue);
       const nextInputs = {
         ...nextValue,
         _outputTypes: buildStartOutputTypes(nextValue),
-      }
+      };
 
       setNodes((nodes) => {
         const nextNodes = nodes.map((node) => {
-          if (node.id !== id)
-            return node
+          if (node.id !== id) return node;
 
           return {
             ...node,
@@ -72,8 +72,8 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
               inputs: nextInputs as unknown as Record<string, unknown>,
               outputs: nextOutputs,
             },
-          }
-        })
+          };
+        });
 
         if (meta?.type === 'rename-variable') {
           return rewriteNodesVariableReferences(
@@ -81,51 +81,47 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
             [id, meta.previousVariable],
             [id, meta.nextVariable],
             id,
-          )
+          );
         }
 
         if (meta?.type === 'remove-variable') {
-          return rewriteNodesVariableReferences(
-            nextNodes,
-            [id, meta.variable],
-            null,
-            id,
-          )
+          return rewriteNodesVariableReferences(nextNodes, [id, meta.variable], null, id);
         }
 
-        return nextNodes
-      })
+        return nextNodes;
+      });
     },
-  })
+  });
 
   useEffect(() => {
-    const rawInputs = JSON.stringify(nodeData.inputs ?? null)
+    const rawInputs = JSON.stringify(nodeData.inputs ?? null);
     const normalizedInputs = JSON.stringify({
       ...config,
       _outputTypes: buildStartOutputTypes(config),
-    })
-    const rawOutputs = JSON.stringify(nodeData.outputs ?? null)
-    const normalizedOutputs = JSON.stringify(buildStartNodeOutputs(config))
+    });
+    const rawOutputs = JSON.stringify(nodeData.outputs ?? null);
+    const normalizedOutputs = JSON.stringify(buildStartNodeOutputs(config));
 
     if (rawInputs !== normalizedInputs || rawOutputs !== normalizedOutputs) {
-      setNodes((nodes) => nodes.map((node) => {
-        if (node.id !== id)
-          return node
+      setNodes((nodes) =>
+        nodes.map((node) => {
+          if (node.id !== id) return node;
 
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            inputs: {
-              ...config,
-              _outputTypes: buildStartOutputTypes(config),
-            } as unknown as Record<string, unknown>,
-            outputs: buildStartNodeOutputs(config),
-          },
-        }
-      }))
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              inputs: {
+                ...config,
+                _outputTypes: buildStartOutputTypes(config),
+              } as unknown as Record<string, unknown>,
+              outputs: buildStartNodeOutputs(config),
+            },
+          };
+        }),
+      );
     }
-  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes])
+  }, [config, id, nodeData.inputs, nodeData.outputs, setNodes]);
 
   return (
     <div className="space-y-3">
@@ -169,28 +165,58 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
 
       {activeTab === 'settings' ? (
         <>
-          <PanelSection title="系统变量">
-            <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              {START_SYSTEM_VARIABLES.map((item) => (
-                <PanelOutputVarRow
-                  key={item.variable}
-                  name={item.variable}
-                  type={item.type}
-                  description={item.description}
-                />
-              ))}
-            </PanelCard>
+          <PanelSection
+            title="系统变量"
+            aside={
+              <button
+                type="button"
+                onClick={() => setIsOutputVarsExpanded((expanded) => !expanded)}
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+                aria-label={isOutputVarsExpanded ? '收起输出变量' : '展开输出变量'}
+              >
+                <svg
+                  viewBox="0 0 1024 1024"
+                  width="14"
+                  height="14"
+                  className={`transition-transform ${isOutputVarsExpanded ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M512 640l-181.034667-180.992 60.373334-60.330667L512 519.338667l120.661333-120.661334 60.373334 60.330667L512 640.042667z"
+                    fill="currentColor"
+                  ></path>
+                </svg>
+              </button>
+            }
+          >
+            {isOutputVarsExpanded ? (
+              <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
+                {START_SYSTEM_VARIABLES.map((item) => (
+                  <PanelOutputVarRow
+                    key={item.variable}
+                    name={item.variable}
+                    type={item.type}
+                    description={item.description}
+                  />
+                ))}
+              </PanelCard>
+            ) : null}
           </PanelSection>
 
-          <PanelSection title="自定义输入变量">
+          <PanelSection title="输入变量">
             {issues.length ? <PanelAlert type="warning">{issues[0].message}</PanelAlert> : null}
             {config.variables.length ? (
               <div className="space-y-2">
                 {config.variables.map((variable, index) => (
-                  <PanelCard key={variable.id} className="space-y-2.5 border-[#e8edf5] bg-white p-2.5 shadow-none">
+                  <PanelCard
+                    key={variable.id}
+                    className="space-y-2.5 border-[#e8edf5] bg-white p-2.5 shadow-none"
+                  >
                     <div className="flex items-center gap-1.5">
                       <PanelToken>{getStartVariableTypeLabel(variable.type)}</PanelToken>
-                      {variable.required ? <PanelToken className="border-amber-200 text-amber-700">必填</PanelToken> : null}
+                      {variable.required ? (
+                        <PanelToken className="border-amber-200 text-amber-700">必填</PanelToken>
+                      ) : null}
                       <div className="ml-auto flex items-center gap-1.5">
                         <button
                           type="button"
@@ -222,14 +248,22 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
                       <PanelInput
                         value={variable.label}
                         placeholder="展示名称，例如：城市"
-                        onChange={event => handleUpdateVariable(variable.id, { label: event.target.value })}
+                        onChange={(event) =>
+                          handleUpdateVariable(variable.id, { label: event.target.value })
+                        }
                       />
                       <PanelSelect
                         value={variable.type}
-                        onChange={event => handleUpdateVariable(variable.id, { type: event.target.value as StartVariableType })}
+                        onChange={(event) =>
+                          handleUpdateVariable(variable.id, {
+                            type: event.target.value as StartVariableType,
+                          })
+                        }
                       >
                         {START_VARIABLE_TYPE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
                         ))}
                       </PanelSelect>
                     </div>
@@ -238,7 +272,9 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
                       <PanelInput
                         value={variable.variable}
                         placeholder="例如：city"
-                        onChange={event => handleUpdateVariable(variable.id, { variable: event.target.value })}
+                        onChange={(event) =>
+                          handleUpdateVariable(variable.id, { variable: event.target.value })
+                        }
                       />
                     </Field>
 
@@ -247,7 +283,12 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
                         <p className="text-[12px] font-semibold text-slate-800">是否必填</p>
                         <p className="text-[10px] text-slate-500">开启后可在执行前进行基础校验。</p>
                       </div>
-                      <PanelToggle checked={variable.required} onChange={(checked) => handleUpdateVariable(variable.id, { required: checked })} />
+                      <PanelToggle
+                        checked={variable.required}
+                        onChange={(checked) =>
+                          handleUpdateVariable(variable.id, { required: checked })
+                        }
+                      />
                     </div>
 
                     {variable.type === 'select' ? (
@@ -255,29 +296,38 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
                         <PanelInput
                           value={variable.options.join(', ')}
                           placeholder="使用英文逗号分隔，例如：beijing, shanghai"
-                          onChange={event => handleUpdateVariable(variable.id, {
-                            options: event.target.value.split(',').map(item => item.trim()).filter(Boolean),
-                          })}
+                          onChange={(event) =>
+                            handleUpdateVariable(variable.id, {
+                              options: event.target.value
+                                .split(',')
+                                .map((item) => item.trim())
+                                .filter(Boolean),
+                            })
+                          }
                         />
                       </Field>
                     ) : null}
 
-                    <div className="grid gap-1.5 md:grid-cols-2">
+                    {/* <div className="grid gap-1.5 md:grid-cols-2">
                       <Field title="占位提示" compact>
                         <PanelInput
                           value={variable.placeholder}
                           placeholder="可选"
-                          onChange={event => handleUpdateVariable(variable.id, { placeholder: event.target.value })}
+                          onChange={(event) =>
+                            handleUpdateVariable(variable.id, { placeholder: event.target.value })
+                          }
                         />
                       </Field>
                       <Field title="说明" compact>
                         <PanelInput
                           value={variable.hint}
                           placeholder="给调用方的输入说明"
-                          onChange={event => handleUpdateVariable(variable.id, { hint: event.target.value })}
+                          onChange={(event) =>
+                            handleUpdateVariable(variable.id, { hint: event.target.value })
+                          }
                         />
                       </Field>
-                    </div>
+                    </div> */}
                   </PanelCard>
                 ))}
               </div>
@@ -292,25 +342,10 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
 
             <AddItemButton onClick={handleAddVariable}>+ 添加输入变量</AddItemButton>
           </PanelSection>
-
-          <PanelSection title="输出预览">
-            <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              <PanelOutputVarRow name="query" type="string" description="系统注入的用户输入文本。" />
-              <PanelOutputVarRow name="files" type="file[]" description="系统注入的文件列表。" />
-              {config.variables.map((variable) => (
-                <PanelOutputVarRow
-                  key={variable.id}
-                  name={variable.variable || '未命名变量'}
-                  type={getStartVariableTypeLabel(variable.type)}
-                  description={variable.hint || `${variable.label || '自定义变量'} 会作为 Start 节点输出暴露给下游。`}
-                />
-              ))}
-            </PanelCard>
-          </PanelSection>
         </>
       ) : null}
     </div>
-  )
-}
+  );
+};
 
-export default React.memo(StartPanel)
+export default React.memo(StartPanel);

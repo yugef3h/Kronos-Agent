@@ -981,6 +981,7 @@ export const WorkflowChildren = () => {
   return (
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
+        {/* header 抽离 */}
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
@@ -1069,7 +1070,7 @@ export const WorkflowChildren = () => {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-hidden rounded-b-3xl">
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-3xl">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1107,9 +1108,9 @@ export const WorkflowChildren = () => {
               color="var(--color-workflow-canvas-workflow-dot-color)"
             />
           </ReactFlow>
-        </div>
 
-        <Panel selectedNode={selectedNode} onClose={handlePanelClose} />
+          <Panel selectedNode={selectedNode} onClose={handlePanelClose} />
+        </div>
       </div>
     </section>
   );
