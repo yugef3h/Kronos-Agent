@@ -194,12 +194,7 @@ export const validateStartNodeConfig = (config: StartNodeConfig): StartValidatio
       })
     }
 
-    if (!normalizedLabel) {
-      issues.push({
-        path: `${basePath}.label`,
-        message: `第 ${index + 1} 个输入变量缺少展示名称。`,
-      })
-    } else if (seenLabels.has(normalizedLabel)) {
+    if (normalizedLabel && seenLabels.has(normalizedLabel)) {
       issues.push({
         path: `${basePath}.label`,
         message: `变量标签 ${normalizedLabel} 重复，请改成唯一名称。`,
@@ -214,7 +209,8 @@ export const validateStartNodeConfig = (config: StartNodeConfig): StartValidatio
     }
 
     seenVariables.add(normalizedVariable)
-    seenLabels.add(normalizedLabel)
+    if (normalizedLabel)
+      seenLabels.add(normalizedLabel)
   })
 
   return issues

@@ -58,4 +58,23 @@ describe('start-panel schema', () => {
       city: '',
     })
   })
+
+  it('allows empty labels when variable names are present', () => {
+    const issues = validateStartNodeConfig({
+      variables: [
+        {
+          id: 'a',
+          variable: 'city',
+          label: '',
+          type: 'text-input',
+          required: false,
+          options: [],
+          placeholder: '',
+          hint: '',
+        },
+      ],
+    })
+
+    expect(issues).toEqual([])
+  })
 })

@@ -445,6 +445,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
 
           <PanelSection
             title="知识库"
+            required
             aside={(
               <div className="flex items-center gap-2">
                 <button

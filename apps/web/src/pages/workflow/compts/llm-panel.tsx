@@ -290,7 +290,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
         </section>
       ) : null}
 
-      <PanelSection title="模型">
+      <PanelSection title="模型" required>
         <PanelCard className="space-y-2.5 px-4 py-3.5 rounded-xl border border-slate-200/60 bg-white shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5">

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { produce } from 'immer'
 import { createEmptyStartVariable, normalizeStartNodeConfig, validateStartNodeConfig } from './schema'
+import { reorderStartVariables } from './list-utils'
 import type { StartNodeConfig, StartVariable } from './types'
 
 type UseStartPanelConfigOptions = {
@@ -30,9 +31,9 @@ export const useStartPanelConfig = ({
     onChange(nextValue, meta)
   }
 
-  const handleAddVariable = () => {
+  const handleAddVariable = (nextVariable: StartVariable = createEmptyStartVariable()) => {
     update((draft) => {
-      draft.variables.push(createEmptyStartVariable())
+      draft.variables.push(nextVariable)
     })
   }
 
@@ -81,6 +82,12 @@ export const useStartPanelConfig = ({
     })
   }
 
+  const handleReorderVariable = (activeId: string, overId: string) => {
+    update((draft) => {
+      draft.variables = reorderStartVariables(draft.variables, activeId, overId)
+    })
+  }
+
   return {
     config,
     issues,
@@ -88,5 +95,6 @@ export const useStartPanelConfig = ({
     handleUpdateVariable,
     handleRemoveVariable,
     handleMoveVariable,
+    handleReorderVariable,
   }
 }
