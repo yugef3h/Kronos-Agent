@@ -13,32 +13,32 @@ type VariableGroup = {
   options: Array<VariableOption & { displayLabel: string; typeLabel: string }>
 }
 
-const TYPE_STYLES: Record<VariableOption['valueType'], { iconClassName: string; textClassName: string }> = {
-  string: {
-    iconClassName: 'border-blue-200 bg-blue-50 text-blue-600',
-    textClassName: 'text-blue-700',
-  },
-  number: {
-    iconClassName: 'border-violet-200 bg-violet-50 text-violet-600',
-    textClassName: 'text-violet-700',
-  },
-  boolean: {
-    iconClassName: 'border-cyan-200 bg-cyan-50 text-cyan-600',
-    textClassName: 'text-cyan-700',
-  },
-  array: {
-    iconClassName: 'border-emerald-200 bg-emerald-50 text-emerald-600',
-    textClassName: 'text-emerald-700',
-  },
-  object: {
-    iconClassName: 'border-amber-200 bg-amber-50 text-amber-600',
-    textClassName: 'text-amber-700',
-  },
-  file: {
-    iconClassName: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-600',
-    textClassName: 'text-fuchsia-700',
-  },
-}
+// const TYPE_STYLES: Record<VariableOption['valueType'], { iconClassName: string; textClassName: string }> = {
+//   string: {
+//     iconClassName: 'border-blue-200 bg-blue-50 text-blue-600',
+//     textClassName: 'text-blue-700',
+//   },
+//   number: {
+//     iconClassName: 'border-violet-200 bg-violet-50 text-violet-600',
+//     textClassName: 'text-violet-700',
+//   },
+//   boolean: {
+//     iconClassName: 'border-cyan-200 bg-cyan-50 text-cyan-600',
+//     textClassName: 'text-cyan-700',
+//   },
+//   array: {
+//     iconClassName: 'border-emerald-200 bg-emerald-50 text-emerald-600',
+//     textClassName: 'text-emerald-700',
+//   },
+//   object: {
+//     iconClassName: 'border-amber-200 bg-amber-50 text-amber-600',
+//     textClassName: 'text-amber-700',
+//   },
+//   file: {
+//     iconClassName: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-600',
+//     textClassName: 'text-fuchsia-700',
+//   },
+// }
 
 const GROUP_TONE_STYLES: Record<VariableGroup['tone'], string> = {
   slate: 'text-slate-500',
