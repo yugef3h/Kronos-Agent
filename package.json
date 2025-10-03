@@ -10,7 +10,7 @@
     "dev:attention-py": "python3 -m uvicorn apps.attention_py.app:app --host 127.0.0.1 --port 8008 --reload",
     "install:attention-py": "python3 -m pip install -r apps/attention_py/requirements.txt",
     "build": "pnpm --filter @kronos/core build && pnpm --filter @kronos/server build && pnpm --filter @kronos/web build",
-    "cd": "node scripts/git-commit-date.mjs",
+    "cd": "pnpm lint && node scripts/git-commit-date.mjs",
     "test": "jest --runInBand",
     "lint": "pnpm --filter @kronos/server lint && pnpm --filter @kronos/web lint",
     "format": "prettier --write .",

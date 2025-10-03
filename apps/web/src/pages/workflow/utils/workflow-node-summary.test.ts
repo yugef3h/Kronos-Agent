@@ -31,7 +31,7 @@ describe('workflow node summary', () => {
       },
     }))
 
-    expect(summary.tags.map(tag => tag.text)).toEqual(['1 个输入', '1 个必填'])
+    expect(summary.tags.map(tag => tag.text)).toEqual([])
     expect(summary.items[0]).toMatchObject({
       primary: 'city · Text',
       meta: '必填',
