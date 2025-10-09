@@ -1,13 +1,25 @@
 import { Panel as NodePanel } from "../compts/custom-node";
 import type { PanelProps as NodePanelProps } from '../compts/custom-node'
-import React, { memo, useCallback, useEffect, useRef } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../utils/classnames";
 import { PANEL_Z_INDEX } from '../layout-constants'
+import { BlockEnum } from '../types/common'
+import { resolvePanelBlockType } from '../utils/panel-resolver'
+import { PanelTabs, type PanelDefaultTab, PanelTabsProvider } from '../base/panel-form'
 
 type PanelProps = {
   selectedNode?: NodePanelProps
   onClose: () => void
 }
+
+const TABBED_BLOCKS = new Set<BlockEnum>([
+  BlockEnum.Start,
+  BlockEnum.End,
+  BlockEnum.IfElse,
+  BlockEnum.Iteration,
+  BlockEnum.Loop,
+  BlockEnum.KnowledgeRetrieval,
+])
 
 /**
  * Reference MDN standard implementation：https://developer.mozilla.org/zh-CN/docs/Web/API/ResizeObserverEntry/borderBoxSize
@@ -54,6 +66,22 @@ export const useResizeObserver = (
 }
 
 const Panel = ({ selectedNode, onClose }: PanelProps) => {
+  const [activeTab, setActiveTab] = useState<PanelDefaultTab>('settings')
+
+  useEffect(() => {
+    setActiveTab('settings')
+  }, [selectedNode?.id])
+
+  const blockType = useMemo(() => {
+    return resolvePanelBlockType(selectedNode?.type, selectedNode?.data)
+  }, [selectedNode?.data, selectedNode?.type])
+
+  const showTabs = Boolean(blockType && TABBED_BLOCKS.has(blockType))
+
+  const handleTabChange = useCallback((nextValue: PanelDefaultTab) => {
+    setActiveTab(nextValue)
+  }, [])
+
   if (!selectedNode)
     return null
 
@@ -94,8 +122,15 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
             关闭
           </button>
         </div>
+        {showTabs ? (
+          <div className="border-b border-slate-100 px-4 py-3">
+            <PanelTabs value={activeTab} onChange={handleTabChange} />
+          </div>
+        ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <NodePanel {...selectedNode} />
+          <PanelTabsProvider activeTab={activeTab} setActiveTab={handleTabChange}>
+            <NodePanel {...selectedNode} />
+          </PanelTabsProvider>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEdges, useNodes, useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import VariableSelect from '../base/variable-select';
@@ -11,6 +11,7 @@ import {
   PanelSliderInput,
   PanelToken,
   PanelToggle,
+  usePanelTabs,
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
@@ -39,7 +40,7 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
   const nodes = useNodes<CanvasNodeData>();
   const edges = useEdges<Edge>();
   const nodeData = data as CanvasNodeData;
-  const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings');
+  const { activeTab } = usePanelTabs();
 
   const variableOptions = useMemo(
     () =>
@@ -159,43 +160,14 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2 border-b border-slate-100 pb-3">
-        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-0.5">
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
-                activeTab === 'settings'
-                  ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              设置
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('last-run')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
-                activeTab === 'last-run'
-                  ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              上次运行
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'last-run' ? (
-          <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-            <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-            <p className="text-[11px] leading-5 text-slate-500">
-              运行工作流后，这里会显示每轮迭代输入、并行度、异常处理结果和聚合后的输出摘要。
-            </p>
-          </PanelCard>
-        ) : null}
-      </div>
+      {activeTab === 'last-run' ? (
+        <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
+          <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
+          <p className="text-[11px] leading-5 text-slate-500">
+            运行工作流后，这里会显示每轮迭代输入、并行度、异常处理结果和聚合后的输出摘要。
+          </p>
+        </PanelCard>
+      ) : null}
 
       {activeTab === 'settings' ? (
         <>

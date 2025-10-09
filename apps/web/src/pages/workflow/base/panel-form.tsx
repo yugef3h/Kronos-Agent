@@ -156,6 +156,81 @@ export const PanelSelect = ({ className, children, ...props }: React.SelectHTMLA
   )
 }
 
+export type PanelDefaultTab = 'settings' | 'last-run'
+
+type PanelTabsContextValue = {
+  activeTab: PanelDefaultTab
+  setActiveTab: (value: PanelDefaultTab) => void
+}
+
+const PanelTabsContext = React.createContext<PanelTabsContextValue | null>(null)
+
+export const PanelTabsProvider = ({
+  activeTab,
+  setActiveTab,
+  children,
+}: {
+  activeTab: PanelDefaultTab
+  setActiveTab: (value: PanelDefaultTab) => void
+  children: ReactNode
+}) => {
+  return (
+    <PanelTabsContext.Provider value={{ activeTab, setActiveTab }}>
+      {children}
+    </PanelTabsContext.Provider>
+  )
+}
+
+export const usePanelTabs = () => {
+  const context = React.useContext(PanelTabsContext)
+
+  if (!context)
+    throw new Error('usePanelTabs must be used within PanelTabsProvider')
+
+  return context
+}
+
+export const PanelTabs = ({
+  value,
+  onChange,
+  className,
+}: {
+  value: PanelDefaultTab
+  onChange: (value: PanelDefaultTab) => void
+  className?: string
+}) => {
+  return (
+    <div className={cn(className)}>
+      <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-0.5">
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={() => onChange('settings')}
+            className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
+              value === 'settings'
+                ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            设置
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange('last-run')}
+            className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
+              value === 'last-run'
+                ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            上次运行
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export const PanelChoiceGroup = <T extends string>({
   value,
   options,

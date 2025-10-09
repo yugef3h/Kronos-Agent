@@ -15,6 +15,7 @@ import {
   PanelOutputVarRow,
   PanelSection,
   PanelToken,
+  usePanelTabs,
 } from '../base/panel-form'
 import {
   requestKnowledgeRetrievalQuery,
@@ -107,7 +108,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     () => availableVariables.filter(option => option.valueType === 'file'),
     [availableVariables],
   )
-  const [activeTab, setActiveTab] = useState<'settings' | 'last-run'>('settings')
+  const { activeTab } = usePanelTabs()
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
   const [pendingDatasetIds, setPendingDatasetIds] = useState<string[]>([])
   const [debugQuery, setDebugQuery] = useState('')
@@ -284,136 +285,107 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2 border-b border-slate-100 pb-3">
-        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-0.5">
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
-                activeTab === 'settings'
-                  ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              设置
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('last-run')}
-              className={`flex-1 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition ${
-                activeTab === 'last-run'
-                  ? 'bg-white text-slate-900 shadow-[0_6px_14px_rgba(15,23,42,0.08)]'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              上次运行
-            </button>
+      {activeTab === 'last-run' ? (
+        <PanelCard className="space-y-3 bg-slate-50/70 p-3">
+          <div className="space-y-1">
+            <p className="text-[12px] font-semibold text-slate-800">手动检索调试</p>
+            <p className="text-[11px] leading-5 text-slate-500">
+              这里直接调用服务端知识检索接口，先验证当前节点绑定的知识库与召回参数是否有效。
+            </p>
           </div>
-        </div>
 
-        {activeTab === 'last-run' ? (
-          <PanelCard className="space-y-3 bg-slate-50/70 p-3">
-            <div className="space-y-1">
-              <p className="text-[12px] font-semibold text-slate-800">手动检索调试</p>
-              <p className="text-[11px] leading-5 text-slate-500">
-                这里直接调用服务端知识检索接口，先验证当前节点绑定的知识库与召回参数是否有效。
+          <div className="grid gap-2">
+            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-500">
+              <p>查询变量：{config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}</p>
+              <p>Top K：{topKValue}</p>
+            </div>
+
+            {selectedDatasets.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedDatasets.map(dataset => (
+                  <PanelToken key={dataset.id}>{dataset.name}</PanelToken>
+                ))}
+              </div>
+            ) : null}
+
+            <Field title="调试查询" compact>
+              <textarea
+                value={debugQuery}
+                rows={3}
+                placeholder="输入一段查询文本，验证当前知识库配置是否能召回结果。"
+                onChange={event => setDebugQuery(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              />
+            </Field>
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] text-slate-400">
+                {lastRun ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.requestedAt)}` : '还没有调试记录'}
               </p>
+              <button
+                type="button"
+                onClick={() => void handleRunDebugQuery()}
+                disabled={isDebugRunning || isDatasetLoading}
+                className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDebugRunning ? '检索中...' : '运行检索'}
+              </button>
             </div>
 
-            <div className="grid gap-2">
-              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-500">
-                <p>查询变量：{config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}</p>
-                <p>Top K：{topKValue}</p>
-              </div>
+            {debugRunError ? (
+              <PanelAlert type="warning">{debugRunError}</PanelAlert>
+            ) : null}
 
-              {selectedDatasets.length ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedDatasets.map(dataset => (
-                    <PanelToken key={dataset.id}>{dataset.name}</PanelToken>
-                  ))}
-                </div>
-              ) : null}
-
-              <Field title="调试查询" compact>
-                <textarea
-                  value={debugQuery}
-                  rows={3}
-                  placeholder="输入一段查询文本，验证当前知识库配置是否能召回结果。"
-                  onChange={event => setDebugQuery(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                />
-              </Field>
-
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] text-slate-400">
-                  {lastRun ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.requestedAt)}` : '还没有调试记录'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void handleRunDebugQuery()}
-                  disabled={isDebugRunning || isDatasetLoading}
-                  className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isDebugRunning ? '检索中...' : '运行检索'}
-                </button>
-              </div>
-
-              {debugRunError ? (
-                <PanelAlert type="warning">{debugRunError}</PanelAlert>
-              ) : null}
-
-              {lastRun ? (
-                <div className="space-y-2">
-                  <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                    <p className="text-[12px] font-semibold text-slate-800">{lastRun.query}</p>
-                    <div className="mt-1 grid gap-1 text-[10px] text-slate-500 md:grid-cols-3">
-                      <span>知识库 {lastRun.diagnostics.dataset_count} 个</span>
-                      <span>扫描分块 {lastRun.diagnostics.total_chunk_count}</span>
-                      <span>参与排序 {lastRun.diagnostics.filtered_chunk_count}</span>
-                    </div>
+            {lastRun ? (
+              <div className="space-y-2">
+                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[12px] font-semibold text-slate-800">{lastRun.query}</p>
+                  <div className="mt-1 grid gap-1 text-[10px] text-slate-500 md:grid-cols-3">
+                    <span>知识库 {lastRun.diagnostics.dataset_count} 个</span>
+                    <span>扫描分块 {lastRun.diagnostics.total_chunk_count}</span>
+                    <span>参与排序 {lastRun.diagnostics.filtered_chunk_count}</span>
                   </div>
-
-                  {lastRun.items.length ? (
-                    <div className="space-y-2">
-                      {lastRun.items.map((item) => (
-                        <PanelCard
-                          key={item.chunk_id}
-                          className="space-y-1.5 border border-slate-200 bg-white p-2.5 shadow-none"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-[12px] font-semibold text-slate-800">
-                                {item.dataset_name} / {item.document_name}
-                              </p>
-                              <p className="text-[10px] text-slate-400">
-                                chunk #{item.chunk_index + 1} · {item.search_method}
-                              </p>
-                            </div>
-                            <PanelToken className="border-blue-100 text-blue-600">
-                              score {item.score.toFixed(3)}
-                            </PanelToken>
-                          </div>
-                          <p className="text-[11px] leading-5 text-slate-600">{item.text}</p>
-                          {item.matched_terms.length ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.matched_terms.map(term => (
-                                <PanelToken key={`${item.chunk_id}-${term}`}>{term}</PanelToken>
-                              ))}
-                            </div>
-                          ) : null}
-                        </PanelCard>
-                      ))}
-                    </div>
-                  ) : (
-                    <PanelAlert type="info">本次检索没有命中结果。</PanelAlert>
-                  )}
                 </div>
-              ) : null}
-            </div>
-          </PanelCard>
-        ) : null}
-      </div>
+
+                {lastRun.items.length ? (
+                  <div className="space-y-2">
+                    {lastRun.items.map((item) => (
+                      <PanelCard
+                        key={item.chunk_id}
+                        className="space-y-1.5 border border-slate-200 bg-white p-2.5 shadow-none"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-[12px] font-semibold text-slate-800">
+                              {item.dataset_name} / {item.document_name}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              chunk #{item.chunk_index + 1} · {item.search_method}
+                            </p>
+                          </div>
+                          <PanelToken className="border-blue-100 text-blue-600">
+                            score {item.score.toFixed(3)}
+                          </PanelToken>
+                        </div>
+                        <p className="text-[11px] leading-5 text-slate-600">{item.text}</p>
+                        {item.matched_terms.length ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.matched_terms.map(term => (
+                              <PanelToken key={`${item.chunk_id}-${term}`}>{term}</PanelToken>
+                            ))}
+                          </div>
+                        ) : null}
+                      </PanelCard>
+                    ))}
+                  </div>
+                ) : (
+                  <PanelAlert type="info">本次检索没有命中结果。</PanelAlert>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </PanelCard>
+      ) : null}
 
       {activeTab === 'settings' ? (
         <>
