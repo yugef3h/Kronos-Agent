@@ -1,15 +1,3 @@
-## 2025-04-10 Workflow 主流程 Knowledge Retrieval 节点 Top K 调整后被旧状态覆盖
-
-## 2026-04-11 Workflow Panel 头部控件语义误解
-
-- 现象：像 LLMPanel 这类右侧配置区在做“默认收起”需求时，容易把“保留现有 switch”误实现成“额外再加一个折叠按钮 + 原有 switch 并存”。
-- 根因：对交互描述“按钮是 switch 不变”的理解不够严格，没有把 switch 识别为唯一控制入口，而是机械复用了其他 panel 的独立折叠按钮模式。
-- 修复：后续处理这类 panel 头部交互时，先确认“哪个控件负责开合、哪个控件负责启停”是否为同一控件；若用户明确指出用现有 switch，就不再叠加额外 svg 按钮。
-
-- 现象：容器子图里的 knowledge retrieval 节点 `Top K` 可以正常拖动，但主流程里的 knowledge retrieval 节点在某些配置下看起来“滑不动、数值改不掉”。
-- 根因：`apps/web/src/pages/workflow/compts/knowledge-retrieval-panel.tsx` 里的 `handleTopKChange()` 会连续调用 `handleSingleRetrievalConfigChange()` 和 `handleMultipleRetrievalConfigChange()`。两次更新都基于同一份旧 `config`，后一次会覆盖前一次；当当前节点实际展示的是 `oneWay -> single_retrieval_config.top_k` 时，UI 就会表现成修改后立刻回跳。
-- 修复：在 `apps/web/src/pages/workflow/features/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config.ts` 中新增单次写入的 `handleTopKChange()`，通过 `syncKnowledgeTopK()` 一次性同步 `single_retrieval_config.top_k` 和 `multiple_retrieval_config.top_k`，避免 stale state 覆盖；同时补充 schema 回归测试。
-
 ## 2025-04-10 Workflow 右侧 Panel 表单控件事件被画布交互吞掉
 
 - 现象：右侧节点配置面板里的共享表单控件在多个面板中都出现“点击无效、Slider 不能拖、数字框难以编辑”的问题，看起来像组件本身失效。
