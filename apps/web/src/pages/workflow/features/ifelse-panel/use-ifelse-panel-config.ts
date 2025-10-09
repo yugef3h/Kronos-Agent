@@ -76,13 +76,17 @@ export const useIfElsePanelConfig = ({ value, onChange }: UseIfElsePanelConfigOp
   }
 
   const handleAddCondition = (caseId: string, variable?: VariableOption) => {
+    const nextCondition = createEmptyIfElseCondition(variable)
+
     update((draft) => {
       const caseItem = draft.cases.find(item => item.case_id === caseId)
       if (!caseItem)
         return
 
-      caseItem.conditions.push(createEmptyIfElseCondition(variable))
+      caseItem.conditions.push(nextCondition)
     })
+
+    return nextCondition.id
   }
 
   const handleRemoveCondition = (caseId: string, conditionId: string) => {

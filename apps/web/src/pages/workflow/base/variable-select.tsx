@@ -165,7 +165,9 @@ const VariableSelect: React.FC<{
   options: VariableOption[]
   onChange: (value: ValueSelector) => void
   placeholder: string
-}> = ({ value, options, onChange, placeholder }) => {
+  openSignal?: string | null
+  onOpenChange?: (isOpen: boolean) => void
+}> = ({ value, options, onChange, placeholder, openSignal, onOpenChange }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -205,6 +207,17 @@ const VariableSelect: React.FC<{
       window.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!openSignal)
+      return
+
+    setIsOpen(true)
+  }, [openSignal])
+
+  useEffect(() => {
+    onOpenChange?.(isOpen)
+  }, [isOpen, onOpenChange])
 
   useEffect(() => {
     if (!isOpen) {

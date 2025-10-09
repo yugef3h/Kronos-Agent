@@ -1,38 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
-import AddItemButton from '../base/add-item-button'
-import Field from '../base/field'
 import PanelAlert from '../base/panel-alert'
 import VariableSelect from '../base/variable-select'
 import {
   PanelCard,
-  PanelChoiceGroup,
   PanelInput,
-  PanelOutputVarRow,
   PanelSection,
-  PanelTextarea,
-  PanelToken,
 } from '../base/panel-form'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import { useEndPanelConfig } from '../features/end-panel/use-end-panel-config'
 import { buildEndNodeOutputs, buildEndOutputTypes } from '../features/end-panel/schema'
-import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
-import type { VariableOption } from '../features/llm-panel/types'
-import type { EndOutputConstantType } from '../features/end-panel/types'
-
-const END_CONSTANT_TYPE_OPTIONS: Array<{ label: string; value: EndOutputConstantType }> = [
-  { label: 'String', value: 'string' },
-  { label: 'Number', value: 'number' },
-  { label: 'Boolean', value: 'boolean' },
-  { label: 'JSON', value: 'json' },
-]
-
-const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {
-  const serialized = serializeValueSelector(valueSelector)
-  return options.find(option => serializeValueSelector(option.valueSelector) === serialized)
-}
+import { buildWorkflowVariableOptions } from '../utils/variable-options'
 
 const EndPanel = ({ id, data }: NodePanelProps) => {
   const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
@@ -52,7 +32,6 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
     handleAddOutput,
     handleUpdateOutput,
     handleRemoveOutput,
-    handleMoveOutput,
   } = useEndPanelConfig({
     value: nodeData.inputs,
     existingOutputs: nodeData.outputs,
@@ -150,153 +129,67 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
 
       {activeTab === 'settings' ? (
         <>
-          <PanelSection title="输出映射">
+          <PanelSection
+            title="输出变量"
+            required
+            aside={
+              <button
+                type="button"
+                onClick={handleAddOutput}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white text-[15px] text-slate-600 transition hover:bg-[#c8ceda33]"
+                aria-label="新增输出变量"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M12 5v14" />
+                  <path d="M5 12h14" />
+                </svg>
+              </button>
+            }
+          >
             {issues.length ? <PanelAlert type="warning">{issues[0].message}</PanelAlert> : null}
 
             {config.outputs.length ? (
-              <div className="space-y-2">
-                {config.outputs.map((output, index) => (
-                  <PanelCard key={output.id} className="space-y-2.5 border-[#e8edf5] bg-white p-2.5 shadow-none">
-                    <div className="flex items-center gap-1.5">
-                      <PanelToken>{output.variable_type === 'variable' ? '引用变量' : '常量'}</PanelToken>
-                      <div className="ml-auto flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={() => handleMoveOutput(output.id, 'up')}
-                          className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          上移
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === config.outputs.length - 1}
-                          onClick={() => handleMoveOutput(output.id, 'down')}
-                          className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          下移
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveOutput(output.id)}
-                          className="rounded-md border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 transition hover:border-rose-200 hover:text-rose-600"
-                        >
-                          删除
-                        </button>
-                      </div>
+              <div className="space-y-1.5">
+                {config.outputs.map((output) => (
+                  <div
+                    key={output.id}
+                    className="grid grid-cols-[minmax(112px,132px)_minmax(0,1fr)_32px] items-center gap-2"
+                  >
+                    <PanelInput
+                      value={output.variable}
+                      placeholder="变量名"
+                      className="border-transparent bg-[#f0f2f6]"
+                      onChange={event => handleUpdateOutput(output.id, {
+                        variable: event.target.value,
+                        variable_type: 'variable',
+                      })}
+                    />
+
+                    <div className="rounded-[12px] border border-[#e9edf4] bg-[#f7f9fc] p-[1px]">
+                      <VariableSelect
+                        value={output.value_selector}
+                        options={variableOptions}
+                        placeholder="设置变量值"
+                        onChange={(valueSelector) => handleUpdateOutput(output.id, {
+                          variable_type: 'variable',
+                          value_selector: valueSelector,
+                        })}
+                      />
                     </div>
 
-                    <Field title="输出变量名" compact>
-                      <PanelInput
-                        value={output.variable}
-                        placeholder="例如：answer"
-                        onChange={event => handleUpdateOutput(output.id, { variable: event.target.value.trim() })}
-                      />
-                    </Field>
-
-                    <Field title="值来源模式" compact>
-                      <PanelChoiceGroup
-                        size="sm"
-                        value={output.variable_type}
-                        options={[
-                          { label: '变量', value: 'variable' },
-                          { label: '常量', value: 'constant' },
-                        ]}
-                        onChange={value => handleUpdateOutput(output.id, { variable_type: value as 'variable' | 'constant' })}
-                      />
-                    </Field>
-
-                    {output.variable_type === 'variable' ? (
-                      <Field title="引用变量" compact>
-                        <VariableSelect
-                          value={output.value_selector}
-                          options={variableOptions}
-                          placeholder="选择最终返回值来源"
-                          onChange={(valueSelector) => handleUpdateOutput(output.id, {
-                            value_selector: valueSelector,
-                          })}
-                        />
-                      </Field>
-                    ) : (
-                      <div className="space-y-2">
-                        <Field title="常量类型" compact>
-                          <PanelChoiceGroup
-                            size="sm"
-                            value={output.constant_type}
-                            options={END_CONSTANT_TYPE_OPTIONS}
-                            onChange={value => handleUpdateOutput(output.id, { constant_type: value as EndOutputConstantType })}
-                          />
-                        </Field>
-
-                        <Field title="常量值" compact>
-                          {output.constant_type === 'boolean' ? (
-                            <PanelChoiceGroup
-                              size="sm"
-                              value={output.value === 'true' ? 'true' : 'false'}
-                              options={[
-                                { label: 'TRUE', value: 'true' },
-                                { label: 'FALSE', value: 'false' },
-                              ]}
-                              onChange={value => handleUpdateOutput(output.id, { value })}
-                            />
-                          ) : output.constant_type === 'json' ? (
-                            <PanelTextarea
-                              className="min-h-[88px] px-2 py-1.5 text-[12px] leading-5"
-                              value={output.value}
-                              placeholder={'例如：{\n  "ok": true\n}'}
-                              onChange={event => handleUpdateOutput(output.id, { value: event.target.value })}
-                            />
-                          ) : (
-                            <PanelInput
-                              type={output.constant_type === 'number' ? 'number' : 'text'}
-                              value={output.value}
-                              placeholder={output.constant_type === 'number' ? '输入数字' : '输入固定返回内容'}
-                              onChange={event => handleUpdateOutput(output.id, { value: event.target.value })}
-                            />
-                          )}
-                        </Field>
-                      </div>
-                    )}
-
-                    {output.variable_type === 'variable' && output.value_selector.length ? (
-                      <p className="text-[11px] leading-5 text-slate-500">
-                        当前映射到 {findVariableOption(output.value_selector, variableOptions)?.label ?? output.value_selector.join('.')}。
-                      </p>
-                    ) : null}
-                  </PanelCard>
+                    <button
+                      type="button"
+                      aria-label="删除输出变量"
+                      onClick={() => handleRemoveOutput(output.id)}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="remixicon h-4 w-4 text-text-tertiary group-hover:text-text-destructive hover:text-rose-600"><path d="M17 6H22V8H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V8H2V6H7V3C7 2.44772 7.44772 2 8 2H16C16.5523 2 17 2.44772 17 3V6ZM18 8H6V20H18V8ZM9 11H11V17H9V11ZM13 11H15V17H13V11ZM9 4V6H15V4H9Z"></path></svg>
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : null}
 
-            {!config.outputs.length ? (
-              <PanelCard className="bg-white p-3 shadow-none">
-                <p className="text-[12px] font-semibold text-slate-800">还没有返回字段</p>
-                <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                  添加至少一个输出映射，工作流执行完成后才能返回结构化结果。
-                </p>
-              </PanelCard>
-            ) : null}
-
-            <AddItemButton onClick={handleAddOutput}>+ 添加输出项</AddItemButton>
-          </PanelSection>
-
-          <PanelSection title="返回预览">
-            <PanelCard className="space-y-2 bg-white p-2.5 shadow-none">
-              {config.outputs.map((output) => {
-                const option = findVariableOption(output.value_selector, variableOptions)
-
-                return (
-                  <PanelOutputVarRow
-                    key={output.id}
-                    name={output.variable || '未命名输出'}
-                    type={output.variable_type === 'constant' ? output.constant_type : option?.valueType ?? 'string'}
-                    description={output.variable_type === 'constant'
-                      ? `固定返回当前配置的 ${output.constant_type.toUpperCase()} 常量值。`
-                      : `返回上游变量 ${option?.label ?? '未选择变量'} 的结果。`}
-                  />
-                )
-              })}
-            </PanelCard>
           </PanelSection>
         </>
       ) : null}
