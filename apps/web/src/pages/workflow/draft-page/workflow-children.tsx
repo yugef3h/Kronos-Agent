@@ -795,6 +795,7 @@ export const WorkflowChildren = () => {
       setNodes,
       setEdges,
     });
+
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (event, node) => {
       if (node.data.kind === 'iteration-end' || node.data.kind === 'loop-end') {
@@ -806,6 +807,20 @@ export const WorkflowChildren = () => {
     },
     [handleNodeClickBase, handlePanelClose],
   );
+
+  const onPaneClick = useCallback(() => {
+    const selectedNode = nodes.find((node) => node.data.selected);
+    // 除非点到新的node，否则panel不能关闭的，比如点击无节点的画布空处
+    if (
+      selectedNode &&
+      selectedNode.data.kind !== 'iteration-end' &&
+      selectedNode.data.kind !== 'loop-end'
+    ) {
+      return;
+    }
+
+    handlePaneClick();
+  }, [nodes, handlePaneClick]);
 
   useEffect(() => {
     if (!appId) return;
@@ -1111,7 +1126,7 @@ export const WorkflowChildren = () => {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={handleNodeClick}
-            onPaneClick={handlePaneClick}
+            onPaneClick={onPaneClick}
             connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
             connectionLineStyle={{
               stroke: '#94a3b8',
