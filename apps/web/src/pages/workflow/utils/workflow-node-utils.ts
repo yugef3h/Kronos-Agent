@@ -184,6 +184,7 @@ export const createNodeFromSource = (
 ): Node<CanvasNodeData> => {
   const nextNodeId = createNodeId(node.kind);
   const isNestedNode = Boolean(sourceNode.parentId);
+  const isContainerEndNode = node.kind === 'iteration-end' || node.kind === 'loop-end';
   const nextPosition = isNestedNode
     ? (() => {
         const targetX = sourceNode.position.x + (isContainerStartKind(sourceNode.data.kind)
@@ -214,7 +215,8 @@ export const createNodeFromSource = (
     dragHandle: '.workflow-node-drag-surface',
     parentId: sourceNode.parentId,
     extent: sourceNode.parentId ? 'parent' : undefined,
-    draggable: sourceNode.parentId ? true : undefined,
+    draggable: isContainerEndNode ? false : sourceNode.parentId ? true : undefined,
+    selectable: isContainerEndNode ? false : undefined,
     zIndex: sourceNode.parentId ? ITERATION_CHILDREN_Z_INDEX + 1 : undefined,
     position: nextPosition,
     data: createNodeData(node, nextNodeId),

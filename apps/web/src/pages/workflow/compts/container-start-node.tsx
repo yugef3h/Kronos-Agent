@@ -1,9 +1,8 @@
 import type { MouseEvent, ReactNode } from 'react';
-import { IconIteration } from '../assets/iteration';
-import { IconLoop } from '../assets/loop';
 import { X_OFFSET } from '../layout-constants';
 import { CONTAINER_START_ICON_OFFSET } from '../features/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
+import { IconStart } from '../assets/start';
 
 type ContainerStartNodeProps = {
   kind: Extract<CanvasNodeData['kind'], 'iteration-start' | 'loop-start'>
@@ -13,7 +12,6 @@ type ContainerStartNodeProps = {
 }
 
 export const ContainerStartNode = ({
-  kind,
   showAddBlock,
   onToggleMenu,
   searchBox,
@@ -25,7 +23,7 @@ export const ContainerStartNode = ({
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f6feb] text-white shadow-[0_14px_28px_-20px_rgba(47,111,235,0.9)]"
           style={{ marginLeft: CONTAINER_START_ICON_OFFSET }}
         >
-          {kind === 'iteration-start' ? <IconIteration /> : <IconLoop />}
+          <IconStart />
         </div>
         {showAddBlock ? (
           <>

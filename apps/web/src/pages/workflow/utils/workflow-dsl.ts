@@ -195,12 +195,16 @@ export const hydrateCanvasNodesFromDsl = (dsl: WorkflowDSL): Node<CanvasNodeData
     if (!kind)
       return []
 
+    const isContainerEndNode = kind === 'iteration-end' || kind === 'loop-end'
+
     return [{
       id: node.id,
       type: 'workflow',
       dragHandle: '.workflow-node-drag-surface',
       position: node.position,
       parentId: node.parentId,
+      draggable: isContainerEndNode ? false : undefined,
+      selectable: isContainerEndNode ? false : undefined,
       data: buildCanvasNodeData({
         nodeId: node.id,
         kind,

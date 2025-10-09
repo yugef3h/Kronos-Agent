@@ -65,7 +65,7 @@ export const PanelSection = ({
   className,
   required,
 }: {
-  title?: string
+  title?: string | ReactNode
   aside?: ReactNode
   children: ReactNode
   className?: string
@@ -75,7 +75,7 @@ export const PanelSection = ({
     <section className={cn('space-y-2 border-b border-slate-100 pb-3 last:border-b-0', className)}>
       <div className="flex items-center justify-between gap-3">
         {title && (
-          <h3 className="text-[13px] font-semibold leading-5 text-slate-800">
+          <h3 className="text-[13px] font-semibold leading-5 text-slate-800 flex items-center">
             {title}
             {required && <span className="ml-0.5 align-middle text-[12px] font-semibold text-[#ff4d4f]">*</span>}
           </h3>

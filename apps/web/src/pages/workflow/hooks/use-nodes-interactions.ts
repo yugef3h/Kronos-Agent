@@ -50,9 +50,9 @@ export const useNodesInteractions = <
 
   const handlePaneClick = useCallback(
     () => {
-      return undefined
+      handleNodeSelect()
     },
-    [],
+    [handleNodeSelect],
   )
 
   const handlePanelClose = useCallback(() => {

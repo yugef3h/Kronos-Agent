@@ -23,6 +23,7 @@ import {
   useUpdateNodeInternals,
   type Connection,
   type Node,
+  type NodeMouseHandler,
   type NodeProps,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
@@ -87,6 +88,7 @@ import {
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
 } from '../features/ifelse-panel/schema';
+import type { IfElseCaseItem } from '../features/ifelse-panel/types';
 import {} from '../features/iteration-panel/schema';
 import {
   getKnowledgeDatasetsByIds,
@@ -263,16 +265,18 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       getEdges(),
     );
   }, [data.kind, getEdges, getNodes, id]);
-  const primaryConditionSummary = useMemo(() => {
-    if (!conditionConfig?.cases[0]?.conditions.length) {
-      return '添加条件后，这里会显示 IF 分支摘要';
-    }
+  const buildCaseConditionSummaries = useCallback(
+    (caseItem?: IfElseCaseItem | null) => {
+      if (!caseItem?.conditions.length) {
+        return [];
+      }
 
-    return buildIfElseConditionSummary(
-      conditionConfig.cases[0].conditions[0],
-      conditionVariableOptions,
-    );
-  }, [conditionConfig, conditionVariableOptions]);
+      return caseItem.conditions
+        .map((condition) => buildIfElseConditionSummary(condition, conditionVariableOptions))
+        .filter(Boolean);
+    },
+    [conditionVariableOptions],
+  );
   const connectedSourceHandleIds = data._connectedSourceHandleIds ?? [];
 
   const appendNode = useCallback(
@@ -594,16 +598,17 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                 const branchCase = isElseBranch
                   ? null
                   : conditionConfig?.cases.find((caseItem) => caseItem.case_id === branch.id);
-                const branchSummary = isElseBranch
+                const effectiveCase = isElseBranch
+                  ? null
+                  : branchCase ?? (index === 0 ? conditionConfig?.cases[0] : null);
+                const conditionSummaries = buildCaseConditionSummaries(effectiveCase);
+                const hasConditions = conditionSummaries.length > 0;
+                const emptyLabel = isElseBranch
                   ? '未命中其他条件时执行'
-                  : branchCase?.conditions[0]
-                    ? buildIfElseConditionSummary(
-                        branchCase.conditions[0],
-                        conditionVariableOptions,
-                      )
-                    : index === 0
-                      ? primaryConditionSummary
-                      : '未设置条件';
+                  : index === 0
+                    ? '添加条件后，这里会显示 IF 分支摘要'
+                    : '未设置条件';
+                const logicalOperatorLabel = effectiveCase?.logical_operator === 'or' ? 'OR' : 'AND';
 
                 return (
                   <div
@@ -618,10 +623,31 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                         <div
                           className={`rounded-xl ${isNestedConditionNode ? 'bg-white/55 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.8)] backdrop-blur-[1px]' : 'bg-[#f5f7fb] shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]'}`}
                         >
-                          <div
-                            className={`flex items-center gap-1.5 rounded-md text-[11px] font-medium text-slate-700 min-h-[22px] px-2 py-0}`}
-                          >
-                            <span className="line-clamp-1">{branchSummary}</span>
+                          <div className="flex items-stretch">
+                            <div className="min-w-0 flex-1 space-y-1 px-1.5 py-1.5">
+                              {hasConditions
+                                ? conditionSummaries.map((summary, summaryIndex) => (
+                                    <div
+                                      key={`${branch.id}-${summaryIndex}`}
+                                      className="flex min-h-[22px] items-center gap-1.5 rounded-md bg-white/60 px-2 py-0 text-[11px] font-medium text-slate-700"
+                                    >
+                                      <span className="line-clamp-1">{summary}</span>
+                                    </div>
+                                  ))
+                                : (
+                                    <div className="flex min-h-[22px] items-center gap-1.5 rounded-md px-2 py-0 text-[11px] font-medium text-slate-700">
+                                      <span className="line-clamp-1">{emptyLabel}</span>
+                                    </div>
+                                  )}
+                            </div>
+
+                            {conditionSummaries.length > 1 ? (
+                              <div className="flex w-10 items-center justify-center pr-1">
+                                <span className="text-[10px] font-semibold text-[#16b5d8]">
+                                  {logicalOperatorLabel}
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -679,12 +705,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
                 );
               })}
             </div>
-
-            {conditionConfig?.cases.slice(1).length ? (
-              <div className="mt-1.5 pr-8 text-[10px] text-slate-400">
-                {`含 ${conditionConfig.cases.length - 1} 个额外 ELIF 分支`}
-              </div>
-            ) : null}
           </div>
         ) : isContainerNode ? (
           <div
@@ -770,11 +790,22 @@ export const WorkflowChildren = () => {
     setEdges,
   });
   const updateNodeInternals = useUpdateNodeInternals();
-  const { handleNodeClick, handlePaneClick, handlePanelClose } =
+  const { handleNodeClick: handleNodeClickBase, handlePaneClick, handlePanelClose } =
     useNodesInteractions<CanvasNodeData>({
       setNodes,
       setEdges,
     });
+  const handleNodeClick = useCallback<NodeMouseHandler>(
+    (event, node) => {
+      if (node.data.kind === 'iteration-end' || node.data.kind === 'loop-end') {
+        handlePanelClose();
+        return;
+      }
+
+      handleNodeClickBase(event, node);
+    },
+    [handleNodeClickBase, handlePanelClose],
+  );
 
   useEffect(() => {
     if (!appId) return;
