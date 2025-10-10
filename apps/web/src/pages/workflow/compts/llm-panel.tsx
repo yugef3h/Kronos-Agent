@@ -366,7 +366,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
       </PanelSection>
 
       {config.model.name ? (
-        <PanelSection title="Prompt">
+        <PanelSection title="Prompt" required>
           {isChatModel ? (
             <>
               <div className="space-y-2.5">

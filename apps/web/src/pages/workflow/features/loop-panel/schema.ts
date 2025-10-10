@@ -211,6 +211,13 @@ export const validateLoopNodeConfig = (config: LoopNodeConfig): LoopValidationIs
     })
   }
 
+  if (!config.loop_variables.length) {
+    issues.push({
+      path: 'loop_variables',
+      message: '至少添加一个循环变量。',
+    })
+  }
+
   const seenLabels = new Set<string>()
   config.loop_variables.forEach((loopVariable, index) => {
     const normalizedLabel = loopVariable.label.trim()

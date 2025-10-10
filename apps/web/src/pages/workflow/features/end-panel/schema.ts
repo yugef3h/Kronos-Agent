@@ -132,6 +132,14 @@ export const validateEndNodeConfig = (config: EndNodeConfig): EndValidationIssue
   const issues: EndValidationIssue[] = []
   const seenVariables = new Set<string>()
 
+  if (!config.outputs.length) {
+    issues.push({
+      path: 'outputs',
+      message: '至少需要一个输出变量。',
+    })
+    return issues
+  }
+
   config.outputs.forEach((output, index) => {
     const basePath = `outputs.${index}`
     const normalizedVariable = output.variable.trim()

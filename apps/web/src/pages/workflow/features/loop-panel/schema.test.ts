@@ -75,4 +75,9 @@ describe('loop-panel schema', () => {
       'break_conditions.0.value',
     ])
   })
+
+  it('requires at least one loop variable', () => {
+    const issues = validateLoopNodeConfig(createDefaultLoopNodeConfig('loop-4'))
+    expect(issues.map(issue => issue.path)).toContain('loop_variables')
+  })
 })

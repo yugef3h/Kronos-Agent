@@ -48,4 +48,9 @@ describe('end-panel schema', () => {
 
     expect(issues.map(issue => issue.path)).toContain('outputs.0.value')
   })
+
+  it('requires at least one output definition', () => {
+    const issues = validateEndNodeConfig({ outputs: [] })
+    expect(issues.map(issue => issue.path)).toContain('outputs')
+  })
 })

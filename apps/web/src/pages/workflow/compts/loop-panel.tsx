@@ -356,6 +356,7 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
 
           <PanelSection
             title="循环变量"
+            required
             aside={
               <button
                 type="button"

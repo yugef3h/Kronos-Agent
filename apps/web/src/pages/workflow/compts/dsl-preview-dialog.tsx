@@ -1,5 +1,13 @@
-import { cloneElement, isValidElement, useMemo, useState, type MouseEventHandler, type ReactElement } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useMemo,
+  useState,
+  type MouseEventHandler,
+  type ReactElement,
+} from 'react';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '../base/dialog';
+import yaml from 'js-yaml';
 
 type DslDialogTriggerProps = {
   onClick?: MouseEventHandler<HTMLElement>;
@@ -15,7 +23,7 @@ type DslPreviewDialogProps = {
 };
 
 export default function DslPreviewDialog({
-//   appId,
+  //   appId,
   appName,
   dsl,
   nodeCount,
@@ -24,8 +32,19 @@ export default function DslPreviewDialog({
 }: DslPreviewDialogProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [format, setFormat] = useState<'json' | 'yaml'>('yaml');
 
-  const dslText = useMemo(() => JSON.stringify(dsl, null, 2), [dsl]);
+  const dslText = useMemo(() => {
+    if (format === 'yaml') {
+      try {
+        return yaml.dump(dsl, { noRefs: true, lineWidth: 120 });
+      } catch (e) {
+        console.error(e);
+        return '# YAML 格式化失败';
+      }
+    }
+    return JSON.stringify(dsl, null, 2);
+  }, [dsl, format]);
 
   const handleCopy = async () => {
     try {
@@ -41,32 +60,32 @@ export default function DslPreviewDialog({
     setOpen(true);
   };
 
-  const triggerNode = isValidElement(trigger)
-    ? cloneElement(trigger, {
-        onClick: openDialog,
-      })
-    : (
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-full border border-[#d8d3c7] bg-[linear-gradient(180deg,#fffdf8_0%,#f5efe4_100%)] px-3 py-1.5 text-[12px] font-semibold text-[#4b5563] shadow-[0_12px_28px_-22px_rgba(120,113,108,0.8)] transition hover:border-[#c7bfb1] hover:text-[#1f2937]"
-          onClick={openDialog}
-        >
-          <svg
-            viewBox="0 0 1024 1024"
-            version="1.1"
-            xmlns="http://www.w3.org/2000/svg"
-            p-id="6734"
-            width="16"
-            height="16"
-          >
-            <path
-              d="M747.392 736.192a34.88 34.88 0 0 1-24.768-59.712l153.856-153.856-153.408-153.408a35.008 35.008 0 0 1 49.536-49.536l178.176 178.176a35.008 35.008 0 0 1 0 49.472l-178.624 178.56a34.88 34.88 0 0 1-24.768 10.24z m-463.744 0a34.944 34.944 0 0 1-24.704-10.24l-178.624-178.56a35.008 35.008 0 0 1 0-49.536l178.112-178.176a35.008 35.008 0 0 1 49.536 49.536L154.56 522.624l153.856 153.856a35.008 35.008 0 0 1-24.768 59.712zM427.52 886.4a35.008 35.008 0 0 1-33.92-44.032L570.752 181.632a35.008 35.008 0 0 1 67.648 18.112L461.312 860.416a35.008 35.008 0 0 1-33.792 25.92z"
-              p-id="6735"
-            ></path>
-          </svg>
-          <span>DSL</span>
-        </button>
-      );
+  const triggerNode = isValidElement(trigger) ? (
+    cloneElement(trigger, {
+      onClick: openDialog,
+    })
+  ) : (
+    <button
+      type="button"
+      className="inline-flex items-center gap-2 rounded-full border border-[#d8d3c7] bg-[linear-gradient(180deg,#fffdf8_0%,#f5efe4_100%)] px-3 py-1.5 text-[12px] font-semibold text-[#4b5563] shadow-[0_12px_28px_-22px_rgba(120,113,108,0.8)] transition hover:border-[#c7bfb1] hover:text-[#1f2937]"
+      onClick={openDialog}
+    >
+      <svg
+        viewBox="0 0 1024 1024"
+        version="1.1"
+        xmlns="http://www.w3.org/2000/svg"
+        p-id="6734"
+        width="16"
+        height="16"
+      >
+        <path
+          d="M747.392 736.192a34.88 34.88 0 0 1-24.768-59.712l153.856-153.856-153.408-153.408a35.008 35.008 0 0 1 49.536-49.536l178.176 178.176a35.008 35.008 0 0 1 0 49.472l-178.624 178.56a34.88 34.88 0 0 1-24.768 10.24z m-463.744 0a34.944 34.944 0 0 1-24.704-10.24l-178.624-178.56a35.008 35.008 0 0 1 0-49.536l178.112-178.176a35.008 35.008 0 0 1 49.536 49.536L154.56 522.624l153.856 153.856a35.008 35.008 0 0 1-24.768 59.712zM427.52 886.4a35.008 35.008 0 0 1-33.92-44.032L570.752 181.632a35.008 35.008 0 0 1 67.648 18.112L461.312 860.416a35.008 35.008 0 0 1-33.792 25.92z"
+          p-id="6735"
+        ></path>
+      </svg>
+      <span>DSL</span>
+    </button>
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -113,19 +132,35 @@ export default function DslPreviewDialog({
             <span className="rounded-full border border-[#e1d9cb] bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
               Edges={edgeCount}
             </span>
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2 items-center">
               <button
                 type="button"
-                className="rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee]"
-                onClick={handleCopy}
+                className={`rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ml-1 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee] ${format === 'yaml' ? 'bg-blue-50 border-blue-200' : ''}`}
+                onClick={() => setFormat('yaml')}
+                disabled={format === 'yaml'}
               >
-                {copied ? '已复制' : '复制 JSON'}
+                YAML
+              </button>
+              <button
+                type="button"
+                className={`rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ml-2 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee] ${format === 'json' ? 'bg-blue-50 border-blue-200' : ''}`}
+                onClick={() => setFormat('json')}
+                disabled={format === 'json'}
+              >
+                JSON
               </button>
             </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto bg-[linear-gradient(180deg,#f8f5ee_0%,#f3ede2_100%)] p-5">
-            <div className="min-h-full rounded-[20px] border border-[#e2dacb] bg-[#fffdf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_40px_-34px_rgba(120,113,108,0.7)]">
+            <div className="relative min-h-full rounded-[20px] border border-[#e2dacb] bg-[#fffdf9] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_18px_40px_-34px_rgba(120,113,108,0.7)]">
+              <button
+                type="button"
+                className="absolute top-4 right-4 rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee]"
+                onClick={handleCopy}
+              >
+                {copied ? '已复制' : `复制`}
+              </button>
               <pre className="min-h-full overflow-x-auto pb-8 font-mono text-[12px] leading-6 text-[#334155]">
                 <code>{dslText}</code>
               </pre>
