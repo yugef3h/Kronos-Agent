@@ -132,24 +132,33 @@ export default function DslPreviewDialog({
             <span className="rounded-full border border-[#e1d9cb] bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
               Edges={edgeCount}
             </span>
-            <div className="ml-auto flex gap-2 items-center">
-              <button
-                type="button"
-                className={`rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ml-1 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee] ${format === 'yaml' ? 'bg-blue-50 border-blue-200' : ''}`}
-                onClick={() => setFormat('yaml')}
-                disabled={format === 'yaml'}
-              >
-                YAML
-              </button>
-              <button
-                type="button"
-                className={`rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 ml-2 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee] ${format === 'json' ? 'bg-blue-50 border-blue-200' : ''}`}
-                onClick={() => setFormat('json')}
-                disabled={format === 'json'}
-              >
-                JSON
-              </button>
-            </div>
+            <div className="ml-auto flex items-center p-1 rounded-full bg-gray-100/60 border border-gray-200/80">
+  <button
+    type="button"
+    className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
+      ${format === 'yaml' 
+        ? 'bg-white text-blue-600 shadow-sm' 
+        : 'text-gray-600 hover:text-gray-800'
+      }`}
+    onClick={() => setFormat('yaml')}
+    disabled={format === 'yaml'}
+  >
+    YAML
+  </button>
+
+  <button
+    type="button"
+    className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
+      ${format === 'json' 
+        ? 'bg-white text-blue-600 shadow-sm' 
+        : 'text-gray-600 hover:text-gray-800'
+      }`}
+    onClick={() => setFormat('json')}
+    disabled={format === 'json'}
+  >
+    JSON
+  </button>
+</div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto bg-[linear-gradient(180deg,#f8f5ee_0%,#f3ede2_100%)] p-5">
