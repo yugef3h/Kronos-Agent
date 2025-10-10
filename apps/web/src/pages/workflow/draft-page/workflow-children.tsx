@@ -25,6 +25,7 @@ import {
   type Node,
   type NodeMouseHandler,
   type NodeProps,
+  type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
 import { getWorkflowAppById } from '../../../features/workflow/workflowAppStore';
@@ -83,18 +84,29 @@ import {
 import { ContainerStartNode } from '../compts/container-start-node';
 import WorkflowNodeSummary from '../compts/workflow-node-summary';
 import type { VariableOption } from '../features/llm-panel/types';
+import { normalizeLLMNodeConfig, validateLLMNodeConfig } from '../features/llm-panel/schema';
 import {
   buildIfElseConditionSummary,
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
+  validateIfElseNodeConfig,
 } from '../features/ifelse-panel/schema';
 import type { IfElseCaseItem } from '../features/ifelse-panel/types';
-import {} from '../features/iteration-panel/schema';
+import {
+  normalizeIterationNodeConfig,
+  validateIterationNodeConfig,
+} from '../features/iteration-panel/schema';
 import {
   getKnowledgeDatasetsByIds,
   useKnowledgeDatasets,
 } from '../features/knowledge-retrieval-panel/dataset-store';
-import {} from '../features/loop-panel/schema';
+import {
+  normalizeKnowledgeRetrievalNodeConfig,
+  validateKnowledgeRetrievalNodeConfig,
+} from '../features/knowledge-retrieval-panel/schema';
+import { normalizeEndNodeConfig, validateEndNodeConfig } from '../features/end-panel/schema';
+import { normalizeStartNodeConfig, validateStartNodeConfig } from '../features/start-panel/schema';
+import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../features/loop-panel/schema';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import {
   areKnowledgeDatasetsEqual,
@@ -755,11 +767,49 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 };
 
+type ChecklistIssue = {
+  path: string;
+  message: string;
+};
+
+type ChecklistGroup = {
+  nodeId: string;
+  title: string;
+  issues: ChecklistIssue[];
+};
+
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const { datasets } = useKnowledgeDatasets();
   const currentApp = appId ? getWorkflowAppById(appId) : undefined;
+  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const [isChecklistOpen, setIsChecklistOpen] = useState(false);
+  const checklistPopoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isChecklistOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof globalThis.Node)) return;
+      if (checklistPopoverRef.current?.contains(target)) return;
+      setIsChecklistOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsChecklistOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isChecklistOpen]);
 
   const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
     if (!appId) return [createInitialTriggerNode()];
@@ -795,6 +845,13 @@ export const WorkflowChildren = () => {
       setNodes,
       setEdges,
     });
+  const selectNodeById = useCallback(
+    (nodeId?: string) => {
+      setNodes((currentNodes) => applyNodeSelection(currentNodes, nodeId));
+      setEdges((currentEdges) => applyConnectedEdgeSelection(currentEdges, nodeId));
+    },
+    [setEdges, setNodes],
+  );
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (event, node) => {
@@ -957,9 +1014,100 @@ export const WorkflowChildren = () => {
     () => createWorkflowDslFromCanvas(nodes, edges as Edge[], currentApp?.name),
     [currentApp?.name, edges, nodes],
   );
-  const checklistCount = useMemo(() => {
-    return nodes.filter((node) => node.data.kind !== 'trigger').length;
+  const checklistGroups = useMemo<ChecklistGroup[]>(() => {
+    const translateLLMIssue = (issue: ChecklistIssue) => {
+      if (issue.path === 'promptTemplate') {
+        return { ...issue, message: '提示词 不能为空' };
+      }
+      if (issue.path === 'model') {
+        return { ...issue, message: '请选择模型' };
+      }
+      if (issue.path === 'memory.queryPromptTemplate') {
+        return { ...issue, message: '记忆 Query Prompt 必须包含 {{#sys.query#}}' };
+      }
+      if (issue.path === 'vision.configs.variableSelector') {
+        return { ...issue, message: '请选择视觉变量' };
+      }
+      return issue;
+    };
+
+    return nodes.reduce<ChecklistGroup[]>((acc, node) => {
+      const title = node.data.title || '未命名节点';
+      let issues: ChecklistIssue[] = [];
+
+      if (node.data.kind === 'trigger') {
+        const config = normalizeStartNodeConfig(node.data.inputs);
+        issues = validateStartNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      } else if (node.data.kind === 'llm') {
+        const config = normalizeLLMNodeConfig(node.data.inputs);
+        issues = validateLLMNodeConfig(config)
+          .map((issue) => ({ path: issue.path, message: issue.message }))
+          .map(translateLLMIssue);
+      } else if (node.data.kind === 'knowledge') {
+        const config = normalizeKnowledgeRetrievalNodeConfig(node.data.inputs);
+        issues = validateKnowledgeRetrievalNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      } else if (node.data.kind === 'end') {
+        const config = normalizeEndNodeConfig(node.data.inputs, node.data.outputs);
+        issues = validateEndNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      } else if (node.data.kind === 'condition') {
+        const config = normalizeIfElseNodeConfig(node.data.inputs);
+        issues = validateIfElseNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      } else if (node.data.kind === 'iteration') {
+        const config = normalizeIterationNodeConfig(node.data.inputs, node.id);
+        issues = validateIterationNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      } else if (node.data.kind === 'loop') {
+        const config = normalizeLoopNodeConfig(node.data.inputs, node.id);
+        issues = validateLoopNodeConfig(config).map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        }));
+      }
+
+      if (!issues.length) {
+        return acc;
+      }
+
+      acc.push({
+        nodeId: node.id,
+        title,
+        issues,
+      });
+
+      return acc;
+    }, []);
   }, [nodes]);
+  const checklistCount = checklistGroups.length;
+
+  const handleGoToFix = useCallback(
+    (nodeId: string) => {
+      setIsChecklistOpen(false);
+      selectNodeById(nodeId);
+
+      requestAnimationFrame(() => {
+        const instance = reactFlowInstanceRef.current;
+        const targetNode = instance?.getNode(nodeId);
+        if (!instance || !targetNode) return;
+        // 缩放跳转到目标节点
+        instance.fitView({ nodes: [targetNode], padding: 0.35, duration: 350, maxZoom: 1 });
+      });
+    },
+    [selectNodeById],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -1028,7 +1176,7 @@ export const WorkflowChildren = () => {
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         {/* header 抽离 */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div className="relative z-20 flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
               Draft
@@ -1056,10 +1204,13 @@ export const WorkflowChildren = () => {
 
               <div className="h-5 w-px bg-slate-200" />
 
-              <button
-                type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-[14px] px-2.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-              >
+              <div ref={checklistPopoverRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsChecklistOpen((current) => !current)}
+                  disabled={!checklistCount}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-[14px] px-2.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
                 <span className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-slate-50 text-slate-500 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)]">
                   <svg
                     viewBox="0 0 1024 1024"
@@ -1078,7 +1229,88 @@ export const WorkflowChildren = () => {
                 <span className="inline-flex min-w-4.5 items-center justify-center rounded-full bg-amber-500 px-1 py-0.5 text-[9px] font-bold leading-none text-white">
                   {checklistCount}
                 </span>
-              </button>
+                </button>
+
+                {isChecklistOpen ? (
+                  <div className="absolute right-0 top-full z-[1003] mt-2 w-[360px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)]">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-semibold text-slate-900">
+                          检查清单({checklistCount})
+                        </p>
+                        <p className="mt-0.5 text-[12px] text-slate-500">发布前请解决以下问题</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsChecklistOpen(false)}
+                        className="shrink-0 rounded-full p-1.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                        aria-label="关闭"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                        >
+                          <path d="M11.9997 10.5855L16.9495 5.63574L18.3637 7.04996L13.4139 11.9997L18.3637 16.9495L16.9495 18.3637L11.9997 13.4139L7.04996 18.3637L5.63574 16.9495L10.5855 11.9997L5.63574 7.04996L7.04996 5.63574L11.9997 10.5855Z"></path>
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="max-h-[min(60dvh,340px)] overflow-auto px-4 py-3">
+                      {!checklistGroups.length ? (
+                        <div className="flex min-h-[120px] items-center justify-center text-[12px] text-slate-500">
+                          暂无需要修复的问题
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {checklistGroups.map((group) => (
+                            <div key={group.nodeId} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[13px] font-semibold text-slate-900">
+                                    {group.title}
+                                  </p>
+                                  <div className="mt-1.5 space-y-1">
+                                    {group.issues.map((issue) => (
+                                      <div
+                                        key={`${issue.path}-${issue.message}`}
+                                        className="flex items-start gap-2 text-[12px] font-semibold text-amber-600"
+                                      >
+                                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                                        <span className="min-w-0 flex-1">{issue.message}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleGoToFix(group.nodeId)}
+                                  className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-semibold text-blue-600 transition hover:bg-blue-50 hover:text-blue-700"
+                                >
+                                  <span>修复</span>
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    fill="currentColor"
+                                  >
+                                    <path d="M13.1716 12L8.22183 7.05029L9.63604 5.63608L16 12L9.63604 18.364L8.22183 16.9498L13.1716 12Z"></path>
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
               <div className="h-5 w-px bg-slate-200" />
 
@@ -1116,12 +1348,15 @@ export const WorkflowChildren = () => {
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-3xl">
+        <div className="relative z-0 min-h-0 flex-1 overflow-hidden rounded-b-3xl">
           <ReactFlow
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            onInit={(instance) => {
+              reactFlowInstanceRef.current = instance;
+            }}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
