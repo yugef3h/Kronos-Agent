@@ -31,7 +31,6 @@ export default function DslPreviewDialog({
   trigger,
 }: DslPreviewDialogProps) {
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [format, setFormat] = useState<'json' | 'yaml'>('yaml');
 
   const dslText = useMemo(() => {
@@ -46,14 +45,21 @@ export default function DslPreviewDialog({
     return JSON.stringify(dsl, null, 2);
   }, [dsl, format]);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(dslText);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1200);
-    } catch {
-      setCopied(false);
-    }
+
+  const handleExport = () => {
+    const blob = new Blob([
+      dslText
+    ], { type: format === 'yaml' ? 'application/x-yaml' : 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${appName || 'workflow-dsl'}.${format === 'yaml' ? 'yml' : 'json'}`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
   };
 
   const openDialog = () => {
@@ -133,32 +139,30 @@ export default function DslPreviewDialog({
               Edges={edgeCount}
             </span>
             <div className="ml-auto flex items-center p-1 rounded-full bg-gray-100/60 border border-gray-200/80">
-  <button
-    type="button"
-    className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
-      ${format === 'yaml' 
-        ? 'bg-white text-blue-600 shadow-sm' 
-        : 'text-gray-600 hover:text-gray-800'
+              <button
+                type="button"
+                className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
+      ${
+        format === 'yaml' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'
       }`}
-    onClick={() => setFormat('yaml')}
-    disabled={format === 'yaml'}
-  >
-    YAML
-  </button>
+                onClick={() => setFormat('yaml')}
+                disabled={format === 'yaml'}
+              >
+                YAML
+              </button>
 
-  <button
-    type="button"
-    className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
-      ${format === 'json' 
-        ? 'bg-white text-blue-600 shadow-sm' 
-        : 'text-gray-600 hover:text-gray-800'
+              <button
+                type="button"
+                className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
+      ${
+        format === 'json' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'
       }`}
-    onClick={() => setFormat('json')}
-    disabled={format === 'json'}
-  >
-    JSON
-  </button>
-</div>
+                onClick={() => setFormat('json')}
+                disabled={format === 'json'}
+              >
+                JSON
+              </button>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto bg-[linear-gradient(180deg,#f8f5ee_0%,#f3ede2_100%)] p-5">
@@ -166,9 +170,9 @@ export default function DslPreviewDialog({
               <button
                 type="button"
                 className="absolute top-4 right-4 rounded-full border border-[#d8d3c7] bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 shadow-[0_12px_24px_-22px_rgba(15,23,42,0.4)] transition hover:border-[#c7bfb1] hover:bg-[#faf6ee]"
-                onClick={handleCopy}
+                onClick={handleExport}
               >
-                {copied ? '已复制' : `复制`}
+                导出{format === 'yaml' ? '.yml' : '.json'}
               </button>
               <pre className="min-h-full overflow-x-auto pb-8 font-mono text-[12px] leading-6 text-[#334155]">
                 <code>{dslText}</code>
