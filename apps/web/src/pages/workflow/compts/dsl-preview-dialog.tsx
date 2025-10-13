@@ -138,30 +138,41 @@ export default function DslPreviewDialog({
             <span className="rounded-full border border-[#e1d9cb] bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
               Edges={edgeCount}
             </span>
-            <div className="ml-auto flex items-center p-1 rounded-full bg-gray-100/60 border border-gray-200/80">
-              <button
-                type="button"
-                className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
-      ${
-        format === 'yaml' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'
-      }`}
-                onClick={() => setFormat('yaml')}
-                disabled={format === 'yaml'}
-              >
-                YAML
-              </button>
-
-              <button
-                type="button"
-                className={`relative px-3.5 py-1.5 text-[12px] font-semibold rounded-full transition-all duration-200 
-      ${
-        format === 'json' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-800'
-      }`}
-                onClick={() => setFormat('json')}
-                disabled={format === 'json'}
-              >
-                JSON
-              </button>
+            <div className="ml-auto flex items-center">
+              {/* Switch 样式切换器 */}
+              <div className="relative flex h-8 w-[92px] items-center rounded-full bg-gray-100/60 border border-gray-200/80 p-1 shadow-inner">
+                {/* 滑块 */}
+                <span
+                  className={`absolute left-1 top-1 h-6 w-[44px] rounded-full bg-white shadow transition-all duration-200 z-0 ${
+                    format === 'json' ? 'translate-x-[44px]' : 'translate-x-0'
+                  }`}
+                  style={{ willChange: 'transform' }}
+                />
+                {/* YAML 按钮 */}
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 h-6 text-[12px] font-semibold rounded-full transition-all duration-200 px-0 mx-0 ${
+                    format === 'yaml' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  style={{ width: 44 }}
+                  onClick={() => setFormat('yaml')}
+                  disabled={format === 'yaml'}
+                >
+                  YAML
+                </button>
+                {/* JSON 按钮 */}
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 h-6 text-[12px] font-semibold rounded-full transition-all duration-200 px-0 mx-0 ${
+                    format === 'json' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                  style={{ width: 44 }}
+                  onClick={() => setFormat('json')}
+                  disabled={format === 'json'}
+                >
+                  JSON
+                </button>
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 type NavIcon = 'home' | 'workflow' | 'memory';
 
@@ -47,7 +47,22 @@ const renderNavIcon = (icon: NavIcon) => {
   );
 };
 
+const getActiveNavIndex = (pathname: string) => {
+  const activeIndex = NAV_ITEMS.findIndex((item) => {
+    if (item.end) {
+      return pathname === item.to;
+    }
+
+    return pathname.startsWith(item.to);
+  });
+
+  return activeIndex >= 0 ? activeIndex : 0;
+};
+
 export const AppShell = () => {
+  const { pathname } = useLocation();
+  const activeNavIndex = getActiveNavIndex(pathname);
+
   return (
     <main className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
       {/* 顶部渐变遮罩（优化层级） */}
@@ -69,7 +84,18 @@ export const AppShell = () => {
             </div>
 
             {/* 导航菜单 */}
-            <nav className="flex flex-wrap gap-2">
+            <nav
+              aria-label="主导航"
+              className="relative inline-grid min-h-11 grid-cols-3 rounded-full border border-slate-200/80 bg-white/85 p-1 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur"
+            >
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-cyan-600 shadow-[0_8px_24px_rgba(8,145,178,0.35)] transition-transform duration-300 ease-out"
+                style={{
+                  width: `calc((100% - 0.5rem) / ${NAV_ITEMS.length})`,
+                  transform: `translateX(${activeNavIndex * 100}%)`,
+                }}
+              />
               {NAV_ITEMS.map((item) => {
                 return (
                   <NavLink
@@ -77,10 +103,10 @@ export const AppShell = () => {
                     to={item.to}
                     end={item.end}
                     className={({ isActive }) =>
-                      `inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition-all duration-300 ${
+                      `relative z-10 inline-flex min-w-[92px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-colors duration-300 ${
                         isActive
-                          ? 'border-cyan-500 bg-cyan-600 text-white shadow-md'
-                          : 'border-slate-200 bg-white/90 text-slate-700 hover:border-cyan-300 hover:bg-cyan-50 hover:shadow-sm'
+                          ? 'text-white'
+                          : 'text-slate-600 hover:text-cyan-700'
                       }`
                     }
                   >
