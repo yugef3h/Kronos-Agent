@@ -26,10 +26,9 @@ export const HomePage = () => {
         </section>
 
         <aside className="hidden w-[550px] shrink-0 space-y-3 overflow-y-auto pb-2 pr-1 lg:block">
-          <TokenEmbeddingPanel />
           <MemorySummaryPanel />
+          <TokenEmbeddingPanel />
           <AgentOrchestratorPanel />
-          <SamplingInspector />
         </aside>
       </div>
 
