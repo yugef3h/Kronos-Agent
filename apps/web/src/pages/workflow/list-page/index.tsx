@@ -146,9 +146,9 @@ export const WorkflowPage = () => {
                 </p>
 
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
+                  {/* <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
                     {app.dsl.nodes.length} 节点
-                  </span>
+                  </span> */}
                   <span className="text-xs font-semibold text-cyan-700 opacity-0 transition group-hover:opacity-100">
                     点击进入
                   </span>
