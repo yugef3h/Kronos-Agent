@@ -4,7 +4,7 @@
 
 当前版本已完成第一轮架构重构：从单体 demo 升级为可扩展的 monorepo，适合逐步接入 LangChain 的 Chain / Agent / Memory / Tool。
 
-参考 Dify
+参考 Dify 平台
 
 ## 技术栈
 
