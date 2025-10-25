@@ -11,7 +11,7 @@ export const HomePage = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="relative overflow-hidden h-[calc(100vh-80px)]">
+    <div className="relative h-[calc(100vh-80px)] min-w-0 flex-1 overflow-hidden">
       <button
         type="button"
         onClick={() => setIsMobileSidebarOpen(true)}
@@ -20,12 +20,12 @@ export const HomePage = () => {
         调试面板
       </button>
 
-      <div className="flex h-full gap-3 md:gap-4">
+      <div className="flex h-full w-full min-w-0 gap-3 md:gap-4">
         <section className="min-w-0 flex-1">
           <ChatStreamPanel />
         </section>
 
-        <aside className="hidden w-[550px] shrink-0 space-y-3 overflow-y-auto pb-2 pr-1 lg:block">
+        <aside className="soft-scrollbar hidden w-[550px] shrink-0 space-y-3 overflow-y-auto pb-2 pr-1 lg:block">
           <MemorySummaryPanel />
           <TokenEmbeddingPanel />
           <AgentOrchestratorPanel />
@@ -38,7 +38,7 @@ export const HomePage = () => {
           onClick={() => setIsMobileSidebarOpen(false)}
         >
           <aside
-            className="h-full w-[92vw] max-w-[380px] overflow-y-auto border-l border-slate-200 bg-white p-3 shadow-2xl"
+            className="soft-scrollbar h-full w-[92vw] max-w-[380px] overflow-y-auto border-l border-slate-200 bg-white p-3 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
