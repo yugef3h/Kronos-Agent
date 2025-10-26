@@ -1,10 +1,6 @@
-# Kronos Agent: LLM Insight Playground
+# Kronos Agent
 
-探索 LLM 原理与 Agent 工程化的前端主导项目，目标是让前端工程师能用可视化手段掌握并落地 AI Agent 系统。
-
-当前版本已完成第一轮架构重构：从单体 demo 升级为可扩展的 monorepo，适合逐步接入 LangChain 的 Chain / Agent / Memory / Tool。
-
-参考 Dify 平台
+探索 LLM 原理与 Agent Workflow 的前端主导项目，目标是让前端工程师能用可视化手段掌握并落地 AI Agent 系统 (Dify 平台)。
 
 ## 技术栈
 
