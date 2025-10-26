@@ -173,9 +173,6 @@ export const WorkflowPage = () => {
                   Blank App
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-slate-900">创建空白应用</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  创建后会生成最小空白 DSL，然后进入 `/workflow/draft` 继续创建工作流。
-                </p>
               </div>
               <button
                 type="button"
