@@ -79,6 +79,31 @@ const clampChunkOverlap = (chunkSize: number, overlap: number) => {
   return Math.min(Math.max(0, overlap), chunkSize - 1);
 };
 
+class NaturalBoundaryRecursiveCharacterTextSplitter extends RecursiveCharacterTextSplitter {
+  protected splitOnSeparator(text: string, separator: string): string[] {
+    if (!separator) {
+      return super.splitOnSeparator(text, separator);
+    }
+
+    const segments = text.split(separator);
+    return segments
+      .map((segment, index) => (
+        index < segments.length - 1 ? `${segment}${separator}` : segment
+      ))
+      .filter((segment) => segment !== '');
+  }
+
+  async mergeSplits(splits: string[], separator: string): Promise<string[]> {
+    if (separator) {
+      return splits
+        .map((split) => split.trim())
+        .filter(Boolean);
+    }
+
+    return super.mergeSplits(splits, separator);
+  }
+}
+
 export const preprocessDocumentText = (text: string, rules?: KnowledgeDocumentPreprocessingRules) => {
   let nextText = text.replace(/\r\n/g, '\n');
 
@@ -123,7 +148,7 @@ export const splitTextToChunks = async (params: {
     ? Math.max(0, params.overlapLength ?? (params.chunkOverlap ?? DEFAULT_CHUNK_OVERLAP) * 4)
     : Math.max(0, params.chunkOverlap ?? DEFAULT_CHUNK_OVERLAP);
 
-  const splitter = new RecursiveCharacterTextSplitter({
+  const splitter = new NaturalBoundaryRecursiveCharacterTextSplitter({
     chunkSize: rawChunkSize,
     chunkOverlap: clampChunkOverlap(rawChunkSize, rawChunkOverlap),
     separators: buildRecursiveSeparators(params.separator),
