@@ -60,9 +60,20 @@ export const getFileBaseName = (fileName: string) => {
   return segments.slice(0, -1).join('.');
 };
 
-export const getDatasetInitial = (name?: string) => {
-  const initial = name?.trim().charAt(0) || '';
-  return initial || '知';
+export const getDatasetExtensionBadge = (extensions?: string[]) => {
+  const normalized = Array.from(
+    new Set((extensions ?? []).map((item) => item.trim().replace(/^\./, '').toLowerCase()).filter(Boolean)),
+  );
+
+  if (!normalized.length) {
+    return 'DOC';
+  }
+
+  if (normalized.length > 1) {
+    return 'MIX';
+  }
+
+  return normalized[0].slice(0, 4).toUpperCase();
 };
 
 export const formatFileSize = (size: number) => {

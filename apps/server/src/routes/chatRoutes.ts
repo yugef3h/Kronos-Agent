@@ -409,7 +409,25 @@ chatRoutes.get('/sessions/recent', async (request: Request, response: Response) 
 
 chatRoutes.get('/workflow/knowledge-datasets', async (_request: Request, response: Response) => {
   try {
-    const items = await listKnowledgeDatasets();
+    const datasets = await listKnowledgeDatasets();
+    const items = await Promise.all(
+      datasets.map(async (dataset) => {
+        const documents = await listKnowledgeDocuments(dataset.id);
+        const documentExtensions = Array.from(
+          new Set(
+            documents
+              .map((document) => document.extension.trim().toLowerCase())
+              .filter(Boolean),
+          ),
+        ).sort((left, right) => left.localeCompare(right));
+
+        return {
+          ...dataset,
+          documentExtensions,
+        };
+      }),
+    );
+
     response.json({ items });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';

@@ -7,13 +7,13 @@ import {
   initKnowledgeDatasetStore,
   listKnowledgeDatasets,
   resetKnowledgeDatasetStoreForTests,
-} from './knowledgeDatasetStore';
+} from './knowledgeDatasetStore.js';
 import {
   getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
   listKnowledgeDocuments,
   updateKnowledgeDocumentBlockKeywords,
-} from './knowledgeDocumentStore';
+} from './knowledgeDocumentStore.js';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {
   const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');
@@ -57,6 +57,7 @@ describe('knowledgeDocumentStore', () => {
     });
 
     expect(result.document.name).toBe('guide.txt');
+    expect(result.document.extension).toBe('txt');
     expect(result.preview.length).toBeGreaterThan(0);
 
     const documents = await listKnowledgeDocuments(dataset.id);
@@ -94,8 +95,9 @@ describe('knowledgeDocumentStore', () => {
     expect(result.preview[0]?.text.includes('退款多久到账')).toBe(true);
 
     const indexPath = join(tempDir, 'knowledge-datasets', dataset.id, 'documents', 'documents.json');
-    const persisted = JSON.parse(await readFile(indexPath, 'utf-8')) as Array<{ name: string }>;
+    const persisted = JSON.parse(await readFile(indexPath, 'utf-8')) as Array<{ name: string; extension: string }>;
     expect(persisted[0]?.name).toBe('faq.xlsx');
+    expect(persisted[0]?.extension).toBe('xlsx');
   });
   
   it('loads full blocks for a persisted document', async () => {

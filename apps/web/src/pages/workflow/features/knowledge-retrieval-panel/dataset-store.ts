@@ -36,6 +36,9 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
     name: raw.name,
     description: typeof raw.description === 'string' ? raw.description : '',
     is_multimodal: Boolean(raw.is_multimodal),
+    documentExtensions: Array.isArray(raw.documentExtensions)
+      ? raw.documentExtensions.filter((item): item is string => typeof item === 'string')
+      : [],
     indexing_technique: raw.indexing_technique === 'economy' ? 'economy' : 'high_quality',
     embedding_model: typeof raw.embedding_model === 'string' ? raw.embedding_model : 'default-embedding',
     embedding_model_provider: typeof raw.embedding_model_provider === 'string' ? raw.embedding_model_provider : 'default',
@@ -70,6 +73,7 @@ const normalizeDataset = (value: unknown): KnowledgeDatasetDetail | null => {
 const cloneDataset = (dataset: KnowledgeDatasetDetail): KnowledgeDatasetDetail => ({
   ...dataset,
   doc_metadata: cloneMetadataFields(dataset.doc_metadata),
+  documentExtensions: [...(dataset.documentExtensions ?? [])],
 })
 
 const sortDatasets = (datasets: KnowledgeDatasetDetail[]) => {
@@ -92,6 +96,7 @@ const buildDatasetSignature = (datasets: KnowledgeDatasetDetail[]) => {
     doc_language: dataset.doc_language,
     documentCount: dataset.documentCount ?? 0,
     chunkCount: dataset.chunkCount ?? 0,
+    documentExtensions: dataset.documentExtensions ?? [],
     updatedAt: dataset.updatedAt ?? 0,
     doc_metadata: dataset.doc_metadata,
   })))

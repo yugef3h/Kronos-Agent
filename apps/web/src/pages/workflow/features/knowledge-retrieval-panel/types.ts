@@ -13,6 +13,7 @@ export type KnowledgeDatasetDetail = {
   description: string
   is_multimodal: boolean
   doc_metadata: KnowledgeMetadataField[]
+  documentExtensions?: string[]
   indexing_technique?: 'economy' | 'high_quality'
   embedding_model?: string
   embedding_model_provider?: string

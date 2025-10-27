@@ -5,9 +5,12 @@ import {
   createKnowledgeDataset,
   initKnowledgeDatasetStore,
   resetKnowledgeDatasetStoreForTests,
-} from '../domain/knowledgeDatasetStore';
-import { listKnowledgeDocuments } from '../domain/knowledgeDocumentStore';
-import { runKnowledgeIndexingEstimate } from './knowledgeIndexingEstimateService';
+} from '../domain/knowledgeDatasetStore.js';
+import { listKnowledgeDocuments } from '../domain/knowledgeDocumentStore.js';
+import { runKnowledgeIndexingEstimate } from './knowledgeIndexingEstimateService.js';
+
+const toDataUrl = (mimeType: string, value: Buffer | string) => {
+  const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');
   return `data:${mimeType};base64,${buffer.toString('base64')}`;
 };
 
@@ -131,7 +134,7 @@ describe('knowledgeIndexingEstimateService', () => {
     expect(result.preview.some((item) => item.child_chunks.length > 0)).toBe(true);
     expect(result.total_segments).toBeGreaterThanOrEqual(result.preview.length);
   });
-    expect(result.preview.some((item) => item.child_chunks.length > 0)).toBe(true);
+
   it('honors exact character segmentation settings for preview counts', async () => {
     const dataset = await createKnowledgeDataset({
       name: 'Exact Segment Dataset',
@@ -183,3 +186,38 @@ describe('knowledgeIndexingEstimateService', () => {
   it('rejects file-id mode before temp upload storage exists', async () => {
     const dataset = await createKnowledgeDataset({
       name: 'Unsupported Mode Dataset',
+      description: 'file id mode test',
+      is_multimodal: false,
+      doc_metadata: [],
+    });
+
+    await expect(runKnowledgeIndexingEstimate({
+      dataset_id: dataset.id,
+      doc_form: 'text_model',
+      doc_language: 'Chinese Simplified',
+      process_rule: {
+        mode: 'custom',
+        rules: {
+          pre_processing_rules: [],
+          segmentation: {
+            separator: '\n\n',
+            max_tokens: 100,
+            chunk_overlap: 0,
+          },
+          parent_mode: 'paragraph',
+          subchunk_segmentation: {
+            separator: '\n',
+            max_tokens: 50,
+            chunk_overlap: 0,
+          },
+        },
+      },
+      info_list: {
+        data_source_type: 'upload_file',
+        file_info_list: {
+          file_ids: ['temp-file-1'],
+        },
+      },
+    })).rejects.toThrow('UNSUPPORTED_FILE_REFERENCE_MODE');
+  });
+});

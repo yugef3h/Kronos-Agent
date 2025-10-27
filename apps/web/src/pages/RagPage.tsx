@@ -27,7 +27,7 @@ import {
   DOCUMENT_INPUT_ACCEPT,
   filterSupportedKnowledgeFiles,
   formatTimestamp,
-  getDatasetInitial,
+  getDatasetExtensionBadge,
   MAX_SEGMENT_MAX_LENGTH,
   MIN_SEGMENT_MAX_LENGTH,
   PREVIEW_CHUNK_LIMIT,
@@ -920,8 +920,8 @@ export const RagPage = () => {
               className={`group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedDatasetId === dataset.id ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200/80 hover:border-cyan-300'}`}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-lg">
-                  {getDatasetInitial(dataset.name)}
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                  {getDatasetExtensionBadge(dataset.documentExtensions)}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-cyan-700">

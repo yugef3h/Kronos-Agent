@@ -310,6 +310,7 @@ export type KnowledgeDatasetResponseItem = {
 	doc_language: string;
 	documentCount?: number;
 	chunkCount?: number;
+	documentExtensions?: string[];
 	createdAt?: number;
 	updatedAt?: number;
 };
