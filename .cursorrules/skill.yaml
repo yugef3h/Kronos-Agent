@@ -1,0 +1,6 @@
+---
+allowed-skills:
+  - vercel-react-best-practices
+---
+只使用 vercel-react-best-practices 关键规则，
+不要多余解释，不要长篇大论，只给核心优化 + 代码。
