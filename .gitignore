@@ -7,6 +7,7 @@ apps/web/.vite/
 .env.*
 !.env.example
 scripts
+local_docs
 # 持久化数据（本地缓存，不入仓库）
 apps/server/data
 apps/server/data/knowledge-datasets.json
