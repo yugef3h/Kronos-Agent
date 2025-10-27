@@ -103,11 +103,6 @@ export type WorkflowGraphEdge = {
   };
 };
 
-// Dify 导入/导出最终基线:
-// 1. 顶层必须是 `kind: app` + `version: 0.6.0` + `workflow.graph`
-// 2. 画布节点统一落在 `workflow.graph.nodes`
-// 3. 画布连线统一落在 `workflow.graph.edges`
-// 4. knowledge-retrieval 的 YAML 额外约束见 `workflow-dsl.ts` 里的 `serializeKnowledgeInputs()`
 export type WorkflowDSL = {
   app: {
     description: string;
@@ -283,7 +278,6 @@ const createEmptyDsl = (name: string): WorkflowDSL => {
       graph: {
         edges: [],
         nodes: [],
-        // Dify 新建空工作流导出的安全默认视口。
         viewport: {
           x: 0,
           y: 0,

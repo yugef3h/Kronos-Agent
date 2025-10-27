@@ -175,6 +175,7 @@ export const runKnowledgeIndexingEstimate = async (
   let tokens = 0;
   let totalSegments = 0;
 
+  // 配置透传给统一的切分服务
   for (const file of files) {
     const chunkResult = await buildKnowledgeDocumentChunks({
       fileName: file.file_name,

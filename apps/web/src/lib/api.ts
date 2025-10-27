@@ -397,10 +397,7 @@ export type KnowledgeRetrievalQueryInput = {
 	dataset_ids: string[];
 	retrieval_mode: 'oneWay' | 'multiWay';
 	single_retrieval_config: {
-		model: {
-			provider: string;
-			model: string;
-		} | null;
+		model: string;
 		top_k: number;
 		score_threshold: number | null;
 	};
@@ -408,11 +405,7 @@ export type KnowledgeRetrievalQueryInput = {
 		top_k: number;
 		score_threshold: number | null;
 		reranking_enable: boolean;
-		reranking_model?: {
-			provider: string;
-			model: string;
-		} | null;
-		reranking_mode?: 'reranking_model' | 'weighted_score' | 'model_rerank';
+		reranking_model?: string;
 	};
 	metadata_filtering_mode: 'disabled' | 'manual';
 	metadata_filtering_conditions: Array<{

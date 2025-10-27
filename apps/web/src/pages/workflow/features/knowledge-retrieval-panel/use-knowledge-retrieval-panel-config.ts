@@ -9,7 +9,6 @@ import {
 } from './schema'
 import type { KnowledgeDatasetDetail } from './types'
 import type {
-  KnowledgeModelConfig,
   KnowledgeRetrievalMode,
   KnowledgeRetrievalNodeConfig,
 } from './types'
@@ -76,7 +75,7 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
 
   const handleSingleRetrievalConfigChange = (
     key: keyof KnowledgeRetrievalNodeConfig['single_retrieval_config'],
-    value: KnowledgeModelConfig | number | null,
+    value: string | number | null,
   ) => {
     update((draft) => {
       draft.single_retrieval_config[key] = value as never
@@ -85,7 +84,7 @@ export const useKnowledgeRetrievalPanelConfig = ({ value, onChange, datasets }: 
 
   const handleMultipleRetrievalConfigChange = (
     key: keyof KnowledgeRetrievalNodeConfig['multiple_retrieval_config'],
-    value: KnowledgeModelConfig | string | number | boolean | null,
+    value: string | number | boolean | null,
   ) => {
     update((draft) => {
       draft.multiple_retrieval_config[key] = value as never

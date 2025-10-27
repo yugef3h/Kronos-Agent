@@ -10,11 +10,7 @@ import {
 import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../store/workflowDraftStore';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import {
-  createWorkflowDslFromCanvas,
-  hydrateCanvasEdgesFromDsl,
-  hydrateCanvasNodesFromDsl,
-} from '../utils/workflow-dsl';
+import { createWorkflowDslFromCanvas, hydrateCanvasNodesFromDsl } from '../utils/workflow-dsl';
 import { useDraftBackup, usePersistedDraft } from './use-persisted-draft';
 
 type RefreshDraftOptions = {
@@ -154,7 +150,7 @@ export const useWorkflowDraftPersistence = ({
       }
 
       setNodes(hydrateCanvasNodesFromDsl(result.dsl));
-      setEdges(hydrateCanvasEdgesFromDsl(result.dsl));
+      setEdges(result.dsl.edges as Edge[]);
       lastPersistedDslRef.current = JSON.stringify(result.dsl);
       setDraftUpdatedAt(result.updatedAt);
       setPublishedAt(result.publishedAt ?? null);
@@ -187,7 +183,7 @@ export const useWorkflowDraftPersistence = ({
     }),
     restoreSnapshot: (snapshot) => {
       setNodes(hydrateCanvasNodesFromDsl(snapshot.dsl));
-      setEdges(hydrateCanvasEdgesFromDsl(snapshot.dsl));
+      setEdges(snapshot.dsl.edges as Edge[]);
       setIsSyncingWorkflowDraft(false);
     },
   });
