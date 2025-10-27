@@ -67,6 +67,7 @@ import { createWorkflowEdgeData } from '../utils/edge-data';
 import {
   createInitialTriggerNode,
   createWorkflowDslFromCanvas,
+  hydrateCanvasEdgesFromDsl,
   hydrateCanvasNodesFromDsl,
 } from '../utils/workflow-dsl';
 import { useContainerNodeSync } from '../hooks/use-container-node-sync';
@@ -826,7 +827,7 @@ export const WorkflowChildren = () => {
     const app = getWorkflowAppById(appId);
     if (!app) return [];
 
-    return (app.dsl.edges as unknown as Edge[]).map(normalizeWorkflowEdge);
+    return hydrateCanvasEdgesFromDsl(app.dsl).map(normalizeWorkflowEdge);
   }, [appId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
@@ -890,7 +891,7 @@ export const WorkflowChildren = () => {
     }
 
     setNodes(hydrateCanvasNodesFromDsl(app.dsl));
-    setEdges((app.dsl.edges as Edge[]).map(normalizeWorkflowEdge));
+    setEdges(hydrateCanvasEdgesFromDsl(app.dsl).map(normalizeWorkflowEdge));
   }, [appId, setEdges, setNodes]);
 
   useEffect(() => {

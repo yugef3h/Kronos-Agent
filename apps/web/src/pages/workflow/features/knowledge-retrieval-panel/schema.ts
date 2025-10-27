@@ -1,5 +1,6 @@
 import type {
   KnowledgeDatasetDetail,
+  KnowledgeModelConfig,
   KnowledgeRetrievalNodeConfig,
   KnowledgeValidationIssue,
 } from './types'
@@ -23,13 +24,42 @@ const toNumberOrNull = (value: unknown): number | null => {
   return null
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const normalizeKnowledgeModelConfig = (value: unknown): KnowledgeModelConfig | null => {
+  if (typeof value === 'string') {
+    const model = value.trim()
+    return model ? { provider: 'default', model } : null
+  }
+
+  if (!isRecord(value))
+    return null
+
+  const provider = typeof value.provider === 'string' ? value.provider.trim() : ''
+  const model = typeof value.model === 'string'
+    ? value.model.trim()
+    : typeof value.name === 'string'
+      ? value.name.trim()
+      : ''
+
+  if (!provider || !model)
+    return null
+
+  return {
+    provider,
+    model,
+  }
+}
+
 export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalNodeConfig => ({
   query_variable_selector: ['sys', 'query'],
   query_attachment_selector: [],
   dataset_ids: [],
   retrieval_mode: 'multiWay',
   single_retrieval_config: {
-    model: 'default-vector',
+    model: null,
     top_k: 3,
     score_threshold: null,
   },
@@ -37,7 +67,8 @@ export const createDefaultKnowledgeRetrievalNodeConfig = (): KnowledgeRetrievalN
     top_k: 5,
     score_threshold: null,
     reranking_enable: false,
-    reranking_model: 'default-rerank',
+    reranking_model: null,
+    reranking_mode: 'reranking_model',
   },
 })
 
@@ -87,29 +118,35 @@ export const normalizeKnowledgeRetrievalNodeConfig = (value: unknown): Knowledge
     dataset_ids: datasetIds,
     retrieval_mode: raw.retrieval_mode === 'oneWay' ? 'oneWay' : 'multiWay',
     single_retrieval_config: {
-      model: typeof raw.single_retrieval_config === 'object' && raw.single_retrieval_config !== null && typeof (raw.single_retrieval_config as Record<string, unknown>).model === 'string'
-        ? (raw.single_retrieval_config as Record<string, string>).model
+      model: isRecord(raw.single_retrieval_config)
+        ? normalizeKnowledgeModelConfig(raw.single_retrieval_config.model)
         : defaults.single_retrieval_config.model,
-      top_k: typeof raw.single_retrieval_config === 'object' && raw.single_retrieval_config !== null && typeof (raw.single_retrieval_config as Record<string, unknown>).top_k === 'number'
+      top_k: isRecord(raw.single_retrieval_config) && typeof raw.single_retrieval_config.top_k === 'number'
         ? ((raw.single_retrieval_config as Record<string, number>).top_k)
         : defaults.single_retrieval_config.top_k,
-      score_threshold: typeof raw.single_retrieval_config === 'object' && raw.single_retrieval_config !== null
+      score_threshold: isRecord(raw.single_retrieval_config)
         ? toNumberOrNull((raw.single_retrieval_config as Record<string, unknown>).score_threshold)
         : defaults.single_retrieval_config.score_threshold,
     },
     multiple_retrieval_config: {
-      top_k: typeof raw.multiple_retrieval_config === 'object' && raw.multiple_retrieval_config !== null && typeof (raw.multiple_retrieval_config as Record<string, unknown>).top_k === 'number'
+      top_k: isRecord(raw.multiple_retrieval_config) && typeof raw.multiple_retrieval_config.top_k === 'number'
         ? ((raw.multiple_retrieval_config as Record<string, number>).top_k)
         : defaults.multiple_retrieval_config.top_k,
-      score_threshold: typeof raw.multiple_retrieval_config === 'object' && raw.multiple_retrieval_config !== null
+      score_threshold: isRecord(raw.multiple_retrieval_config)
         ? toNumberOrNull((raw.multiple_retrieval_config as Record<string, unknown>).score_threshold)
         : defaults.multiple_retrieval_config.score_threshold,
-      reranking_enable: typeof raw.multiple_retrieval_config === 'object' && raw.multiple_retrieval_config !== null
+      reranking_enable: isRecord(raw.multiple_retrieval_config)
         ? Boolean((raw.multiple_retrieval_config as Record<string, unknown>).reranking_enable)
         : defaults.multiple_retrieval_config.reranking_enable,
-      reranking_model: typeof raw.multiple_retrieval_config === 'object' && raw.multiple_retrieval_config !== null && typeof (raw.multiple_retrieval_config as Record<string, unknown>).reranking_model === 'string'
-        ? ((raw.multiple_retrieval_config as Record<string, string>).reranking_model)
+      reranking_model: isRecord(raw.multiple_retrieval_config)
+        ? normalizeKnowledgeModelConfig(raw.multiple_retrieval_config.reranking_model)
         : defaults.multiple_retrieval_config.reranking_model,
+      reranking_mode: isRecord(raw.multiple_retrieval_config)
+        && (raw.multiple_retrieval_config.reranking_mode === 'weighted_score'
+          || raw.multiple_retrieval_config.reranking_mode === 'model_rerank'
+          || raw.multiple_retrieval_config.reranking_mode === 'reranking_model')
+        ? raw.multiple_retrieval_config.reranking_mode
+        : defaults.multiple_retrieval_config.reranking_mode,
     },
   }
 }

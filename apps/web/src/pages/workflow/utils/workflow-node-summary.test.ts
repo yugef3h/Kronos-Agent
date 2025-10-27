@@ -73,10 +73,11 @@ describe('workflow node summary', () => {
           top_k: 5,
           score_threshold: null,
           reranking_enable: false,
-          reranking_model: 'default-rerank',
+          reranking_model: null,
+          reranking_mode: 'reranking_model',
         },
         single_retrieval_config: {
-          model: 'default-vector',
+          model: null,
           top_k: 3,
           score_threshold: null,
         },

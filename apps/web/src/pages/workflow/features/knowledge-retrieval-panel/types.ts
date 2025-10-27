@@ -2,6 +2,11 @@ import type { ValueSelector } from '../llm-panel/types'
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay'
 
+export type KnowledgeModelConfig = {
+  provider: string
+  model: string
+}
+
 export type KnowledgeMetadataField = {
   key: string
   label: string
@@ -22,7 +27,7 @@ export type KnowledgeDatasetDetail = {
     score_threshold_enabled: boolean
     score_threshold: number | null
     reranking_enable: boolean
-    reranking_model?: string
+    reranking_model?: KnowledgeModelConfig | string
     reranking_mode: 'weighted_score' | 'model_rerank'
     weights: {
       semantic: number
@@ -66,7 +71,7 @@ export type KnowledgeDatasetDetail = {
 }
 
 export type KnowledgeRetrievalModelConfig = {
-  model: string
+  model: KnowledgeModelConfig | null
   top_k: number
   score_threshold: number | null
 }
@@ -75,7 +80,8 @@ export type KnowledgeMultiRetrievalConfig = {
   top_k: number
   score_threshold: number | null
   reranking_enable: boolean
-  reranking_model: string
+  reranking_model: KnowledgeModelConfig | null
+  reranking_mode?: 'reranking_model' | 'weighted_score' | 'model_rerank'
 }
 
 export type KnowledgeRetrievalNodeConfig = {

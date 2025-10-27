@@ -82,7 +82,10 @@ describe('knowledge-retrieval-panel schema', () => {
       ...createDefaultKnowledgeRetrievalNodeConfig(),
       retrieval_mode: 'oneWay' as const,
       single_retrieval_config: {
-        model: 'single-model',
+        model: {
+          provider: 'mock-provider',
+          model: 'single-model',
+        },
         top_k: 3,
         score_threshold: null,
       },
@@ -90,7 +93,11 @@ describe('knowledge-retrieval-panel schema', () => {
         top_k: 5,
         score_threshold: null,
         reranking_enable: false,
-        reranking_model: 'rerank-model',
+        reranking_model: {
+          provider: 'mock-provider',
+          model: 'rerank-model',
+        },
+        reranking_mode: 'reranking_model' as const,
       },
     }
 
