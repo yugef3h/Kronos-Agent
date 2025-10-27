@@ -111,11 +111,11 @@ const buildLeafChunkSummary = (chunks: KnowledgeChunkPreview[]) => {
   );
 };
 
-const buildParentChunks = async (params: {
+const buildParentChunks = (params: {
   processedText: string;
   parentMode: 'full-doc' | 'paragraph';
   segmentation: IndexingEstimateSegmentationRule;
-}): Promise<KnowledgeChunkPreview[]> => {
+}) => {
   if (params.parentMode === 'full-doc') {
     return [{
       id: 'parent_0',
@@ -190,14 +190,14 @@ export const runKnowledgeIndexingEstimate = async (
     });
 
     if (payload.doc_form === 'hierarchical_model') {
-      const parentChunks = await buildParentChunks({
+      const parentChunks = buildParentChunks({
         processedText: chunkResult.processedText,
         parentMode: payload.process_rule.rules.parent_mode,
         segmentation,
       });
 
-      for (const parentChunk of parentChunks) {
-        const childChunks = await splitTextToChunks({
+      parentChunks.forEach((parentChunk) => {
+        const childChunks = splitTextToChunks({
           text: parentChunk.text,
           separator: subchunkSegmentation.separator,
           maxTokens: subchunkSegmentation.max_tokens,
@@ -213,7 +213,7 @@ export const runKnowledgeIndexingEstimate = async (
           content: parentChunk.text,
           child_chunks: childChunks.map((chunk) => chunk.text),
         });
-      }
+      });
 
       continue;
     }
