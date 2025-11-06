@@ -433,7 +433,7 @@ const serializeKnowledgeInputs = (inputs: Record<string, unknown> | undefined) =
       top_k: config.multiple_retrieval_config.top_k,
       score_threshold: config.multiple_retrieval_config.score_threshold,
       reranking_enable: config.multiple_retrieval_config.reranking_enable,
-      reranking_mode: config.multiple_retrieval_config.reranking_mode ?? 'reranking_model',
+      reranking_model: config.multiple_retrieval_config.reranking_model ?? 'reranking_model',
       ...(config.multiple_retrieval_config.reranking_enable
         && config.multiple_retrieval_config.reranking_model
         ? {
