@@ -71,7 +71,10 @@ Perform a structured review of the current git changes with focus on SOLID, arch
   - **Boundary conditions**: null/undefined handling, empty collections, numeric boundaries, off-by-one
 - Flag issues that may cause silent failures or production incidents.
 
-### 6) Output format
+### 6）Monorepo boundary
+
+- Load `references/monorepo-boundary-checklist.md` for monorepo architecture and module boundary review.
+### 7) Output format
 
 Structure your review as follows:
 
