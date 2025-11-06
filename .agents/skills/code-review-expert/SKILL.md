@@ -1,6 +1,7 @@
 ---
 name: code-review-expert
 description: "备用技能，不自动触发，仅手动专用，需要重新安装"
+disable-model-invocation: true
 ---
 
 # Code Review Expert
