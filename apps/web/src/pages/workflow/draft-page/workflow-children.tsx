@@ -784,7 +784,12 @@ type ChecklistGroup = {
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
-  const { datasets } = useKnowledgeDatasets();
+  const {
+    datasets,
+    isLoading: isKnowledgeDatasetsLoading,
+    hasHydrated: hasKnowledgeDatasetsHydrated,
+    errorMessage: knowledgeDatasetsErrorMessage,
+  } = useKnowledgeDatasets();
   const currentApp = appId ? getWorkflowAppById(appId) : undefined;
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const reactFlowCaptureRef = useRef<HTMLDivElement | null>(null);
@@ -933,6 +938,10 @@ export const WorkflowChildren = () => {
   }, [edges, setNodes]);
 
   useEffect(() => {
+    if (!hasKnowledgeDatasetsHydrated || isKnowledgeDatasetsLoading || knowledgeDatasetsErrorMessage) {
+      return;
+    }
+
     setNodes((currentNodes) => {
       let changed = false;
 
@@ -971,7 +980,13 @@ export const WorkflowChildren = () => {
 
       return changed ? nextNodes : currentNodes;
     });
-  }, [datasets, setNodes]);
+  }, [
+    datasets,
+    hasKnowledgeDatasetsHydrated,
+    isKnowledgeDatasetsLoading,
+    knowledgeDatasetsErrorMessage,
+    setNodes,
+  ]);
 
   useContainerNodeSync({
     nodes,

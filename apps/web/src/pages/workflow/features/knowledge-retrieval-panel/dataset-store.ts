@@ -224,7 +224,8 @@ export const getKnowledgeDatasetsByIds = (datasetIds: string[]) => {
 
 export const useKnowledgeDatasets = () => {
   const [datasets, setDatasets] = useState<KnowledgeDatasetDetail[]>(() => listKnowledgeDatasets())
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasHydrated, setHasHydrated] = useState(false)
   const [isMutating, setIsMutating] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -249,6 +250,7 @@ export const useKnowledgeDatasets = () => {
     }
     finally {
       setIsLoading(false)
+      setHasHydrated(true)
     }
   }, [])
 
@@ -335,6 +337,7 @@ export const useKnowledgeDatasets = () => {
   return {
     datasets,
     isLoading,
+    hasHydrated,
     isMutating,
     errorMessage,
     refresh,

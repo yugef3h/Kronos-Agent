@@ -1,3 +1,11 @@
+## 2025-05-11 Knowledge 节点选库后刷新丢失
+
+- 现象：在 workflow 的 knowledge retrieval panel 里选好知识库后，页面刷新会显示未选择；同画布其他节点配置能正常自动保存。
+- 根因：`workflow-children.tsx` 有一段“按当前 datasets 清洗 dataset_ids”的副作用，在首帧就可能执行；而 `useKnowledgeDatasets()` 的 `isLoading` 初始为 `false`，首次拉取开始前存在时序窗口，`datasets` 为空时会把已选 `dataset_ids` 清成 `[]`，随后被草稿自动保存覆盖。
+- 修复：
+  - `dataset-store.ts`：新增 `hasHydrated`，并将 `isLoading` 初始值改为 `true`，确保首次拉取前状态明确为“未就绪”。
+  - `workflow-children.tsx`：知识库清洗副作用增加三重守卫：`!hasHydrated` / `isLoading` / `errorMessage` 时直接跳过，避免把已选知识库误清空。
+
 ## 2025-05-11 Workflow 草稿缩略图不展示 + 模糊
 
 - 现象：草稿页有自动保存日志，但列表页看不到缩略图；修复后虽能显示，但图像模糊且展示比例被裁切。
