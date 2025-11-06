@@ -1,7 +1,10 @@
 import { config } from 'dotenv';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-config();
+const serverRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+config({ path: join(serverRoot, '.env') });
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
