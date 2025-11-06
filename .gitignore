@@ -13,5 +13,6 @@ apps/server/data
 apps/server/data/knowledge-datasets.json
 __pycache__/
 *.pyc
+.pnpm-store/
 # 复习笔记
 review

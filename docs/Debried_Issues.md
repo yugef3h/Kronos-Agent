@@ -1,3 +1,15 @@
+## 2025-05-11 Workflow 草稿缩略图不展示 + 模糊
+
+- 现象：草稿页有自动保存日志，但列表页看不到缩略图；修复后虽能显示，但图像模糊且展示比例被裁切。
+- 根因1：缩略图链路里 `captureFilter` 假设 `node.classList` 始终存在，实际在 `html-to-image` 克隆阶段会遇到不满足条件的节点，触发 `Cannot read properties of undefined (reading 'contains')`，导致 `cap()` 返回 `null`。
+- 根因2：后端缩略图接口最初只接受 `wf_` 前缀 appId，历史应用 id 会被拒绝，导致后端兜底存储不可用。
+- 根因3：列表缩略图使用 `aspect-video + object-cover`，会裁切原图且放大低分辨率输出，视觉上更模糊。
+- 修复：
+  - `capture-workflow-draft-preview.ts`：为 `classList` 访问加空值保护，并补齐分段 debug 日志；导出参数上调（`MAX_THUMB_CSS_PX`、`JPEG_QUALITY`）提升清晰度。
+  - `workflowDraftPreviewDiskStore.ts` + `chatRoutes.ts`：放宽 appId 校验到安全字符集，兼容历史 id；保留路径安全约束。
+  - `api.ts` + `workflowDraftPreviewBackendSync.ts`：返回并打印 PUT 失败的 `status/reason`，便于定位失败类型。
+  - `list-page/index.tsx`：改为 `object-contain` 等比例展示，并限制容器与图片高度 `<100px`。
+
 ## 2025-04-10 Workflow 右侧 Panel 表单控件事件被画布交互吞掉
 
 - 现象：右侧节点配置面板里的共享表单控件在多个面板中都出现“点击无效、Slider 不能拖、数字框难以编辑”的问题，看起来像组件本身失效。

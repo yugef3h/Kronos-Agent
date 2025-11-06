@@ -1,6 +1,12 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { createWorkflowApp, listWorkflowApps } from '../../../features/workflow/workflowAppStore';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  WORKFLOW_APPS_STORAGE_KEY,
+  createWorkflowApp,
+  getWorkflowDraftThumbnailSrc,
+  listWorkflowApps,
+  WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
+} from '../../../features/workflow/workflowAppStore';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -14,6 +20,7 @@ const formatTimestamp = (timestamp: number): string => {
 
 export const WorkflowPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [apps, setApps] = useState(() => listWorkflowApps());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(
@@ -29,6 +36,30 @@ export const WorkflowPage = () => {
       setIsCreateModalOpen(true);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setApps(listWorkflowApps());
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      setApps(listWorkflowApps());
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key === WORKFLOW_APPS_STORAGE_KEY ||
+        event.key?.startsWith(WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX)
+      ) {
+        setApps(listWorkflowApps());
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   const openCreateModal = () => {
     setErrorMessage('');
@@ -102,14 +133,14 @@ export const WorkflowPage = () => {
                   <span className="text-base leading-none">＋</span>
                   <span>创建空白应用</span>
                 </button>
-                <button
+                {/* <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left font-medium text-slate-400"
                   disabled
                 >
                   <span className="text-base leading-none">⭳</span>
                   <span>从应用模板创建（即将上线）</span>
-                </button>
+                </button> */}
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left font-medium text-slate-400"
@@ -121,7 +152,9 @@ export const WorkflowPage = () => {
               </div>
             </div>
 
-            {apps.map((app) => (
+            {apps.map((app) => {
+              const thumbSrc = getWorkflowDraftThumbnailSrc(app);
+              return (
               <Link
                 key={app.id}
                 to={`/workflow/draft?appId=${encodeURIComponent(app.id)}`}
@@ -145,6 +178,18 @@ export const WorkflowPage = () => {
                   {app.description || '无描述'}
                 </p>
 
+                {thumbSrc ? (
+                  <div className="mt-3 flex max-h-[96px] items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50 p-1">
+                    <img
+                      src={thumbSrc}
+                      alt=""
+                      className="h-auto max-h-[92px] w-auto max-w-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                ) : null}
+
                 <div className="mt-4 flex items-center justify-between">
                   {/* <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
                     {app.dsl.nodes.length} 节点
@@ -154,7 +199,8 @@ export const WorkflowPage = () => {
                   </span>
                 </div>
               </Link>
-            ))}
+            );
+            })}
           </div>
         </section>
 

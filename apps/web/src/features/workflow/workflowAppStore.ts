@@ -1,3 +1,5 @@
+import { apiUrl } from '../../lib/api';
+
 export type LegacyWorkflowNodeType =
   | 'trigger'
   | 'agent'
@@ -177,40 +179,187 @@ export type WorkflowAppRecord = {
   createdAt: number;
   updatedAt: number;
   publishedAt?: number;
+  /**
+   * 列表缩略图 JPEG data URL；运行时由 `kronos_workflow_draft_preview_v1:{appId}` 注入，不写入 `kronos_workflow_apps_v1` JSON，避免撑爆配额。
+   */
+  draftPreviewDataUrl?: string;
+  /** 缩略图已同步到后端 `apps/server/data/workflow-draft-previews`，列表可用 GET URL */
+  draftPreviewBackendSynced?: boolean;
   dsl: WorkflowDSL;
 };
 
-const WORKFLOW_APPS_STORAGE_KEY = 'kronos_workflow_apps_v1';
+export const WORKFLOW_APPS_STORAGE_KEY = 'kronos_workflow_apps_v1';
+
+/** 与 app.id 一一对应：`{prefix}{appId}` */
+export const WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX = 'kronos_workflow_draft_preview_v1:';
+
+const workflowDraftPreviewKey = (appId: string): string =>
+  `${WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX}${appId}`;
 
 const canUseLocalStorage = (): boolean => {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 };
 
-const readAppRecords = (): WorkflowAppRecord[] => {
+const logPreviewLocalStorageError = (where: string, err: unknown, extra?: Record<string, unknown>): void => {
+  const name = err instanceof DOMException ? err.name : err instanceof Error ? err.name : 'unknown';
+  const message = err instanceof Error ? err.message : String(err);
+  console.warn(`[workflow:preview] localStorage ${where}`, { name, message, ...extra });
+};
+
+const readWorkflowDraftPreviewDataUrl = (appId: string): string | undefined => {
+  if (!canUseLocalStorage()) {
+    return undefined;
+  }
+  try {
+    const v = window.localStorage.getItem(workflowDraftPreviewKey(appId));
+    return v && v.length > 0 ? v : undefined;
+  } catch (err) {
+    logPreviewLocalStorageError('getItem 缩略图失败', err, {
+      key: workflowDraftPreviewKey(appId),
+    });
+    return undefined;
+  }
+};
+
+const writeWorkflowDraftPreviewDataUrl = (appId: string, dataUrl: string | null | undefined): void => {
+  if (!canUseLocalStorage()) {
+    if (import.meta.env.DEV) {
+      console.warn('[workflow:preview] 无 localStorage，跳过侧键缩略图（可依赖后端）', { appId });
+    }
+    return;
+  }
+  const key = workflowDraftPreviewKey(appId);
+  const op = typeof dataUrl === 'string' && dataUrl.length > 0 ? 'setItem' : 'removeItem';
+  try {
+    if (typeof dataUrl === 'string' && dataUrl.length > 0) {
+      window.localStorage.setItem(key, dataUrl);
+    } else {
+      window.localStorage.removeItem(key);
+    }
+  } catch (err) {
+    logPreviewLocalStorageError(`${op} 缩略图失败（常见：QuotaExceeded 配额/图片过大）`, err, {
+      key,
+      payloadChars: typeof dataUrl === 'string' ? dataUrl.length : 0,
+    });
+  }
+};
+
+/** 列表缩略图：按 appId 写入独立 localStorage 键（`kronos_workflow_draft_preview_v1:{id}`） */
+export const setWorkflowDraftPreview = (appId: string, dataUrl: string | null): void => {
+  writeWorkflowDraftPreviewDataUrl(appId, dataUrl);
+  if (import.meta.env.DEV && canUseLocalStorage()) {
+    const key = workflowDraftPreviewKey(appId);
+    const roundTrip =
+      typeof dataUrl === 'string' && dataUrl.length > 0
+        ? window.localStorage.getItem(key)?.length === dataUrl.length
+        : window.localStorage.getItem(key) === null;
+    console.warn('[workflow:preview] sidecar 写入后校验', {
+      key,
+      bytes: typeof dataUrl === 'string' ? dataUrl.length : 0,
+      roundTripOk: roundTrip,
+    });
+  }
+};
+
+/** 仅解析主 JSON，不做 sidecar 合并（用于更新 `draftPreviewBackendSynced` 等元数据） */
+const readPersistedAppRecordsRaw = (): WorkflowAppRecord[] => {
   if (!canUseLocalStorage()) {
     return [];
   }
-
   try {
     const raw = window.localStorage.getItem(WORKFLOW_APPS_STORAGE_KEY);
     if (!raw) {
       return [];
     }
     const parsed = JSON.parse(raw) as WorkflowAppRecord[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed;
-  } catch {
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    logPreviewLocalStorageError('解析 kronos_workflow_apps_v1 失败', err);
     return [];
   }
+};
+
+export const markWorkflowDraftPreviewBackendSynced = (appId: string, synced: boolean): void => {
+  const apps = readPersistedAppRecordsRaw();
+  const idx = apps.findIndex((a) => a.id === appId);
+  if (idx < 0) {
+    return;
+  }
+  const row = { ...apps[idx] };
+  delete row.draftPreviewDataUrl;
+  if (synced) {
+    row.draftPreviewBackendSynced = true;
+  } else {
+    delete row.draftPreviewBackendSynced;
+  }
+  const next = [...apps];
+  next[idx] = row;
+  writeAppRecords(next);
+};
+
+/** 列表 `<img src>`：优先本地 data URL，否则已同步后端时用 GET（需 `pnpm dev` 起 server） */
+export const getWorkflowDraftThumbnailSrc = (app: WorkflowAppRecord): string | undefined => {
+  if (app.draftPreviewDataUrl) {
+    return app.draftPreviewDataUrl;
+  }
+  if (app.draftPreviewBackendSynced) {
+    return apiUrl(
+      `/api/workflow/apps/${encodeURIComponent(app.id)}/draft-preview?v=${encodeURIComponent(String(app.updatedAt))}`,
+    );
+  }
+  return undefined;
+};
+
+const readAppRecords = (): WorkflowAppRecord[] => {
+  const parsed = readPersistedAppRecordsRaw();
+  if (!parsed.length) {
+    return [];
+  }
+
+  let shouldCompactMainJson = false;
+  const merged = parsed.map((app) => {
+    const inline = app?.draftPreviewDataUrl;
+    if (typeof inline === 'string' && inline.length > 0) {
+      shouldCompactMainJson = true;
+      const sideKey = workflowDraftPreviewKey(app.id);
+      try {
+        if (!window.localStorage.getItem(sideKey)) {
+          window.localStorage.setItem(sideKey, inline);
+        }
+      } catch (err) {
+        logPreviewLocalStorageError('迁移内联缩略图到侧键失败', err, { sideKey, chars: inline.length });
+      }
+    }
+
+    const base: WorkflowAppRecord = { ...app };
+    delete base.draftPreviewDataUrl;
+    const fromKey = readWorkflowDraftPreviewDataUrl(app.id);
+    return fromKey ? { ...base, draftPreviewDataUrl: fromKey } : base;
+  });
+
+  if (shouldCompactMainJson) {
+    try {
+      writeAppRecords(merged);
+    } catch (err) {
+      logPreviewLocalStorageError('压缩主 JSON（去掉内联缩略图）失败', err);
+    }
+  }
+
+  return merged;
 };
 
 const writeAppRecords = (apps: WorkflowAppRecord[]): void => {
   if (!canUseLocalStorage()) {
     return;
   }
-  window.localStorage.setItem(WORKFLOW_APPS_STORAGE_KEY, JSON.stringify(apps));
+  const persisted = apps.map(({ draftPreviewDataUrl: _p, ...rest }) => rest);
+  try {
+    window.localStorage.setItem(WORKFLOW_APPS_STORAGE_KEY, JSON.stringify(persisted));
+  } catch (err) {
+    logPreviewLocalStorageError('setItem 主应用列表失败', err, {
+      apps: persisted.length,
+    });
+  }
 };
 
 const createEmptyDsl = (name: string): WorkflowDSL => {
@@ -299,8 +448,9 @@ export const listWorkflowApps = (): WorkflowAppRecord[] => {
 };
 
 export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined => {
-  return readAppRecords().find(app => app.id === id)
-}
+  const app = readAppRecords().find((a) => a.id === id);
+  return app;
+};
 
 export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowAppRecord | undefined => {
   const apps = readAppRecords()
@@ -309,16 +459,19 @@ export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowA
   if (appIndex < 0)
     return undefined
 
+  const prev = apps[appIndex]
   const updatedApp: WorkflowAppRecord = {
-    ...apps[appIndex],
+    ...prev,
     updatedAt: Date.now(),
     dsl,
   }
+  delete updatedApp.draftPreviewDataUrl
 
   apps[appIndex] = updatedApp
   writeAppRecords(apps)
 
-  return updatedApp
+  const previewUrl = readWorkflowDraftPreviewDataUrl(appId)
+  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp
 }
 
 export const createWorkflowApp = (payload: { name: string; description?: string }): WorkflowAppRecord => {

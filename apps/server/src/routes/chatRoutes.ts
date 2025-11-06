@@ -30,6 +30,11 @@ import { generateHotTopics } from '../services/hotTopicService.js';
 import { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
 import { runKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
+import {
+  normalizeWorkflowAppId,
+  readWorkflowDraftPreviewIfExists,
+  saveWorkflowDraftPreviewJpeg,
+} from '../services/workflowDraftPreviewDiskStore.js';
 import { join } from 'path';
 
 const chatSchema = z.object({
@@ -668,6 +673,64 @@ chatRoutes.post('/datasets/indexing-estimate', async (request: Request, response
 chatRoutes.get('/hot-topics', async (_request: Request, response: Response) => {
   const result = await generateHotTopics();
   response.json(result);
+});
+
+chatRoutes.put('/workflow/apps/:appId/draft-preview', async (request: Request, response: Response) => {
+  const appId = normalizeWorkflowAppId(String(request.params.appId || ''));
+  if (!appId) {
+    response.status(400).json({ error: 'Invalid app id' });
+    return;
+  }
+
+  const dataUrl = typeof request.body?.dataUrl === 'string' ? request.body.dataUrl : '';
+  const match = /^data:image\/(?:jpeg|jpg);base64,([\s\S]+)$/i.exec(dataUrl.trim());
+  if (!match) {
+    response.status(400).json({ error: 'Expected image/jpeg data URL' });
+    return;
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(match[1].replace(/\s/g, ''), 'base64');
+  } catch {
+    response.status(400).json({ error: 'Invalid base64' });
+    return;
+  }
+
+  if (buffer.length === 0 || buffer.length > 2_000_000) {
+    response.status(413).json({ error: 'Image too large or empty' });
+    return;
+  }
+
+  try {
+    const ok = await saveWorkflowDraftPreviewJpeg(appId, buffer);
+    if (!ok) {
+      response.status(500).json({ error: 'Failed to save preview' });
+      return;
+    }
+    response.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Save failed';
+    response.status(500).json({ error: message });
+  }
+});
+
+chatRoutes.get('/workflow/apps/:appId/draft-preview', async (request: Request, response: Response) => {
+  const appId = normalizeWorkflowAppId(String(request.params.appId || ''));
+  if (!appId) {
+    response.status(404).end();
+    return;
+  }
+
+  const buf = await readWorkflowDraftPreviewIfExists(appId);
+  if (!buf) {
+    response.status(404).end();
+    return;
+  }
+
+  response.setHeader('Content-Type', 'image/jpeg');
+  response.setHeader('Cache-Control', 'private, max-age=120');
+  response.send(buf);
 });
 
 chatRoutes.get('/attachments/:id', async (request: Request, response: Response) => {

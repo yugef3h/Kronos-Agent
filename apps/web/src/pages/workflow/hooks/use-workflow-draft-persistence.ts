@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Node } from 'reactflow';
+import { syncWorkflowDraftPreviewToBackend } from '../../../features/workflow/workflowDraftPreviewBackendSync';
 import {
   getWorkflowAppById,
+  setWorkflowDraftPreview,
   updateWorkflowAppDsl,
   type WorkflowAppRecord,
   type WorkflowDSL,
@@ -24,11 +26,14 @@ type UseWorkflowDraftPersistenceOptions = {
   edges: Edge[];
   setNodes: Dispatch<SetStateAction<Node<CanvasNodeData>[]>>;
   setEdges: Dispatch<SetStateAction<Edge[]>>;
+  /** 与 DSL 一并写入列表缩略图；至少 1 个节点时才调用 */
+  captureDraftPreview?: () => Promise<string | null>;
 };
 
 type PersistDraftSnapshot = {
   appId: string;
   dsl: WorkflowDSL;
+  nodeCount: number;
 };
 
 type DebouncedDraftSync = {
@@ -36,7 +41,10 @@ type DebouncedDraftSync = {
   cancel: () => void;
 };
 
-const PERSIST_DEBOUNCE_MS = 700;
+/** 草稿 DSL（及缩略图）写入 localStorage 前的防抖间隔 */
+export const WORKFLOW_DRAFT_PERSIST_DEBOUNCE_MS = 700;
+
+const PERSIST_DEBOUNCE_MS = WORKFLOW_DRAFT_PERSIST_DEBOUNCE_MS;
 
 export const useWorkflowDraftPersistence = ({
   appId,
@@ -45,6 +53,7 @@ export const useWorkflowDraftPersistence = ({
   edges,
   setNodes,
   setEdges,
+  captureDraftPreview,
 }: UseWorkflowDraftPersistenceOptions) => {
   const lastPersistedDslRef = useRef<string | null>(null);
   const setCurrentApp = useWorkflowDraftStore((state) => state.setCurrentApp);
@@ -52,6 +61,9 @@ export const useWorkflowDraftPersistence = ({
   const setPublishedAt = useWorkflowDraftStore((state) => state.setPublishedAt);
   const setIsSyncingWorkflowDraft = useWorkflowDraftStore((state) => state.setIsSyncingWorkflowDraft);
   const hasBackupDraft = useWorkflowDraftStore((state) => state.backupDraft?.appId === appId);
+
+  const captureDraftPreviewRef = useRef(captureDraftPreview);
+  captureDraftPreviewRef.current = captureDraftPreview;
 
   const debouncedSyncWorkflowDraft = useMemo<DebouncedDraftSync>(() => {
     let timer: number | undefined;
@@ -93,6 +105,7 @@ export const useWorkflowDraftPersistence = ({
     return {
       appId,
       dsl: createWorkflowDslFromCanvas(nodes, edges, appName),
+      nodeCount: nodes.length,
     };
   }, [appId, appName, edges, nodes]);
 
@@ -113,6 +126,37 @@ export const useWorkflowDraftPersistence = ({
     createSnapshot,
     createPersistPayload: (snapshot) => snapshot,
     persist: async (snapshot) => {
+      if (import.meta.env.DEV) {
+        console.warn('[workflow:preview] draft persist（仅草稿页）', {
+          appId: snapshot.appId,
+          nodeCount: snapshot.nodeCount,
+          willTryCapture: snapshot.nodeCount >= 1 && Boolean(captureDraftPreviewRef.current),
+        });
+      }
+
+      let dataUrl: string | null = null;
+      const cap = captureDraftPreviewRef.current;
+      if (snapshot.nodeCount >= 1 && cap) {
+        try {
+          dataUrl = await cap();
+        } catch (err) {
+          console.error('err', err);
+        }
+      }
+
+      if (import.meta.env.DEV) {
+        console.warn('[workflow:preview] capture 结果', {
+          appId: snapshot.appId,
+          gotDataUrl: Boolean(dataUrl?.length),
+          approxChars: dataUrl?.length ?? 0,
+        });
+      }
+
+      if (typeof dataUrl === 'string' && dataUrl.length > 0) {
+        setWorkflowDraftPreview(snapshot.appId, dataUrl);
+        void syncWorkflowDraftPreviewToBackend(snapshot.appId, dataUrl);
+      }
+
       const updatedApp = updateWorkflowAppDsl(snapshot.appId, snapshot.dsl);
 
       if (!updatedApp) {
@@ -122,6 +166,9 @@ export const useWorkflowDraftPersistence = ({
       return updatedApp;
     },
     persistWithKeepalive: (snapshot) => {
+      if (import.meta.env.DEV) {
+        console.warn('[workflow:preview] pagehide 仅写 DSL，不写缩略图', { appId: snapshot.appId });
+      }
       updateWorkflowAppDsl(snapshot.appId, snapshot.dsl);
     },
     onPersistSuccess: (result) => {
@@ -150,7 +197,7 @@ export const useWorkflowDraftPersistence = ({
       }
 
       setNodes(hydrateCanvasNodesFromDsl(result.dsl));
-      setEdges(result.dsl.edges as Edge[]);
+      setEdges(result.dsl.workflow.graph.edges as Edge[]);
       lastPersistedDslRef.current = JSON.stringify(result.dsl);
       setDraftUpdatedAt(result.updatedAt);
       setPublishedAt(result.publishedAt ?? null);
@@ -183,7 +230,7 @@ export const useWorkflowDraftPersistence = ({
     }),
     restoreSnapshot: (snapshot) => {
       setNodes(hydrateCanvasNodesFromDsl(snapshot.dsl));
-      setEdges(snapshot.dsl.edges as Edge[]);
+      setEdges(snapshot.dsl.workflow.graph.edges as Edge[]);
       setIsSyncingWorkflowDraft(false);
     },
   });

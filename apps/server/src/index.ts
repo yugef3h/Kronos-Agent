@@ -47,6 +47,14 @@ const maybeSkipAuth = (req: express.Request, res: express.Response, next: expres
     next();
     return;
   }
+  // 列表缩略图：<img> 与 PUT 均可能无 JWT（与附件类似，仅本地 dev 数据）
+  if (
+    req.originalUrl.startsWith('/api/workflow/apps/') &&
+    req.originalUrl.includes('/draft-preview')
+  ) {
+    next();
+    return;
+  }
   authenticateJwt(req, res, next);
 };
 

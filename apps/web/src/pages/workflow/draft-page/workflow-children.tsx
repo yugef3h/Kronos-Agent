@@ -71,7 +71,10 @@ import {
 } from '../utils/workflow-dsl';
 import { useContainerNodeSync } from '../hooks/use-container-node-sync';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
-import { useWorkflowDraftPersistence } from '../hooks/use-workflow-draft-persistence';
+import {
+  useWorkflowDraftPersistence,
+} from '../hooks/use-workflow-draft-persistence';
+import { captureWorkflowDraftPreview } from '../utils/capture-workflow-draft-preview';
 import Panel from '../compts/panel';
 import NodeControl from '../compts/node-control';
 import { IconCondition } from '../assets/condition';
@@ -784,6 +787,7 @@ export const WorkflowChildren = () => {
   const { datasets } = useKnowledgeDatasets();
   const currentApp = appId ? getWorkflowAppById(appId) : undefined;
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  const reactFlowCaptureRef = useRef<HTMLDivElement | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
   const checklistPopoverRef = useRef<HTMLDivElement>(null);
 
@@ -826,11 +830,15 @@ export const WorkflowChildren = () => {
     const app = getWorkflowAppById(appId);
     if (!app) return [];
 
-    return (app.dsl.edges as unknown as Edge[]).map(normalizeWorkflowEdge);
+    return (app.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge);
   }, [appId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
+  const captureDraftPreview = useCallback(
+    () => captureWorkflowDraftPreview(reactFlowCaptureRef.current),
+    [],
+  );
   useWorkflowDraftPersistence({
     appId,
     appName: currentApp?.name,
@@ -838,6 +846,7 @@ export const WorkflowChildren = () => {
     edges: edges as Edge[],
     setNodes,
     setEdges,
+    captureDraftPreview,
   });
   const updateNodeInternals = useUpdateNodeInternals();
   const { handleNodeClick: handleNodeClickBase, handlePaneClick, handlePanelClose } =
@@ -890,7 +899,7 @@ export const WorkflowChildren = () => {
     }
 
     setNodes(hydrateCanvasNodesFromDsl(app.dsl));
-    setEdges((app.dsl.edges as Edge[]).map(normalizeWorkflowEdge));
+    setEdges((app.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge));
   }, [appId, setEdges, setNodes]);
 
   useEffect(() => {
@@ -1181,6 +1190,7 @@ export const WorkflowChildren = () => {
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
               Draft
             </p>
+            {/* 自动保存：画布 DSL 变更后防抖 {WORKFLOW_DRAFT_PERSIST_DEBOUNCE_MS}ms 写入 localStorage，并尝试更新列表缩略图（≥1 个节点） */}
             <EditingTitle />
           </div>
           <div className="right-operator flex items-center">
@@ -1348,7 +1358,10 @@ export const WorkflowChildren = () => {
           </div>
         </div>
 
-        <div className="relative z-0 min-h-0 flex-1 overflow-hidden rounded-b-3xl">
+        <div
+          ref={reactFlowCaptureRef}
+          className="relative z-0 min-h-0 flex-1 overflow-hidden rounded-b-3xl"
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}

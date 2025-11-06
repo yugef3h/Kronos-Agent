@@ -1003,3 +1003,33 @@ export const requestDatasetIndexingEstimate = async (params: {
 
 	return (await response.json()) as DatasetIndexingEstimateResponse;
 };
+
+/** 工作流草稿画布缩略图（磁盘缓存，避免 localStorage 配额） */
+export async function putWorkflowDraftPreview(appId: string, dataUrl: string): Promise<{
+	ok: boolean;
+	status: number;
+	errorMessage?: string;
+}> {
+	try {
+		const response = await fetch(
+			apiUrl(`/api/workflow/apps/${encodeURIComponent(appId)}/draft-preview`),
+			{
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ dataUrl }),
+			},
+		);
+		if (response.ok) {
+			return { ok: true, status: response.status };
+		}
+
+		const errorMessage = await readApiErrorMessage(response, 'Failed to save workflow draft preview');
+		return { ok: false, status: response.status, errorMessage };
+	} catch (error) {
+		return {
+			ok: false,
+			status: 0,
+			errorMessage: error instanceof Error ? error.message : 'Network request failed',
+		};
+	}
+}
