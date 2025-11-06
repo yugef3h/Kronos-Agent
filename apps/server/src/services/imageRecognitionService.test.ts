@@ -1,13 +1,6 @@
-let extractImageRecognitionReply: (payload: unknown) => string;
+import { extractDoubaoChatReply } from './doubaoChatHelpers.js';
 
-beforeAll(async () => {
-  process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-123456';
-  process.env.DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || 'test-api-key';
-  process.env.DOUBAO_BASE_URL = process.env.DOUBAO_BASE_URL || 'https://example.com/v1';
-  process.env.DOUBAO_MODEL = process.env.DOUBAO_MODEL || 'test-model';
-
-  ({ extractImageRecognitionReply } = await import('./imageRecognitionService'));
-});
+const extractImageRecognitionReply = extractDoubaoChatReply as (payload: unknown) => string;
 
 describe('extractImageRecognitionReply', () => {
   it('reads string response', () => {
