@@ -22,7 +22,7 @@ Kronos 当前版本的 LLMPanel 采用两层状态：
 9. 固定输出变量展示。
 10. 模型切换时清洗不兼容 completion params。
 
-## 2026-04 交互更新
+## 2025-04 交互更新
 
 1. 模型入口改为固定虚拟模型“智灵”，前端不再暴露真实 provider / model name，实际接入模型由后端决定。
 2. LLM 参数区改为通用滑块 + 数字输入组件，当前覆盖 `temperature`、`topP`、`topK`、`maxTokens`。
