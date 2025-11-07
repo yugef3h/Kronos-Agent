@@ -23,6 +23,7 @@ export const createInitialTakeoutFlowState = (flowId = 0): TakeoutFlowState => (
   discount: MOCK_DISCOUNT,
   delivery: MOCK_DELIVERY,
   paymentPassword: '',
+  isPaymentCompleted: false,
 });
 
 export const isTakeoutIntentPrompt = (text: string): boolean => {

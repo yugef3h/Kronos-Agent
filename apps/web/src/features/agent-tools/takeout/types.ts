@@ -25,6 +25,7 @@ export type TakeoutFlowState = {
   discount: number;
   delivery: TakeoutDelivery;
   paymentPassword: string;
+  isPaymentCompleted: boolean;
 };
 
 export type TakeoutModalState = {

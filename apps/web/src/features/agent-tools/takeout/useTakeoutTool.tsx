@@ -415,6 +415,7 @@ export const useTakeoutTool = ({
         isCallingApi: false,
         isCheckoutVisible: true,
         paymentPassword: '',
+        isPaymentCompleted: false,
       }));
     } catch {
       appendTakeoutFallbackMessage(flowId);
@@ -423,7 +424,7 @@ export const useTakeoutTool = ({
   }, [appendAssistantTextMessage, appendTakeoutCardMessage, appendTakeoutFallbackMessage, appendTakeoutSessionMessages, authToken, closeTakeoutComboModal, flowState, setFlowState, setMessages]);
 
   const openTakeoutPaymentModal = useCallback((flowId: number) => {
-    if (flowId !== flowState.flowId || flowState.isCallingApi) {
+    if (flowId !== flowState.flowId || flowState.isCallingApi || flowState.isPaymentCompleted) {
       return;
     }
 
@@ -432,7 +433,7 @@ export const useTakeoutTool = ({
       paymentPassword: '',
     }));
     setModalState((prev) => ({ ...prev, paymentFlowId: flowId }));
-  }, [flowState.flowId, flowState.isCallingApi, setFlowState]);
+  }, [flowState.flowId, flowState.isCallingApi, flowState.isPaymentCompleted, setFlowState]);
 
   const closeTakeoutPaymentModal = useCallback(() => {
     setModalState((prev) => ({ ...prev, paymentFlowId: null }));
@@ -443,7 +444,7 @@ export const useTakeoutTool = ({
   }, [setFlowState]);
 
   const handleTakeoutPaymentPasswordChange = useCallback((flowId: number, rawValue: string) => {
-    if (flowId !== flowState.flowId) {
+    if (flowId !== flowState.flowId || flowState.isPaymentCompleted) {
       return;
     }
 
@@ -456,12 +457,17 @@ export const useTakeoutTool = ({
     // 支付弹窗是一次性确认流，输满 6 位后立即闭环，避免再多一步「确认支付」按钮打断体验。
     if (nextPassword.length === 6) {
       setModalState((prev) => ({ ...prev, paymentFlowId: null }));
+      setFlowState((prev) => ({
+        ...prev,
+        paymentPassword: '',
+        isPaymentCompleted: true,
+      }));
       appendAssistantTextMessage('支付成功，商家正在准备配送，请耐心等待哦~', {
         flowType: 'takeout',
         flowId,
       });
     }
-  }, [appendAssistantTextMessage, flowState.flowId, setFlowState]);
+  }, [appendAssistantTextMessage, flowState.flowId, flowState.isPaymentCompleted, setFlowState]);
 
   return {
     flowState,

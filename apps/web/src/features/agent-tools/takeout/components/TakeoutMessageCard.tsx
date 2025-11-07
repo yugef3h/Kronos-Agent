@@ -167,6 +167,7 @@ export const TakeoutMessageCard = ({
   const comboSummary = buildTakeoutComboSummary(flowState);
   const delivery = flowState.delivery || MOCK_DELIVERY;
   const address = flowState.address || MOCK_ADDRESS;
+  const isPaymentCompleted = flowState.isPaymentCompleted;
 
   return (
     <div className="space-y-1.5">
@@ -223,11 +224,11 @@ export const TakeoutMessageCard = ({
 
           <button
             type="button"
-            disabled={flowState.isCallingApi}
+            disabled={flowState.isCallingApi || isPaymentCompleted}
             onClick={() => onOpenPaymentModal(message.flowId!)}
             className="mt-2.5 h-9 w-full rounded-lg bg-[#dbeafe] text-sm font-semibold text-[#1677ff] transition hover:bg-[#cfe3ff] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
           >
-            支付宝付款
+            {isPaymentCompleted ? '成功支付' : '支付宝付款'}
           </button>
           <p className="mt-1.5 text-center text-[11px] text-slate-400">首次使用，支付宝会获取手机号信息，帮你匹配账号</p>
         </div>
