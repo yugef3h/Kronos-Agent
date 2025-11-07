@@ -27,4 +27,5 @@ export type CanvasNodeData = {
   _children?: ContainerChildSummary[]
   _targetBranches?: IfElseBranch[]
   _connectedSourceHandleIds?: string[]
+  _requiredIssueCount?: number
 }

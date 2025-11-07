@@ -59,7 +59,7 @@ export const TakeoutAuthModal = ({
                 <img src="https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/samantha/logo-icon-white-bg.png" alt="淘宝头像" className="h-full w-full object-cover" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-800">tb049949_49</p>
+                <p className="text-sm font-medium text-slate-800">tb049949_mock</p>
                 <p className="text-xs text-slate-500">175****5008</p>
               </div>
             </div>

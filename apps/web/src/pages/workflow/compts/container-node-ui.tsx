@@ -101,17 +101,28 @@ const getContainerHeaderBadgeClassName = (kind: CanvasNodeData['kind']) => {
   return 'bg-slate-100 text-slate-700 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.85)]';
 };
 
-export const ContainerNodeHeader = ({ kind, title }: Pick<CanvasNodeData, 'kind' | 'title'>) => {
+export const ContainerNodeHeader = ({
+  kind,
+  title,
+  requiredIssueCount = 0,
+}: Pick<CanvasNodeData, 'kind' | 'title'> & { requiredIssueCount?: number }) => {
   return (
-    <div className="relative z-10 flex items-center gap-3 px-1 pr-8">
+    <div className="relative z-10 flex items-center gap-3 px-1">
       <div
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] ${getContainerHeaderBadgeClassName(kind)}`}
       >
         <WorkflowNodeBadgeIcon kind={kind} />
       </div>
-      <div className="min-w-0 pt-0.5">
-        <p className="text-[16px] font-semibold tracking-[0.01em] text-slate-900">{title}</p>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="truncate text-[16px] font-semibold tracking-[0.01em] text-slate-900">{title}</p>
       </div>
+      {requiredIssueCount > 0 ? (
+        <span
+          className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white shadow-[0_8px_18px_-12px_rgba(217,119,6,0.9)]"
+        >
+          <svg className="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1652" width="20" height="20"><path d="M512 1024C229.232 1024 0 794.768 0 512 0 229.232 229.232 0 512 0 794.768 0 1024 229.232 1024 512 1024 794.768 794.768 1024 512 1024ZM560 240C560 213.488 538.512 192 512 192 485.488 192 464 213.488 464 240L464 592C464 618.512 485.488 640 512 640 538.512 640 560 618.512 560 592L560 240ZM512 736C485.488 736 464 757.488 464 784 464 810.512 485.488 832 512 832 538.512 832 560 810.512 560 784 560 757.488 538.512 736 512 736Z" fill="#f3ca7e" p-id="1653"></path></svg>
+        </span>
+      ) : null}
     </div>
   );
 };

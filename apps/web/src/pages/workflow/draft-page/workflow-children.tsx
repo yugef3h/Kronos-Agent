@@ -577,7 +577,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             <NestedEndNodeCard data={data} isSelected={!!data.selected} />
           ) : (
             <div>
-              <ContainerNodeHeader kind={data.kind} title={data.title} />
+              <ContainerNodeHeader
+                kind={data.kind}
+                title={data.title}
+                requiredIssueCount={data._requiredIssueCount}
+              />
               <p className="mt-1 text-[10px] leading-4 text-slate-500">
                 {data.kind === 'iteration-end'
                   ? '命中后结束当前 iteration 内部链路'
@@ -731,13 +735,21 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
             }}
           >
             <ContainerNodeBoard />
-            <ContainerNodeHeader kind={data.kind} title={data.title} />
+            <ContainerNodeHeader
+              kind={data.kind}
+              title={data.title}
+              requiredIssueCount={data._requiredIssueCount}
+            />
           </div>
         ) : isNestedPlainNode ? (
           <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
         ) : (
           <div>
-            <ContainerNodeHeader kind={data.kind} title={data.title} />
+            <ContainerNodeHeader
+              kind={data.kind}
+              title={data.title}
+              requiredIssueCount={data._requiredIssueCount}
+            />
             <WorkflowNodeSummary data={data} />
           </div>
         )}
@@ -1116,6 +1128,36 @@ export const WorkflowChildren = () => {
     }, []);
   }, [nodes]);
   const checklistCount = checklistGroups.length;
+  const requiredIssueCountByNodeId = useMemo(() => {
+    return checklistGroups.reduce<Record<string, number>>((acc, group) => {
+      acc[group.nodeId] = group.issues.length;
+      return acc;
+    }, {});
+  }, [checklistGroups]);
+
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      let changed = false;
+
+      const nextNodes = currentNodes.map((node) => {
+        const nextRequiredIssueCount = requiredIssueCountByNodeId[node.id] ?? 0;
+        if ((node.data._requiredIssueCount ?? 0) === nextRequiredIssueCount) {
+          return node;
+        }
+
+        changed = true;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            _requiredIssueCount: nextRequiredIssueCount,
+          },
+        };
+      });
+
+      return changed ? nextNodes : currentNodes;
+    });
+  }, [requiredIssueCountByNodeId, setNodes]);
 
   const handleGoToFix = useCallback(
     (nodeId: string) => {
