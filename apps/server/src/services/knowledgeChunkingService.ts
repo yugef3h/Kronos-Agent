@@ -40,7 +40,7 @@ export const estimateTokenCount = (text: string) => {
   return Math.max(1, Math.ceil(text.length / 4));
 };
 
-const decodeSegmentSeparator = (separator?: string) => {
+export const decodeSegmentSeparator = (separator?: string) => {
   if (!separator) {
     return '\n\n';
   }
@@ -153,9 +153,9 @@ export const splitTextToChunks = (params: {
   }));
 };
 
-export const buildKnowledgeDocumentChunks = async (
+export async function extractPreprocessedKnowledgeDocument(
   params: KnowledgeDocumentChunkOptions,
-): Promise<BuiltKnowledgeDocumentChunks> => {
+): Promise<{ mimeType: string; buffer: Buffer; processedText: string }> {
   const parsedPayload = parseFileDataUrl(params.fileDataUrl);
   const mimeType = params.mimeType?.trim() || parsedPayload.mimeType;
   const extension = extname(params.fileName).replace(/^\./, '').toLowerCase();
@@ -176,22 +176,33 @@ export const buildKnowledgeDocumentChunks = async (
       throw new Error('文件内容为空或暂无法提取文本');
     }
 
-    const chunks = splitTextToChunks({
-      text: processedText,
-      separator: params.separator,
-      maxTokens: params.maxTokens,
-      chunkOverlap: params.chunkOverlap,
-      segmentMaxLength: params.segmentMaxLength,
-      overlapLength: params.overlapLength,
-    });
-
     return {
       mimeType,
       buffer: parsedPayload.buffer,
       processedText,
-      chunks,
     };
   } finally {
     await rm(tempImportPath, { force: true });
   }
+}
+
+export const buildKnowledgeDocumentChunks = async (
+  params: KnowledgeDocumentChunkOptions,
+): Promise<BuiltKnowledgeDocumentChunks> => {
+  const { mimeType, buffer, processedText } = await extractPreprocessedKnowledgeDocument(params);
+  const chunks = splitTextToChunks({
+    text: processedText,
+    separator: params.separator,
+    maxTokens: params.maxTokens,
+    chunkOverlap: params.chunkOverlap,
+    segmentMaxLength: params.segmentMaxLength,
+    overlapLength: params.overlapLength,
+  });
+
+  return {
+    mimeType,
+    buffer,
+    processedText,
+    chunks,
+  };
 };

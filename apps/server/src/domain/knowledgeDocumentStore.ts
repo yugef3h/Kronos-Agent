@@ -152,7 +152,7 @@ const buildPreviewText = (text: string) => {
   return text.length > 220 ? `${text.slice(0, 220).trim()}...` : text;
 };
 
-const persistImportedDocument = async (params: {
+export const persistImportedDocument = async (params: {
   dataset: KnowledgeDatasetRecord;
   fileName: string;
   mimeType: string;
