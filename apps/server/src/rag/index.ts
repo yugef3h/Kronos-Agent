@@ -1,0 +1,1 @@
+export * from './knowledgeFacade.js';

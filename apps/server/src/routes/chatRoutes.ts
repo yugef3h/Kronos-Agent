@@ -6,17 +6,17 @@ import type { AttachmentMeta } from '../domain/sessionStore.js';
 import {
   createKnowledgeDataset,
   deleteKnowledgeDataset,
-  listKnowledgeDatasets,
-  updateKnowledgeDataset,
-} from '../domain/knowledgeDatasetStore.js';
-import {
   deleteKnowledgeDatasetFiles,
   getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
+  listKnowledgeDatasets,
   listKnowledgeDocuments,
   previewKnowledgeDocuments,
+  runKnowledgeIndexingEstimate,
+  runKnowledgeRetrievalQuery,
+  updateKnowledgeDataset,
   updateKnowledgeDocumentBlockKeywords,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../rag/knowledgeFacade.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
@@ -27,8 +27,6 @@ import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
-import { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
-import { runKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
 import {
   normalizeWorkflowAppId,

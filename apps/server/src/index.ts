@@ -4,6 +4,7 @@ import { allowedOrigins, env } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
+import { getRagEngineMode } from './rag/engine.js';
 import { chatRoutes } from './routes/chatRoutes.js';
 import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
 
@@ -68,4 +69,5 @@ const PORT = env.PORT;
 
 app.listen(PORT, () => {
   console.warn(`kronos server running on http://localhost:${PORT}`);
+  console.warn(`RAG engine mode: ${getRagEngineMode()}`);
 });

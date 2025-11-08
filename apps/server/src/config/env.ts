@@ -20,6 +20,8 @@ const envSchema = z.object({
   ATTENTION_PY_ENABLED: z.coerce.boolean().default(false),
   ATTENTION_PY_BASE_URL: z.string().url().default('http://127.0.0.1:8008'),
   ATTENTION_PY_TIMEOUT_MS: z.coerce.number().int().positive().default(1200),
+  /** `self`（默认）| `langchain` — 大小写不敏感 */
+  RAG_ENGINE_MODE: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
