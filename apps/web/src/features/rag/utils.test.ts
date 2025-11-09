@@ -1,4 +1,4 @@
-import { getDatasetExtensionBadge } from './utils.js';
+import { getDatasetExtensionBadge } from './utils';
 
 describe('rag utils', () => {
   it('returns DOC when dataset has no imported document extension', () => {

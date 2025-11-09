@@ -3,10 +3,10 @@ import {
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '../workflow/base/dialog';
-import type { KnowledgeDatasetDetail } from '../workflow/features/knowledge-retrieval-panel/types';
-import type { DatasetDocumentDetail, FlattenedDatasetDocumentBlock } from './types';
-import { formatTimestamp } from './utils';
+} from '../../../pages/workflow/base/dialog';
+import type { KnowledgeDatasetDetail } from '../../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { DatasetDocumentDetail, FlattenedDatasetDocumentBlock } from '../types';
+import { formatTimestamp } from '../utils';
 
 type RagDatasetDetailDialogProps = {
   open: boolean;

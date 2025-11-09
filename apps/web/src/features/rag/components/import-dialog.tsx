@@ -4,10 +4,10 @@ import {
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '../workflow/base/dialog';
-import type { KnowledgeDatasetDetail } from '../workflow/features/knowledge-retrieval-panel/types';
-import type { ImportFormState, LocalImportPreview, PendingImportConfig } from './types';
-import { formatFileSize } from './utils';
+} from '../../../pages/workflow/base/dialog';
+import type { KnowledgeDatasetDetail } from '../../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { ImportFormState, LocalImportPreview, PendingImportConfig } from '../types';
+import { formatFileSize } from '../utils';
 
 type RagImportDialogProps = {
   open: boolean;

@@ -1,16 +1,16 @@
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   requestDatasetIndexingEstimate,
   requestImportKnowledgeDocument,
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
   requestUpdateKnowledgeDocumentBlockKeywords,
-} from '../lib/api';
+} from './api';
 import { useSearchParams } from 'react-router-dom';
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
-} from './workflow/features/knowledge-retrieval-panel/dataset-store';
+} from '../../pages/workflow/features/knowledge-retrieval-panel/dataset-store';
 import type {
   DatasetDocumentBlocksMap,
   DatasetDocumentDetail,
@@ -18,7 +18,7 @@ import type {
   ImportFormState,
   LocalImportPreview,
   PendingImportConfig,
-} from 'pages/rag/types';
+} from './types';
 import {
   buildDocumentMetadata,
   createImportFormState,
@@ -32,10 +32,18 @@ import {
   MIN_SEGMENT_MAX_LENGTH,
   PREVIEW_CHUNK_LIMIT,
   readFileAsDataUrl,
-} from './rag/utils';
-import { RagDatasetDetailDialog } from './rag/dataset-detail-dialog';
-import { RagImportDialog } from './rag/import-dialog';
-import { appendTagItems } from './rag/tag-input-utils';
+} from './utils';
+import { appendTagItems } from './tag-input-utils';
+
+const RagImportDialog = lazy(async () => {
+  const module = await import('./components/import-dialog');
+  return { default: module.RagImportDialog };
+});
+
+const RagDatasetDetailDialog = lazy(async () => {
+  const module = await import('./components/dataset-detail-dialog');
+  return { default: module.RagDatasetDetailDialog };
+});
 
 export const RagPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -962,62 +970,70 @@ export const RagPage = () => {
         </div>
       </section>
 
-      <RagImportDialog
-        open={isImportDialogOpen}
-        pendingImport={pendingImport}
-        pendingDataset={pendingDataset}
-        importForm={importForm}
-        setImportForm={setImportForm}
-        importFormError={importFormError}
-        isImporting={isImporting}
-        isMutating={isMutating}
-        localPreview={localPreview}
-        isPreviewLoading={isPreviewLoading}
-        previewError={previewError}
-        hasRequestedPreview={hasRequestedPreview}
-        onOpenChange={handleImportDialogOpenChange}
-        onClose={closeImportDialog}
-        onConfirm={() => {
-          void handleImportFiles();
-        }}
-        onRequestPreview={() => {
-          setHasRequestedPreview(true);
-          setLocalPreview(null);
-          setPreviewError('');
-          setPreviewRefreshTick((current) => current + 1);
-        }}
-        onReset={() => {
-          setImportForm({
-            ...createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description),
-            metadataFields: createMetadataDrafts(pendingDataset?.doc_metadata ?? []),
-          });
-          setHasRequestedPreview(false);
-          setLocalPreview(null);
-          setPreviewError('');
-          setPreviewRefreshTick((current) => current + 1);
-        }}
-      />
+      {isImportDialogOpen ? (
+        <Suspense fallback={null}>
+          <RagImportDialog
+            open={isImportDialogOpen}
+            pendingImport={pendingImport}
+            pendingDataset={pendingDataset}
+            importForm={importForm}
+            setImportForm={setImportForm}
+            importFormError={importFormError}
+            isImporting={isImporting}
+            isMutating={isMutating}
+            localPreview={localPreview}
+            isPreviewLoading={isPreviewLoading}
+            previewError={previewError}
+            hasRequestedPreview={hasRequestedPreview}
+            onOpenChange={handleImportDialogOpenChange}
+            onClose={closeImportDialog}
+            onConfirm={() => {
+              void handleImportFiles();
+            }}
+            onRequestPreview={() => {
+              setHasRequestedPreview(true);
+              setLocalPreview(null);
+              setPreviewError('');
+              setPreviewRefreshTick((current) => current + 1);
+            }}
+            onReset={() => {
+              setImportForm({
+                ...createImportFormState(pendingImport?.files || [], pendingDataset?.name, pendingDataset?.description),
+                metadataFields: createMetadataDrafts(pendingDataset?.doc_metadata ?? []),
+              });
+              setHasRequestedPreview(false);
+              setLocalPreview(null);
+              setPreviewError('');
+              setPreviewRefreshTick((current) => current + 1);
+            }}
+          />
+        </Suspense>
+      ) : null}
 
-      <RagDatasetDetailDialog
-        open={isDatasetDetailDialogOpen}
-        selectedDataset={selectedDataset}
-        datasetDocuments={datasetDocuments}
-        documentsError={documentsError}
-        documentBlocksError={documentBlocksError}
-        isDocumentsLoading={isDocumentsLoading}
-        isDocumentBlocksLoading={isDocumentBlocksLoading}
-        flattenedDocumentBlocks={flattenedDocumentBlocks}
-        savingBlockKeywordId={savingBlockKeywordId}
-        blockKeywordDrafts={blockKeywordDrafts}
-        onOpenChange={handleDetailDialogOpenChange}
-        onKeywordDraftChange={handleBlockKeywordDraftChange}
-        onKeywordCommit={(block) => {
-          void handleBlockKeywordCommit(block);
-        }}
-        onKeywordRemove={(block, keyword) => {
-          void handleBlockKeywordRemove(block, keyword);
-        }}
-      />
+      {isDatasetDetailDialogOpen ? (
+        <Suspense fallback={null}>
+          <RagDatasetDetailDialog
+            open={isDatasetDetailDialogOpen}
+            selectedDataset={selectedDataset}
+            datasetDocuments={datasetDocuments}
+            documentsError={documentsError}
+            documentBlocksError={documentBlocksError}
+            isDocumentsLoading={isDocumentsLoading}
+            isDocumentBlocksLoading={isDocumentBlocksLoading}
+            flattenedDocumentBlocks={flattenedDocumentBlocks}
+            savingBlockKeywordId={savingBlockKeywordId}
+            blockKeywordDrafts={blockKeywordDrafts}
+            onOpenChange={handleDetailDialogOpenChange}
+            onKeywordDraftChange={handleBlockKeywordDraftChange}
+            onKeywordCommit={(block) => {
+              void handleBlockKeywordCommit(block);
+            }}
+            onKeywordRemove={(block, keyword) => {
+              void handleBlockKeywordRemove(block, keyword);
+            }}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 };
