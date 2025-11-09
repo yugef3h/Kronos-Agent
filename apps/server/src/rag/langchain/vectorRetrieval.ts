@@ -39,7 +39,14 @@ const cosineSimilarity = (left: number[], right: number[]): number => {
 
 const vectorSimilarityToUnit = (cos: number) => clampUnitScore((Math.min(Math.max(cos, -1), 1) + 1) / 2);
 
-/** LangChain Embeddings + 进程内向量打分；混合检索仍复用自研 keyword/full_text 权重，语义通道为余弦。 */
+/**
+ * Step4 — LangChain 检索分支（向量语义 + 自研混合/rerank）
+ *
+ * 1) 与自研相同的 dataset 加载、元数据过滤、TopK/阈值/rerank 分支。
+ * 2) 对「缺 embedding」的 chunk：`embedDocuments` 批量算向量，`mergeEmbeddingsIntoChunkFile` 写回 jsonl，下次可走磁盘向量。
+ * 3) 语义通道：query 与各 chunk 向量余弦 → 压到 0–1，作为 `scoreBySearchMethod` 的 `semanticOverride`；
+ *    keyword / full_text 及 hybrid 权重仍走自研 `scoreBySearchMethod`，保证与 HTTP 契约一致。
+ */
 export async function runLangchainVectorRetrievalQuery(
   query: KnowledgeRetrievalQuery,
 ): Promise<KnowledgeRetrievalQueryResult> {
@@ -73,6 +80,7 @@ export async function runLangchainVectorRetrievalQuery(
   const filteredChunkCount = candidates.length;
   const embeddings = createRagEmbeddings();
 
+  /** 仅元数据通过的 chunk；缺向量的将进入 embed + 回写 jsonl。 */
   const needEmbed: KnowledgeDatasetChunkRecord[] = [];
   for (const record of candidates) {
     const emb = record.chunk.embedding;
@@ -83,6 +91,7 @@ export async function runLangchainVectorRetrievalQuery(
 
   const pathToNewVectors: Record<string, Record<string, number[]>> = {};
 
+  /** 批量向量化并持久化到各 document 的 chunks.jsonl（按 chunkPath 分组）。 */
   if (needEmbed.length) {
     const texts = needEmbed.map((record) => record.chunk.text);
     const batchSize = 16;
@@ -112,6 +121,7 @@ export async function runLangchainVectorRetrievalQuery(
 
   const queryVector = await embeddings.embedQuery(query.query);
 
+  /** 打分：余弦→语义 override，再与 keyword/full_text 按数据集 search_method 融合。 */
   const ranked: RankedChunk[] = [];
 
   for (const item of chunkGroups) {

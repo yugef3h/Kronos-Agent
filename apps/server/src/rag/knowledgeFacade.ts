@@ -1,6 +1,9 @@
 /**
  * 知识库 HTTP 使用的唯一入口。
- * `RAG_ENGINE_MODE=langchain`：预览/入库切分走 LangChain；入库后写入 chunk 向量；检索走 Embeddings + 余弦（混合权重/阈值/rerank 与自研对齐）。
+ *
+ * Step3：`langchain` 时预览/入库切分用 `RecursiveCharacterTextSplitter`（见 `langchain/buildChunksWithLangChain`）。
+ * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`（Embeddings + 余弦语义 + 自研混合权重/rerank）。
+ * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore` 自研实现。
  */
 import { getKnowledgeDatasetById } from '../domain/knowledgeDatasetStore.js';
 import {
@@ -41,6 +44,7 @@ export type {
 } from '../services/knowledgeRetrievalService.js';
 
 export async function runKnowledgeRetrievalQuery(query: KnowledgeRetrievalQuery) {
+  /** Step4：门面按 `RAG_ENGINE_MODE` 切换自研打分检索 vs 向量检索（契约相同）。 */
   if (getRagEngineMode() !== 'langchain') {
     return selfHostedRunKnowledgeRetrievalQuery(query);
   }
@@ -104,6 +108,10 @@ export async function importKnowledgeDocument(params: {
     metadata: { ...(params.metadata ?? {}) },
   });
 
+  /**
+   * Step4：入库成功后把各 chunk 文本编成向量，合并进 `chunks.jsonl`（`StoredChunk.embedding`）。
+   * 失败不阻断入库；首次检索会在 `vectorRetrieval` 内补 embed 并尝试再次落盘。
+   */
   try {
     const embeddings = createRagEmbeddings();
     const texts = result.chunks.map((chunk) => chunk.text);

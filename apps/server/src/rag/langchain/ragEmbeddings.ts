@@ -1,13 +1,21 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { env } from '../../config/env.js';
 
+/**
+ * Step4 — 知识库检索/入库共用的 LangChain `OpenAIEmbeddings`。
+ * 使用 `process.env` 而非 `config/env.ts`，避免 Jest 编译 `import.meta` 时拉取整条配置图；与 `tokenEmbeddingService` 同源变量名。
+ */
 export function createRagEmbeddings(): OpenAIEmbeddings {
-  const model = env.DOUBAO_EMBEDDING_MODEL?.trim() || env.DOUBAO_MODEL;
+  const model = process.env.DOUBAO_EMBEDDING_MODEL?.trim() || process.env.DOUBAO_MODEL || '';
+  const apiKey = process.env.DOUBAO_API_KEY;
+  const baseURL = process.env.DOUBAO_BASE_URL;
+  if (!apiKey?.trim() || !baseURL?.trim() || !model.trim()) {
+    throw new Error('RAG embeddings require DOUBAO_API_KEY, DOUBAO_BASE_URL, and DOUBAO_MODEL or DOUBAO_EMBEDDING_MODEL');
+  }
   return new OpenAIEmbeddings({
     model,
-    apiKey: env.DOUBAO_API_KEY,
+    apiKey,
     configuration: {
-      baseURL: env.DOUBAO_BASE_URL,
+      baseURL,
     },
   });
 }

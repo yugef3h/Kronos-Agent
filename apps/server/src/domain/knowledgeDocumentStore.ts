@@ -62,7 +62,9 @@ export type StoredChunk = {
   source: {
     title: string;
   };
-  /** LangChain 向量检索持久化；自研路径不写此字段 */
+  /**
+   * Step4：LangChain 分支写入的稠密向量（与 `chunks.jsonl` 同行持久化）；自研检索不使用。
+   */
   embedding?: number[];
 };
 
@@ -153,6 +155,7 @@ const writeStoredChunks = async (chunkPath: string, chunks: StoredChunk[]) => {
   );
 };
 
+/** Step4：按 chunk id 合并向量到既有 `chunks.jsonl` 行，供 LangChain 检索读盘或增量更新。 */
 export const mergeEmbeddingsIntoChunkFile = async (
   chunkPath: string,
   embeddingsByChunkId: Record<string, number[]>,

@@ -185,6 +185,7 @@ export const scoreBySearchMethod = (params: {
 }) => {
   const keyword = clampUnitScore(computeTokenOverlapScore(params.queryTerms, params.text));
   const fullText = clampUnitScore(computeFullTextScore(params.query, params.text, params.queryTerms));
+  /** Step4：`semanticOverride` 由 LangChain 向量余弦映射，否则沿用自研 bigram+词重叠语义分。 */
   const semantic = params.semanticOverride != null && Number.isFinite(params.semanticOverride)
     ? clampUnitScore(params.semanticOverride)
     : clampUnitScore(computeSemanticScore(params.query, params.text, params.queryTerms));
