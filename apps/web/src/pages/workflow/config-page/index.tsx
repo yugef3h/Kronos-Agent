@@ -275,28 +275,69 @@ export const WorkflowConfigPage = () => {
           role="presentation"
         >
           <div
-            className="max-h-[min(480px,80vh)] w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className="flex max-h-[min(480px,80vh)] w-[420px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="dataset-picker-title"
           >
-            <div className="border-b border-slate-100 px-4 py-3">
-              <h3 id="dataset-picker-title" className="text-sm font-semibold text-slate-900">
-                添加知识库
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">可多选；Top K 与 Rerank 请在「召回设置」中配置。</p>
+            <div className="shrink-0 border-b border-slate-100 px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 id="dataset-picker-title" className="text-[15px] font-semibold text-slate-900">
+                    关联知识库
+                  </h3>
+                  <p className="mt-1 text-xs text-slate-500">可多选；Top K 与 Rerank 请在「召回设置」中配置。</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void refreshDatasets()}
+                    disabled={isDatasetsLoading}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="刷新知识库列表"
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+                      <path
+                        d="M20 12a8 8 0 1 1-2.343-5.657"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M20 4v6h-6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <Link
+                    to="/rag"
+                    className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                  >
+                    新建/管理
+                  </Link>
+                </div>
+              </div>
             </div>
-            <div className="max-h-64 overflow-y-auto p-2">
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
               {isDatasetsLoading ? (
                 <p className="px-2 py-4 text-center text-sm text-slate-500">加载中…</p>
               ) : datasets.length === 0 ? (
-                <p className="px-2 py-4 text-center text-sm text-slate-500">
-                  暂无知识库，请先到
-                  <Link to="/rag" className="mx-1 font-medium text-sky-700">
-                    知识库
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-center">
+                  <p className="text-[12px] font-semibold text-slate-700">还没有可关联的知识库</p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-500">
+                    去知识库页面新建或导入后，点击右上角刷新即可列出已有项。
+                  </p>
+                  <Link
+                    to="/rag"
+                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg border border-blue-300 bg-blue-600 px-3 text-[12px] font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    去知识库页创建
                   </Link>
-                  创建。
-                </p>
+                </div>
               ) : (
                 <ul className="space-y-1">
                   {datasets.map((d) => (
@@ -321,21 +362,33 @@ export const WorkflowConfigPage = () => {
               )}
             </div>
             {datasetsError ? <p className="px-4 pb-2 text-xs text-rose-600">{datasetsError}</p> : null}
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-4 py-3">
-              <button
-                type="button"
-                onClick={() => setIsDatasetPickerOpen(false)}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+              <p
+                className={`text-[11px] font-semibold ${
+                  pendingDatasetIds.length ? 'text-slate-700' : 'text-amber-700'
+                }`}
               >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={confirmPicker}
-                className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700"
-              >
-                确定
-              </button>
+                {pendingDatasetIds.length
+                  ? `${pendingDatasetIds.length} 个知识库被选中`
+                  : '至少选择 1 个知识库'}
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsDatasetPickerOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-2 text-[12px] font-semibold text-slate-600 transition hover:border-slate-300"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmPicker}
+                  disabled={!pendingDatasetIds.length}
+                  className="rounded-xl border border-blue-300 bg-blue-600 px-5 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-400"
+                >
+                  添加
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -521,7 +574,7 @@ export const WorkflowConfigPage = () => {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-medium text-slate-800">上下文（知识库）</span>
+                <span className="text-sm font-medium text-slate-800">知识库</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -539,9 +592,9 @@ export const WorkflowConfigPage = () => {
                   <button
                     type="button"
                     onClick={openPicker}
-                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                    className="inline-flex h-7 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
                   >
-                    ＋ 添加
+                    添加
                   </button>
                 </div>
               </div>
