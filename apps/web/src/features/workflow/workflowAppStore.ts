@@ -105,13 +105,33 @@ export type WorkflowGraphEdge = {
   };
 };
 
+/**
+ * 与 Dify 导出 YAML `app.mode`（`AppMode`）对齐的常见取值。
+ * @see https://github.com/langgenius/dify/blob/main/api/models/model.py AppMode
+ */
+export type WorkflowDslAppMode = 'workflow' | 'chat' | 'advanced-chat';
+
+/** 创建弹窗可选：Chatbot ↔ `chat`，Chatflow ↔ `advanced-chat`（勿用 `chatflow` 字符串，非 Dify 合法值）。 */
+export type WorkflowAppCreationMode = 'chat' | 'advanced-chat';
+
+const normalizeDslAppMode = (raw: unknown): WorkflowDslAppMode => {
+  if (raw === 'workflow' || raw === 'chat' || raw === 'advanced-chat') {
+    return raw;
+  }
+  // 历史本地草稿曾写入非法字面量
+  if (raw === 'chatflow') {
+    return 'advanced-chat';
+  }
+  return 'workflow';
+};
+
 export type WorkflowDSL = {
   app: {
     description: string;
     icon: string;
     icon_background: string;
     icon_type: 'emoji' | 'image';
-    mode: 'workflow';
+    mode: WorkflowDslAppMode;
     name: string;
     use_icon_as_answer_icon: boolean;
   };
@@ -334,7 +354,18 @@ const readAppRecords = (): WorkflowAppRecord[] => {
     const base: WorkflowAppRecord = { ...app };
     delete base.draftPreviewDataUrl;
     const fromKey = readWorkflowDraftPreviewDataUrl(app.id);
-    return fromKey ? { ...base, draftPreviewDataUrl: fromKey } : base;
+    const withPreview = fromKey ? { ...base, draftPreviewDataUrl: fromKey } : base;
+    const mode = normalizeDslAppMode(withPreview.dsl?.app?.mode);
+    if (mode === withPreview.dsl.app.mode) {
+      return withPreview;
+    }
+    return {
+      ...withPreview,
+      dsl: {
+        ...withPreview.dsl,
+        app: { ...withPreview.dsl.app, mode },
+      },
+    };
   });
 
   if (shouldCompactMainJson) {
@@ -362,14 +393,14 @@ const writeAppRecords = (apps: WorkflowAppRecord[]): void => {
   }
 };
 
-const createEmptyDsl = (name: string): WorkflowDSL => {
+const createEmptyDsl = (name: string, mode: WorkflowDslAppMode = 'workflow'): WorkflowDSL => {
   return {
     app: {
       description: '',
       icon: '🤖',
       icon_background: '#FFEAD5',
       icon_type: 'emoji',
-      mode: 'workflow',
+      mode,
       name,
       use_icon_as_answer_icon: false,
     },
@@ -474,7 +505,11 @@ export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowA
   return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp
 }
 
-export const createWorkflowApp = (payload: { name: string; description?: string }): WorkflowAppRecord => {
+export const createWorkflowApp = (payload: {
+  name: string;
+  description?: string;
+  appMode?: WorkflowAppCreationMode;
+}): WorkflowAppRecord => {
   const name = payload.name.trim();
   if (!name) {
     throw new Error('应用名称不能为空');
@@ -487,7 +522,7 @@ export const createWorkflowApp = (payload: { name: string; description?: string 
     description: payload.description?.trim() ?? '',
     createdAt: now,
     updatedAt: now,
-    dsl: createEmptyDsl(name),
+    dsl: createEmptyDsl(name, payload.appMode ?? 'workflow'),
   };
 
   const next = [newRecord, ...readAppRecords()];

@@ -1,12 +1,43 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  type WorkflowAppCreationMode,
   WORKFLOW_APPS_STORAGE_KEY,
   createWorkflowApp,
   getWorkflowDraftThumbnailSrc,
   listWorkflowApps,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
 } from '../../../features/workflow/workflowAppStore';
+
+const ChatbotTypeIcon = () => (
+  <svg viewBox="0 0 32 32" className="h-6 w-6" aria-hidden>
+    <circle cx="9" cy="16" r="3.5" fill="currentColor" />
+    <circle cx="23" cy="9" r="3.5" fill="currentColor" />
+    <circle cx="23" cy="23" r="3.5" fill="currentColor" />
+    <path
+      d="M12.2 14.3L18.5 11M12.2 17.7L18.5 21M20.5 12.2v7.6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const ChatflowTypeIcon = () => (
+  <svg viewBox="0 0 32 32" className="h-6 w-6" aria-hidden>
+    <path
+      d="M7 10.5C7 8.57 8.57 7 10.5 7h15c1.93 0 3.5 1.57 3.5 3.5v6c0 1.93-1.57 3.5-3.5 3.5h-9.2L12 24v-4H10.5A3.5 3.5 0 0 1 7 19.5v-9Z"
+      fill="#ffffff"
+    />
+    <path
+      d="M11.5 12.5h11M11.5 16h7.5M11.5 19.5h5"
+      stroke="#0369a1"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -30,6 +61,7 @@ export const WorkflowPage = () => {
   const [description, setDescription] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appType, setAppType] = useState<WorkflowAppCreationMode>('advanced-chat');
 
   useEffect(() => {
     if (searchParams.get('create') === 'blank') {
@@ -76,6 +108,7 @@ export const WorkflowPage = () => {
     setDescription('');
     setErrorMessage('');
     setIsSubmitting(false);
+    setAppType('advanced-chat');
 
     const next = new URLSearchParams(searchParams);
     next.delete('create');
@@ -102,6 +135,7 @@ export const WorkflowPage = () => {
       const app = createWorkflowApp({
         name: normalizedName,
         description,
+        appMode: appType,
       });
       setApps(listWorkflowApps());
       navigate(`/workflow/draft?appId=${encodeURIComponent(app.id)}`);
@@ -230,8 +264,54 @@ export const WorkflowPage = () => {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="mt-4">
+              <fieldset>
+                <legend className="text-sm font-medium text-slate-700">选择应用类型</legend>
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setAppType('chat')}
+                    aria-pressed={appType === 'chat'}
+                    className={`flex w-full gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 ${
+                      appType === 'chat'
+                        ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300/70'
+                        : 'border-slate-200 bg-white/95 hover:border-amber-200'
+                    }`}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-sm">
+                      <ChatbotTypeIcon />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-slate-900">Chatbot</span>
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-600">
+                        面向 RAG 等检索、上下文注入与回复生成基于 LLM 的对话机器人
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAppType('advanced-chat')}
+                    aria-pressed={appType === 'advanced-chat'}
+                    className={`flex w-full gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500 ${
+                      appType === 'advanced-chat'
+                        ? 'border-amber-400 bg-amber-50/70 ring-2 ring-amber-300/70'
+                        : 'border-slate-200 bg-white/95 hover:border-amber-200'
+                    }`}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-cyan-500 text-white shadow-sm">
+                      <ChatflowTypeIcon />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-slate-900">Chatflow</span>
+                      <span className="mt-1 block text-xs leading-relaxed text-slate-600">
+                        支持记忆的复杂多轮对话工作流
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </fieldset>
+
               <label
-                className="block text-sm font-medium text-slate-700"
+                className="mt-4 block text-sm font-medium text-slate-700"
                 htmlFor="workflow-app-name"
               >
                 应用名称
