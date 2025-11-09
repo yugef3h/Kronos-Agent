@@ -114,6 +114,19 @@ export type WorkflowDslAppMode = 'workflow' | 'chat' | 'advanced-chat';
 /** 创建弹窗可选：Chatbot ↔ `chat`，Chatflow ↔ `advanced-chat`（勿用 `chatflow` 字符串，非 Dify 合法值）。 */
 export type WorkflowAppCreationMode = 'chat' | 'advanced-chat';
 
+/** Chatbot（`app.mode: chat`）编排侧持久化：提示词、上下文知识库等，与画布 DSL 并列存于应用记录。 */
+export type WorkflowChatbotOrchestration = {
+  systemPrompt: string;
+  datasetIds: string[];
+  metadataFilterMode: 'disabled' | 'manual';
+};
+
+export const createDefaultChatbotOrchestration = (): WorkflowChatbotOrchestration => ({
+  systemPrompt: '',
+  datasetIds: [],
+  metadataFilterMode: 'disabled',
+});
+
 const normalizeDslAppMode = (raw: unknown): WorkflowDslAppMode => {
   if (raw === 'workflow' || raw === 'chat' || raw === 'advanced-chat') {
     return raw;
@@ -206,6 +219,8 @@ export type WorkflowAppRecord = {
   /** 缩略图已同步到后端 `apps/server/data/workflow-draft-previews`，列表可用 GET URL */
   draftPreviewBackendSynced?: boolean;
   dsl: WorkflowDSL;
+  /** 仅 `dsl.app.mode === 'chat'` 时使用 */
+  chatbotOrchestration?: WorkflowChatbotOrchestration;
 };
 
 export const WORKFLOW_APPS_STORAGE_KEY = 'kronos_workflow_apps_v1';
@@ -483,6 +498,40 @@ export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined =>
   return app;
 };
 
+export const getWorkflowAppEditorPath = (app: WorkflowAppRecord): string => {
+  const target =
+    app.dsl.app.mode === 'chat'
+      ? `/workflow/config?appId=${encodeURIComponent(app.id)}`
+      : `/workflow/draft?appId=${encodeURIComponent(app.id)}`;
+  return target;
+};
+
+export const updateWorkflowAppChatbotOrchestration = (
+  appId: string,
+  recipe: (previous: WorkflowChatbotOrchestration) => WorkflowChatbotOrchestration,
+): WorkflowAppRecord | undefined => {
+  const apps = readAppRecords();
+  const appIndex = apps.findIndex((app) => app.id === appId);
+  if (appIndex < 0) {
+    return undefined;
+  }
+
+  const prev = apps[appIndex];
+  const base = prev.chatbotOrchestration ?? createDefaultChatbotOrchestration();
+  const updatedApp: WorkflowAppRecord = {
+    ...prev,
+    updatedAt: Date.now(),
+    chatbotOrchestration: recipe(base),
+  };
+  delete updatedApp.draftPreviewDataUrl;
+
+  apps[appIndex] = updatedApp;
+  writeAppRecords(apps);
+
+  const previewUrl = readWorkflowDraftPreviewDataUrl(appId);
+  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp;
+};
+
 export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowAppRecord | undefined => {
   const apps = readAppRecords()
   const appIndex = apps.findIndex(app => app.id === appId)
@@ -516,13 +565,15 @@ export const createWorkflowApp = (payload: {
   }
 
   const now = Date.now();
+  const dslMode: WorkflowDslAppMode = payload.appMode ?? 'workflow';
   const newRecord: WorkflowAppRecord = {
     id: generateWorkflowAppId(),
     name,
     description: payload.description?.trim() ?? '',
     createdAt: now,
     updatedAt: now,
-    dsl: createEmptyDsl(name, payload.appMode ?? 'workflow'),
+    dsl: createEmptyDsl(name, dslMode),
+    ...(dslMode === 'chat' ? { chatbotOrchestration: createDefaultChatbotOrchestration() } : {}),
   };
 
   const next = [newRecord, ...readAppRecords()];

@@ -4,6 +4,7 @@ import {
   type WorkflowAppCreationMode,
   WORKFLOW_APPS_STORAGE_KEY,
   createWorkflowApp,
+  getWorkflowAppEditorPath,
   getWorkflowDraftThumbnailSrc,
   listWorkflowApps,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
@@ -138,7 +139,7 @@ export const WorkflowPage = () => {
         appMode: appType,
       });
       setApps(listWorkflowApps());
-      navigate(`/workflow/draft?appId=${encodeURIComponent(app.id)}`);
+      navigate(getWorkflowAppEditorPath(app));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '创建失败，请重试。');
       setIsSubmitting(false);
@@ -191,7 +192,7 @@ export const WorkflowPage = () => {
               return (
               <Link
                 key={app.id}
-                to={`/workflow/draft?appId=${encodeURIComponent(app.id)}`}
+                to={getWorkflowAppEditorPath(app)}
                 className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">

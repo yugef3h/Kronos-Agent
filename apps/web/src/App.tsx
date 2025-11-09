@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from './components/AppShell';
 import { HomePage } from './pages/HomePage';
+import { WorkflowConfigPage } from './pages/workflow/config-page';
 import { WorkflowDraftPage } from './pages/workflow/draft-page';
 import { WorkflowPage } from './pages/workflow/list-page';
 
@@ -18,6 +19,7 @@ const App = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/workflow" element={<WorkflowPage />} />
         <Route path="/workflow/draft" element={<WorkflowDraftPage />} />
+        <Route path="/workflow/config" element={<WorkflowConfigPage />} />
         <Route
           path="/rag"
           element={(
