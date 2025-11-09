@@ -115,16 +115,26 @@ export type WorkflowDslAppMode = 'workflow' | 'chat' | 'advanced-chat';
 export type WorkflowAppCreationMode = 'chat' | 'advanced-chat';
 
 /** Chatbot（`app.mode: chat`）编排侧持久化：提示词、上下文知识库等，与画布 DSL 并列存于应用记录。 */
+export type WorkflowChatbotMetadataCondition = {
+  id?: string;
+  field: string;
+  operator: 'contains' | 'equals' | 'not_equals';
+  value: string;
+};
+
 export type WorkflowChatbotOrchestration = {
   systemPrompt: string;
   datasetIds: string[];
   metadataFilterMode: 'disabled' | 'manual';
+  /** `metadataFilterMode === 'manual'` 时参与 `knowledge-retrieval/query` */
+  metadataFilterConditions?: WorkflowChatbotMetadataCondition[];
 };
 
 export const createDefaultChatbotOrchestration = (): WorkflowChatbotOrchestration => ({
   systemPrompt: '',
   datasetIds: [],
   metadataFilterMode: 'disabled',
+  metadataFilterConditions: [],
 });
 
 const normalizeDslAppMode = (raw: unknown): WorkflowDslAppMode => {

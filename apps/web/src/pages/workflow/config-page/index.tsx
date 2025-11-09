@@ -1,43 +1,23 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { useDebounceFn } from 'ahooks';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLatest } from 'ahooks';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
-  createDefaultChatbotOrchestration,
   getWorkflowAppById,
   updateWorkflowAppChatbotOrchestration,
-  type WorkflowChatbotOrchestration,
+  type WorkflowChatbotMetadataCondition,
 } from '../../../features/workflow/workflowAppStore';
-import { apiUrl, requestKnowledgeRetrievalQuery, type KnowledgeRetrievalQueryInput } from '../../../lib/api';
+import { apiUrl, requestKnowledgeRetrievalQuery } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
-import { createDefaultKnowledgeRetrievalNodeConfig } from '../features/knowledge-retrieval-panel/schema';
+import { buildChatbotRetrievalInput } from './chatbotRetrievalInput';
+import { useWorkflowChatbotOrch } from './useWorkflowChatbotOrch';
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
 } from '../features/knowledge-retrieval-panel/dataset-store';
 
 type ChatLine = { id: string; role: 'user' | 'assistant'; content: string };
-
-const buildRetrievalInput = (
-  query: string,
-  datasetIds: string[],
-  metadataMode: 'disabled' | 'manual',
-): KnowledgeRetrievalQueryInput => {
-  const defaults = createDefaultKnowledgeRetrievalNodeConfig();
-  return {
-    query,
-    dataset_ids: datasetIds,
-    retrieval_mode: defaults.retrieval_mode,
-    single_retrieval_config: defaults.single_retrieval_config,
-    multiple_retrieval_config: {
-      ...defaults.multiple_retrieval_config,
-      reranking_enable: true,
-    },
-    metadata_filtering_mode: metadataMode,
-    metadata_filtering_conditions: [],
-  };
-};
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -47,12 +27,15 @@ const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export const WorkflowConfigPage = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId')?.trim() ?? '';
+  const { orch, setOrch, persistOrch, debouncedPersistPrompt } = useWorkflowChatbotOrch(
+    appId.length > 0 ? appId : undefined,
+  );
+  const orchLatest = useLatest(orch);
   const app = appId ? getWorkflowAppById(appId) : undefined;
 
   const { datasets, isLoading: isDatasetsLoading, errorMessage: datasetsError, refresh: refreshDatasets } =
     useKnowledgeDatasets();
 
-  const [orch, setOrch] = useState<WorkflowChatbotOrchestration>(createDefaultChatbotOrchestration);
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false);
   const [pendingDatasetIds, setPendingDatasetIds] = useState<string[]>([]);
 
@@ -62,40 +45,6 @@ export const WorkflowConfigPage = () => {
   const [isSending, setIsSending] = useState(false);
 
   const streamAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (!appId) {
-      return;
-    }
-    const record = getWorkflowAppById(appId);
-    if (!record) {
-      return;
-    }
-    setOrch(record.chatbotOrchestration ?? createDefaultChatbotOrchestration());
-  }, [appId]);
-
-  const { run: debouncedPersistPrompt } = useDebounceFn(
-    (text: string) => {
-      if (!appId) {
-        return;
-      }
-      updateWorkflowAppChatbotOrchestration(appId, (prev) => ({ ...prev, systemPrompt: text }));
-    },
-    { wait: 400 },
-  );
-
-  const persistOrch = useCallback(
-    (recipe: (previous: WorkflowChatbotOrchestration) => WorkflowChatbotOrchestration) => {
-      if (!appId) {
-        return;
-      }
-      const updated = updateWorkflowAppChatbotOrchestration(appId, recipe);
-      if (updated?.chatbotOrchestration) {
-        setOrch(updated.chatbotOrchestration);
-      }
-    },
-    [appId],
-  );
 
   const recallHref = useMemo(() => {
     const first = orch.datasetIds[0];
@@ -123,6 +72,39 @@ export const WorkflowConfigPage = () => {
     persistOrch((prev) => ({ ...prev, datasetIds: prev.datasetIds.filter((x) => x !== id) }));
   };
 
+  const addMetadataCondition = () => {
+    persistOrch((prev) => ({
+      ...prev,
+      metadataFilterMode: 'manual',
+      metadataFilterConditions: [
+        ...(prev.metadataFilterConditions ?? []),
+        { id: newId(), field: '', operator: 'contains', value: '' },
+      ],
+    }));
+  };
+
+  const patchMetadataCondition = (rowId: string | undefined, patch: Partial<WorkflowChatbotMetadataCondition>) => {
+    if (!rowId) {
+      return;
+    }
+    persistOrch((prev) => ({
+      ...prev,
+      metadataFilterConditions: (prev.metadataFilterConditions ?? []).map((row) =>
+        row.id === rowId ? { ...row, ...patch } : row,
+      ),
+    }));
+  };
+
+  const removeMetadataCondition = (rowId: string | undefined) => {
+    if (!rowId) {
+      return;
+    }
+    persistOrch((prev) => ({
+      ...prev,
+      metadataFilterConditions: (prev.metadataFilterConditions ?? []).filter((row) => row.id !== rowId),
+    }));
+  };
+
   const handleSend = async () => {
     const text = debugInput.trim();
     if (!text || isSending || !appId) {
@@ -148,10 +130,11 @@ export const WorkflowConfigPage = () => {
       }
 
       let contextBlock = '';
-      if (orch.datasetIds.length > 0) {
+      const o = orchLatest.current ?? orch;
+      if (o.datasetIds.length > 0) {
         const retrieval = await requestKnowledgeRetrievalQuery({
           authToken: token,
-          input: buildRetrievalInput(text, orch.datasetIds, orch.metadataFilterMode),
+          input: buildChatbotRetrievalInput(text, o),
         });
         contextBlock =
           retrieval.items.length > 0
@@ -160,8 +143,8 @@ export const WorkflowConfigPage = () => {
       }
 
       const augmented = [
-        orch.systemPrompt.trim() || '你是帮助用户的助手。',
-        orch.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '',
+        o.systemPrompt.trim() || '你是帮助用户的助手。',
+        o.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '',
         `## 当前用户问题\n${text}`,
       ]
         .filter(Boolean)
@@ -328,15 +311,15 @@ export const WorkflowConfigPage = () => {
 
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          {/* <Link
+          <Link
             to="/workflow"
             className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
           >
             ← 应用
-          </Link> */}
+          </Link>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900">{app.name}</p>
-            {/* <p className="text-xs text-slate-500">Chatbot 编排 · 自研检索 + 流式对话</p> */}
+            <p className="text-xs text-slate-500">Chatbot 编排 · 自研检索 + 流式对话</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -456,7 +439,10 @@ export const WorkflowConfigPage = () => {
                   value={orch.metadataFilterMode}
                   onChange={(e) => {
                     const mode = e.target.value === 'manual' ? 'manual' : 'disabled';
-                    persistOrch((prev) => ({ ...prev, metadataFilterMode: mode }));
+                    persistOrch((prev) => ({
+                      ...prev,
+                      metadataFilterMode: mode,
+                    }));
                   }}
                   className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800"
                 >
@@ -464,6 +450,58 @@ export const WorkflowConfigPage = () => {
                   <option value="manual">手动</option>
                 </select>
               </div>
+              {orch.metadataFilterMode === 'manual' ? (
+                <div className="mt-3 space-y-2 rounded-lg border border-dashed border-slate-200 bg-white p-3">
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    字段、运算符与取值均非空时才会传给检索接口；与知识库文档元数据字段名对齐。
+                  </p>
+                  {(orch.metadataFilterConditions ?? []).map((row) => (
+                    <div key={row.id} className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        value={row.field}
+                        onChange={(e) => patchMetadataCondition(row.id, { field: e.target.value })}
+                        placeholder="字段名"
+                        className="min-w-[100px] flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                      />
+                      <select
+                        value={row.operator}
+                        onChange={(e) =>
+                          patchMetadataCondition(row.id, {
+                            operator: e.target.value as WorkflowChatbotMetadataCondition['operator'],
+                          })
+                        }
+                        className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                      >
+                        <option value="contains">包含</option>
+                        <option value="equals">等于</option>
+                        <option value="not_equals">不等于</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={row.value}
+                        onChange={(e) => patchMetadataCondition(row.id, { value: e.target.value })}
+                        placeholder="取值"
+                        className="min-w-[80px] flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMetadataCondition(row.id)}
+                        className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addMetadataCondition}
+                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                  >
+                    ＋ 添加条件
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
