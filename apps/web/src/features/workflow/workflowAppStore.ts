@@ -122,19 +122,34 @@ export type WorkflowChatbotMetadataCondition = {
   value: string;
 };
 
+/** Chatbot 编排「召回设置」弹窗持久化，对应 `knowledge-retrieval/query` 的 multiWay 段。 */
+export type WorkflowChatbotRecallSettings = {
+  rerankingEnabled: boolean;
+  topK: number;
+  rerankingModel?: string;
+};
+
 export type WorkflowChatbotOrchestration = {
   systemPrompt: string;
   datasetIds: string[];
   metadataFilterMode: 'disabled' | 'manual';
   /** `metadataFilterMode === 'manual'` 时参与 `knowledge-retrieval/query` */
   metadataFilterConditions?: WorkflowChatbotMetadataCondition[];
+  recallSettings?: WorkflowChatbotRecallSettings;
 };
+
+export const createDefaultChatbotRecallSettings = (): WorkflowChatbotRecallSettings => ({
+  rerankingEnabled: false,
+  topK: 4,
+  rerankingModel: 'default-rerank',
+});
 
 export const createDefaultChatbotOrchestration = (): WorkflowChatbotOrchestration => ({
   systemPrompt: '',
   datasetIds: [],
   metadataFilterMode: 'disabled',
   metadataFilterConditions: [],
+  recallSettings: createDefaultChatbotRecallSettings(),
 });
 
 const normalizeDslAppMode = (raw: unknown): WorkflowDslAppMode => {

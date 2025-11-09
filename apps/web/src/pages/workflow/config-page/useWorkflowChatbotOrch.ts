@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   createDefaultChatbotOrchestration,
+  createDefaultChatbotRecallSettings,
   getWorkflowAppById,
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotOrchestration,
@@ -11,12 +12,18 @@ import {
 
 const normalizeOrch = (raw: WorkflowChatbotOrchestration | undefined): WorkflowChatbotOrchestration => {
   const base = raw ?? createDefaultChatbotOrchestration();
+  const rsDefault = createDefaultChatbotRecallSettings();
   return {
     ...base,
     metadataFilterConditions: (base.metadataFilterConditions ?? []).map((c, index) => ({
       ...c,
       id: c.id && String(c.id).length > 0 ? c.id : `cond-${index}`,
     })),
+    recallSettings: {
+      rerankingEnabled: base.recallSettings?.rerankingEnabled ?? rsDefault.rerankingEnabled,
+      topK: Math.min(100, Math.max(1, Math.round(base.recallSettings?.topK ?? rsDefault.topK))),
+      rerankingModel: base.recallSettings?.rerankingModel ?? rsDefault.rerankingModel,
+    },
   };
 };
 

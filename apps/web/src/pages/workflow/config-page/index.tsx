@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
+  createDefaultChatbotRecallSettings,
   getWorkflowAppById,
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotMetadataCondition,
+  type WorkflowChatbotRecallSettings,
 } from '../../../features/workflow/workflowAppStore';
 import { apiUrl, requestKnowledgeRetrievalQuery } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
@@ -38,6 +40,8 @@ export const WorkflowConfigPage = () => {
 
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false);
   const [pendingDatasetIds, setPendingDatasetIds] = useState<string[]>([]);
+  const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
+  const [recallDraft, setRecallDraft] = useState<WorkflowChatbotRecallSettings>(() => createDefaultChatbotRecallSettings());
 
   const [messages, setMessages] = useState<ChatLine[]>([]);
   const [debugInput, setDebugInput] = useState('');
@@ -50,6 +54,32 @@ export const WorkflowConfigPage = () => {
     const first = orch.datasetIds[0];
     return first ? `/rag?dataset=${encodeURIComponent(first)}` : '/rag';
   }, [orch.datasetIds]);
+
+  const openRecallModal = () => {
+    const rs = orch.recallSettings ?? createDefaultChatbotRecallSettings();
+    setRecallDraft({
+      ...createDefaultChatbotRecallSettings(),
+      ...rs,
+      topK: Math.min(100, Math.max(1, Math.round(rs.topK))),
+    });
+    setIsRecallModalOpen(true);
+  };
+
+  const closeRecallModal = () => {
+    setIsRecallModalOpen(false);
+  };
+
+  const saveRecallSettings = () => {
+    const topK = Math.min(100, Math.max(1, Math.round(recallDraft.topK)));
+    persistOrch((prev) => ({
+      ...prev,
+      recallSettings: {
+        ...recallDraft,
+        topK,
+      },
+    }));
+    setIsRecallModalOpen(false);
+  };
 
   const openPicker = () => {
     setPendingDatasetIds([...orch.datasetIds]);
@@ -252,7 +282,7 @@ export const WorkflowConfigPage = () => {
               <h3 id="dataset-picker-title" className="text-sm font-semibold text-slate-900">
                 添加知识库
               </h3>
-              <p className="mt-1 text-xs text-slate-500">可多选；召回与 Rerank 策略在知识库「召回设置」中配置。</p>
+              <p className="mt-1 text-xs text-slate-500">可多选；Top K 与 Rerank 请在「召回设置」中配置。</p>
             </div>
             <div className="max-h-64 overflow-y-auto p-2">
               {isDatasetsLoading ? (
@@ -303,6 +333,124 @@ export const WorkflowConfigPage = () => {
                 className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700"
               >
                 确定
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isRecallModalOpen ? (
+        <div
+          className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-900/40 px-3"
+          onClick={closeRecallModal}
+          onKeyDown={(e) => e.key === 'Escape' && closeRecallModal()}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="recall-settings-title"
+          >
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3 id="recall-settings-title" className="text-base font-semibold text-slate-900">
+                召回设置
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                默认情况下使用多路召回。从多个知识库中检索知识，然后重新排序。
+              </p>
+            </div>
+            <div className="space-y-5 px-5 py-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rerank 设置</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-slate-800">Rerank 模型</span>
+                    <span
+                      className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-medium text-slate-500"
+                      title="开启后使用服务端配置的重排策略（启发式或模型，见知识库检索实现）。"
+                    >
+                      ?
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={recallDraft.rerankingEnabled}
+                    onClick={() =>
+                      setRecallDraft((d) => ({
+                        ...d,
+                        rerankingEnabled: !d.rerankingEnabled,
+                      }))
+                    }
+                    className={`relative inline-flex h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 ${
+                      recallDraft.rerankingEnabled ? 'bg-sky-600' : 'bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                        recallDraft.rerankingEnabled ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-slate-800">Top K</span>
+                  <span
+                    className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-medium text-slate-500"
+                    title="返回给模型的检索片段数量上限（1–100）。滑块快速调节 1–20。"
+                  >
+                    ?
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={Math.min(20, recallDraft.topK)}
+                    onChange={(e) =>
+                      setRecallDraft((d) => ({
+                        ...d,
+                        topK: Number(e.target.value),
+                      }))
+                    }
+                    className="min-w-[140px] flex-1 accent-sky-600"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={recallDraft.topK}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      setRecallDraft((d) => ({
+                        ...d,
+                        topK: Number.isFinite(n) ? Math.min(100, Math.max(1, Math.round(n))) : d.topK,
+                      }));
+                    }}
+                    className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
+              <button
+                type="button"
+                onClick={closeRecallModal}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={saveRecallSettings}
+                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+              >
+                保存
               </button>
             </div>
           </div>
@@ -396,9 +544,13 @@ export const WorkflowConfigPage = () => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-medium text-slate-800">上下文（知识库）</span>
                 <div className="flex items-center gap-2">
-                  <Link to={recallHref} className="text-xs font-medium text-sky-700 hover:text-sky-800">
+                  <button
+                    type="button"
+                    onClick={openRecallModal}
+                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                  >
                     召回设置
-                  </Link>
+                  </button>
                   <button
                     type="button"
                     onClick={openPicker}
@@ -408,6 +560,10 @@ export const WorkflowConfigPage = () => {
                   </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-slate-500">
+                多路召回 · Top K {orch.recallSettings?.topK ?? 4} · Rerank{' '}
+                {orch.recallSettings?.rerankingEnabled ? '开' : '关'}
+              </p>
               {orch.datasetIds.length > 0 ? (
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {orch.datasetIds.map((id) => {
@@ -578,7 +734,7 @@ export const WorkflowConfigPage = () => {
             >
               <span aria-hidden>●</span>
               {orch.datasetIds.length > 0
-                ? `已选 ${orch.datasetIds.length} 个知识库${selectedLabels[0] ? ` · ${selectedLabels[0]}` : ''}`
+                ? `已选 ${orch.datasetIds.length} 个知识库${selectedLabels[0] ? ` · ${selectedLabels[0]}` : ''} · Top K ${orch.recallSettings?.topK ?? 4} · Rerank ${orch.recallSettings?.rerankingEnabled ? '开' : '关'}`
                 : '未选知识库（仅系统提示 + 问题）'}
             </span>
             <Link to={recallHref} className="font-medium text-sky-700 hover:text-sky-800">
