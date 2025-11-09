@@ -69,15 +69,15 @@ export type KnowledgeRetrievalQueryResult = {
   };
 };
 
-type RankedChunk = KnowledgeRetrievalResultItem & {
+export type RankedChunk = KnowledgeRetrievalResultItem & {
   _semantic_score: number;
   _keyword_score: number;
   _full_text_score: number;
 };
 
-const normalizeText = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+export const normalizeText = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
-const getTermCandidates = (value: string) => {
+export const getTermCandidates = (value: string) => {
   const matches = normalizeText(value).match(/[\p{L}\p{N}\u4e00-\u9fff]+/gu) ?? [];
   return [...new Set(matches.flatMap((item) => {
     if (!item.length) {
@@ -167,7 +167,7 @@ const computeSemanticScore = (query: string, text: string, queryTerms: string[])
   return Math.min(1, dice * 0.65 + tokenCoverage * 0.35);
 };
 
-const clampUnitScore = (value: number) => {
+export const clampUnitScore = (value: number) => {
   if (!Number.isFinite(value)) {
     return 0;
   }
@@ -175,15 +175,19 @@ const clampUnitScore = (value: number) => {
   return Math.min(1, Math.max(0, value));
 };
 
-const scoreBySearchMethod = (params: {
+export const scoreBySearchMethod = (params: {
   dataset: KnowledgeDatasetRecord;
   query: string;
   text: string;
   queryTerms: string[];
+  /** 向量通道得分（0–1），传入时替代 bigram 语义分 */
+  semanticOverride?: number | null;
 }) => {
   const keyword = clampUnitScore(computeTokenOverlapScore(params.queryTerms, params.text));
   const fullText = clampUnitScore(computeFullTextScore(params.query, params.text, params.queryTerms));
-  const semantic = clampUnitScore(computeSemanticScore(params.query, params.text, params.queryTerms));
+  const semantic = params.semanticOverride != null && Number.isFinite(params.semanticOverride)
+    ? clampUnitScore(params.semanticOverride)
+    : clampUnitScore(computeSemanticScore(params.query, params.text, params.queryTerms));
 
   let finalScore = semantic;
   switch (params.dataset.retrieval_model.search_method) {
@@ -217,7 +221,7 @@ const scoreBySearchMethod = (params: {
   };
 };
 
-const resolveTopK = (params: {
+export const resolveTopK = (params: {
   query: KnowledgeRetrievalQuery;
   datasets: KnowledgeDatasetRecord[];
 }) => {
@@ -229,7 +233,7 @@ const resolveTopK = (params: {
     || Math.max(...params.datasets.map((dataset) => dataset.retrieval_model.top_k), 5);
 };
 
-const resolveThreshold = (params: {
+export const resolveThreshold = (params: {
   query: KnowledgeRetrievalQuery;
   dataset: KnowledgeDatasetRecord;
 }) => {
@@ -271,7 +275,7 @@ const matchesMetadataCondition = (
   }
 };
 
-const matchesMetadataFilter = (query: KnowledgeRetrievalQuery, chunk: KnowledgeDatasetChunkRecord) => {
+export const matchesMetadataFilter = (query: KnowledgeRetrievalQuery, chunk: KnowledgeDatasetChunkRecord) => {
   if (query.metadata_filtering_mode !== 'manual' || !query.metadata_filtering_conditions.length) {
     return true;
   }
@@ -279,7 +283,7 @@ const matchesMetadataFilter = (query: KnowledgeRetrievalQuery, chunk: KnowledgeD
   return query.metadata_filtering_conditions.every((condition) => matchesMetadataCondition(chunk.chunk.metadata, condition));
 };
 
-const applyReranking = (params: {
+export const applyReranking = (params: {
   items: RankedChunk[];
   query: string;
   queryTerms: string[];

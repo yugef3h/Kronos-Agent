@@ -1,0 +1,199 @@
+import { getKnowledgeDatasetById } from '../../domain/knowledgeDatasetStore.js';
+import {
+  listKnowledgeDatasetChunks,
+  mergeEmbeddingsIntoChunkFile,
+  type KnowledgeDatasetChunkRecord,
+} from '../../domain/knowledgeDocumentStore.js';
+import {
+  applyReranking,
+  clampUnitScore,
+  getTermCandidates,
+  matchesMetadataFilter,
+  normalizeText,
+  resolveThreshold,
+  resolveTopK,
+  scoreBySearchMethod,
+  type KnowledgeRetrievalQuery,
+  type KnowledgeRetrievalQueryResult,
+  type RankedChunk,
+} from '../../services/knowledgeRetrievalService.js';
+import { createRagEmbeddings } from './ragEmbeddings.js';
+
+const cosineSimilarity = (left: number[], right: number[]): number => {
+  const len = Math.min(left.length, right.length);
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let index = 0; index < len; index += 1) {
+    const a = left[index] ?? 0;
+    const b = right[index] ?? 0;
+    dot += a * b;
+    na += a * a;
+    nb += b * b;
+  }
+  if (!na || !nb) {
+    return 0;
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+};
+
+const vectorSimilarityToUnit = (cos: number) => clampUnitScore((Math.min(Math.max(cos, -1), 1) + 1) / 2);
+
+/** LangChain Embeddings + 进程内向量打分；混合检索仍复用自研 keyword/full_text 权重，语义通道为余弦。 */
+export async function runLangchainVectorRetrievalQuery(
+  query: KnowledgeRetrievalQuery,
+): Promise<KnowledgeRetrievalQueryResult> {
+  const datasets = await Promise.all(
+    [...new Set(query.dataset_ids)].map(async (datasetId) => {
+      const dataset = await getKnowledgeDatasetById(datasetId);
+      if (!dataset) {
+        throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+      }
+      return dataset;
+    }),
+  );
+
+  const queryTerms = getTermCandidates(query.query);
+  const chunkGroups = await Promise.all(datasets.map(async (dataset) => ({
+    dataset,
+    chunks: await listKnowledgeDatasetChunks(dataset.id),
+  })));
+
+  const totalChunkCount = chunkGroups.reduce((sum, item) => sum + item.chunks.length, 0);
+  const candidates: KnowledgeDatasetChunkRecord[] = [];
+
+  for (const item of chunkGroups) {
+    for (const chunkRecord of item.chunks) {
+      if (matchesMetadataFilter(query, chunkRecord)) {
+        candidates.push(chunkRecord);
+      }
+    }
+  }
+
+  const filteredChunkCount = candidates.length;
+  const embeddings = createRagEmbeddings();
+
+  const needEmbed: KnowledgeDatasetChunkRecord[] = [];
+  for (const record of candidates) {
+    const emb = record.chunk.embedding;
+    if (!Array.isArray(emb) || emb.length === 0) {
+      needEmbed.push(record);
+    }
+  }
+
+  const pathToNewVectors: Record<string, Record<string, number[]>> = {};
+
+  if (needEmbed.length) {
+    const texts = needEmbed.map((record) => record.chunk.text);
+    const batchSize = 16;
+    const allVectors: number[][] = [];
+    for (let offset = 0; offset < texts.length; offset += batchSize) {
+      const slice = texts.slice(offset, offset + batchSize);
+      const part = await embeddings.embedDocuments(slice);
+      allVectors.push(...part);
+    }
+
+    needEmbed.forEach((record, index) => {
+      const vector = allVectors[index];
+      if (!vector?.length) {
+        return;
+      }
+      const path = record.document.chunkPath;
+      if (!pathToNewVectors[path]) {
+        pathToNewVectors[path] = {};
+      }
+      pathToNewVectors[path][record.chunk.id] = vector;
+    });
+
+    await Promise.all(
+      Object.entries(pathToNewVectors).map(([chunkPath, byId]) => mergeEmbeddingsIntoChunkFile(chunkPath, byId)),
+    );
+  }
+
+  const queryVector = await embeddings.embedQuery(query.query);
+
+  const ranked: RankedChunk[] = [];
+
+  for (const item of chunkGroups) {
+    for (const chunkRecord of item.chunks) {
+      if (!matchesMetadataFilter(query, chunkRecord)) {
+        continue;
+      }
+
+      let chunkVector = chunkRecord.chunk.embedding;
+      if (!Array.isArray(chunkVector) || !chunkVector.length) {
+        const fromDisk = pathToNewVectors[chunkRecord.document.chunkPath]?.[chunkRecord.chunk.id];
+        chunkVector = fromDisk;
+      }
+      if (!Array.isArray(chunkVector) || !chunkVector.length) {
+        continue;
+      }
+
+      const cosine = cosineSimilarity(queryVector, chunkVector);
+      const vectorSemantic = vectorSimilarityToUnit(cosine);
+
+      const searchMethod = query.retrieval_mode === 'oneWay'
+        ? 'semantic_search'
+        : item.dataset.retrieval_model.search_method;
+
+      const scores = scoreBySearchMethod({
+        dataset: query.retrieval_mode === 'oneWay'
+          ? {
+              ...item.dataset,
+              retrieval_model: {
+                ...item.dataset.retrieval_model,
+                search_method: searchMethod,
+              },
+            }
+          : item.dataset,
+        query: query.query,
+        text: chunkRecord.chunk.text,
+        queryTerms,
+        semanticOverride: vectorSemantic,
+      });
+
+      const threshold = resolveThreshold({ query, dataset: item.dataset });
+      if (typeof threshold === 'number' && scores.finalScore < threshold) {
+        continue;
+      }
+
+      ranked.push({
+        dataset_id: item.dataset.id,
+        dataset_name: item.dataset.name,
+        document_id: chunkRecord.document.id,
+        document_name: chunkRecord.document.name,
+        chunk_id: chunkRecord.chunk.id,
+        chunk_index: chunkRecord.chunk.index,
+        text: chunkRecord.chunk.text,
+        score: scores.finalScore,
+        search_method: searchMethod,
+        matched_terms: [...new Set(queryTerms.filter((term) => normalizeText(chunkRecord.chunk.text).includes(term)))],
+        metadata: { ...chunkRecord.chunk.metadata },
+        token_count: chunkRecord.chunk.tokenCount,
+        char_count: chunkRecord.chunk.charCount,
+        _semantic_score: scores.semantic,
+        _keyword_score: scores.keyword,
+        _full_text_score: scores.fullText,
+      });
+    }
+  }
+
+  const topK = resolveTopK({ query, datasets });
+  const sorted = ranked
+    .sort((left, right) => right.score - left.score || left.chunk_index - right.chunk_index)
+    .slice(0, Math.max(1, topK));
+  const reranked = query.retrieval_mode === 'multiWay' && query.multiple_retrieval_config.reranking_enable
+    ? applyReranking({ items: sorted, query: query.query, queryTerms })
+    : sorted;
+
+  return {
+    query: query.query,
+    items: reranked.map(({ _semantic_score, _keyword_score, _full_text_score, ...item }) => item),
+    diagnostics: {
+      retrieval_mode: query.retrieval_mode,
+      dataset_count: datasets.length,
+      total_chunk_count: totalChunkCount,
+      filtered_chunk_count: filteredChunkCount,
+    },
+  };
+}

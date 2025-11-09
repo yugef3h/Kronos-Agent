@@ -62,9 +62,11 @@ export type StoredChunk = {
   source: {
     title: string;
   };
+  /** LangChain 向量检索持久化；自研路径不写此字段 */
+  embedding?: number[];
 };
 
-type StoredChunkLike = Omit<StoredChunk, 'keywords'> & { keywords?: unknown };
+type StoredChunkLike = Omit<StoredChunk, 'keywords' | 'embedding'> & { keywords?: unknown; embedding?: unknown };
 
 export type KnowledgeDatasetChunkRecord = {
   chunk: StoredChunk;
@@ -135,6 +137,9 @@ const readStoredChunks = async (chunkPath: string): Promise<StoredChunk[]> => {
         keywords: Array.isArray(parsed.keywords)
           ? normalizeKeywords(parsed.keywords.filter((item): item is string => typeof item === 'string'))
           : extractKnowledgeKeywords(parsed.text),
+        embedding: Array.isArray(parsed.embedding) && parsed.embedding.every((n: unknown) => typeof n === 'number')
+          ? parsed.embedding as number[]
+          : undefined,
       } satisfies StoredChunk;
     })
     .sort((left, right) => left.index - right.index);
@@ -146,6 +151,25 @@ const writeStoredChunks = async (chunkPath: string, chunks: StoredChunk[]) => {
     chunks.map((chunk) => JSON.stringify(chunk)).join('\n'),
     'utf-8',
   );
+};
+
+export const mergeEmbeddingsIntoChunkFile = async (
+  chunkPath: string,
+  embeddingsByChunkId: Record<string, number[]>,
+): Promise<void> => {
+  if (!Object.keys(embeddingsByChunkId).length) {
+    return;
+  }
+
+  const chunks = await readStoredChunks(chunkPath);
+  const next = chunks.map((chunk) => {
+    const emb = embeddingsByChunkId[chunk.id];
+    if (!emb?.length) {
+      return chunk;
+    }
+    return { ...chunk, embedding: emb };
+  });
+  await writeStoredChunks(chunkPath, next);
 };
 
 const buildPreviewText = (text: string) => {
