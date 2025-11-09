@@ -1,4 +1,4 @@
-import { cn } from 'pages/workflow/utils/classnames'
+import { cn } from '../../pages/workflow/utils/classnames'
 import type { ReactNode } from 'react'
 import React from 'react'
 

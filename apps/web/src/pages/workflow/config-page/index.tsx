@@ -18,6 +18,8 @@ import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
 } from '../features/knowledge-retrieval-panel/dataset-store';
+import { PanelInfoHint } from '../../../components/form/panel-info-hint';
+import { PanelSliderInput, PanelToggle } from '../../../components/form/panel-form';
 
 type ChatLine = { id: string; role: 'user' | 'assistant'; content: string };
 
@@ -264,7 +266,7 @@ export const WorkflowConfigPage = () => {
     .filter(Boolean) as string[];
 
   return (
-    <div className="flex min-h-0 min-h-[calc(100vh-4rem)] w-full flex-1 flex-col bg-slate-50 text-slate-900">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-slate-50 text-slate-900">
       {isDatasetPickerOpen ? (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/40 px-3"
@@ -341,18 +343,18 @@ export const WorkflowConfigPage = () => {
 
       {isRecallModalOpen ? (
         <div
-          className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-900/40 px-3"
+          className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-900/40 px-3 py-6"
           onClick={closeRecallModal}
           onKeyDown={(e) => e.key === 'Escape' && closeRecallModal()}
           role="presentation"
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className="flex max-h-[min(560px,calc(100dvh-3rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="recall-settings-title"
           >
-            <div className="border-b border-slate-100 px-5 py-4">
+            <div className="shrink-0 border-b border-slate-100 px-5 py-4">
               <h3 id="recall-settings-title" className="text-base font-semibold text-slate-900">
                 召回设置
               </h3>
@@ -360,84 +362,54 @@ export const WorkflowConfigPage = () => {
                 默认情况下使用多路召回。从多个知识库中检索知识，然后重新排序。
               </p>
             </div>
-            <div className="space-y-5 px-5 py-4">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Rerank 设置</p>
                 <div className="mt-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-slate-800">Rerank 模型</span>
-                    <span
-                      className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-medium text-slate-500"
-                      title="开启后使用服务端配置的重排策略（启发式或模型，见知识库检索实现）。"
-                    >
-                      ?
-                    </span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="text-sm font-semibold text-slate-800">Rerank 模型</span>
+                    <PanelInfoHint
+                      content="重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果。"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={recallDraft.rerankingEnabled}
-                    onClick={() =>
+                  <PanelToggle
+                    checked={recallDraft.rerankingEnabled}
+                    onChange={(next) =>
                       setRecallDraft((d) => ({
                         ...d,
-                        rerankingEnabled: !d.rerankingEnabled,
+                        rerankingEnabled: next,
                       }))
                     }
-                    className={`relative inline-flex h-7 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:ring-offset-2 ${
-                      recallDraft.rerankingEnabled ? 'bg-sky-600' : 'bg-slate-200'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none mt-0.5 inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        recallDraft.rerankingEnabled ? 'translate-x-5' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
+                  />
                 </div>
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-slate-800">Top K</span>
-                  <span
-                    className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-300 text-[10px] font-medium text-slate-500"
-                    title="返回给模型的检索片段数量上限（1–100）。滑块快速调节 1–20。"
-                  >
-                    ?
-                  </span>
+                  <span className="text-sm font-semibold text-slate-800">Top K</span>
+                  <PanelInfoHint content="返回给模型的检索片段数量上限（1–100）。" />
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <input
-                    type="range"
-                    min={1}
-                    max={20}
-                    step={1}
-                    value={Math.min(20, recallDraft.topK)}
-                    onChange={(e) =>
-                      setRecallDraft((d) => ({
-                        ...d,
-                        topK: Number(e.target.value),
-                      }))
-                    }
-                    className="min-w-[140px] flex-1 accent-sky-600"
-                  />
-                  <input
-                    type="number"
+                <div className="mt-2">
+                  <PanelSliderInput
                     min={1}
                     max={100}
+                    step={1}
                     value={recallDraft.topK}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      setRecallDraft((d) => ({
-                        ...d,
-                        topK: Number.isFinite(n) ? Math.min(100, Math.max(1, Math.round(n))) : d.topK,
-                      }));
+                    onChange={(v) => {
+                      setRecallDraft((d) => {
+                        if (v === null) {
+                          return d;
+                        }
+                        return {
+                          ...d,
+                          topK: Math.min(100, Math.max(1, Math.round(v))),
+                        };
+                      });
                     }}
-                    className="w-16 rounded-lg border border-slate-200 px-2 py-1.5 text-center text-sm text-slate-900"
                   />
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-3">
               <button
                 type="button"
                 onClick={closeRecallModal}
@@ -459,15 +431,15 @@ export const WorkflowConfigPage = () => {
 
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Link
+          {/* <Link
             to="/workflow"
             className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
           >
             ← 应用
-          </Link>
+          </Link> */}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900">{app.name}</p>
-            <p className="text-xs text-slate-500">Chatbot 编排 · 自研检索 + 流式对话</p>
+            {/* <p className="text-xs text-slate-500">Chatbot 编排 · 自研检索 + 流式对话</p> */}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -484,12 +456,12 @@ export const WorkflowConfigPage = () => {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-slate-200 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-        <section className="flex min-h-0 flex-col overflow-y-auto bg-white p-4 lg:p-5">
+      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-slate-200 overflow-hidden lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <section className="flex min-h-0 flex-col overflow-y-auto overflow-x-hidden bg-white p-4 lg:p-5">
           <h2 className="text-base font-semibold text-slate-900">编排</h2>
 
-          <div className="mt-4 space-y-6">
-            <div>
+          <div className="mt-4 space-y-2">
+            <div className="relative">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-medium text-slate-800" htmlFor="chatbot-system-prompt">
                   提示词
@@ -503,6 +475,8 @@ export const WorkflowConfigPage = () => {
                   ✨ 生成
                 </button>
               </div>
+
+              {/* 父容器 relative + textarea 底部内边距留出空间 */}
               <textarea
                 id="chatbot-system-prompt"
                 value={orch.systemPrompt}
@@ -520,12 +494,17 @@ export const WorkflowConfigPage = () => {
                     systemPrompt: e.target.value,
                   }));
                 }}
-                rows={10}
-                maxLength={8000}
+                rows={8}
+                maxLength={6000}
                 placeholder="在这里写你的提示词，输入'{'插入变量、输入'/'插入提示内容块（后续支持）"
-                className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-300"
+                className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-300
+    pb-7" /* 增加底部内边距，防止文字被字数统计遮挡 */
               />
-              <p className="mt-1 text-xs text-slate-500">{orch.systemPrompt.length} / 8000</p>
+
+              {/* 绝对定位到 textarea 左下角内部 */}
+              <p className="absolute bottom-3 left-3 text-xs text-slate-500 pointer-events-none">
+                {orch.systemPrompt.length} / 6000
+              </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
@@ -546,8 +525,14 @@ export const WorkflowConfigPage = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    disabled={orch.datasetIds.length === 0}
+                    title={orch.datasetIds.length === 0 ? '请先添加知识库' : undefined}
                     onClick={openRecallModal}
-                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                    className={`text-xs font-medium ${
+                      orch.datasetIds.length > 0
+                        ? 'text-sky-700 hover:text-sky-800'
+                        : 'cursor-not-allowed text-slate-400'
+                    }`}
                   >
                     召回设置
                   </button>
@@ -560,10 +545,10 @@ export const WorkflowConfigPage = () => {
                   </button>
                 </div>
               </div>
-              <p className="mt-2 text-xs text-slate-500">
+              {/* <p className="mt-2 text-xs text-slate-500">
                 多路召回 · Top K {orch.recallSettings?.topK ?? 4} · Rerank{' '}
                 {orch.recallSettings?.rerankingEnabled ? '开' : '关'}
-              </p>
+              </p> */}
               {orch.datasetIds.length > 0 ? (
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {orch.datasetIds.map((id) => {
@@ -587,7 +572,7 @@ export const WorkflowConfigPage = () => {
                   })}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">尚未选择知识库；可选添加以启用检索增强。</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">您可以导入知识库作为上下文</p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="text-xs text-slate-600">元数据过滤</span>
@@ -674,7 +659,7 @@ export const WorkflowConfigPage = () => {
           </div>
         </section>
 
-        <section className="flex min-h-0 min-h-[320px] flex-col bg-white p-4 lg:min-h-0 lg:p-5">
+        <section className="flex min-h-0 flex-col overflow-hidden bg-white p-4 lg:p-5">
           <h2 className="text-base font-semibold text-slate-900">调试与预览</h2>
           <div className="mt-3 flex min-h-0 flex-1 flex-col rounded-xl border border-slate-200 bg-slate-50/40">
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
@@ -686,11 +671,10 @@ export const WorkflowConfigPage = () => {
                 messages.map((line) => (
                   <div
                     key={line.id}
-                    className={`max-w-[95%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                      line.role === 'user'
+                    className={`max-w-[95%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${line.role === 'user'
                         ? 'ml-auto bg-sky-600 text-white'
                         : 'mr-auto border border-slate-200 bg-white text-slate-800'
-                    }`}
+                      }`}
                   >
                     {line.content || (line.role === 'assistant' && isSending ? '…' : '')}
                   </div>
@@ -728,9 +712,8 @@ export const WorkflowConfigPage = () => {
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${
-                orch.datasetIds.length > 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
-              }`}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${orch.datasetIds.length > 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+                }`}
             >
               <span aria-hidden>●</span>
               {orch.datasetIds.length > 0

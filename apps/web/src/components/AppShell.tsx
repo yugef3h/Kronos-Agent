@@ -64,7 +64,7 @@ export const AppShell = () => {
   const activeNavIndex = getActiveNavIndex(pathname);
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
+    <main className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_88%_8%,rgba(186,230,253,0.65),transparent_34%),radial-gradient(circle_at_14%_92%,rgba(254,243,199,0.7),transparent_38%),#f8fbfb] text-ink">
       {/* 顶部渐变遮罩（优化层级） */}
       <div 
         aria-hidden 
@@ -124,7 +124,7 @@ export const AppShell = () => {
       </header>
 
       {/* 内容区域（优化内边距） */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 p-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 overflow-hidden p-3">
         <Outlet />
       </div>
     </main>
