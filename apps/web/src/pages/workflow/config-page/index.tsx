@@ -392,14 +392,15 @@ export const WorkflowConfigPage = () => {
                   提示词 <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
                 </label>
                 
-                <button
+                {/* 这里是一个提示词生成器 */}
+                {/* <button
                   type="button"
                   disabled
                   className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-400"
                   title="后续接入"
                 >
                   ✨ 生成
-                </button>
+                </button> */}
               </div>
 
               {/* 父容器 relative + textarea 底部内边距留出空间 */}
@@ -575,9 +576,6 @@ export const WorkflowConfigPage = () => {
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
               <span className="text-sm font-medium text-slate-800 flex items-center gap-1">视觉 <PanelInfoHint content="开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题" /></span>
               <div className="flex items-center gap-2">
-                <button type="button" disabled className="text-xs text-slate-400">
-                  设置
-                </button>
                 <span className="relative inline-flex h-6 w-11 cursor-not-allowed items-center rounded-full bg-slate-200">
                   <span className="inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow" />
                 </span>
