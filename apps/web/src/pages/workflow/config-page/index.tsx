@@ -294,7 +294,7 @@ export const WorkflowConfigPage = () => {
                   <div className="flex min-w-0 items-center gap-1.5">
                     <span className="text-sm font-semibold text-slate-800">Rerank 模型</span>
                     <PanelInfoHint
-                      content="重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果。"
+                      content="重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果"
                     />
                   </div>
                   <PanelToggle
@@ -311,7 +311,7 @@ export const WorkflowConfigPage = () => {
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-semibold text-slate-800">Top K</span>
-                  <PanelInfoHint content="返回给模型的检索片段数量上限（1–100）。" />
+                  <PanelInfoHint content="用于筛选与用户问题相似度最高的文本片段。系统同时会根据选用模型上下文窗口大小动态调整分段数量。" />
                 </div>
                 <div className="mt-2">
                   <PanelSliderInput
@@ -345,7 +345,7 @@ export const WorkflowConfigPage = () => {
               <button
                 type="button"
                 onClick={saveRecallSettings}
-                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
               >
                 保存
               </button>
@@ -388,9 +388,10 @@ export const WorkflowConfigPage = () => {
           <div className="mt-4 space-y-2">
             <div className="relative">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-sm font-medium text-slate-800" htmlFor="chatbot-system-prompt">
-                  提示词
+                <label className="text-sm font-medium text-slate-800 flex items-center gap-1" htmlFor="chatbot-system-prompt">
+                  提示词 <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
                 </label>
+                
                 <button
                   type="button"
                   disabled
@@ -434,7 +435,7 @@ export const WorkflowConfigPage = () => {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-slate-800">变量</span>
+                <span className="text-sm font-medium text-slate-800 flex items-center gap-1">变量 <PanelInfoHint content="变量将以表单形式让用户在对话前填写，用户填写的表单内容将自动替换提示词中的变量。" /></span>
                 <button type="button" disabled className="text-xs font-medium text-slate-400">
                   ＋ 添加
                 </button>
@@ -513,6 +514,7 @@ export const WorkflowConfigPage = () => {
                   className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800"
                 >
                   <option value="disabled">禁用</option>
+                  <option value="auto">自动</option>
                   <option value="manual">手动</option>
                 </select>
               </div>
@@ -571,7 +573,7 @@ export const WorkflowConfigPage = () => {
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
-              <span className="text-sm font-medium text-slate-800">视觉</span>
+              <span className="text-sm font-medium text-slate-800 flex items-center gap-1">视觉 <PanelInfoHint content="开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题" /></span>
               <div className="flex items-center gap-2">
                 <button type="button" disabled className="text-xs text-slate-400">
                   设置
