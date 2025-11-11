@@ -136,6 +136,10 @@ export type WorkflowChatbotOrchestration = {
   /** `metadataFilterMode === 'manual'` 时参与 `knowledge-retrieval/query` */
   metadataFilterConditions?: WorkflowChatbotMetadataCondition[];
   recallSettings?: WorkflowChatbotRecallSettings;
+  /** 调试/对话是否允许用户附带图片（多模态输入） */
+  visionEnabled: boolean;
+  /** 单轮最多上传图片张数（1–10），默认 3 */
+  visionMaxImages: number;
 };
 
 export const createDefaultChatbotRecallSettings = (): WorkflowChatbotRecallSettings => ({
@@ -150,6 +154,8 @@ export const createDefaultChatbotOrchestration = (): WorkflowChatbotOrchestratio
   metadataFilterMode: 'disabled',
   metadataFilterConditions: [],
   recallSettings: createDefaultChatbotRecallSettings(),
+  visionEnabled: false,
+  visionMaxImages: 3,
 });
 
 const normalizeDslAppMode = (raw: unknown): WorkflowDslAppMode => {

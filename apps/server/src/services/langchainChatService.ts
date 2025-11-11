@@ -41,6 +41,23 @@ const toLangChainMessage = (message: Message): HumanMessage | AIMessage => {
   return new AIMessage(message.content);
 };
 
+const isDataImageUrl = (value: string) => value.trim().startsWith('data:image/');
+
+/** 当前轮用户消息：纯文本或多模态（文本 + data URL 图片） */
+export const buildUserHumanMessage = (prompt: string, imageDataUrls?: string[]): HumanMessage => {
+  const urls = (imageDataUrls ?? []).map((u) => u.trim()).filter(isDataImageUrl);
+  if (urls.length === 0) {
+    return new HumanMessage(prompt);
+  }
+
+  const content: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image_url'; image_url: { url: string } }
+  > = [{ type: 'text', text: prompt }, ...urls.map((url) => ({ type: 'image_url' as const, image_url: { url } }))];
+
+  return new HumanMessage({ content });
+};
+
 export const chatModel = new ChatOpenAI({
   model: env.DOUBAO_MODEL,
   apiKey: env.DOUBAO_API_KEY,
@@ -162,6 +179,7 @@ export async function* streamLangChainReply(params: {
   prompt: string;
   history: Message[];
   memorySummary?: string;
+  imageDataUrls?: string[];
 }): AsyncGenerator<LangChainStreamEvent> {
   yield createTimelineEvent('plan', 'start', '规划器开始分析当前提示词意图。');
 
@@ -170,7 +188,7 @@ export async function* streamLangChainReply(params: {
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
       : []),
     ...params.history.map(toLangChainMessage),
-    new HumanMessage(params.prompt),
+    buildUserHumanMessage(params.prompt, params.imageDataUrls),
   ];
 
   // 规划阶段设置超时，避免上游抖动导致首个可见事件长时间卡住。
@@ -255,7 +273,7 @@ export async function* streamLangChainReply(params: {
     ...(params.memorySummary && params.memorySummary.trim().length > 0
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
       : []),
-    new HumanMessage(params.prompt),
+    buildUserHumanMessage(params.prompt, params.imageDataUrls),
   ];
 
   const requestStartedAt = Date.now();

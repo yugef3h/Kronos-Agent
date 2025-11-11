@@ -9,12 +9,18 @@ export async function* streamChat(params: {
   prompt: string;
   sessionId: string;
   lastEventId: number;
+  imageDataUrls?: string[];
 }) {
-  const { prompt, sessionId, lastEventId } = params;
+  const { prompt, sessionId, lastEventId, imageDataUrls } = params;
   const session = getSession(sessionId);
   const userMessageTimestamp = Date.now();
 
-  session.messages.push({ role: 'user', content: prompt, timestamp: userMessageTimestamp });
+  const userContent =
+    imageDataUrls && imageDataUrls.length > 0
+      ? `${prompt}\n[附图×${imageDataUrls.length}]`
+      : prompt;
+
+  session.messages.push({ role: 'user', content: userContent, timestamp: userMessageTimestamp });
   let assistantText = '';
   let eventId = 0;
 
@@ -53,11 +59,13 @@ export async function* streamChat(params: {
           history: memoryPlan.history,
           memorySummary: memoryPlan.memorySummary,
           sessionId,
+          imageDataUrls,
         })
       : streamLangChainReply({
           prompt,
           history: memoryPlan.history,
           memorySummary: memoryPlan.memorySummary,
+          imageDataUrls,
         });
 
     for await (const event of streamSource) {

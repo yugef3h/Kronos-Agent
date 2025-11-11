@@ -46,6 +46,7 @@ import { join } from 'path';
 const chatSchema = z.object({
   prompt: z.string().min(1),
   sessionId: z.string().min(1),
+  imageDataUrls: z.array(z.string().min(32).max(6_000_000)).max(10).optional(),
 });
 
 const tokenEmbeddingSchema = z.object({
@@ -152,10 +153,13 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
   response.setHeader('Connection', 'keep-alive');
   response.setHeader('X-Accel-Buffering', 'no');
 
+  const imageDataUrls = parsed.data.imageDataUrls?.filter((u) => u.startsWith('data:image/'));
+
   const stream = streamChat({
     prompt: parsed.data.prompt,
     sessionId: parsed.data.sessionId,
     lastEventId,
+    imageDataUrls: imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : undefined,
   });
 
   try {

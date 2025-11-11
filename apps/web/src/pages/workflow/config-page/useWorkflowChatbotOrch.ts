@@ -24,6 +24,8 @@ const normalizeOrch = (raw: WorkflowChatbotOrchestration | undefined): WorkflowC
       topK: Math.min(100, Math.max(1, Math.round(base.recallSettings?.topK ?? rsDefault.topK))),
       rerankingModel: base.recallSettings?.rerankingModel ?? rsDefault.rerankingModel,
     },
+    visionEnabled: Boolean(base.visionEnabled),
+    visionMaxImages: Math.min(10, Math.max(1, Math.round(base.visionMaxImages ?? 3))),
   };
 };
 

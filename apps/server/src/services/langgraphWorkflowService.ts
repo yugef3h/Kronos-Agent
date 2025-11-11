@@ -1,7 +1,7 @@
 import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import type { LangChainStreamEvent } from './langchainChatService.js';
-import { chatModel, toolRegistry } from './langchainChatService.js';
+import { chatModel, toolRegistry, buildUserHumanMessage } from './langchainChatService.js';
 import type { Message } from '../domain/sessionStore.js';
 
 type MessageTextPart = {
@@ -79,6 +79,7 @@ export async function* streamLangGraphReply(params: {
   history: Message[];
   memorySummary?: string;
   sessionId?: string;
+  imageDataUrls?: string[];
 }): AsyncGenerator<LangChainStreamEvent> {
   yield createTimelineEvent('plan', 'start', 'LangGraph React Agent 初始化。');
 
@@ -92,7 +93,7 @@ export async function* streamLangGraphReply(params: {
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
       : []),
     ...params.history.map(toLangChainMessage),
-    new HumanMessage(params.prompt),
+    buildUserHumanMessage(params.prompt, params.imageDataUrls),
   ];
 
   yield createTimelineEvent('plan', 'info', 'LangGraph 已启动，进入流式推理。');

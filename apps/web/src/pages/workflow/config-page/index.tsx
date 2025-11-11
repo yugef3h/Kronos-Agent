@@ -1,6 +1,6 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useLatest } from 'ahooks';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -22,9 +22,17 @@ import { KnowledgeDatasetPickerDialog } from '../../../components/knowledge-data
 import { PanelInfoHint } from '../../../components/form/panel-info-hint';
 import { PanelSliderInput, PanelToggle } from '../../../components/form/panel-form';
 
-type ChatLine = { id: string; role: 'user' | 'assistant'; content: string };
+type ChatLine = { id: string; role: 'user' | 'assistant'; content: string; imageCount?: number };
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
+    reader.readAsDataURL(file);
+  });
 
 /**
  * Chatbot（`app.mode: chat`）编排：自研 RAG 经 `knowledge-retrieval/query`，对话经 `/api/chat-stream`。
@@ -49,8 +57,20 @@ export const WorkflowConfigPage = () => {
   const [debugInput, setDebugInput] = useState('');
   const [sendError, setSendError] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [pendingVisionDataUrls, setPendingVisionDataUrls] = useState<string[]>([]);
 
   const streamAbortRef = useRef<AbortController | null>(null);
+  const visionFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!orch.visionEnabled) {
+      setPendingVisionDataUrls([]);
+    }
+  }, [orch.visionEnabled]);
+
+  useEffect(() => {
+    setPendingVisionDataUrls((prev) => prev.slice(0, orch.visionMaxImages));
+  }, [orch.visionMaxImages]);
 
   const recallHref = useMemo(() => {
     const first = orch.datasetIds[0];
@@ -124,6 +144,40 @@ export const WorkflowConfigPage = () => {
     }));
   };
 
+  const handleVisionFilesChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files?.length) {
+      return;
+    }
+    const o = orchLatest.current ?? orch;
+    if (!o.visionEnabled) {
+      event.target.value = '';
+      return;
+    }
+    const max = o.visionMaxImages;
+    const fileList = Array.from(files);
+    event.target.value = '';
+
+    const additions: string[] = [];
+    for (const file of fileList) {
+      if (additions.length >= max) {
+        break;
+      }
+      if (!file.type.startsWith('image/')) {
+        continue;
+      }
+      try {
+        additions.push(await readFileAsDataUrl(file));
+      } catch {
+        // 单张失败则跳过
+      }
+    }
+    if (additions.length === 0) {
+      return;
+    }
+    setPendingVisionDataUrls((prev) => [...prev, ...additions].slice(0, max));
+  };
+
   const handleSend = async () => {
     const text = debugInput.trim();
     if (!text || isSending || !appId) {
@@ -138,7 +192,18 @@ export const WorkflowConfigPage = () => {
     setIsSending(true);
     setDebugInput('');
 
-    const userLine: ChatLine = { id: newId(), role: 'user', content: text };
+    const o = orchLatest.current ?? orch;
+    const imageDataUrls =
+      o.visionEnabled && pendingVisionDataUrls.length > 0
+        ? pendingVisionDataUrls.slice(0, o.visionMaxImages)
+        : undefined;
+
+    const userLine: ChatLine = {
+      id: newId(),
+      role: 'user',
+      content: text,
+      imageCount: imageDataUrls?.length,
+    };
     const assistantId = newId();
     setMessages((m) => [...m, userLine, { id: assistantId, role: 'assistant', content: '' }]);
 
@@ -149,7 +214,6 @@ export const WorkflowConfigPage = () => {
       }
 
       let contextBlock = '';
-      const o = orchLatest.current ?? orch;
       if (o.datasetIds.length > 0) {
         const retrieval = await requestKnowledgeRetrievalQuery({
           authToken: token,
@@ -179,7 +243,11 @@ export const WorkflowConfigPage = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ prompt: augmented, sessionId }),
+        body: JSON.stringify({
+          prompt: augmented,
+          sessionId,
+          ...(imageDataUrls?.length ? { imageDataUrls } : {}),
+        }),
         signal: controller.signal,
         onmessage(event) {
           let payload: StreamChunk;
@@ -218,6 +286,9 @@ export const WorkflowConfigPage = () => {
           }
         },
       });
+      if (completed) {
+        setPendingVisionDataUrls([]);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : '发送失败';
       setSendError(message);
@@ -573,13 +644,48 @@ export const WorkflowConfigPage = () => {
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
-              <span className="text-sm font-medium text-slate-800 flex items-center gap-1">视觉 <PanelInfoHint content="开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题" /></span>
-              <div className="flex items-center gap-2">
-                <span className="relative inline-flex h-6 w-11 cursor-not-allowed items-center rounded-full bg-slate-200">
-                  <span className="inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow" />
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
+                  视觉
+                  <PanelInfoHint content="开启后，调试区可附带图片一并发送给模型（多模态）；默认单轮最多 3 张，可在下方调节。" />
                 </span>
+                <PanelToggle
+                  checked={orch.visionEnabled}
+                  onChange={(next) =>
+                    persistOrch((prev) => ({
+                      ...prev,
+                      visionEnabled: next,
+                    }))
+                  }
+                />
               </div>
+              {orch.visionEnabled ? (
+                <div className="border-t border-slate-200/80 pt-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-600">单轮最多图片张数</span>
+                    <div className="min-w-[200px] flex-1">
+                      <PanelSliderInput
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={orch.visionMaxImages}
+                        onChange={(v) => {
+                          persistOrch((prev) => {
+                            if (v === null) {
+                              return prev;
+                            }
+                            return {
+                              ...prev,
+                              visionMaxImages: Math.min(10, Math.max(1, Math.round(v))),
+                            };
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -591,6 +697,7 @@ export const WorkflowConfigPage = () => {
               {messages.length === 0 ? (
                 <p className="py-8 text-center text-sm text-slate-400">
                   输入问题后发送：将先走知识库检索（multiWay + Rerank），再注入 Prompt 并流式生成。
+                  {orch.visionEnabled ? ' 开启视觉后可在下方添加图片一并发送（data URL，单张不宜过大）。' : ''}
                 </p>
               ) : (
                 messages.map((line) => (
@@ -601,13 +708,58 @@ export const WorkflowConfigPage = () => {
                         : 'mr-auto border border-slate-200 bg-white text-slate-800'
                       }`}
                   >
-                    {line.content || (line.role === 'assistant' && isSending ? '…' : '')}
+                    <div className="text-sm leading-relaxed">
+                      <div>{line.content || (line.role === 'assistant' && isSending ? '…' : '')}</div>
+                      {line.role === 'user' && line.imageCount ? (
+                        <div className="mt-1 text-[11px] font-medium text-white/85">附图 ×{line.imageCount}</div>
+                      ) : null}
+                    </div>
                   </div>
                 ))
               )}
             </div>
             {sendError ? <p className="border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">{sendError}</p> : null}
             <div className="border-t border-slate-200 p-3">
+              {orch.visionEnabled ? (
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <input
+                    ref={visionFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => void handleVisionFilesChange(e)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => visionFileInputRef.current?.click()}
+                    disabled={
+                      isSending || pendingVisionDataUrls.length >= orch.visionMaxImages
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    添加图片 ({pendingVisionDataUrls.length}/{orch.visionMaxImages})
+                  </button>
+                  {pendingVisionDataUrls.map((url, index) => (
+                    <span
+                      key={`${url.slice(0, 48)}-${index}`}
+                      className="relative inline-block h-10 w-10 overflow-hidden rounded-md border border-slate-200"
+                    >
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPendingVisionDataUrls((prev) => prev.filter((_, i) => i !== index))
+                        }
+                        className="absolute inset-0 flex items-center justify-center bg-slate-900/50 text-xs font-bold text-white opacity-0 transition hover:opacity-100"
+                        aria-label="移除图片"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div className="flex gap-2">
                 <input
                   type="text"
