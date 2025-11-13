@@ -690,36 +690,60 @@ export const WorkflowConfigPage = () => {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-col overflow-hidden bg-white p-4 lg:p-5">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white p-4 lg:p-5">
           <h2 className="text-base font-semibold text-slate-900">调试与预览</h2>
-          <div className="mt-3 flex min-h-0 flex-1 flex-col rounded-xl border border-slate-200 bg-slate-50/40">
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-              {messages.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-400">
-                  输入问题后发送：将先走知识库检索（multiWay + Rerank），再注入 Prompt 并流式生成。
-                  {orch.visionEnabled ? ' 开启视觉后可在下方添加图片一并发送（data URL，单张不宜过大）。' : ''}
-                </p>
-              ) : (
-                messages.map((line) => (
-                  <div
-                    key={line.id}
-                    className={`max-w-[95%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${line.role === 'user'
-                        ? 'ml-auto bg-sky-600 text-white'
-                        : 'mr-auto border border-slate-200 bg-white text-slate-800'
-                      }`}
-                  >
-                    <div className="text-sm leading-relaxed">
-                      <div>{line.content || (line.role === 'assistant' && isSending ? '…' : '')}</div>
-                      {line.role === 'user' && line.imageCount ? (
-                        <div className="mt-1 text-[11px] font-medium text-white/85">附图 ×{line.imageCount}</div>
-                      ) : null}
+          <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_8px_28px_-20px_rgba(14,116,144,0.35)] backdrop-blur">
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="relative flex min-h-0 flex-1">
+                <div className="soft-scrollbar h-full w-full space-y-4 overflow-y-auto bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                  {messages.length === 0 ? (
+                    <div className="mx-auto mt-4 max-w-5xl px-3 text-center">
+                      <h3 className="font-display text-lg text-slate-800 md:text-xl">调试对话</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                        输入问题后发送：将先走知识库检索（multiWay + Rerank），再注入 Prompt 并流式生成。
+                        {orch.visionEnabled
+                          ? ' 开启视觉后可在下方添加图片一并发送（data URL，单张不宜过大）。'
+                          : ''}
+                      </p>
                     </div>
-                  </div>
-                ))
-              )}
+                  ) : (
+                    messages.map((line) => (
+                      <div
+                        key={line.id}
+                        className={`flex ${line.role === 'user' ? 'justify-end mr-3' : 'justify-start ml-3'}`}
+                      >
+                        <article
+                          className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${
+                            line.role === 'user'
+                              ? 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
+                              : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
+                          }`}
+                        >
+                          {!line.content && line.role === 'assistant' && isSending ? (
+                            <span className="inline-flex items-center gap-1 text-slate-500">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
+                            </span>
+                          ) : (
+                            <div className="leading-relaxed">
+                              <div className="whitespace-pre-wrap">{line.content}</div>
+                              {line.role === 'user' && line.imageCount ? (
+                                <div className="mt-1 text-[11px] font-medium text-slate-600">
+                                  附图 ×{line.imageCount}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </article>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
             {sendError ? <p className="border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">{sendError}</p> : null}
-            <div className="border-t border-slate-200 p-3">
+            <div className="mt-3 shrink-0 border-t border-slate-200/80 p-3">
               {orch.visionEnabled ? (
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <input
@@ -760,30 +784,44 @@ export const WorkflowConfigPage = () => {
                   ))}
                 </div>
               ) : null}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={debugInput}
-                  onChange={(e) => setDebugInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  placeholder="和 Bot 聊天"
-                  disabled={isSending}
-                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-sky-400 disabled:opacity-60"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={isSending || !debugInput.trim()}
-                  className="shrink-0 rounded-xl bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="发送"
-                >
-                  ➤
-                </button>
+              <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={debugInput}
+                    onChange={(e) => setDebugInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder="和 Bot 聊天"
+                    disabled={isSending}
+                    className="min-w-0 flex-1 border-none bg-transparent py-1 text-sm leading-6 text-slate-800 outline-none disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSend()}
+                    disabled={isSending || !debugInput.trim()}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-600 to-sky-600 text-white shadow-sm transition hover:shadow-md disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:shadow-none"
+                    aria-label="发送消息"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M5 12h14" />
+                      <path d="m13 6 6 6-6 6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
