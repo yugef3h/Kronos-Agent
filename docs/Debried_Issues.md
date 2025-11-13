@@ -1,4 +1,13 @@
-## 2025-05-11 Knowledge 节点选库后刷新丢失
+## 2025-05-14 工作流 Chatbot 调试：流式中断与大图上传
+
+- 现象：编排页「调试与预览」在 LLM 流式阶段报错「流式连接中断」；配图时更明显。
+- 根因1：视觉调试曾用整图 `readFileAsDataUrl` 直传 `imageDataUrls`，原图体积易顶满 `express.json` 15MB 或上游多模态体限制，SSE 异常后 `fetchEventSource` 触发 `onerror`。
+- 根因2：`prepareImageForAnalyze` 曾以「原文件 ≤5MB」为门槛，大图未压缩即被拒，与「先压再传」需求不一致。
+- 修复：
+  - `config-page/index.tsx`：视觉选图改为 `prepareImageForAnalyze`；`onerror` 透出底层 `message` 便于区分网络/413/校验失败。
+  - `agent-tools/image/types.ts` + `service.ts`：放宽可读入原图至 `IMAGE_MAX_SOURCE_BYTES`（40MB），先按最长边 800px 压缩；若仍超过 `IMAGE_MAX_COMPRESSED_OUTPUT_BYTES`（3.5MB），再转 JPEG 降质量/缩边直至达标或明确报错。
+  - `helpers.ts`：`getCompressedImageDimensions` 支持可选 `maxEdgePx`，供多级压缩复用。
+
 
 - 现象：在 workflow 的 knowledge retrieval panel 里选好知识库后，页面刷新会显示未选择；同画布其他节点配置能正常自动保存。
 - 根因：`workflow-children.tsx` 有一段“按当前 datasets 清洗 dataset_ids”的副作用，在首帧就可能执行；而 `useKnowledgeDatasets()` 的 `isLoading` 初始为 `false`，首次拉取开始前存在时序窗口，`datasets` 为空时会把已选 `dataset_ids` 清成 `[]`，随后被草稿自动保存覆盖。

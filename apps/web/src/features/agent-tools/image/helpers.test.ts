@@ -26,6 +26,10 @@ describe('image helpers', () => {
     expect(getCompressedImageDimensions(640, 480)).toEqual({ width: 640, height: 480 });
   });
 
+  it('respects custom max edge', () => {
+    expect(getCompressedImageDimensions(1600, 1200, 400)).toEqual({ width: 400, height: 300 });
+  });
+
   it('rejects invalid image dimensions', () => {
     expect(() => getCompressedImageDimensions(0, 1200)).toThrow('图片尺寸无效，请重试');
   });

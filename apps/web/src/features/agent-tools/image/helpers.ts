@@ -21,17 +21,22 @@ export const isImageSizeAllowed = (size: number): boolean => {
 export const getCompressedImageDimensions = (
   width: number,
   height: number,
+  maxEdgePx: number = IMAGE_COMPRESS_MAX_EDGE_PX,
 ): ImageResizeDimensions => {
   if (width <= 0 || height <= 0) {
     throw new Error('图片尺寸无效，请重试');
   }
 
+  if (!Number.isFinite(maxEdgePx) || maxEdgePx < 32) {
+    throw new Error('图片尺寸无效，请重试');
+  }
+
   const longestEdge = Math.max(width, height);
-  if (longestEdge <= IMAGE_COMPRESS_MAX_EDGE_PX) {
+  if (longestEdge <= maxEdgePx) {
     return { width, height };
   }
 
-  const scale = IMAGE_COMPRESS_MAX_EDGE_PX / longestEdge;
+  const scale = maxEdgePx / longestEdge;
 
   return {
     width: Math.max(1, Math.round(width * scale)),

@@ -21,18 +21,11 @@ import {
 import { KnowledgeDatasetPickerDialog } from '../../../components/knowledge-dataset-picker-dialog';
 import { PanelInfoHint } from '../../../components/form/panel-info-hint';
 import { PanelSliderInput, PanelToggle } from '../../../components/form/panel-form';
+import { prepareImageForAnalyze } from '../../../features/agent-tools/image';
 
 type ChatLine = { id: string; role: 'user' | 'assistant'; content: string; imageCount?: number };
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
-    reader.readAsDataURL(file);
-  });
 
 /**
  * Chatbot（`app.mode: chat`）编排：自研 RAG 经 `knowledge-retrieval/query`，对话经 `/api/chat-stream`。
@@ -159,20 +152,25 @@ export const WorkflowConfigPage = () => {
     event.target.value = '';
 
     const additions: string[] = [];
+    let prepareError = '';
     for (const file of fileList) {
       if (additions.length >= max) {
         break;
       }
-      if (!file.type.startsWith('image/')) {
-        continue;
-      }
       try {
-        additions.push(await readFileAsDataUrl(file));
-      } catch {
-        // 单张失败则跳过
+        const prepared = await prepareImageForAnalyze(file);
+        additions.push(prepared.dataUrl);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '图片处理失败';
+        if (!prepareError) {
+          prepareError = message;
+        }
       }
     }
     if (additions.length === 0) {
+      if (prepareError) {
+        setSendError(prepareError);
+      }
       return;
     }
     setPendingVisionDataUrls((prev) => [...prev, ...additions].slice(0, max));
@@ -271,8 +269,14 @@ export const WorkflowConfigPage = () => {
             completed = true;
           }
         },
-        onerror() {
-          throw new Error('流式连接中断');
+        onerror(err) {
+          const detail =
+            err instanceof Error
+              ? err.message
+              : typeof err === 'object' && err !== null && 'message' in err
+                ? String((err as { message?: unknown }).message)
+                : String(err);
+          throw new Error(detail.trim() ? `流式连接中断：${detail}` : '流式连接中断');
         },
         onclose() {
           if (!completed) {
