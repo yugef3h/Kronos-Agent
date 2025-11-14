@@ -643,7 +643,7 @@ export const WorkflowConfigPage = () => {
                     return (
                       <li
                         key={row.id}
-                        className="flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm sm:flex-nowrap"
+                        className="flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-1 shadow-sm sm:flex-nowrap"
                       >
                         <IconBraceVar className="shrink-0" />
                         <input
