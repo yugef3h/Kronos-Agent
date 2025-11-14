@@ -129,6 +129,15 @@ export type WorkflowChatbotRecallSettings = {
   rerankingModel?: string;
 };
 
+/** 提示词中的 `{{key}}` 占位符；正式对话前由表单收集取值（调试区先手动填）。 */
+export type WorkflowChatbotPromptVariable = {
+  id: string;
+  /** 占位符名，须与提示词里 `{{key}}` 一致 */
+  key: string;
+  /** 表单展示名，可选 */
+  label?: string;
+};
+
 export type WorkflowChatbotOrchestration = {
   systemPrompt: string;
   datasetIds: string[];
@@ -136,6 +145,8 @@ export type WorkflowChatbotOrchestration = {
   /** `metadataFilterMode === 'manual'` 时参与 `knowledge-retrieval/query` */
   metadataFilterConditions?: WorkflowChatbotMetadataCondition[];
   recallSettings?: WorkflowChatbotRecallSettings;
+  /** 提示词变量定义（与 `{{key}}` 对应） */
+  promptVariables?: WorkflowChatbotPromptVariable[];
   /** 调试/对话是否允许用户附带图片（多模态输入） */
   visionEnabled: boolean;
   /** 单轮最多上传图片张数（1–10），默认 3 */
@@ -154,6 +165,7 @@ export const createDefaultChatbotOrchestration = (): WorkflowChatbotOrchestratio
   metadataFilterMode: 'disabled',
   metadataFilterConditions: [],
   recallSettings: createDefaultChatbotRecallSettings(),
+  promptVariables: [],
   visionEnabled: false,
   visionMaxImages: 3,
 });

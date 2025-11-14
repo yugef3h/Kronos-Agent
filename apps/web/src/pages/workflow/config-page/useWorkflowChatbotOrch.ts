@@ -9,6 +9,7 @@ import {
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotOrchestration,
 } from '../../../features/workflow/workflowAppStore';
+import { normalizePromptVariablesList } from './promptVariablesUtils';
 
 const normalizeOrch = (raw: WorkflowChatbotOrchestration | undefined): WorkflowChatbotOrchestration => {
   const base = raw ?? createDefaultChatbotOrchestration();
@@ -26,6 +27,7 @@ const normalizeOrch = (raw: WorkflowChatbotOrchestration | undefined): WorkflowC
     },
     visionEnabled: Boolean(base.visionEnabled),
     visionMaxImages: Math.min(10, Math.max(1, Math.round(base.visionMaxImages ?? 3))),
+    promptVariables: normalizePromptVariablesList(base.promptVariables),
   };
 };
 

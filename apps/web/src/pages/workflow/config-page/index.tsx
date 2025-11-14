@@ -8,11 +8,14 @@ import {
   getWorkflowAppById,
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotMetadataCondition,
+  type WorkflowChatbotPromptVariable,
   type WorkflowChatbotRecallSettings,
 } from '../../../features/workflow/workflowAppStore';
 import { apiUrl, requestKnowledgeRetrievalQuery } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
 import { buildChatbotRetrievalInput } from './chatbotRetrievalInput';
+import { ChatbotPromptEditor, IconBraceVar } from './chatbot-prompt-editor';
+import { applyPromptVariables, isValidPromptVariableKey } from './promptVariablesUtils';
 import { useWorkflowChatbotOrch } from './useWorkflowChatbotOrch';
 import {
   ensureKnowledgeDatasetAuthToken,
@@ -51,6 +54,9 @@ export const WorkflowConfigPage = () => {
   const [sendError, setSendError] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [pendingVisionDataUrls, setPendingVisionDataUrls] = useState<string[]>([]);
+  const [debugVariableValues, setDebugVariableValues] = useState<Record<string, string>>({});
+
+  const debugVariableValuesLatest = useLatest(debugVariableValues);
 
   const streamAbortRef = useRef<AbortController | null>(null);
   const visionFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -64,6 +70,29 @@ export const WorkflowConfigPage = () => {
   useEffect(() => {
     setPendingVisionDataUrls((prev) => prev.slice(0, orch.visionMaxImages));
   }, [orch.visionMaxImages]);
+
+  const promptVariablesSyncKey = useMemo(
+    () => JSON.stringify(orch.promptVariables ?? []),
+    [orch.promptVariables],
+  );
+
+  useEffect(() => {
+    const rows = orch.promptVariables ?? [];
+    setDebugVariableValues((prev) => {
+      const next: Record<string, string> = { ...prev };
+      for (const v of rows) {
+        if (!(v.key in next)) {
+          next[v.key] = '';
+        }
+      }
+      for (const k of Object.keys(next)) {
+        if (!rows.some((v) => v.key === k)) {
+          delete next[k];
+        }
+      }
+      return next;
+    });
+  }, [promptVariablesSyncKey, orch.promptVariables]);
 
   const recallHref = useMemo(() => {
     const first = orch.datasetIds[0];
@@ -135,6 +164,87 @@ export const WorkflowConfigPage = () => {
       ...prev,
       metadataFilterConditions: (prev.metadataFilterConditions ?? []).filter((row) => row.id !== rowId),
     }));
+  };
+
+  // const addPromptVariable = () => {
+  //   persistOrch((prev) => {
+  //     const existing = new Set((prev.promptVariables ?? []).map((v) => v.key));
+  //     let key = 'input';
+  //     let n = 0;
+  //     while (existing.has(key)) {
+  //       n += 1;
+  //       key = `var_${n}`;
+  //     }
+  //     return {
+  //       ...prev,
+  //       promptVariables: [...(prev.promptVariables ?? []), { id: newId(), key }],
+  //     };
+  //   });
+  // };
+
+  const removePromptVariable = (rowId: string) => {
+    persistOrch((prev) => ({
+      ...prev,
+      promptVariables: (prev.promptVariables ?? []).filter((row) => row.id !== rowId),
+    }));
+  };
+
+  const patchPromptVariable = (rowId: string, patch: Partial<Pick<WorkflowChatbotPromptVariable, 'key' | 'label'>>) => {
+    const rowBefore = (orchLatest.current?.promptVariables ?? []).find((r) => r.id === rowId);
+    const oldKey = rowBefore?.key;
+
+    persistOrch((prev) => ({
+      ...prev,
+      promptVariables: (prev.promptVariables ?? []).map((row) => {
+        if (row.id !== rowId) {
+          return row;
+        }
+        const nextKey = typeof patch.key === 'string' ? patch.key.trim() : row.key;
+        const nextLabel = patch.label !== undefined ? String(patch.label).trim() : row.label ?? '';
+        return {
+          ...row,
+          key: nextKey,
+          label: nextLabel.length > 0 ? nextLabel : undefined,
+        };
+      }),
+    }));
+
+    if (oldKey && typeof patch.key === 'string' && patch.key.trim() !== oldKey) {
+      const nk = patch.key.trim();
+      setDebugVariableValues((prev) => {
+        const next = { ...prev };
+        next[nk] = prev[oldKey] ?? '';
+        delete next[oldKey];
+        return next;
+      });
+    }
+  };
+
+  const definedPromptVariableKeys = useMemo(
+    () => (orch.promptVariables ?? []).map((r) => r.key.trim()).filter((k) => k.length > 0),
+    [orch.promptVariables],
+  );
+
+  const addPromptVariablesFromKeys = (keys: readonly string[]) => {
+    persistOrch((prev) => {
+      const existing = new Set((prev.promptVariables ?? []).map((v) => v.key));
+      const additions: WorkflowChatbotPromptVariable[] = [];
+      for (const raw of keys) {
+        const k = raw.trim();
+        if (!isValidPromptVariableKey(k) || existing.has(k)) {
+          continue;
+        }
+        existing.add(k);
+        additions.push({ id: newId(), key: k });
+      }
+      if (additions.length === 0) {
+        return prev;
+      }
+      return {
+        ...prev,
+        promptVariables: [...(prev.promptVariables ?? []), ...additions],
+      };
+    });
   };
 
   const handleVisionFilesChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -223,8 +333,16 @@ export const WorkflowConfigPage = () => {
             : '（本次检索无命中片段，请检查知识库或 query。）';
       }
 
+      const dv = debugVariableValuesLatest.current ?? {};
+      const values: Record<string, string> = {};
+      for (const v of o.promptVariables ?? []) {
+        values[v.key] = dv[v.key] ?? '';
+      }
+      const baseSystem = o.systemPrompt.trim() || '你是帮助用户的助手。';
+      const resolvedSystem = applyPromptVariables(baseSystem, values);
+
       const augmented = [
-        o.systemPrompt.trim() || '你是帮助用户的助手。',
+        resolvedSystem,
         o.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '',
         `## 当前用户问题\n${text}`,
       ]
@@ -443,9 +561,6 @@ export const WorkflowConfigPage = () => {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 sm:inline">
-            模型（服务端 stream 配置）
-          </span>
           <button
             type="button"
             disabled
@@ -464,7 +579,8 @@ export const WorkflowConfigPage = () => {
             <div className="relative">
               <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-medium text-slate-800 flex items-center gap-1" htmlFor="chatbot-system-prompt">
-                  提示词 <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
+                  提示词{' '}
+                  <PanelInfoHint content="写给模型的系统指令。输入单个 { 或把光标放进 {{…}}（含空的 {{}}）内可唤起变量补全；占位符 {{标识}} 高亮为蓝色。在 {{}} 内选好或手输新名后，失焦时若该标识未在下方「变量」列表中，会询问是否自动加入。发送前用调试区取值替换。" />
                 </label>
                 
                 {/* 这里是一个提示词生成器 */}
@@ -478,47 +594,96 @@ export const WorkflowConfigPage = () => {
                 </button> */}
               </div>
 
-              {/* 父容器 relative + textarea 底部内边距留出空间 */}
-              <textarea
+              <ChatbotPromptEditor
                 id="chatbot-system-prompt"
                 value={orch.systemPrompt}
-                onChange={(e) => {
-                  const v = e.target.value;
+                onChange={(v) => {
                   setOrch((o) => ({ ...o, systemPrompt: v }));
                   debouncedPersistPrompt(v);
                 }}
-                onBlur={(e) => {
+                onBlurPersist={(v) => {
                   if (!appId) {
                     return;
                   }
                   updateWorkflowAppChatbotOrchestration(appId, (p) => ({
                     ...p,
-                    systemPrompt: e.target.value,
+                    systemPrompt: v,
                   }));
                 }}
-                rows={8}
+                definedVariableKeys={definedPromptVariableKeys}
+                onAddVariables={addPromptVariablesFromKeys}
                 maxLength={6000}
-                placeholder="在这里写你的提示词，输入'{'插入变量、输入'/'插入提示内容块（后续支持）"
-                className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-sm leading-relaxed text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-400 focus:ring-1 focus:ring-sky-300
-    pb-7" /* 增加底部内边距，防止文字被字数统计遮挡 */
+                rows={6}
+                placeholder="例如：你是助手。用户主题是 {{topic}}。请结合知识库回答。"
               />
 
-              {/* 绝对定位到 textarea 左下角内部 */}
-              <p className="absolute bottom-3 left-3 text-xs text-slate-500 pointer-events-none">
+              <p className="pointer-events-none absolute bottom-3 left-3 z-30 text-xs text-slate-500">
                 {orch.systemPrompt.length} / 6000
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-slate-800 flex items-center gap-1">变量 <PanelInfoHint content="变量将以表单形式让用户在对话前填写，用户填写的表单内容将自动替换提示词中的变量。" /></span>
-                <button type="button" disabled className="text-xs font-medium text-slate-400">
+                <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
+                  变量
+                  <PanelInfoHint content="在提示词里写双花括号占位符，例如 {{input}}。标识须为字母或下划线开头，只能含字母、数字、下划线。正式产品上线路后，用户会在对话前填表；此处先配置标识，并在右侧「调试」里填写测试取值。" />
+                </span>
+                {/* <button
+                  type="button"
+                  onClick={addPromptVariable}
+                  className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                >
                   ＋ 添加
-                </button>
+                </button> */}
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                变量能通过用户输入表单引入提示词或开场白；后续与编排数据模型对齐。
-              </p>
+              {(orch.promptVariables ?? []).length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {(orch.promptVariables ?? []).map((row) => {
+                    const keyInvalid = row.key.length > 0 && !isValidPromptVariableKey(row.key);
+                    return (
+                      <li
+                        key={row.id}
+                        className="flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm sm:flex-nowrap"
+                      >
+                        <IconBraceVar className="shrink-0" />
+                        <input
+                          type="text"
+                          value={row.key}
+                          onChange={(e) => patchPromptVariable(row.id, { key: e.target.value })}
+                          placeholder="标识，如 input"
+                          className="min-w-[88px] max-w-[160px] flex-1 border-0 bg-transparent px-0 py-0.5 text-sm font-medium text-[#1D2939] outline-none ring-0 placeholder:text-slate-400 focus:ring-0"
+                          spellCheck={false}
+                        />
+                        <input
+                          type="text"
+                          value={row.label ?? ''}
+                          onChange={(e) => patchPromptVariable(row.id, { label: e.target.value })}
+                          placeholder="展示名（可选）"
+                          className="min-w-[100px] flex-1 rounded-md border border-slate-200/80 bg-slate-50/80 px-2 py-1.5 text-xs text-slate-800 outline-none focus:border-sky-300"
+                        />
+                        <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                          REQUIRED
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePromptVariable(row.id)}
+                          className="ml-auto shrink-0 rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-50 hover:text-red-600 hover:border-red-600"
+                        >
+                          删除
+                        </button>
+                        {keyInvalid ? (
+                          <span className="w-full text-[11px] text-rose-600">
+                            标识须匹配：字母或下划线开头，仅字母、数字、下划线，最长 64 字符。
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                // <p className="mt-2 text-[11px] text-slate-500">暂无变量，点击「＋ 添加」创建；常用示例标识：<code className="font-mono">input</code>、<code className="font-mono">topic</code>。</p>
+                <></>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
@@ -748,6 +913,37 @@ export const WorkflowConfigPage = () => {
             </div>
             {sendError ? <p className="border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">{sendError}</p> : null}
             <div className="mt-3 shrink-0 border-t border-slate-200/80 p-3">
+              {(orch.promptVariables ?? []).length > 0 ? (
+                <div className="mb-3 rounded-lg border border-cyan-100/80 bg-cyan-50/40 px-2.5 py-2">
+                  <p className="text-[11px] font-semibold text-slate-800">调试：变量取值</p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-slate-600">
+                    发送前会把提示词中的 <code className="font-mono">{'{{key}}'}</code> 替换为下方内容；留空则替换为空字符串。未在列表中的占位符不会被替换。
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {(orch.promptVariables ?? []).map((v) => (
+                      <label key={v.id} className="block min-w-0">
+                        <span className="flex flex-wrap items-baseline gap-x-1 text-[11px] text-slate-700">
+                          <span className="font-medium">{v.label || v.key}</span>
+                          <code className="font-mono text-[10px] text-slate-500">{`{{${v.key}}}`}</code>
+                        </span>
+                        <input
+                          type="text"
+                          value={debugVariableValues[v.key] ?? ''}
+                          onChange={(e) =>
+                            setDebugVariableValues((prev) => ({
+                              ...prev,
+                              [v.key]: e.target.value,
+                            }))
+                          }
+                          disabled={isSending}
+                          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 outline-none focus:border-cyan-400 disabled:opacity-50"
+                          placeholder={`${v.key} 的测试取值`}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {orch.visionEnabled ? (
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <input
