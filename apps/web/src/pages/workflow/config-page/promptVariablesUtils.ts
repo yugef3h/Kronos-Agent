@@ -25,6 +25,48 @@ export const extractDoubleBraceVariableKeys = (text: string): string[] => {
   return [...keys];
 };
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** 删除提示词中某合法标识对应的 `{{ key }}` 占位（整块删除） */
+export const stripDoubleBracePlaceholdersForKey = (template: string, rawKey: string): string => {
+  const key = rawKey.trim();
+  if (!isValidPromptVariableKey(key)) {
+    return template;
+  }
+  const re = new RegExp(`\\{\\{\\s*${escapeRegExp(key)}\\s*\\}\\}`, 'g');
+  return template.replace(re, '');
+};
+
+/** 将 `{{oldKey}}` 替换为 `{{newKey}}`（均为合法标识时） */
+export const replaceDoubleBraceKeyInPrompt = (template: string, oldKey: string, newKey: string): string => {
+  const o = oldKey.trim();
+  const n = newKey.trim();
+  if (!isValidPromptVariableKey(o) || !isValidPromptVariableKey(n)) {
+    return template;
+  }
+  const re = new RegExp(`\\{\\{\\s*${escapeRegExp(o)}\\s*\\}\\}`, 'g');
+  return template.replace(re, `{{${n}}}`);
+};
+
+/**
+ * 按提示词中 `{{key}}` 首次出现顺序对齐变量行；去掉文中已无的 key；新 key 用 `createId` 建行。
+ */
+export const syncPromptVariablesToBraceKeys = (
+  prompt: string,
+  prev: WorkflowChatbotPromptVariable[],
+  createId: () => string,
+): WorkflowChatbotPromptVariable[] => {
+  const keys = extractDoubleBraceVariableKeys(prompt);
+  const byKey = new Map(prev.map((r) => [r.key.trim(), r]));
+  return keys.map((k) => {
+    const ex = byKey.get(k);
+    if (ex) {
+      return ex;
+    }
+    return { id: createId(), key: k };
+  });
+};
+
 /** 出现在文本中但未在已定义集合里的变量 key */
 export const findUndefinedVariableKeys = (text: string, definedKeys: Iterable<string>): string[] => {
   const def = new Set(definedKeys);

@@ -9,7 +9,9 @@ import {
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotOrchestration,
 } from '../../../features/workflow/workflowAppStore';
-import { normalizePromptVariablesList } from './promptVariablesUtils';
+import { normalizePromptVariablesList, syncPromptVariablesToBraceKeys } from './promptVariablesUtils';
+
+const newPersistRowId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
 const normalizeOrch = (raw: WorkflowChatbotOrchestration | undefined): WorkflowChatbotOrchestration => {
   const base = raw ?? createDefaultChatbotOrchestration();
@@ -80,7 +82,11 @@ export const useWorkflowChatbotOrch = (appId: string | undefined) => {
       if (!id) {
         return;
       }
-      updateWorkflowAppChatbotOrchestration(id, (prev) => ({ ...prev, systemPrompt: text }));
+      updateWorkflowAppChatbotOrchestration(id, (prev) => ({
+        ...prev,
+        systemPrompt: text,
+        promptVariables: syncPromptVariablesToBraceKeys(text, prev.promptVariables ?? [], newPersistRowId),
+      }));
     },
     { wait: 400 },
   );

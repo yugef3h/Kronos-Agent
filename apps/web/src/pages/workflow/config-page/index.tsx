@@ -1,6 +1,6 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useLatest } from 'ahooks';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -15,7 +15,14 @@ import { apiUrl, requestKnowledgeRetrievalQuery } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
 import { buildChatbotRetrievalInput } from './chatbotRetrievalInput';
 import { ChatbotPromptEditor, IconBraceVar } from './chatbot-prompt-editor';
-import { applyPromptVariables, isValidPromptVariableKey } from './promptVariablesUtils';
+import {
+  applyPromptVariables,
+  extractDoubleBraceVariableKeys,
+  isValidPromptVariableKey,
+  replaceDoubleBraceKeyInPrompt,
+  stripDoubleBracePlaceholdersForKey,
+  syncPromptVariablesToBraceKeys,
+} from './promptVariablesUtils';
 import { useWorkflowChatbotOrch } from './useWorkflowChatbotOrch';
 import {
   ensureKnowledgeDatasetAuthToken,
@@ -60,6 +67,25 @@ export const WorkflowConfigPage = () => {
 
   const streamAbortRef = useRef<AbortController | null>(null);
   const visionFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const promptBraceKeys = useMemo(
+    () => extractDoubleBraceVariableKeys(orch.systemPrompt),
+    [orch.systemPrompt],
+  );
+
+  useLayoutEffect(() => {
+    setOrch((prev) => {
+      const next = syncPromptVariablesToBraceKeys(prev.systemPrompt, prev.promptVariables ?? [], newId);
+      const cur = prev.promptVariables ?? [];
+      if (
+        cur.length === next.length &&
+        cur.every((r, i) => r.id === next[i]?.id && r.key === next[i]?.key && r.label === next[i]?.label)
+      ) {
+        return prev;
+      }
+      return { ...prev, promptVariables: next };
+    });
+  }, [orch.systemPrompt, orch.promptVariables, setOrch]);
 
   useEffect(() => {
     if (!orch.visionEnabled) {
@@ -183,31 +209,50 @@ export const WorkflowConfigPage = () => {
   // };
 
   const removePromptVariable = (rowId: string) => {
-    persistOrch((prev) => ({
-      ...prev,
-      promptVariables: (prev.promptVariables ?? []).filter((row) => row.id !== rowId),
-    }));
+    const row = (orchLatest.current?.promptVariables ?? []).find((r) => r.id === rowId);
+    const k = row?.key.trim() ?? '';
+    persistOrch((prev) => {
+      let systemPrompt = prev.systemPrompt;
+      if (k && isValidPromptVariableKey(k)) {
+        systemPrompt = stripDoubleBracePlaceholdersForKey(systemPrompt, k);
+      }
+      return {
+        ...prev,
+        systemPrompt,
+        promptVariables: (prev.promptVariables ?? []).filter((r) => r.id !== rowId),
+      };
+    });
   };
 
   const patchPromptVariable = (rowId: string, patch: Partial<Pick<WorkflowChatbotPromptVariable, 'key' | 'label'>>) => {
     const rowBefore = (orchLatest.current?.promptVariables ?? []).find((r) => r.id === rowId);
     const oldKey = rowBefore?.key;
 
-    persistOrch((prev) => ({
-      ...prev,
-      promptVariables: (prev.promptVariables ?? []).map((row) => {
-        if (row.id !== rowId) {
-          return row;
+    persistOrch((prev) => {
+      let systemPrompt = prev.systemPrompt;
+      if (oldKey && typeof patch.key === 'string') {
+        const nk = patch.key.trim();
+        if (nk && nk !== oldKey && isValidPromptVariableKey(oldKey) && isValidPromptVariableKey(nk)) {
+          systemPrompt = replaceDoubleBraceKeyInPrompt(systemPrompt, oldKey, nk);
         }
-        const nextKey = typeof patch.key === 'string' ? patch.key.trim() : row.key;
-        const nextLabel = patch.label !== undefined ? String(patch.label).trim() : row.label ?? '';
-        return {
-          ...row,
-          key: nextKey,
-          label: nextLabel.length > 0 ? nextLabel : undefined,
-        };
-      }),
-    }));
+      }
+      return {
+        ...prev,
+        systemPrompt,
+        promptVariables: (prev.promptVariables ?? []).map((row) => {
+          if (row.id !== rowId) {
+            return row;
+          }
+          const nextKey = typeof patch.key === 'string' ? patch.key.trim() : row.key;
+          const nextLabel = patch.label !== undefined ? String(patch.label).trim() : row.label ?? '';
+          return {
+            ...row,
+            key: nextKey,
+            label: nextLabel.length > 0 ? nextLabel : undefined,
+          };
+        }),
+      };
+    });
 
     if (oldKey && typeof patch.key === 'string' && patch.key.trim() !== oldKey) {
       const nk = patch.key.trim();
@@ -219,11 +264,6 @@ export const WorkflowConfigPage = () => {
       });
     }
   };
-
-  const definedPromptVariableKeys = useMemo(
-    () => (orch.promptVariables ?? []).map((r) => r.key.trim()).filter((k) => k.length > 0),
-    [orch.promptVariables],
-  );
 
   const addPromptVariablesFromKeys = (keys: readonly string[]) => {
     persistOrch((prev) => {
@@ -608,9 +648,10 @@ export const WorkflowConfigPage = () => {
                   updateWorkflowAppChatbotOrchestration(appId, (p) => ({
                     ...p,
                     systemPrompt: v,
+                    promptVariables: syncPromptVariablesToBraceKeys(v, p.promptVariables ?? [], newId),
                   }));
                 }}
-                definedVariableKeys={definedPromptVariableKeys}
+                definedVariableKeys={promptBraceKeys}
                 onAddVariables={addPromptVariablesFromKeys}
                 maxLength={6000}
                 rows={6}
@@ -622,21 +663,14 @@ export const WorkflowConfigPage = () => {
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
-                  变量
-                  <PanelInfoHint content="在提示词里写双花括号占位符，例如 {{input}}。标识须为字母或下划线开头，只能含字母、数字、下划线。正式产品上线路后，用户会在对话前填表；此处先配置标识，并在右侧「调试」里填写测试取值。" />
-                </span>
-                {/* <button
-                  type="button"
-                  onClick={addPromptVariable}
-                  className="text-xs font-medium text-sky-700 hover:text-sky-800"
-                >
-                  ＋ 添加
-                </button> */}
-              </div>
-              {(orch.promptVariables ?? []).length > 0 ? (
+            {promptBraceKeys.length > 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
+                    变量
+                    <PanelInfoHint content="列表与提示词中的 {{标识}} 同步：删掉提示词里的占位符后此处会自动移除；改标识会同步改写提示词中的占位符。展示名可选；右侧「调试」可填测试取值。" />
+                  </span>
+                </div>
                 <ul className="mt-3 space-y-2">
                   {(orch.promptVariables ?? []).map((row) => {
                     const keyInvalid = row.key.length > 0 && !isValidPromptVariableKey(row.key);
@@ -680,11 +714,8 @@ export const WorkflowConfigPage = () => {
                     );
                   })}
                 </ul>
-              ) : (
-                // <p className="mt-2 text-[11px] text-slate-500">暂无变量，点击「＋ 添加」创建；常用示例标识：<code className="font-mono">input</code>、<code className="font-mono">topic</code>。</p>
-                <></>
-              )}
-            </div>
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -913,7 +944,7 @@ export const WorkflowConfigPage = () => {
             </div>
             {sendError ? <p className="border-t border-rose-100 bg-rose-50 px-3 py-2 text-xs text-rose-700">{sendError}</p> : null}
             <div className="mt-3 shrink-0 border-t border-slate-200/80 p-3">
-              {(orch.promptVariables ?? []).length > 0 ? (
+              {promptBraceKeys.length > 0 ? (
                 <div className="mb-3 rounded-lg border border-cyan-100/80 bg-cyan-50/40 px-2.5 py-2">
                   <p className="text-[11px] font-semibold text-slate-800">调试：变量取值</p>
                   <p className="mt-0.5 text-[10px] leading-relaxed text-slate-600">

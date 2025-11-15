@@ -133,28 +133,12 @@ export const ChatbotPromptEditor = ({
   const [menu, setMenu] = useState<PromptVariableMenuTrigger | null>(null);
   const [undefKeys, setUndefKeys] = useState<string[] | null>(null);
   const [menuScreenPos, setMenuScreenPos] = useState<{ top: number; left: number } | null>(null);
-  const [addVarExpanded, setAddVarExpanded] = useState(false);
-  const [newVarDraft, setNewVarDraft] = useState('');
-  const newVarInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef(menu);
   menuRef.current = menu;
 
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
-
-  useEffect(() => {
-    if (menu) {
-      setNewVarDraft(menu.filter);
-    }
-    setAddVarExpanded(false);
-  }, [menu]);
-
-  useEffect(() => {
-    if (addVarExpanded) {
-      newVarInputRef.current?.focus();
-    }
-  }, [addVarExpanded]);
 
   const syncScroll = useCallback(() => {
     const ta = taRef.current;
@@ -195,7 +179,7 @@ export const ChatbotPromptEditor = ({
       return;
     }
     recomputeMenuScreenPos();
-  }, [menu, value, addVarExpanded, recomputeMenuScreenPos]);
+  }, [menu, value, recomputeMenuScreenPos]);
 
   useEffect(() => {
     if (!menuRef.current) {
@@ -236,7 +220,35 @@ export const ChatbotPromptEditor = ({
     onChange(next);
     setMenu(null);
     setMenuScreenPos(null);
-    setAddVarExpanded(false);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(pos, pos);
+    });
+  };
+
+  /** 「添加新变量」：把当前 `{…` / `{{…` 触发片段换成 `{{}}`，光标落在括号中间 */
+  const commitEmptyDoubleBrace = () => {
+    if (!menu || !taRef.current) {
+      return;
+    }
+    const ta = taRef.current;
+    const end = Math.max(selEndRef.current, ta.selectionStart ?? 0);
+    const v = valueRef.current;
+    const token = '{{}}';
+    let next: string;
+    let pos: number;
+    if (menu.kind === 'pair') {
+      next = `${v.slice(0, menu.openStart)}${token}${v.slice(menu.replaceEnd)}`;
+      pos = menu.openStart + 2;
+    } else {
+      next = `${v.slice(0, menu.start)}${token}${v.slice(end)}`;
+      pos = menu.start + 2;
+    }
+    valueRef.current = next;
+    onChange(next);
+    selEndRef.current = pos;
+    setMenu(null);
+    setMenuScreenPos(null);
     requestAnimationFrame(() => {
       ta.focus();
       ta.setSelectionRange(pos, pos);
@@ -300,6 +312,7 @@ export const ChatbotPromptEditor = ({
   const menuKeys = f
     ? definedVariableKeys.filter((k) => k.toLowerCase().startsWith(f))
     : [...definedVariableKeys];
+  const hasMenuKeyOptions = menuKeys.length > 0;
 
   return (
     <div className="relative">
@@ -341,7 +354,7 @@ export const ChatbotPromptEditor = ({
 
         {menu && menuScreenPos ? (
         <div
-          className="flex max-h-72 min-h-[220px] min-w-[240px] max-w-[min(320px,calc(100vw-16px))] flex-col overflow-hidden rounded-[10px] border border-slate-200/90 bg-white shadow-[0_8px_28px_-6px_rgba(15,23,42,0.14)]"
+          className="flex min-w-[240px] max-w-[min(320px,calc(100vw-16px))] flex-col rounded-[10px] border border-slate-200/90 bg-white shadow-[0_8px_28px_-6px_rgba(15,23,42,0.14)]"
           style={{
             position: 'fixed',
             top: menuScreenPos.top,
@@ -352,65 +365,29 @@ export const ChatbotPromptEditor = ({
           role="listbox"
           aria-label="插入变量"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto p-1">
-            {menuKeys.map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="option"
-                className={menuRowClass}
-                onClick={() => commitInsert(k)}
-              >
+          {hasMenuKeyOptions ? (
+            <div className="max-h-72 overflow-y-auto overflow-x-hidden p-1">
+              {menuKeys.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="option"
+                  className={menuRowClass}
+                  onClick={() => commitInsert(k)}
+                >
+                  <IconBraceVar />
+                  <span className="min-w-0 flex-1 truncate font-normal">{k}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="p-1">
+              <button type="button" className={menuRowClass} onClick={() => commitEmptyDoubleBrace()}>
                 <IconBraceVar />
-                <span className="min-w-0 flex-1 truncate font-normal">{k}</span>
+                <span className="font-normal">添加新变量</span>
               </button>
-            ))}
-          </div>
-          <div className="shrink-0 border-t border-slate-100 bg-white p-1">
-            <button
-              type="button"
-              className={menuRowClass}
-              onClick={() => setAddVarExpanded((v) => !v)}
-              aria-expanded={addVarExpanded}
-            >
-              <IconBraceVar />
-              <span className="font-normal">添加新变量</span>
-            </button>
-            {addVarExpanded ? (
-              <div className="px-1 pb-1 pt-0">
-                <div className="flex gap-1.5 rounded-lg border border-slate-100 bg-slate-50/90 p-1.5">
-                  <input
-                    ref={newVarInputRef}
-                    type="text"
-                    value={newVarDraft}
-                    onChange={(e) => setNewVarDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (isValidPromptVariableKey(newVarDraft)) {
-                          commitInsert(newVarDraft);
-                        }
-                      }
-                      if (e.key === 'Escape') {
-                        e.preventDefault();
-                        setAddVarExpanded(false);
-                      }
-                    }}
-                    placeholder="变量标识，如 title"
-                    className="min-w-0 flex-1 rounded-md border-0 bg-white px-2 py-1.5 text-xs font-mono text-[#1D2939] shadow-sm outline-none ring-1 ring-slate-200/80 focus:ring-blue-400"
-                  />
-                  <button
-                    type="button"
-                    disabled={!isValidPromptVariableKey(newVarDraft)}
-                    onClick={() => commitInsert(newVarDraft)}
-                    className="shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    确定
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+            </div>
+          )}
         </div>
       ) : null}
       </div>
