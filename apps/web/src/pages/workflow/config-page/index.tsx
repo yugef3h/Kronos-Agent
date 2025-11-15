@@ -73,6 +73,27 @@ export const WorkflowConfigPage = () => {
     [orch.systemPrompt],
   );
 
+  /** 补全列表：提示词里已闭合的 {{k}} ∪ 变量表行，避免同步帧之间漏掉已配置项 */
+  const editorDefinedVariableKeys = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const k of promptBraceKeys) {
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(k);
+      }
+    }
+    for (const row of orch.promptVariables ?? []) {
+      const k = row.key.trim();
+      if (k.length === 0 || seen.has(k)) {
+        continue;
+      }
+      seen.add(k);
+      out.push(k);
+    }
+    return out;
+  }, [promptBraceKeys, orch.promptVariables]);
+
   useLayoutEffect(() => {
     setOrch((prev) => {
       const next = syncPromptVariablesToBraceKeys(prev.systemPrompt, prev.promptVariables ?? [], newId);
@@ -651,7 +672,7 @@ export const WorkflowConfigPage = () => {
                     promptVariables: syncPromptVariablesToBraceKeys(v, p.promptVariables ?? [], newId),
                   }));
                 }}
-                definedVariableKeys={promptBraceKeys}
+                definedVariableKeys={editorDefinedVariableKeys}
                 onAddVariables={addPromptVariablesFromKeys}
                 maxLength={6000}
                 rows={6}

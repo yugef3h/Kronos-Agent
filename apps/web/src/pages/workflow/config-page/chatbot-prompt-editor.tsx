@@ -31,39 +31,51 @@ function measureCaretClientRect(textarea: HTMLTextAreaElement, position: number)
   const taRect = textarea.getBoundingClientRect();
   const borderTop = parseFloat(cs.borderTopWidth) || 0;
   const borderLeft = parseFloat(cs.borderLeftWidth) || 0;
-  const div = document.createElement('div');
-  div.setAttribute(
+  const mirrorContent = [
+    'position:absolute',
+    'left:0',
+    `top:${-textarea.scrollTop}px`,
+    `width:${textarea.clientWidth}px`,
+    'white-space:pre-wrap',
+    'overflow-wrap:break-word',
+    'word-break:break-word',
+    `font:${cs.font}`,
+    `line-height:${cs.lineHeight}`,
+    `letter-spacing:${cs.letterSpacing}`,
+    `padding:${cs.padding}`,
+    'box-sizing:border-box',
+    `text-align:${cs.textAlign}`,
+    `direction:${cs.direction}`,
+    'border:0',
+    'margin:0',
+  ].join(';');
+
+  const clip = document.createElement('div');
+  clip.setAttribute(
     'style',
     [
       'position:fixed',
       `top:${taRect.top + borderTop}px`,
       `left:${taRect.left + borderLeft}px`,
       `width:${textarea.clientWidth}px`,
+      `height:${textarea.clientHeight}px`,
       'z-index:-1',
       'visibility:hidden',
       'overflow:hidden',
       'pointer-events:none',
-      'white-space:pre-wrap',
-      'overflow-wrap:break-word',
-      'word-break:break-word',
-      `font:${cs.font}`,
-      `line-height:${cs.lineHeight}`,
-      `letter-spacing:${cs.letterSpacing}`,
-      `padding:${cs.padding}`,
-      'box-sizing:border-box',
-      `text-align:${cs.textAlign}`,
-      `direction:${cs.direction}`,
-      'border:0',
-      'margin:0',
     ].join(';'),
   );
-  div.textContent = textarea.value.slice(0, position);
+
+  const inner = document.createElement('div');
+  inner.setAttribute('style', mirrorContent);
+  inner.textContent = textarea.value.slice(0, position);
   const span = document.createElement('span');
   span.textContent = textarea.value.slice(position) || ' ';
-  div.appendChild(span);
-  document.body.appendChild(div);
+  inner.appendChild(span);
+  clip.appendChild(inner);
+  document.body.appendChild(clip);
   const r = span.getBoundingClientRect();
-  document.body.removeChild(div);
+  document.body.removeChild(clip);
   return r;
 }
 
@@ -92,7 +104,7 @@ function highlightNodes(text: string): ReactNode[] {
       nodes.push(text.slice(last, m.index));
     }
     nodes.push(
-      <span key={`pv-hl-${k++}`} className="font-semibold text-[#155EEF]">
+      <span key={`pv-hl-${k++}`} className="font-normal text-[#155EEF]">
         {m[0]}
       </span>,
     );
@@ -267,6 +279,7 @@ export const ChatbotPromptEditor = ({
 
   const handleKeyUp = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
+    syncScroll();
     openMenuIfAny(ta.value, ta.selectionStart ?? 0);
   };
 
@@ -275,6 +288,7 @@ export const ChatbotPromptEditor = ({
     if (ta) {
       selEndRef.current = ta.selectionEnd ?? ta.selectionStart ?? 0;
     }
+    syncScroll();
     if (menuRef.current) {
       requestAnimationFrame(() => recomputeMenuScreenPos());
     }
@@ -381,13 +395,14 @@ export const ChatbotPromptEditor = ({
               ))}
             </div>
           ) : (
-            <div className="p-1">
+            <></>
+          )}
+          <div className="p-1">
               <button type="button" className={menuRowClass} onClick={() => commitEmptyDoubleBrace()}>
                 <IconBraceVar />
                 <span className="font-normal">添加新变量</span>
               </button>
             </div>
-          )}
         </div>
       ) : null}
       </div>
