@@ -74,8 +74,8 @@ export const findUndefinedVariableKeys = (text: string, definedKeys: Iterable<st
 };
 
 /**
- * 光标处是否处于「可插入变量」上下文：未闭合的 `{filter` 或 `{{filter`（filter 内不含 `}`）。
- * 返回从第一个参与匹配的 `{` 起到光标前的片段起点。
+ * 光标处是否处于「可插入变量」上下文：未闭合的 `{filter` / `{{filter`（filter 内不含 `}`），
+ * 且不在已闭合的 `{{…}}` 内。返回从该 `{` 起的片段起点。
  */
 export const getBraceVariableTrigger = (
   value: string,
@@ -92,6 +92,10 @@ export const getBraceVariableTrigger = (
       if (inner.includes('}')) {
         continue;
       }
+      const pairClose = value.indexOf('}}', i + 2);
+      if (pairClose !== -1 && selectionStart <= pairClose + 2) {
+        continue;
+      }
       return { start: i, filter: inner };
     }
     if (i > 0 && before[i - 1] === '{') {
@@ -106,7 +110,7 @@ export const getBraceVariableTrigger = (
   return null;
 };
 
-/** 光标在完整或未完成的一对 `{{ … }}` 内部（含空 `{{|}}`），用于在框内选变量替换整段占位符 */
+/** 光标在未闭合的 `{{…` 内（尚无 `}}`）时触发；已闭合占位符内不触发 */
 export const getPairInnerTrigger = (
   value: string,
   selectionStart: number,
@@ -131,18 +135,14 @@ export const getPairInnerTrigger = (
     }
     return { openStart: open, replaceEnd: selectionStart, filter: segment };
   }
-  if (selectionStart > close) {
-    return null;
-  }
-  const filter = value.slice(innerStart, Math.min(selectionStart, close));
-  return { openStart: open, replaceEnd: close + 2, filter };
+  return null;
 };
 
 export type PromptVariableMenuTrigger =
   | { kind: 'single'; start: number; filter: string }
   | { kind: 'pair'; openStart: number; replaceEnd: number; filter: string };
 
-/** 优先识别 `{{}}` 内补全，否则为单 `{` 触发 */
+/** 未闭合的 `{{…` 走 pair；已闭合 `{{…}}` 不弹层；仅单 `{` 走 single */
 export const resolvePromptVariableMenuTrigger = (
   value: string,
   selectionStart: number,

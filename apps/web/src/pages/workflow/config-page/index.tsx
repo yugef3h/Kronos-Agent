@@ -625,7 +625,7 @@ export const WorkflowConfigPage = () => {
           <button
             type="button"
             disabled
-            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
+            className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white"
           >
             发布
           </button>
@@ -641,7 +641,7 @@ export const WorkflowConfigPage = () => {
               <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-medium text-slate-800 flex items-center gap-1" htmlFor="chatbot-system-prompt">
                   提示词{' '}
-                  <PanelInfoHint content="写给模型的系统指令。输入单个 { 或把光标放进 {{…}}（含空的 {{}}）内可唤起变量补全；占位符 {{标识}} 高亮为蓝色。在 {{}} 内选好或手输新名后，失焦时若该标识未在下方「变量」列表中，会询问是否自动加入。发送前用调试区取值替换。" />
+                  <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
                 </label>
                 
                 {/* 这里是一个提示词生成器 */}
@@ -689,7 +689,7 @@ export const WorkflowConfigPage = () => {
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1 text-sm font-medium text-slate-800">
                     变量
-                    <PanelInfoHint content="列表与提示词中的 {{标识}} 同步：删掉提示词里的占位符后此处会自动移除；改标识会同步改写提示词中的占位符。展示名可选；右侧「调试」可填测试取值。" />
+                    <PanelInfoHint content="变量将以表单形式让用户在对话前填写，用户填写的表单内容将自动替换提示词中的变量。" />
                   </span>
                 </div>
                 <ul className="mt-3 space-y-2">
@@ -967,16 +967,16 @@ export const WorkflowConfigPage = () => {
             <div className="mt-3 shrink-0 border-t border-slate-200/80 p-3">
               {promptBraceKeys.length > 0 ? (
                 <div className="mb-3 rounded-lg border border-cyan-100/80 bg-cyan-50/40 px-2.5 py-2">
-                  <p className="text-[11px] font-semibold text-slate-800">调试：变量取值</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-slate-600">
+                  {/* <p className="text-[11px] font-semibold text-slate-800">调试：变量取值</p> */}
+                  {/* <p className="mt-0.5 text-[10px] leading-relaxed text-slate-600">
                     发送前会把提示词中的 <code className="font-mono">{'{{key}}'}</code> 替换为下方内容；留空则替换为空字符串。未在列表中的占位符不会被替换。
-                  </p>
+                  </p> */}
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {(orch.promptVariables ?? []).map((v) => (
                       <label key={v.id} className="block min-w-0">
                         <span className="flex flex-wrap items-baseline gap-x-1 text-[11px] text-slate-700">
                           <span className="font-medium">{v.label || v.key}</span>
-                          <code className="font-mono text-[10px] text-slate-500">{`{{${v.key}}}`}</code>
+                          {/* <code className="font-mono text-[10px] text-slate-500">{`{{${v.key}}}`}</code> */}
                         </span>
                         <input
                           type="text"
@@ -989,7 +989,7 @@ export const WorkflowConfigPage = () => {
                           }
                           disabled={isSending}
                           className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 outline-none focus:border-cyan-400 disabled:opacity-50"
-                          placeholder={`${v.key} 的测试取值`}
+                          placeholder={`请填写变量${v.key}`}
                         />
                       </label>
                     ))}
