@@ -641,7 +641,7 @@ export const WorkflowConfigPage = () => {
               <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-medium text-slate-800 flex items-center gap-1" htmlFor="chatbot-system-prompt">
                   提示词{' '}
-                  <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
+                  <PanelInfoHint content="提示词用于对 AI 的回复做出一系列指令和约束。输入 { 或 / 可打开变量补全；可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。" />
                 </label>
                 
                 {/* 这里是一个提示词生成器 */}
@@ -676,7 +676,7 @@ export const WorkflowConfigPage = () => {
                 onAddVariables={addPromptVariablesFromKeys}
                 maxLength={6000}
                 rows={6}
-                placeholder="例如：你是助手。用户主题是 {{topic}}。请结合知识库回答。"
+                placeholder="在这里写提示词；输入 { 或 / 打开变量补全。"
               />
 
               <p className="pointer-events-none absolute bottom-3 left-3 z-30 text-xs text-slate-500">
@@ -919,13 +919,13 @@ export const WorkflowConfigPage = () => {
                 <div className="soft-scrollbar h-full w-full space-y-4 overflow-y-auto bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
                   {messages.length === 0 ? (
                     <div className="mx-auto mt-4 max-w-5xl px-3 text-center">
-                      <h3 className="font-display text-lg text-slate-800 md:text-xl">调试对话</h3>
+                      {/* <h3 className="font-display text-lg text-slate-800 md:text-xl">调试对话</h3>
                       <p className="mt-2 text-sm leading-relaxed text-slate-500">
                         输入问题后发送：将先走知识库检索（multiWay + Rerank），再注入 Prompt 并流式生成。
                         {orch.visionEnabled
                           ? ' 开启视觉后可在下方添加图片一并发送（data URL，单张不宜过大）。'
                           : ''}
-                      </p>
+                      </p> */}
                     </div>
                   ) : (
                     messages.map((line) => (

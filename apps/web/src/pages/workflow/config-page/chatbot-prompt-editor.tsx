@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type CSSProperties,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
@@ -351,8 +350,8 @@ export const ChatbotPromptEditor = ({
             rowClass,
             padClass,
             'relative z-10 w-full resize-y overflow-auto rounded-xl border border-slate-200 bg-transparent text-transparent caret-[#1D2939] outline-none transition focus:border-sky-400 focus:ring-1 focus:ring-sky-300',
+            '[-webkit-text-fill-color:transparent] [&::placeholder]:text-slate-400 [&::placeholder]:opacity-100 [&::placeholder]:[-webkit-text-fill-color:rgb(148,163,184)]',
           )}
-          style={{ WebkitTextFillColor: 'transparent' } as CSSProperties}
         />
         <div
           ref={hlRef}

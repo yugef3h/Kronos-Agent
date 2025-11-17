@@ -74,8 +74,8 @@ export const findUndefinedVariableKeys = (text: string, definedKeys: Iterable<st
 };
 
 /**
- * 光标处是否处于「可插入变量」上下文：未闭合的 `{filter` / `{{filter`（filter 内不含 `}`），
- * 且不在已闭合的 `{{…}}` 内。返回从该 `{` 起的片段起点。
+ * 光标处「单字符触发」：`{…` / `{{…` 或 `/…`（与 `{` 相同补全语义），
+ * 不在已闭合的 `{{…}}` 内；`/` 会跳过 `://` 与 `//`。
  */
 export const getBraceVariableTrigger = (
   value: string,
@@ -83,29 +83,51 @@ export const getBraceVariableTrigger = (
 ): { start: number; filter: string } | null => {
   const before = value.slice(0, selectionStart);
   for (let i = selectionStart - 1; i >= 0; i--) {
-    if (before[i] !== '{') {
-      continue;
-    }
-    const slice = before.slice(i);
-    if (slice.startsWith('{{')) {
-      const inner = slice.slice(2);
-      if (inner.includes('}')) {
+    const ch = before[i];
+    if (ch === '{') {
+      const slice = before.slice(i);
+      if (slice.startsWith('{{')) {
+        const inner = slice.slice(2);
+        if (inner.includes('}')) {
+          continue;
+        }
+        const pairClose = value.indexOf('}}', i + 2);
+        if (pairClose !== -1 && selectionStart <= pairClose + 2) {
+          continue;
+        }
+        return { start: i, filter: inner };
+      }
+      if (i > 0 && before[i - 1] === '{') {
         continue;
       }
-      const pairClose = value.indexOf('}}', i + 2);
-      if (pairClose !== -1 && selectionStart <= pairClose + 2) {
+      const inner = slice.slice(1);
+      if (inner.includes('}')) {
         continue;
       }
       return { start: i, filter: inner };
     }
-    if (i > 0 && before[i - 1] === '{') {
-      continue;
+    if (ch === '/') {
+      if (i > 0 && before[i - 1] === '/') {
+        continue;
+      }
+      if (i > 0 && before[i - 1] === ':') {
+        continue;
+      }
+      const slice = before.slice(i);
+      const inner = slice.slice(1);
+      if (inner.includes('}')) {
+        continue;
+      }
+      const openBrace = before.lastIndexOf('{{', i);
+      if (openBrace !== -1) {
+        const innerStart = openBrace + 2;
+        const pairClose = value.indexOf('}}', innerStart);
+        if (pairClose !== -1 && i < pairClose + 2 && selectionStart <= pairClose + 2) {
+          continue;
+        }
+      }
+      return { start: i, filter: inner };
     }
-    const inner = slice.slice(1);
-    if (inner.includes('}')) {
-      continue;
-    }
-    return { start: i, filter: inner };
   }
   return null;
 };
@@ -142,7 +164,7 @@ export type PromptVariableMenuTrigger =
   | { kind: 'single'; start: number; filter: string }
   | { kind: 'pair'; openStart: number; replaceEnd: number; filter: string };
 
-/** 未闭合的 `{{…` 走 pair；已闭合 `{{…}}` 不弹层；仅单 `{` 走 single */
+/** 未闭合的 `{{…` 走 pair；已闭合 `{{…}}` 不弹层；单 `{` 或 `/` 走 single */
 export const resolvePromptVariableMenuTrigger = (
   value: string,
   selectionStart: number,
