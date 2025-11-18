@@ -14,5 +14,6 @@ apps/server/data/knowledge-datasets.json
 __pycache__/
 *.pyc
 .pnpm-store/
+.cursorrules
 # 复习笔记
 review
