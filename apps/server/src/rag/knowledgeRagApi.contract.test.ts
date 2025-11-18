@@ -22,7 +22,7 @@ const toDataUrl = (mimeType: string, value: string) => {
   return `data:${mimeType};base64,${Buffer.from(value, 'utf8').toString('base64')}`;
 };
 
-/** Step5：双引擎 HTTP 形状一致；此处自研走 service、LangChain 走 vectorRetrieval（mock 向量），避免 Jest 加载 `knowledgeFacade`→`env` 的 import.meta 链。 */
+/** Step5：双引擎 HTTP 形状一致；此处自研走 service、LangChain 走 vectorRetrieval（mock 向量），避免 Jest 加载 `knowledgeFacade`→`env` 的 import.meta 链。含 `langchain_query_variants` 诊断为可选字段。 */
 describe('knowledge RAG API contract (Step5)', () => {
   let tempDir = '';
   let storeFilePath = '';
