@@ -7,6 +7,7 @@ import {
   listKnowledgeDatasetChunks,
   type KnowledgeDatasetChunkRecord,
 } from '../domain/knowledgeDocumentStore.js';
+import { maybeExpandRetrievalQueries } from '../rag/langchain/expandRetrievalQueries.js';
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay';
 export type KnowledgeMetadataFilteringMode = 'disabled' | 'manual';
@@ -66,8 +67,8 @@ export type KnowledgeRetrievalQueryResult = {
     dataset_count: number;
     total_chunk_count: number;
     filtered_chunk_count: number;
-    /** LangChain 检索分支：多查询改写后的有效查询条数（含原问句）。 */
-    langchain_query_variants?: number;
+    /** 多查询改写（`RAG_LC_MULTI_QUERY`）时参与语义极大值融合的问句条数（含原问句）。 */
+    query_variants?: number;
   };
 };
 
@@ -188,7 +189,7 @@ export const scoreBySearchMethod = (params: {
 }) => {
   const keyword = clampUnitScore(computeTokenOverlapScore(params.queryTerms, params.text));
   const fullText = clampUnitScore(computeFullTextScore(params.query, params.text, params.queryTerms));
-  /** Step4：`semanticOverride` 由 LangChain 向量余弦映射，否则沿用自研 bigram+词重叠语义分。 */
+  /** Step4：`semanticOverride` 由 LangChain 向量余弦或多 query 自研语义极大值注入；未传时沿用单问句 bigram+词重叠语义分。 */
   const semantic = params.semanticOverride != null && Number.isFinite(params.semanticOverride)
     ? clampUnitScore(params.semanticOverride)
     : clampUnitScore(computeSemanticScore(params.query, params.text, params.queryTerms));
@@ -324,6 +325,8 @@ export const runKnowledgeRetrievalQuery = async (
   );
 
   const queryTerms = getTermCandidates(query.query);
+  const queryVariants = await maybeExpandRetrievalQueries(query.query);
+
   const chunkGroups = await Promise.all(datasets.map(async (dataset) => ({
     dataset,
     chunks: await listKnowledgeDatasetChunks(dataset.id),
@@ -344,6 +347,14 @@ export const runKnowledgeRetrievalQuery = async (
       const searchMethod = query.retrieval_mode === 'oneWay'
         ? 'semantic_search'
         : item.dataset.retrieval_model.search_method;
+      const semanticOverride = queryVariants.length > 1
+        ? Math.max(...queryVariants.map((variant) => computeSemanticScore(
+          variant,
+          chunkRecord.chunk.text,
+          getTermCandidates(variant),
+        )))
+        : undefined;
+
       const scores = scoreBySearchMethod({
         dataset: query.retrieval_mode === 'oneWay'
           ? {
@@ -357,6 +368,7 @@ export const runKnowledgeRetrievalQuery = async (
         query: query.query,
         text: chunkRecord.chunk.text,
         queryTerms,
+        semanticOverride,
       });
       const threshold = resolveThreshold({ query, dataset: item.dataset });
       if (typeof threshold === 'number' && scores.finalScore < threshold) {
@@ -400,6 +412,7 @@ export const runKnowledgeRetrievalQuery = async (
       dataset_count: datasets.length,
       total_chunk_count: totalChunkCount,
       filtered_chunk_count: filteredChunkCount,
+      ...(queryVariants.length > 1 ? { query_variants: queryVariants.length } : {}),
     },
   };
 };
