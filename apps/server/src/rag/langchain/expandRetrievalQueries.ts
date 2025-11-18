@@ -65,8 +65,8 @@ const messageContentToString = (content: unknown): string => {
 };
 
 /**
- * 使用 LangChain `ChatOpenAI` 生成若干同义/改写查询，用于向量通道多视角打分（见 `vectorRetrieval`）。
- * 需 `RAG_LC_MULTI_QUERY=true` 且具备与聊天相同的 `DOUBAO_*` 环境变量。向量打分见 `vectorRetrieval.ts`。
+ * 使用 LangChain `ChatOpenAI` 生成若干同义/改写查询，供自研与 LangChain 检索在语义通道做多 query 极大值融合。
+ * 需 `RAG_LC_MULTI_QUERY=true` 且具备与聊天相同的 `DOUBAO_*` 环境变量。
  */
 export async function expandRetrievalQueriesWithLangChain(userQuery: string): Promise<string[]> {
   const chat = createExpansionChat();
@@ -96,8 +96,8 @@ export async function expandRetrievalQueriesWithLangChain(userQuery: string): Pr
     .slice(0, 4);
 }
 
-// 向量打分
-export async function maybeExpandQueriesForLangchainRetrieval(original: string): Promise<string[]> {
+/** 返回若干检索用问句（含原问句）；自研与 `langchain` 检索共用。 */
+export async function maybeExpandRetrievalQueries(original: string): Promise<string[]> {
   const trimmed = original.trim();
   if (!trimmed) {
     return [original];
@@ -113,7 +113,7 @@ export async function maybeExpandQueriesForLangchainRetrieval(original: string):
     return [...new Set(merged.map((item) => item.trim()).filter(Boolean))].slice(0, 5);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown';
-    console.warn(`[rag/langchain] query expansion skipped: ${message}`);
+    console.warn(`[rag] query expansion skipped: ${message}`);
     return [original];
   }
 }
