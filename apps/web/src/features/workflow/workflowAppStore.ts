@@ -122,7 +122,7 @@ export type WorkflowChatbotMetadataCondition = {
   value: string;
 };
 
-/** Chatbot 编排「召回设置」弹窗持久化，对应 `knowledge-retrieval/query` 的 multiWay 段。 */
+/** Chatbot 编排「召回设置」弹窗持久化，对应 `knowledge-retrieval/query` 的 multiWay 段（rerank 启发式；多查询改写由服务端 env 控制）。 */
 export type WorkflowChatbotRecallSettings = {
   rerankingEnabled: boolean;
   topK: number;

@@ -397,6 +397,7 @@ const deserializeLLMInputs = (data: Record<string, unknown>) => {
 const serializeKnowledgeInputs = (inputs: Record<string, unknown> | undefined) => {
   const config = normalizeKnowledgeRetrievalNodeConfig(inputs)
 
+  // 知识库节点导出 YAML 时与 Dify 安全子集对齐；运行时检索由 `knowledgeFacade` 按 `RAG_ENGINE_MODE` 分流。
   // 两次对话最终确认的 Dify YAML 约束:
   // 1. `retrieval_mode: multiple` 时，导出最小安全格式，直接省略 `single_retrieval_config`
   // 2. `multiple_retrieval_config.reranking_model` 不能再是字符串；未启用 rerank 时直接不写

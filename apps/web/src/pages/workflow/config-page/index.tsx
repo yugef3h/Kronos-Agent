@@ -1087,7 +1087,11 @@ export const WorkflowConfigPage = () => {
                 ? `已选 ${orch.datasetIds.length} 个知识库${selectedLabels[0] ? ` · ${selectedLabels[0]}` : ''} · Top K ${orch.recallSettings?.topK ?? 4} · Rerank ${orch.recallSettings?.rerankingEnabled ? '开' : '关'}`
                 : '未选知识库（仅系统提示 + 问题）'}
             </span>
-            <Link to={recallHref} className="font-medium text-sky-700 hover:text-sky-800">
+            <Link
+              to={recallHref}
+              title="在知识库页管理数据集、导入与切片预览"
+              className="font-medium text-sky-700 hover:text-sky-800"
+            >
               管理 →
             </Link>
           </div>
