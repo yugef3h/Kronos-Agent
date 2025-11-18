@@ -17,8 +17,10 @@ import {
   type KnowledgeRetrievalQueryResult,
   type RankedChunk,
 } from '../../services/knowledgeRetrievalService.js';
+import { maybeExpandQueriesForLangchainRetrieval } from './expandRetrievalQueries.js';
 import { createRagEmbeddings } from './ragEmbeddings.js';
 
+// 余弦相似度
 const cosineSimilarity = (left: number[], right: number[]): number => {
   const len = Math.min(left.length, right.length);
   let dot = 0;
@@ -37,6 +39,7 @@ const cosineSimilarity = (left: number[], right: number[]): number => {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 };
 
+// 余弦相似度转换为0-1分数
 const vectorSimilarityToUnit = (cos: number) => clampUnitScore((Math.min(Math.max(cos, -1), 1) + 1) / 2);
 
 /**
@@ -44,8 +47,8 @@ const vectorSimilarityToUnit = (cos: number) => clampUnitScore((Math.min(Math.ma
  *
  * 1) 与自研相同的 dataset 加载、元数据过滤、TopK/阈值/rerank 分支。
  * 2) 对「缺 embedding」的 chunk：`embedDocuments` 批量算向量，`mergeEmbeddingsIntoChunkFile` 写回 jsonl，下次可走磁盘向量。
- * 3) 语义通道：query 与各 chunk 向量余弦 → 压到 0–1，作为 `scoreBySearchMethod` 的 `semanticOverride`；
- *    keyword / full_text 及 hybrid 权重仍走自研 `scoreBySearchMethod`，保证与 HTTP 契约一致。
+ * 3) 语义通道：可选多 query（`maybeExpandQueriesForLangchainRetrieval`）与各 chunk 向量余弦取极大值 → 压到 0–1，作为 `scoreBySearchMethod` 的 `semanticOverride`；
+ *    关键词 / full_text 及 hybrid 权重仍走自研 `scoreBySearchMethod`，保证与 HTTP 契约一致。
  */
 export async function runLangchainVectorRetrievalQuery(
   query: KnowledgeRetrievalQuery,
@@ -79,6 +82,8 @@ export async function runLangchainVectorRetrievalQuery(
 
   const filteredChunkCount = candidates.length;
   const embeddings = createRagEmbeddings();
+  // 多查询改写
+  const queryTexts = await maybeExpandQueriesForLangchainRetrieval(query.query);
 
   /** 仅元数据通过的 chunk；缺向量的将进入 embed + 回写 jsonl。 */
   const needEmbed: KnowledgeDatasetChunkRecord[] = [];
@@ -119,7 +124,8 @@ export async function runLangchainVectorRetrievalQuery(
     );
   }
 
-  const queryVector = await embeddings.embedQuery(query.query);
+  // 批量向量化
+  const queryVectors = await Promise.all(queryTexts.map((text) => embeddings.embedQuery(text)));
 
   /** 打分：余弦→语义 override，再与 keyword/full_text 按数据集 search_method 融合。 */
   const ranked: RankedChunk[] = [];
@@ -139,8 +145,10 @@ export async function runLangchainVectorRetrievalQuery(
         continue;
       }
 
-      const cosine = cosineSimilarity(queryVector, chunkVector);
-      const vectorSemantic = vectorSimilarityToUnit(cosine);
+      // 向量语义打分
+      const vectorSemantic = Math.max(
+        ...queryVectors.map((queryVector) => vectorSimilarityToUnit(cosineSimilarity(queryVector, chunkVector))),
+      );
 
       const searchMethod = query.retrieval_mode === 'oneWay'
         ? 'semantic_search'
@@ -204,6 +212,8 @@ export async function runLangchainVectorRetrievalQuery(
       dataset_count: datasets.length,
       total_chunk_count: totalChunkCount,
       filtered_chunk_count: filteredChunkCount,
+      // 多查询改写
+      ...(queryTexts.length > 1 ? { langchain_query_variants: queryTexts.length } : {}),
     },
   };
 }

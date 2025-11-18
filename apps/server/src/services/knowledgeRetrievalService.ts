@@ -66,6 +66,8 @@ export type KnowledgeRetrievalQueryResult = {
     dataset_count: number;
     total_chunk_count: number;
     filtered_chunk_count: number;
+    /** LangChain 检索分支：多查询改写后的有效查询条数（含原问句）。 */
+    langchain_query_variants?: number;
   };
 };
 
@@ -167,6 +169,7 @@ const computeSemanticScore = (query: string, text: string, queryTerms: string[])
   return Math.min(1, dice * 0.65 + tokenCoverage * 0.35);
 };
 
+// 将分数限制在0-1之间
 export const clampUnitScore = (value: number) => {
   if (!Number.isFinite(value)) {
     return 0;
