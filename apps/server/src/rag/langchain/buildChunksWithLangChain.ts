@@ -20,7 +20,7 @@ const buildSplitterSeparators = (primary: string): string[] => {
   return out;
 };
 
-/** LangChain `RecursiveCharacterTextSplitter` + 与自研一致的解析/预处理；落盘仍用现有 jsonl。 */
+/** LangChain `RecursiveCharacterTextSplitter` + 与自研一致的解析/预处理；落盘仍用现有 jsonl。多查询改写见 `expandRetrievalQueries.ts`。 */
 export async function buildKnowledgeDocumentChunksWithLangChain(
   params: KnowledgeDocumentChunkOptions,
 ): Promise<BuiltKnowledgeDocumentChunks> {

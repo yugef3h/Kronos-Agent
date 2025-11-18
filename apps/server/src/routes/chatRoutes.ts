@@ -393,6 +393,7 @@ chatRoutes.post('/workflow/knowledge-datasets/preview-chunks', async (request: R
   }
 });
 
+/** 双引擎检索：`runKnowledgeRetrievalQuery` 经 `knowledgeFacade` 在 `RAG_ENGINE_MODE` 下切换自研 / LangChain。 */
 chatRoutes.post('/workflow/knowledge-retrieval/query', async (request: Request, response: Response) => {
   const parsed = knowledgeRetrievalQuerySchema.safeParse(request.body);
 

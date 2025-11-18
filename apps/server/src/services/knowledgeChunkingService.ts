@@ -153,6 +153,7 @@ export const splitTextToChunks = (params: {
   }));
 };
 
+/** 解析与文本预处理；`buildKnowledgeDocumentChunksWithLangChain` 复用其输出后再做 LC 切分。 */
 export async function extractPreprocessedKnowledgeDocument(
   params: KnowledgeDocumentChunkOptions,
 ): Promise<{ mimeType: string; buffer: Buffer; processedText: string }> {

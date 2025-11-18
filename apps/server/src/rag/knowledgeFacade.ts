@@ -2,7 +2,7 @@
  * 知识库 HTTP 使用的唯一入口。
  *
  * Step3：`langchain` 时预览/入库切分用 `RecursiveCharacterTextSplitter`（见 `langchain/buildChunksWithLangChain`）。
- * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`（Embeddings + 余弦语义 + 自研混合权重/rerank）。
+ * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`（Embeddings + 多 query 极大余弦语义 + 自研混合权重/rerank；可选 `RAG_LC_MULTI_QUERY` 见 `expandRetrievalQueries.ts`）。
  * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore` 自研实现。
  */
 import { getKnowledgeDatasetById } from '../domain/knowledgeDatasetStore.js';
