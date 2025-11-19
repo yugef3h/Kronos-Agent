@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** 知识库 REST 请求体验证与 DTO（与 `chatRoutes` 契约一致；`langchain_query_variants` 为响应诊断可选字段）。 */
+/** 知识库 REST 请求体验证与 DTO（与 `chatRoutes` 契约一致；`query_variants` 为响应诊断可选字段）。 */
 
 const knowledgeMetadataFieldSchema = z.object({
   key: z.string().trim().min(1).max(40),
