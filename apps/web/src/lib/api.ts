@@ -439,6 +439,7 @@ export type KnowledgeRetrievalQueryResponse = {
 		dataset_count: number;
 		total_chunk_count: number;
 		filtered_chunk_count: number;
+		query_variants?: number;
 	};
 };
 
