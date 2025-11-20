@@ -9,3 +9,4 @@ allowed-skills:
 ## Git（增量提交）
 - 改一小部分就提交一次：只 `git add` 本轮相关文件，再在仓库根目录执行 `pnpm cd "feat|fix|docs|test: 一句话"`（`pnpm cd` 与 `pnpm run cd` 等价，均跑 `package.json` 的 `cd` 脚本：内含 `pnpm lint` + 带日期的 `git commit`）。不要用 `pnpm cd -- "…"`，否则 `--` 会进 commit message。
 - `git push` 不默认代劳，需要发布时你本地显式执行。
+- 当提交的message有好几个功能时，直接分开提交，不要合并在一起。
