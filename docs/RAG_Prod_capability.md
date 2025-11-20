@@ -1,11 +1,11 @@
 # Dify 功能能力完整清单（按：完全支持 → 基础弱支持 → 需二次开发/外接 排序，可直接复制给LLM）
 ## 一、Dify 原生完全支持功能（开箱即用，无需额外开发）
 
-> **Kronos-Agent 对照（本节）**：下表仍是 Dify 能力基线；每条后附本仓库落地情况。默认 `RAG_ENGINE_MODE=self`（自研检索）；设为 `langchain` 时，入库切分走 LangChain `RecursiveCharacterTextSplitter`（`buildChunksWithLangChain.ts`），向量写入 `OpenAIEmbeddings`（`ragEmbeddings.ts` / `knowledgeFacade.ts`）；检索为余弦语义 + 既有「关键词 / 全文 / 混合」加权与 rerank 分支（`vectorRetrieval.ts` + `knowledgeRetrievalService.ts`）。`RAG_ENGINE_MODE=self` 时走自研分词与打分，契约与 HTTP 形状一致。与 Dify 逐项「完全等价」并不等于已全部实现；**缺口**指尚未产品化或需外接系统的能力。启用 `RAG_LC_MULTI_QUERY` 时会增加 Chat 调用与多次 `embedQuery` 延迟，仅建议在召回质量敏感场景打开。
+> **Kronos-Agent 对照（本节）**：下表仍是 Dify 能力基线；每条后附本仓库落地情况。默认 `RAG_ENGINE_MODE=self`（自研检索）；设为 `langchain` 时，入库切分走 LangChain `RecursiveCharacterTextSplitter`（`buildChunksWithLangChain.ts`），向量写入 `OpenAIEmbeddings`（`ragEmbeddings.ts` / `knowledgeFacade.ts`）；检索为余弦语义 + 既有「关键词 / 全文 / 混合」加权与 rerank 分支（`vectorRetrieval.ts` + `knowledgeRetrievalService.ts`）。`RAG_ENGINE_MODE=self` 时走自研分词与打分，契约与 HTTP 形状一致。与 Dify 逐项「完全等价」并不等于已全部实现；**缺口**指尚未产品化或需外接系统的能力。`RAG_LC_MULTI_QUERY` 对 **self / langchain** 均会触发多问句改写；`langchain` 下入库与检索向量均来自同一 `createRagEmbeddings()`，须保持环境变量与模型不变。启用多查询时会增加 Chat 调用与（`langchain` 下）多次 `embedQuery` 延迟，仅建议在召回质量敏感场景打开。
 
 ### 1. Query改写与知识库处理
 - Query 问题自动改写、复杂问句拆分、子问题拆解、同义扩展  
-  - **Kronos**：未做通用「复杂问句拆分 / 子问题 DAG」。**已补（LangChain）**：环境变量 `RAG_LC_MULTI_QUERY=true` 时，`ChatOpenAI` 生成 2–4 条改写问句（`expandRetrievalQueries.ts`），向量通道对各 chunk 取 **多 query embedding 相似度极大值**；关键词与 `scoreBySearchMethod` 仍以用户原始 `query` 为准，避免术语漂移。
+  - **Kronos**：未做通用「复杂问句拆分 / 子问题 DAG」。**已补（LangChain + 自研）**：`RAG_LC_MULTI_QUERY=true` 时 `ChatOpenAI` 生成改写问句（`expandRetrievalQueries.ts`）。`RAG_ENGINE_MODE=langchain` 时向量通道对各 chunk 取多 query embedding **极大余弦**；`self` 时对自研 **bigram 语义分** 做同权极大值；关键词与 `scoreBySearchMethod` 仍以用户原始 `query` 的 `queryTerms` 参与 keyword/full_text（自研）或原始 `query` 配向量通道（langchain）。
 - Query 联网全网搜索，支持知识库无结果时自动联网补全  
   - **Kronos**：**缺口**。工作流侧无「无召回则自动联网补全」编排；需外接搜索工具或自研节点。
 - 全流程知识库处理：文档上传、自动清洗、自定义切片分段、重叠度配置、向量化、批量管理  
@@ -39,7 +39,7 @@
 - 文档切片可视化预览、解析日志查看、失败文档排查  
   - **Kronos**：导入前 `indexing estimate` 预览块列表；详情弹窗展示文档与 chunk 文本、关键词编辑。**缺口**：无独立「解析流水线日志」下载页。
 - 检索链路全调试：查看召回切片、相似度分数、Rerank 打分  
-  - **Kronos**：后端返回 `score`、`matched_terms`；`langchain` 诊断可含 `langchain_query_variants`（多查询改写条数）。**缺口**：无前端可视化「每路分数条」调试面板。
+  - **Kronos**：后端返回 `score`、`matched_terms`；诊断可含 `query_variants`（多查询改写条数）。**缺口**：无前端可视化「每路分数条」调试面板。
 - 生成链路全调试：完整 Prompt 上下文、模型输入输出、上下文截断日志  
   - **Kronos**：聊天流式侧有 LangChain / Mock 降级与部分遥测（`langchainChatService` / `useChatStreamController`）。**缺口**：无「单次检索-生成」合成视图与截断字节日志对齐 Dify 调试台。
 - 支持多套 Prompt、多套检索配置迭代优化  
