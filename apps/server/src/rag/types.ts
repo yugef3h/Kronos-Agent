@@ -174,6 +174,29 @@ export const knowledgeRetrievalQuerySchema = z.object({
   })).max(20).default([]),
 });
 
+export const knowledgeRetrievalCompareSchema = z.object({
+  retrieval_a: knowledgeRetrievalQuerySchema,
+  retrieval_b: knowledgeRetrievalQuerySchema,
+}).superRefine((value, ctx) => {
+  if (value.retrieval_a.query !== value.retrieval_b.query) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'retrieval_a.query must match retrieval_b.query',
+      path: ['retrieval_b', 'query'],
+    });
+  }
+
+  const left = [...new Set(value.retrieval_a.dataset_ids)].sort().join('\0');
+  const right = [...new Set(value.retrieval_b.dataset_ids)].sort().join('\0');
+  if (left !== right) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'retrieval_a.dataset_ids must match retrieval_b.dataset_ids',
+      path: ['retrieval_b', 'dataset_ids'],
+    });
+  }
+});
+
 const indexingEstimateFileSchema = z.object({
   file_id: z.string().trim().min(1).max(120).optional(),
   file_name: z.string().trim().min(1).max(240),
@@ -244,3 +267,4 @@ export type KnowledgeDocumentKeywordsUpdateBody = z.infer<typeof knowledgeDocume
 export type KnowledgeDocumentPreviewBody = z.infer<typeof knowledgeDocumentPreviewSchema>;
 export type KnowledgeRetrievalQueryBody = z.infer<typeof knowledgeRetrievalQuerySchema>;
 export type KnowledgeIndexingEstimateBody = z.infer<typeof indexingEstimateSchema>;
+export type KnowledgeRetrievalCompareBody = z.infer<typeof knowledgeRetrievalCompareSchema>;
