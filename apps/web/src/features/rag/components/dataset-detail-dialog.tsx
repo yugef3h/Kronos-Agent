@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from '../../../pages/workflow/base/dialog';
 import type { KnowledgeDatasetDetail } from '../../../pages/workflow/features/knowledge-retrieval-panel/types';
-import type { DatasetDocumentDetail, FlattenedDatasetDocumentBlock } from '../types';
+import type { DatasetDocumentDetail, FlattenedDatasetDocumentBlock, KnowledgeDatasetHealthReport } from '../types';
 import { formatTimestamp } from '../utils';
 
 type RagDatasetDetailDialogProps = {
@@ -19,10 +19,16 @@ type RagDatasetDetailDialogProps = {
   flattenedDocumentBlocks: FlattenedDatasetDocumentBlock[];
   savingBlockKeywordId: string;
   blockKeywordDrafts: Record<string, string>;
+  healthReport: KnowledgeDatasetHealthReport | null;
+  healthError: string;
+  isHealthLoading: boolean;
+  isSnapshotSaving: boolean;
   onOpenChange: (nextOpen: boolean) => void;
   onKeywordDraftChange: (blockId: string, value: string) => void;
   onKeywordCommit: (block: FlattenedDatasetDocumentBlock) => void;
   onKeywordRemove: (block: FlattenedDatasetDocumentBlock, keyword: string) => void;
+  onRefreshHealth: () => void;
+  onCreateSnapshot: () => void;
 };
 
 export const RagDatasetDetailDialog = ({
@@ -36,10 +42,16 @@ export const RagDatasetDetailDialog = ({
   flattenedDocumentBlocks,
   savingBlockKeywordId,
   blockKeywordDrafts,
+  healthReport,
+  healthError,
+  isHealthLoading,
+  isSnapshotSaving,
   onOpenChange,
   onKeywordDraftChange,
   onKeywordCommit,
   onKeywordRemove,
+  onRefreshHealth,
+  onCreateSnapshot,
 }: RagDatasetDetailDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,6 +70,53 @@ export const RagDatasetDetailDialog = ({
               {selectedDataset.doc_metadata.length ? selectedDataset.doc_metadata.map((field) => (
                 <span key={field.key} className="rounded-full bg-cyan-50 px-2.5 py-1 text-cyan-700">字段 {field.label}</span>
               )) : null}
+            </div>
+          ) : null}
+
+          {healthError ? (
+            <p className="mt-2 text-xs text-rose-600">{healthError}</p>
+          ) : null}
+
+          {isHealthLoading ? (
+            <p className="mt-2 text-xs text-slate-500">正在计算健康度…</p>
+          ) : null}
+
+          {healthReport ? (
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-semibold text-slate-900">
+                  健康度 <span className="text-cyan-700">{healthReport.healthScore}</span>/100
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onRefreshHealth()}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-800"
+                  >
+                    刷新
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSnapshotSaving}
+                    onClick={() => onCreateSnapshot()}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-cyan-300 hover:text-cyan-800 disabled:opacity-50"
+                  >
+                    {isSnapshotSaving ? '快照…' : '快照'}
+                  </button>
+                </div>
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600">
+                空文档 {healthReport.emptyDocuments} · 完全重复切片 {healthReport.exactDuplicateChunkCount} · 近重复对{' '}
+                {healthReport.nearRedundantChunkPairCount} · 过短切片占比 {(healthReport.tinyChunkRatio * 100).toFixed(0)}% · 中位{' '}
+                {healthReport.medianChunkChars} 字 / P90 {healthReport.p90ChunkChars} 字
+              </p>
+              {healthReport.hints.length ? (
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[11px] text-amber-800">
+                  {healthReport.hints.map((hint) => (
+                    <li key={hint}>{hint}</li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : null}
         </div>

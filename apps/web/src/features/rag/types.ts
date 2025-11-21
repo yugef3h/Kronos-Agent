@@ -69,3 +69,5 @@ export type FlattenedDatasetDocumentBlock = DatasetDocumentBlock & {
   documentId: string;
   documentName: string;
 };
+
+export type { KnowledgeDatasetHealthReport, KnowledgeDatasetSnapshotSummary } from '../../lib/api';

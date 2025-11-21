@@ -2,6 +2,8 @@ import { type ChangeEvent, lazy, Suspense, useCallback, useEffect, useMemo, useR
 import {
   requestDatasetIndexingEstimate,
   requestImportKnowledgeDocument,
+  requestKnowledgeDatasetHealth,
+  requestKnowledgeDatasetSnapshotCreate,
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
   requestUpdateKnowledgeDocumentBlockKeywords,
@@ -16,6 +18,7 @@ import type {
   DatasetDocumentDetail,
   FlattenedDatasetDocumentBlock,
   ImportFormState,
+  KnowledgeDatasetHealthReport,
   LocalImportPreview,
   PendingImportConfig,
 } from './types';
@@ -82,6 +85,10 @@ export const RagPage = () => {
   const [documentBlocksError, setDocumentBlocksError] = useState('');
   const [blockKeywordDrafts, setBlockKeywordDrafts] = useState<Record<string, string>>({});
   const [savingBlockKeywordId, setSavingBlockKeywordId] = useState('');
+  const [healthReport, setHealthReport] = useState<KnowledgeDatasetHealthReport | null>(null);
+  const [healthError, setHealthError] = useState('');
+  const [isHealthLoading, setIsHealthLoading] = useState(false);
+  const [isSnapshotSaving, setIsSnapshotSaving] = useState(false);
 
   useEffect(() => {
     folderInputRef.current?.setAttribute('webkitdirectory', '');
@@ -787,6 +794,64 @@ export const RagPage = () => {
     setIsImportDialogOpen(true);
   }, [closeImportDialog]);
 
+  const refreshDatasetHealth = useCallback(async () => {
+    if (!selectedDatasetId) {
+      return;
+    }
+
+    setIsHealthLoading(true);
+    setHealthError('');
+
+    try {
+      const authToken = await ensureKnowledgeDatasetAuthToken();
+      if (!authToken) {
+        throw new Error('知识库接口需要 JWT 鉴权');
+      }
+
+      const report = await requestKnowledgeDatasetHealth({ authToken, datasetId: selectedDatasetId });
+      setHealthReport(report);
+    } catch (error) {
+      setHealthReport(null);
+      setHealthError(error instanceof Error ? error.message : '健康度加载失败');
+    } finally {
+      setIsHealthLoading(false);
+    }
+  }, [selectedDatasetId]);
+
+  const createDatasetSnapshot = useCallback(async () => {
+    if (!selectedDatasetId) {
+      return;
+    }
+
+    setIsSnapshotSaving(true);
+
+    try {
+      const authToken = await ensureKnowledgeDatasetAuthToken();
+      if (!authToken) {
+        throw new Error('知识库接口需要 JWT 鉴权');
+      }
+
+      const summary = await requestKnowledgeDatasetSnapshotCreate({ authToken, datasetId: selectedDatasetId });
+      setSuccessMessage(`已创建快照 ${summary.id}（${summary.chunkCount} chunks）`);
+      setPageError('');
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : '快照失败');
+    } finally {
+      setIsSnapshotSaving(false);
+    }
+  }, [selectedDatasetId]);
+
+  useEffect(() => {
+    if (!isDatasetDetailDialogOpen || !selectedDatasetId) {
+      setHealthReport(null);
+      setHealthError('');
+      setIsHealthLoading(false);
+      return;
+    }
+
+    void refreshDatasetHealth();
+  }, [isDatasetDetailDialogOpen, selectedDatasetId, refreshDatasetHealth]);
+
   const handleDetailDialogOpenChange = useCallback((nextOpen: boolean) => {
     setIsDatasetDetailDialogOpen(nextOpen);
     if (!nextOpen) {
@@ -795,6 +860,10 @@ export const RagPage = () => {
       setIsDocumentBlocksLoading(false);
       setBlockKeywordDrafts({});
       setSavingBlockKeywordId('');
+      setHealthReport(null);
+      setHealthError('');
+      setIsHealthLoading(false);
+      setIsSnapshotSaving(false);
     }
   }, []);
 
@@ -1023,6 +1092,10 @@ export const RagPage = () => {
             flattenedDocumentBlocks={flattenedDocumentBlocks}
             savingBlockKeywordId={savingBlockKeywordId}
             blockKeywordDrafts={blockKeywordDrafts}
+            healthReport={healthReport}
+            healthError={healthError}
+            isHealthLoading={isHealthLoading}
+            isSnapshotSaving={isSnapshotSaving}
             onOpenChange={handleDetailDialogOpenChange}
             onKeywordDraftChange={handleBlockKeywordDraftChange}
             onKeywordCommit={(block) => {
@@ -1030,6 +1103,12 @@ export const RagPage = () => {
             }}
             onKeywordRemove={(block, keyword) => {
               void handleBlockKeywordRemove(block, keyword);
+            }}
+            onRefreshHealth={() => {
+              void refreshDatasetHealth();
+            }}
+            onCreateSnapshot={() => {
+              void createDatasetSnapshot();
             }}
           />
         </Suspense>

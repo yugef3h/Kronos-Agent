@@ -5,8 +5,12 @@
 export {
   requestDatasetIndexingEstimate,
   requestImportKnowledgeDocument,
+  requestKnowledgeDatasetHealth,
+  requestKnowledgeDatasetSnapshotCreate,
+  requestKnowledgeDatasetSnapshots,
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
+  requestKnowledgeRetrievalCompare,
   requestKnowledgeRetrievalQuery,
   requestUpdateKnowledgeDocumentBlockKeywords,
 } from '../../lib/api';
