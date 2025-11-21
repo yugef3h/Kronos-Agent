@@ -23,6 +23,7 @@ import {
   knowledgeDocumentImportSchema,
   knowledgeDocumentKeywordsUpdateSchema,
   knowledgeDocumentPreviewSchema,
+  knowledgeRetrievalCompareSchema,
   knowledgeRetrievalQuerySchema,
 } from '../rag/types.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
@@ -42,6 +43,13 @@ import {
   saveWorkflowDraftPreviewJpeg,
 } from '../services/workflowDraftPreviewDiskStore.js';
 import { join } from 'path';
+import { computeKnowledgeDatasetHealth } from '../services/knowledgeDatasetHealthService.js';
+import {
+  createKnowledgeDatasetSnapshot,
+  listKnowledgeDatasetSnapshots,
+  readKnowledgeDatasetSnapshot,
+} from '../services/knowledgeDatasetSnapshotService.js';
+import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -272,6 +280,67 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
   }
 });
 
+chatRoutes.get('/workflow/knowledge-datasets/:datasetId/health', async (request: Request, response: Response) => {
+  try {
+    const report = await computeKnowledgeDatasetHealth(String(request.params.datasetId || ''));
+    response.json(report);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge dataset health failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-datasets/:datasetId/snapshots', async (request: Request, response: Response) => {
+  try {
+    const summary = await createKnowledgeDatasetSnapshot(String(request.params.datasetId || ''));
+    response.status(201).json(summary);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge snapshot create failed: ${reason}` });
+  }
+});
+
+chatRoutes.get('/workflow/knowledge-datasets/:datasetId/snapshots', async (request: Request, response: Response) => {
+  try {
+    const items = await listKnowledgeDatasetSnapshots(String(request.params.datasetId || ''));
+    response.json({ items });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `Knowledge snapshot list failed: ${reason}` });
+  }
+});
+
+chatRoutes.get('/workflow/knowledge-datasets/:datasetId/snapshots/:snapshotId', async (request: Request, response: Response) => {
+  try {
+    const payload = await readKnowledgeDatasetSnapshot(
+      String(request.params.datasetId || ''),
+      String(request.params.snapshotId || ''),
+    );
+    response.json(payload);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'SNAPSHOT_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge snapshot not found' });
+      return;
+    }
+
+    response.status(404).json({ error: `Knowledge snapshot not found: ${reason}` });
+  }
+});
+
 chatRoutes.get('/workflow/knowledge-datasets/:datasetId/documents', async (request: Request, response: Response) => {
   try {
     const items = await listKnowledgeDocuments(String(request.params.datasetId || ''));
@@ -414,6 +483,29 @@ chatRoutes.post('/workflow/knowledge-retrieval/query', async (request: Request, 
     }
 
     response.status(500).json({ error: `Knowledge retrieval failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-retrieval/compare', async (request: Request, response: Response) => {
+  const parsed = knowledgeRetrievalCompareSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    sendValidationError(response, parsed.error);
+    return;
+  }
+
+  try {
+    const result = await compareKnowledgeRetrievalQueries(parsed.data.retrieval_a, parsed.data.retrieval_b);
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge retrieval compare failed: ${reason}` });
   }
 });
 
