@@ -53,6 +53,8 @@
 - 知识库基础版本快照/备份；**无内置A/B测试、检索性能自动对比**
   - **Kronos**：`GET /api/workflow/knowledge-datasets/:id/health` 返回空文档数、完全重复切片、同文档近重复对（Dice）、过短切片占比、中位/P90 字长及 **0–100 健康分**；Rag 详情弹窗内可刷新。`POST …/snapshots` 写入 `apps/server/data/knowledge-snapshots/{datasetId}/*.json` 元数据快照；`GET …/snapshots` 列表。`POST /api/workflow/knowledge-retrieval/compare` 对两次完整检索请求测 **延迟** 与 TopK chunk_id **Jaccard 重叠**，用于简单 A/B 与性能对比（需同一 `query` 与 `dataset_ids`）。
 
+TODO: 快照目录在已有 apps/server/data 忽略规则下，不会进 Git。检索对比尚未做单独 UI，可从控制台或后续接 requestKnowledgeRetrievalCompare 调用。
+
 ### 2. 多模态文档与RAG评估
 - 可接入通义千问系列模型；**无内置 Qwen-Agent 专属RAG封装**
 - RAG 可人工做测试集标注、人工统计召回率；**无内置 EM/F1/幻觉率 自动量化评估指标**
