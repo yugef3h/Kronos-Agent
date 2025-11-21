@@ -443,6 +443,42 @@ export type KnowledgeRetrievalQueryResponse = {
 	};
 };
 
+export type KnowledgeDatasetHealthReport = {
+	datasetId: string;
+	documentCount: number;
+	chunkCount: number;
+	emptyDocuments: number;
+	exactDuplicateChunkCount: number;
+	nearRedundantChunkPairCount: number;
+	tinyChunkRatio: number;
+	medianChunkChars: number;
+	p90ChunkChars: number;
+	healthScore: number;
+	hints: string[];
+};
+
+export type KnowledgeDatasetSnapshotSummary = {
+	id: string;
+	datasetId: string;
+	createdAt: number;
+	documentCount: number;
+	chunkCount: number;
+	sizeBytes: number;
+};
+
+export type KnowledgeRetrievalCompareInput = {
+	retrieval_a: KnowledgeRetrievalQueryInput;
+	retrieval_b: KnowledgeRetrievalQueryInput;
+};
+
+export type KnowledgeRetrievalCompareResponse = {
+	query: string;
+	dataset_ids: string[];
+	a: { latencyMs: number; result: KnowledgeRetrievalQueryResponse };
+	b: { latencyMs: number; result: KnowledgeRetrievalQueryResponse };
+	overlapTopK: { chunkIdsInBoth: number; jaccardChunkIds: number };
+};
+
 export type DatasetIndexingEstimateResponse = {
 	total_nodes: number;
 	tokens: number;
@@ -945,6 +981,81 @@ export const requestKnowledgeRetrievalQuery = async (params: {
 	}
 
 	return (await response.json()) as KnowledgeRetrievalQueryResponse;
+};
+
+export const requestKnowledgeDatasetHealth = async (params: {
+	authToken: string;
+	datasetId: string;
+}): Promise<KnowledgeDatasetHealthReport> => {
+	const response = await fetch(
+		apiUrl(`/api/workflow/knowledge-datasets/${encodeURIComponent(params.datasetId)}/health`),
+		{
+			headers: { Authorization: `Bearer ${params.authToken}` },
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to load knowledge dataset health'));
+	}
+
+	return (await response.json()) as KnowledgeDatasetHealthReport;
+};
+
+export const requestKnowledgeDatasetSnapshotCreate = async (params: {
+	authToken: string;
+	datasetId: string;
+}): Promise<KnowledgeDatasetSnapshotSummary> => {
+	const response = await fetch(
+		apiUrl(`/api/workflow/knowledge-datasets/${encodeURIComponent(params.datasetId)}/snapshots`),
+		{
+			method: 'POST',
+			headers: { Authorization: `Bearer ${params.authToken}` },
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to create knowledge snapshot'));
+	}
+
+	return (await response.json()) as KnowledgeDatasetSnapshotSummary;
+};
+
+export const requestKnowledgeDatasetSnapshots = async (params: {
+	authToken: string;
+	datasetId: string;
+}): Promise<{ items: KnowledgeDatasetSnapshotSummary[] }> => {
+	const response = await fetch(
+		apiUrl(`/api/workflow/knowledge-datasets/${encodeURIComponent(params.datasetId)}/snapshots`),
+		{
+			headers: { Authorization: `Bearer ${params.authToken}` },
+		},
+	);
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to list knowledge snapshots'));
+	}
+
+	return (await response.json()) as { items: KnowledgeDatasetSnapshotSummary[] };
+};
+
+export const requestKnowledgeRetrievalCompare = async (params: {
+	authToken: string;
+	input: KnowledgeRetrievalCompareInput;
+}): Promise<KnowledgeRetrievalCompareResponse> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-retrieval/compare'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to compare knowledge retrieval'));
+	}
+
+	return (await response.json()) as KnowledgeRetrievalCompareResponse;
 };
 
 export const requestDatasetIndexingEstimate = async (params: {
