@@ -4,7 +4,7 @@
 
 ---
 
-## 知识库与 RAG（已实现）
+## 知识库与 RAG
 
 面向产品的能力如下；**自研检索与 LangChain 检索视为同一产品能力**：由服务端 `RAG_ENGINE_MODE` 切换实现路径，**同一套 REST 契约与工作流配置页**，前端 `/rag` 与编排侧无分支 UI。实现细节与和 Dify 能力逐项对照见 [`docs/RAG_Prod_capability.md`](docs/RAG_Prod_capability.md)。
 
