@@ -105,7 +105,7 @@ pnpm dev
 
 - LICENSE：完整 Apache-2.0 许可证文本。
 - NOTICE：项目版权与归属声明。
-- THIRD_PARTY_NOTICES.md：第三方依赖及许可证归档。
+- 第三方依赖见各依赖包 LICENSE。
 - 源码文件 SPDX 头：使用 `SPDX-License-Identifier: Apache-2.0` 标识。
 
 ### 新增文件时建议复制的头注释模板
