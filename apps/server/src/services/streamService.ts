@@ -2,7 +2,7 @@ import { getSession, persistSession } from '../domain/sessionStore.js';
 import { env } from '../config/env.js';
 import { streamLangChainReply } from './langchainChatService.js';
 import { streamLangGraphReply } from './langgraphWorkflowService.js';
-import { createMemoryPlan } from './memoryOrchestrator.js';
+import { createMemoryPlan } from '../memory/index.js';
 import { streamMockReply } from './mockReplyService.js';
 
 export async function* streamChat(params: {

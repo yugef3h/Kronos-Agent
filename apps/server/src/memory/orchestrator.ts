@@ -6,37 +6,9 @@ import {
   RECENT_MESSAGES_TO_KEEP,
   RESERVED_OUTPUT_TOKENS,
   SUMMARY_TRIGGER_MESSAGE_COUNT,
-} from '../memory/constants.js';
-import { estimateTextTokens } from '../memory/tokenEstimate.js';
-
-export {
-  APPROX_TOKEN_PER_CHAR,
-  CONTEXT_WINDOW_TOKENS,
-  INPUT_BUDGET_RATIO,
-  MAX_SUMMARY_CHARS,
-  RECENT_MESSAGES_TO_KEEP,
-  RESERVED_OUTPUT_TOKENS,
-  SUMMARY_TRIGGER_MESSAGE_COUNT,
-} from '../memory/constants.js';
-export { estimateTextTokens } from '../memory/tokenEstimate.js';
-
-export type SessionMemoryState = {
-  summary: string;
-  summaryUpdatedAt: number | null;
-};
-
-export type MemoryPlan = {
-  history: Message[];
-  memorySummary: string;
-  summaryUpdated: boolean;
-  diagnostics: {
-    totalInputTokensEstimate: number;
-    budgetTokensEstimate: number;
-    historyTokensEstimate: number;
-    summaryTokensEstimate: number;
-    promptTokensEstimate: number;
-  };
-};
+} from './constants.js';
+import { estimateTextTokens } from './tokenEstimate.js';
+import type { MemoryPlan, SessionMemoryState } from './types.js';
 
 const trimToMaxChars = (text: string, maxChars: number): string => {
   if (text.length <= maxChars) {

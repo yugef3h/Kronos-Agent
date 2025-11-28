@@ -1,5 +1,5 @@
 import type { Message } from '../domain/sessionStore';
-import { createMemoryPlan } from './memoryOrchestrator';
+import { createMemoryPlan } from './orchestrator';
 
 const createMessages = (count: number): Message[] => {
   return Array.from({ length: count }, (_, index) => ({
