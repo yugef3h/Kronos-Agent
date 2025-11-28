@@ -6,6 +6,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import {
   createDefaultChatbotRecallSettings,
   getWorkflowAppById,
+  setWorkflowAppMockPublished,
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotMetadataCondition,
   type WorkflowChatbotPromptVariable,
@@ -48,6 +49,7 @@ export const WorkflowConfigPage = () => {
   );
   const orchLatest = useLatest(orch);
   const app = appId ? getWorkflowAppById(appId) : undefined;
+  const [mockPublished, setMockPublished] = useState(() => Boolean(app?.mockPublished));
 
   const { datasets, isLoading: isDatasetsLoading, errorMessage: datasetsError, refresh: refreshDatasets } =
     useKnowledgeDatasets();
@@ -117,6 +119,14 @@ export const WorkflowConfigPage = () => {
   useEffect(() => {
     setPendingVisionDataUrls((prev) => prev.slice(0, orch.visionMaxImages));
   }, [orch.visionMaxImages]);
+
+  const mockPublishedOnRecord = app?.mockPublished;
+  useEffect(() => {
+    if (!appId) {
+      return;
+    }
+    setMockPublished(Boolean(mockPublishedOnRecord));
+  }, [appId, mockPublishedOnRecord]);
 
   const promptVariablesSyncKey = useMemo(
     () => JSON.stringify(orch.promptVariables ?? []),
@@ -624,10 +634,23 @@ export const WorkflowConfigPage = () => {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            disabled
-            className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-semibold text-white"
+            disabled={!appId}
+            onClick={() => {
+              if (!appId) {
+                return;
+              }
+              const next = !mockPublished;
+              setWorkflowAppMockPublished(appId, next);
+              setMockPublished(next);
+            }}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition ${
+              mockPublished
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-blue-600 hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-300'
+            }`}
+            title="本地假发布：写入 mockPublished，供首页对话选用该 Chatbot 编排"
           >
-            发布
+            {mockPublished ? '已发布（本地）' : '发布'}
           </button>
         </div>
       </header>

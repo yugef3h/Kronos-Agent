@@ -254,6 +254,10 @@ export type WorkflowAppRecord = {
   description: string;
   createdAt: number;
   updatedAt: number;
+  /**
+   * 本地「假发布」：为 true 时可在首页对话里作为已发布的 Chatbot 应用选用（无真实云端发布）。
+   */
+  mockPublished?: boolean;
   publishedAt?: number;
   /**
    * 列表缩略图 JPEG data URL；运行时由 `kronos_workflow_draft_preview_v1:{appId}` 注入，不写入 `kronos_workflow_apps_v1` JSON，避免撑爆配额。
@@ -534,6 +538,35 @@ const generateWorkflowAppId = (): string => {
 
 export const listWorkflowApps = (): WorkflowAppRecord[] => {
   return readAppRecords().sort((a, b) => b.updatedAt - a.updatedAt);
+};
+
+/** 已假发布且为 Chatbot（`dsl.app.mode === 'chat'`）的应用，供首页对话 RAG 应用下拉使用。 */
+export const listPublishedChatbotWorkflowApps = (): WorkflowAppRecord[] => {
+  return readAppRecords()
+    .filter((app) => app.dsl.app.mode === 'chat' && Boolean(app.mockPublished))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+};
+
+export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolean): WorkflowAppRecord | undefined => {
+  const apps = readAppRecords();
+  const appIndex = apps.findIndex((app) => app.id === appId);
+  if (appIndex < 0) {
+    return undefined;
+  }
+
+  const prev = apps[appIndex];
+  const updatedApp: WorkflowAppRecord = {
+    ...prev,
+    updatedAt: Date.now(),
+    mockPublished,
+  };
+  delete updatedApp.draftPreviewDataUrl;
+
+  apps[appIndex] = updatedApp;
+  writeAppRecords(apps);
+
+  const previewUrl = readWorkflowDraftPreviewDataUrl(appId);
+  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp;
 };
 
 export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined => {
