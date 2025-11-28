@@ -78,6 +78,7 @@ import {
 } from '../utils/chatStreamHelpers';
 import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
+import { augmentPlaygroundPromptWithChatbotAgent } from '../utils/augmentPlaygroundPromptWithChatbotAgent';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
@@ -866,6 +867,25 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     clearTimelineEvents();
     startStreamingAssistantMessage();
 
+    let streamPrompt = userPrompt;
+    if (publishedChatbotWorkflowAppId) {
+      try {
+        streamPrompt = await augmentPlaygroundPromptWithChatbotAgent({
+          authToken,
+          userPrompt,
+          workflowAppId: publishedChatbotWorkflowAppId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'RAG 应用检索失败，请稍后重试';
+        abortStreamingAssistantMessage();
+        startAssistantTypewriter(message, { replaceLastAssistant: true });
+        setIsStreaming(false);
+        activeControllerRef.current = null;
+        interruptedRequestIdsRef.current.delete(requestId);
+        return;
+      }
+    }
+
     try {
       await fetchEventSource(apiUrl('/api/chat-stream'), {
         method: 'POST',
@@ -873,7 +893,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ prompt: userPrompt, sessionId }),
+        body: JSON.stringify({ prompt: streamPrompt, sessionId }),
         signal: controller.signal,
         onmessage(event) {
           if (requestId !== activeRequestIdRef.current) {
@@ -954,7 +974,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
     }
-  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
+  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, publishedChatbotWorkflowAppId, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
 
   const handleExplainImageClick = useCallback(() => {
     if (!pendingImage || prompt.trim().length > 0) {
