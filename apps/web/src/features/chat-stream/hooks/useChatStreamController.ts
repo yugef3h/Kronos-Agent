@@ -13,6 +13,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 import {
@@ -77,6 +78,12 @@ import {
 } from '../utils/chatStreamHelpers';
 import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
+import {
+  WORKFLOW_APPS_STORAGE_KEY,
+  WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
+  listPublishedChatbotWorkflowApps,
+  type WorkflowAppRecord,
+} from '../../workflow/workflowAppStore';
 
 export type UseChatStreamControllerResult = {
   canSend: boolean;
@@ -144,6 +151,10 @@ export type UseChatStreamControllerResult = {
   takeoutFoodsScrollerRef: MutableRefObject<HTMLDivElement | null>;
   takeoutLoadingLabel: string;
   toggleHistoryPanel: () => void;
+  publishedChatbotWorkflowApps: WorkflowAppRecord[];
+  publishedChatbotWorkflowAppId: string | null;
+  navigateWorkflowCreateBlank: () => void;
+  onPublishedChatbotWorkflowAppChange: (event: ChangeEvent<HTMLSelectElement>) => void;
 };
 
 const PROMPT_MAX_HEIGHT = 300;
@@ -178,8 +189,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setIsAwaitingTakeoutFollowup,
     setMemoryMetrics,
     setTakeoutFlowState,
+    publishedChatbotWorkflowAppId,
+    setPublishedChatbotWorkflowAppId,
   } = usePlaygroundStore();
 
+  const navigate = useNavigate();
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -188,7 +202,9 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
   const [hotTopics, setHotTopics] = useState<string[]>(() => getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...DEFAULT_HOT_TOPICS]);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
+  const [publishedChatbotApps, setPublishedChatbotApps] = useState<WorkflowAppRecord[]>(() =>
+    listPublishedChatbotWorkflowApps(),
+  );
   const activeRequestIdRef = useRef(0);
   const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
@@ -418,6 +434,60 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       setIsGeneratingToken(false);
     }
   }, [setAuthToken]);
+
+  const refreshPublishedChatbotApps = useCallback(() => {
+    setPublishedChatbotApps(listPublishedChatbotWorkflowApps());
+  }, []);
+
+  useEffect(() => {
+    refreshPublishedChatbotApps();
+  }, [refreshPublishedChatbotApps]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      refreshPublishedChatbotApps();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (
+        event.key === WORKFLOW_APPS_STORAGE_KEY ||
+        event.key?.startsWith(WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX)
+      ) {
+        refreshPublishedChatbotApps();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onStorage);
+    const onWorkflowAppsChanged = () => {
+      refreshPublishedChatbotApps();
+    };
+    window.addEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
+    };
+  }, [refreshPublishedChatbotApps]);
+
+  useEffect(() => {
+    if (!publishedChatbotWorkflowAppId) {
+      return;
+    }
+    if (!publishedChatbotApps.some((row) => row.id === publishedChatbotWorkflowAppId)) {
+      setPublishedChatbotWorkflowAppId(null);
+    }
+  }, [publishedChatbotApps, publishedChatbotWorkflowAppId, setPublishedChatbotWorkflowAppId]);
+
+  const navigateWorkflowCreateBlank = useCallback(() => {
+    navigate('/workflow?create=blank');
+  }, [navigate]);
+
+  const onPublishedChatbotWorkflowAppChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const next = event.target.value.trim();
+      setPublishedChatbotWorkflowAppId(next.length > 0 ? next : null);
+    },
+    [setPublishedChatbotWorkflowAppId],
+  );
 
   useEffect(() => {
     if (!authToken) {
@@ -1130,5 +1200,9 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
     toggleHistoryPanel,
+    publishedChatbotWorkflowApps: publishedChatbotApps,
+    publishedChatbotWorkflowAppId,
+    navigateWorkflowCreateBlank,
+    onPublishedChatbotWorkflowAppChange,
   };
 };

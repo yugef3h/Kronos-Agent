@@ -11,6 +11,27 @@ import {
 import type { TimelineEvent } from '../types/chat';
 
 const SESSION_STORAGE_KEY = 'kronos_session_id';
+const PUBLISHED_CHATBOT_WORKFLOW_APP_ID_KEY = 'kronos_playground_published_chatbot_app_id';
+
+const readPublishedChatbotWorkflowAppId = (): string | null => {
+  if (typeof sessionStorage === 'undefined') {
+    return null;
+  }
+  const raw = sessionStorage.getItem(PUBLISHED_CHATBOT_WORKFLOW_APP_ID_KEY);
+  const trimmed = raw?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+};
+
+const writePublishedChatbotWorkflowAppId = (value: string | null): void => {
+  if (typeof sessionStorage === 'undefined') {
+    return;
+  }
+  if (value && value.trim().length > 0) {
+    sessionStorage.setItem(PUBLISHED_CHATBOT_WORKFLOW_APP_ID_KEY, value.trim());
+  } else {
+    sessionStorage.removeItem(PUBLISHED_CHATBOT_WORKFLOW_APP_ID_KEY);
+  }
+};
 
 const applyStateAction = <T>(currentValue: T, nextValue: SetStateAction<T>): T => {
   return typeof nextValue === 'function'
@@ -58,6 +79,8 @@ type PlaygroundState = {
   sessionId: string;
   authToken: string;
   latestUserQuestion: string;
+  /** 首页对话选用的已发布 Chatbot 工作流应用 id（本地 sessionStorage） */
+  publishedChatbotWorkflowAppId: string | null;
   timelineEvents: TimelineEvent[];
   chatMessages: LocalChatMessage[];
   chatPrompt: string;
@@ -74,6 +97,7 @@ type PlaygroundState = {
   setSessionId: (value: string) => void;
   setAuthToken: (value: string) => void;
   setLatestUserQuestion: (value: string) => void;
+  setPublishedChatbotWorkflowAppId: (value: string | null) => void;
   appendTimelineEvent: (value: TimelineEvent) => void;
   clearTimelineEvents: () => void;
   setChatMessages: (value: SetStateAction<LocalChatMessage[]>) => void;
@@ -95,6 +119,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   sessionId: _getOrCreateSessionId(),
   authToken: '',
   latestUserQuestion: '',
+  publishedChatbotWorkflowAppId: readPublishedChatbotWorkflowAppId(),
   timelineEvents: [],
   ...createInitialChatPanelState(),
   setTemperature: (value) => set({ temperature: value }),
@@ -105,6 +130,10 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   },
   setAuthToken: (value) => set({ authToken: value }),
   setLatestUserQuestion: (value) => set({ latestUserQuestion: value }),
+  setPublishedChatbotWorkflowAppId: (value) => {
+    writePublishedChatbotWorkflowAppId(value);
+    set({ publishedChatbotWorkflowAppId: value });
+  },
   appendTimelineEvent: (value) => set((state) => ({ timelineEvents: [...state.timelineEvents, value] })),
   clearTimelineEvents: () => set({ timelineEvents: [] }),
   setChatMessages: (value) => set((state) => ({ chatMessages: applyStateAction(state.chatMessages, value) })),

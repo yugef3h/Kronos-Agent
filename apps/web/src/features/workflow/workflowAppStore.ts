@@ -565,6 +565,10 @@ export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolea
   apps[appIndex] = updatedApp;
   writeAppRecords(apps);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+  }
+
   const previewUrl = readWorkflowDraftPreviewDataUrl(appId);
   return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp;
 };

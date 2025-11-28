@@ -84,6 +84,10 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
     toggleHistoryPanel,
+    publishedChatbotWorkflowApps,
+    publishedChatbotWorkflowAppId,
+    navigateWorkflowCreateBlank,
+    onPublishedChatbotWorkflowAppChange,
   } = controller;
 
   return (
@@ -118,11 +122,10 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     key={item.id}
                     type="button"
                     onClick={() => handleHistoryItemClick(item.sessionId)}
-                    className={`w-full rounded-xl border px-2 py-2 text-left transition ${
-                      item.sessionId === sessionId
+                    className={`w-full rounded-xl border px-2 py-2 text-left transition ${item.sessionId === sessionId
                         ? 'border-cyan-300 bg-cyan-50/70'
                         : 'border-slate-100 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
-                    }`}
+                      }`}
                   >
                     <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
                     <div className="mt-1" />
@@ -169,71 +172,70 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
               const imageName = getRenderableImageName(message);
 
               return (
-              <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <article
-                  className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${
-                    message.role === 'user'
-                      ? imageSource || (message.fileName && message.fileExtension)
-                        ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
-                        : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
-                      : isTakeoutWideCardMessage(message)
-                        ? 'border-transparent bg-transparent px-0 py-1 text-slate-700 shadow-none'
-                        : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
-                  }`}
-                >
-                  {message.flowType === 'takeout' && message.takeoutMessageType ? (
-                    <TakeoutMessageCard
-                      message={message}
-                      flowState={takeoutFlowState}
-                      showTakeoutScrollHint={showTakeoutScrollHint}
-                      foodsScrollerRef={takeoutFoodsScrollerRef}
-                      onCancel={handleTakeoutCancel}
-                      onOpenAuthorizationModal={onOpenAuthorizationModal}
-                      onSelectFood={onSelectFood}
-                      onOpenPaymentModal={onOpenPaymentModal}
-                    />
-                  ) : imageSource ? (
-                    <div className="space-y-2">
-                      <img
-                        src={imageSource}
-                        alt={imageName || '用户上传图片'}
-                        className="max-h-64 w-auto max-w-full rounded-xl object-contain"
+                <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <article
+                    className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${message.role === 'user'
+                        ? imageSource || (message.fileName && message.fileExtension)
+                          ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
+                          : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
+                        : isTakeoutWideCardMessage(message)
+                          ? 'border-transparent bg-transparent px-0 py-1 text-slate-700 shadow-none'
+                          : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
+                      }`}
+                  >
+                    {message.flowType === 'takeout' && message.takeoutMessageType ? (
+                      <TakeoutMessageCard
+                        message={message}
+                        flowState={takeoutFlowState}
+                        showTakeoutScrollHint={showTakeoutScrollHint}
+                        foodsScrollerRef={takeoutFoodsScrollerRef}
+                        onCancel={handleTakeoutCancel}
+                        onOpenAuthorizationModal={onOpenAuthorizationModal}
+                        onSelectFood={onSelectFood}
+                        onOpenPaymentModal={onOpenPaymentModal}
                       />
-                      {message.content ? (
-                        <p className="whitespace-pre-wrap text-sm text-slate-700">{message.content}</p>
-                      ) : null}
-                    </div>
-                  ) : message.fileName && message.fileExtension ? (
-                    <div className="w-[18rem] max-w-full rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.4)]">
-                      <div className="flex items-start gap-3">
-                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 shadow-inner shadow-cyan-200/70">
-                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                            <path d="M14 3v5h5" />
-                          </svg>
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-slate-800">{message.fileName}</p>
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-slate-500">
-                            {message.fileExtension}
-                            {typeof message.fileSize === 'number' ? ` | ${formatUploadSize(message.fileSize)}` : ''}
-                          </p>
+                    ) : imageSource ? (
+                      <div className="space-y-2">
+                        <img
+                          src={imageSource}
+                          alt={imageName || '用户上传图片'}
+                          className="max-h-64 w-auto max-w-full rounded-xl object-contain"
+                        />
+                        {message.content ? (
+                          <p className="whitespace-pre-wrap text-sm text-slate-700">{message.content}</p>
+                        ) : null}
+                      </div>
+                    ) : message.fileName && message.fileExtension ? (
+                      <div className="w-[18rem] max-w-full rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.4)]">
+                        <div className="flex items-start gap-3">
+                          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 shadow-inner shadow-cyan-200/70">
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 3v5h5" />
+                            </svg>
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-slate-800">{message.fileName}</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                              {message.fileExtension}
+                              {typeof message.fileSize === 'number' ? ` | ${formatUploadSize(message.fileSize)}` : ''}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : !message.content && message.role === 'assistant' && !message.isIncomplete ? (
-                    <span className="inline-flex items-center gap-1 text-slate-500">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
-                    </span>
-                  ) : message.role === 'assistant' && !message.isStreamingText ? (
-                    <MarkdownMessage content={message.content} isIncomplete={message.isIncomplete} />
-                  ) : (
-                    renderPlainMessageContent(message)
-                  )}
-                </article>
-              </div>
+                    ) : !message.content && message.role === 'assistant' && !message.isIncomplete ? (
+                      <span className="inline-flex items-center gap-1 text-slate-500">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
+                      </span>
+                    ) : message.role === 'assistant' && !message.isStreamingText ? (
+                      <MarkdownMessage content={message.content} isIncomplete={message.isIncomplete} />
+                    ) : (
+                      renderPlainMessageContent(message)
+                    )}
+                  </article>
+                </div>
               );
             })}
 
@@ -358,8 +360,9 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                   : '发消息，可以试着点餐哦~'}
             />
 
-            <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-center justify-between">
-              <div className="pointer-events-auto flex items-center gap-2">
+            <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-end justify-between gap-2">
+              <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                 {promptQuickActions.map((action) => (
                   <button
                     key={action.key}
@@ -389,6 +392,36 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     <span>{action.label}</span>
                   </button>
                 ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={navigateWorkflowCreateBlank}
+                    disabled={isStreaming || isOrchestrating || isAnalyzingImage}
+                    title="打开工作流应用列表并弹出创建空白应用"
+                    className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="text-sm font-bold leading-none">＋</span>
+                    <span>创建知识库</span>
+                  </button>
+                  <label className="inline-flex h-8 max-w-[min(100%,14rem)] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50/90 pl-2 pr-1 text-xs text-slate-600">
+                    <span className="shrink-0 pl-0.5 font-medium text-slate-500">RAG</span>
+                    <select
+                      value={publishedChatbotWorkflowAppId ?? ''}
+                      onChange={onPublishedChatbotWorkflowAppChange}
+                      disabled={isStreaming || isOrchestrating || isAnalyzingImage}
+                      aria-label="选用已发布的 RAG 应用"
+                      className="max-w-[11rem] cursor-pointer truncate rounded-md border-0 bg-transparent py-1 pl-1 pr-6 text-xs font-medium text-slate-800 outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">应用（未选）</option>
+                      {publishedChatbotWorkflowApps.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               </div>
 
               <button
