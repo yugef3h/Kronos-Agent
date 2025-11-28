@@ -6,8 +6,8 @@ import {
   INPUT_BUDGET_RATIO,
   RESERVED_OUTPUT_TOKENS,
   SUMMARY_TRIGGER_MESSAGE_COUNT,
-  estimateTextTokens,
-} from '../services/memoryOrchestrator.js';
+} from '../memory/constants.js';
+import { estimateTextTokens } from '../memory/tokenEstimate.js';
 
 export type AttachmentMeta = {
   id: string;

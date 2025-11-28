@@ -1,12 +1,24 @@
 import type { Message } from '../domain/sessionStore.js';
+import {
+  CONTEXT_WINDOW_TOKENS,
+  INPUT_BUDGET_RATIO,
+  MAX_SUMMARY_CHARS,
+  RECENT_MESSAGES_TO_KEEP,
+  RESERVED_OUTPUT_TOKENS,
+  SUMMARY_TRIGGER_MESSAGE_COUNT,
+} from '../memory/constants.js';
+import { estimateTextTokens } from '../memory/tokenEstimate.js';
 
-export const APPROX_TOKEN_PER_CHAR = 1 / 3.8;
-export const MAX_SUMMARY_CHARS = 1200;
-export const SUMMARY_TRIGGER_MESSAGE_COUNT = 12;
-export const RECENT_MESSAGES_TO_KEEP = 8;
-export const CONTEXT_WINDOW_TOKENS = 32000;
-export const INPUT_BUDGET_RATIO = 0.6;
-export const RESERVED_OUTPUT_TOKENS = 1200;
+export {
+  APPROX_TOKEN_PER_CHAR,
+  CONTEXT_WINDOW_TOKENS,
+  INPUT_BUDGET_RATIO,
+  MAX_SUMMARY_CHARS,
+  RECENT_MESSAGES_TO_KEEP,
+  RESERVED_OUTPUT_TOKENS,
+  SUMMARY_TRIGGER_MESSAGE_COUNT,
+} from '../memory/constants.js';
+export { estimateTextTokens } from '../memory/tokenEstimate.js';
 
 export type SessionMemoryState = {
   summary: string;
@@ -24,14 +36,6 @@ export type MemoryPlan = {
     summaryTokensEstimate: number;
     promptTokensEstimate: number;
   };
-};
-
-export const estimateTextTokens = (text: string): number => {
-  if (!text.trim()) {
-    return 0;
-  }
-
-  return Math.max(1, Math.ceil(text.length * APPROX_TOKEN_PER_CHAR));
 };
 
 const trimToMaxChars = (text: string, maxChars: number): string => {
