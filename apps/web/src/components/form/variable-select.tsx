@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { panelControlClassName } from './panel-form';
 import { cn } from '../../pages/workflow/utils/classnames';
 import type { ValueSelector, VariableOption } from '../../pages/workflow/features/llm-panel/types';
@@ -145,7 +145,9 @@ const VariableSelect: React.FC<{
 }> = ({ value, options, onChange, placeholder, openSignal, onOpenChange, disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [floatingStyle, setFloatingStyle] = useState<React.CSSProperties>({});
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const listboxRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const listboxId = useId();
   const serializedValue = serializeValueSelector(value);
@@ -210,6 +212,80 @@ const VariableSelect: React.FC<{
     }
   }, [disabled, isOpen]);
 
+  useLayoutEffect(() => {
+    if (!isOpen || disabled) {
+      setFloatingStyle({});
+      return undefined;
+    }
+
+    const wrap = wrapperRef.current;
+    if (!wrap) {
+      return undefined;
+    }
+
+    const margin = 8;
+    const gap = 6;
+    const minPanel = 160;
+
+    const updateFloating = () => {
+      const r = wrap.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const width = r.width;
+      const left = Math.min(Math.max(margin, r.left), Math.max(margin, vw - width - margin));
+
+      const spaceBelow = vh - r.bottom - gap - margin;
+      const spaceAbove = r.top - gap - margin;
+      const preferBelow = spaceBelow >= minPanel || spaceBelow >= spaceAbove;
+
+      const maxH = Math.max(
+        minPanel,
+        Math.min(420, preferBelow ? spaceBelow : spaceAbove),
+      );
+
+      if (preferBelow) {
+        setFloatingStyle({
+          position: 'fixed',
+          left,
+          top: r.bottom + gap,
+          width,
+          maxHeight: maxH,
+          zIndex: 80,
+        });
+      } else {
+        setFloatingStyle({
+          position: 'fixed',
+          left,
+          bottom: vh - r.top + gap,
+          width,
+          maxHeight: maxH,
+          zIndex: 80,
+        });
+      }
+    };
+
+    updateFloating();
+
+    const ro = new ResizeObserver(() => {
+      updateFloating();
+    });
+    ro.observe(wrap);
+
+    window.addEventListener('scroll', updateFloating, true);
+    window.addEventListener('resize', updateFloating);
+
+    const id = window.requestAnimationFrame(() => {
+      updateFloating();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(id);
+      ro.disconnect();
+      window.removeEventListener('scroll', updateFloating, true);
+      window.removeEventListener('resize', updateFloating);
+    };
+  }, [isOpen, disabled, groupedOptions.length, searchText]);
+
   return (
     <div ref={wrapperRef} className={cn('relative w-full', disabled && 'pointer-events-none opacity-60')}>
       <button
@@ -247,11 +323,13 @@ const VariableSelect: React.FC<{
 
       {isOpen && !disabled && (
         <div
+          ref={listboxRef}
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-[16px] border border-slate-200 bg-white p-2 shadow-[0_24px_44px_-28px_rgba(15,23,42,0.42)]"
+          style={floatingStyle}
+          className="flex min-h-0 flex-col overflow-hidden rounded-[16px] border border-slate-200 bg-white p-2 shadow-[0_24px_44px_-28px_rgba(15,23,42,0.42)]"
         >
-          <div className="mb-2 flex items-center gap-2 rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]">
+          <div className="mb-2 flex shrink-0 items-center gap-2 rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="shrink-0 text-slate-400" aria-hidden="true">
               <path
                 d="M21 21L16.65 16.65M11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11C18 14.866 14.866 18 11 18Z"
@@ -270,7 +348,7 @@ const VariableSelect: React.FC<{
             />
           </div>
 
-          <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
             {groupedOptions.length ? (
               groupedOptions.map((group) => (
                 <section key={group.key} className="space-y-1">

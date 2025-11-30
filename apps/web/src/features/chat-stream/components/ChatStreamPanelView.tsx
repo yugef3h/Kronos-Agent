@@ -124,8 +124,8 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     type="button"
                     onClick={() => handleHistoryItemClick(item.sessionId)}
                     className={`w-full rounded-xl border px-2 py-2 text-left transition ${item.sessionId === sessionId
-                        ? 'border-cyan-300 bg-cyan-50/70'
-                        : 'border-slate-100 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
+                      ? 'border-cyan-300 bg-cyan-50/70'
+                      : 'border-slate-100 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
                       }`}
                   >
                     <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
@@ -176,12 +176,12 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                 <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <article
                     className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${message.role === 'user'
-                        ? imageSource || (message.fileName && message.fileExtension)
-                          ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
-                          : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
-                        : isTakeoutWideCardMessage(message)
-                          ? 'border-transparent bg-transparent px-0 py-1 text-slate-700 shadow-none'
-                          : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
+                      ? imageSource || (message.fileName && message.fileExtension)
+                        ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
+                        : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
+                      : isTakeoutWideCardMessage(message)
+                        ? 'border-transparent bg-transparent px-0 py-1 text-slate-700 shadow-none'
+                        : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
                       }`}
                   >
                     {message.flowType === 'takeout' && message.takeoutMessageType ? (
@@ -364,46 +364,47 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
             <div className="pointer-events-none absolute inset-x-3 bottom-2 flex items-end justify-between gap-2">
               <div className="pointer-events-auto flex min-w-0 flex-1 flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                {promptQuickActions.map((action) => (
-                  <button
-                    key={action.key}
-                    type="button"
-                    onClick={() => handleQuickActionClick(action.key)}
-                    title={action.key === 'takeout' ? '打开外卖模拟流程' : action.key === 'image' ? '上传图片进行识别' : action.key === 'file' ? '上传文件进行解读' : `${action.label}功能即将上线`}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
-                  >
-                    {action.key === 'file' && (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                        <path d="M14 3v5h5" />
-                      </svg>
-                    )}
-                    {action.key === 'image' && (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <rect x="3" y="5" width="18" height="14" rx="2" />
-                        <circle cx="9" cy="10" r="1.4" />
-                        <path d="m21 16-5.5-5.5L8 18" />
-                      </svg>
-                    )}
-                    {action.key === 'takeout' && (
-                      <div className="h-6 w-6 overflow-hidden">
-                        <img src={taobaoIcon} alt="淘宝头像" className="h-full w-full object-cover" />
-                      </div>
-                    )}
-                    <span>{action.label}</span>
-                  </button>
-                ))}
-                </div>
-                <div className="min-w-0 max-w-[min(100%,20rem)]">
-                  <Field title="" compact>
-                    <VariableSelect
-                      value={publishedChatbotRagValueSelector}
-                      options={publishedChatbotRagVariableOptions}
-                      placeholder="选择 RAG 应用"
-                      onChange={handlePublishedChatbotRagVariableChange}
-                      disabled={isStreaming || isOrchestrating || isAnalyzingImage}
-                    />
-                  </Field>
+                  {promptQuickActions.map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      onClick={() => handleQuickActionClick(action.key)}
+                      title={action.key === 'takeout' ? '打开外卖模拟流程' : action.key === 'image' ? '上传图片进行识别' : action.key === 'file' ? '上传文件进行解读' : `${action.label}功能即将上线`}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                    >
+                      {action.key === 'file' && (
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 3v5h5" />
+                        </svg>
+                      )}
+                      {action.key === 'image' && (
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <rect x="3" y="5" width="18" height="14" rx="2" />
+                          <circle cx="9" cy="10" r="1.4" />
+                          <path d="m21 16-5.5-5.5L8 18" />
+                        </svg>
+                      )}
+                      {action.key === 'takeout' && (
+                        <div className="h-6 w-6 overflow-hidden">
+                          <img src={taobaoIcon} alt="淘宝头像" className="h-full w-full object-cover" />
+                        </div>
+                      )}
+                      <span>{action.label}</span>
+                    </button>
+                  ))}
+
+                  <div className="w-[200px] shrink-0">
+                    <Field title="" compact>
+                      <VariableSelect
+                        value={publishedChatbotRagValueSelector}
+                        options={publishedChatbotRagVariableOptions}
+                        placeholder="选择或创建 RAG 应用"
+                        onChange={handlePublishedChatbotRagVariableChange}
+                        disabled={isStreaming || isOrchestrating || isAnalyzingImage}
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
 
