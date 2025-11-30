@@ -33,6 +33,7 @@ import {
 } from '../../../lib/localStorageCache';
 import { usePlaygroundStore } from '../../../store/playgroundStore';
 import type { StreamChunk, TimelineEvent } from '../../../types/chat';
+import type { ValueSelector, VariableOption } from '../../../pages/workflow/features/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
 import {
   MOCK_ADDRESS,
@@ -154,8 +155,9 @@ export type UseChatStreamControllerResult = {
   toggleHistoryPanel: () => void;
   publishedChatbotWorkflowApps: WorkflowAppRecord[];
   publishedChatbotWorkflowAppId: string | null;
-  navigateWorkflowCreateBlank: () => void;
-  onPublishedChatbotWorkflowAppChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  publishedChatbotRagValueSelector: ValueSelector;
+  publishedChatbotRagVariableOptions: VariableOption[];
+  handlePublishedChatbotRagVariableChange: (value: ValueSelector) => void;
 };
 
 const PROMPT_MAX_HEIGHT = 300;
@@ -478,16 +480,60 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
   }, [publishedChatbotApps, publishedChatbotWorkflowAppId, setPublishedChatbotWorkflowAppId]);
 
-  const navigateWorkflowCreateBlank = useCallback(() => {
-    navigate('/workflow?create=blank');
-  }, [navigate]);
+  const publishedChatbotRagValueSelector = useMemo((): ValueSelector => {
+    if (!publishedChatbotWorkflowAppId) {
+      return ['playground', 'none'];
+    }
+    return ['playground', 'app', publishedChatbotWorkflowAppId];
+  }, [publishedChatbotWorkflowAppId]);
 
-  const onPublishedChatbotWorkflowAppChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      const next = event.target.value.trim();
-      setPublishedChatbotWorkflowAppId(next.length > 0 ? next : null);
+  const publishedChatbotRagVariableOptions = useMemo((): VariableOption[] => {
+    return [
+      {
+        label: 'RAG.应用（未选）',
+        triggerLabel: '应用（未选）',
+        valueSelector: ['playground', 'none'],
+        valueType: 'string',
+        source: 'node',
+      },
+      {
+        label: 'RAG.＋创建知识库',
+        triggerLabel: '＋创建知识库',
+        valueSelector: ['playground', 'workflow-create'],
+        valueType: 'string',
+        source: 'node',
+      },
+      ...publishedChatbotApps.map(
+        (app): VariableOption => ({
+          label: `RAG.${app.name}`,
+          triggerLabel: app.name,
+          valueSelector: ['playground', 'app', app.id],
+          valueType: 'string',
+          source: 'node',
+        }),
+      ),
+    ];
+  }, [publishedChatbotApps]);
+
+  const handlePublishedChatbotRagVariableChange = useCallback(
+    (value: ValueSelector) => {
+      if (value[0] !== 'playground') {
+        return;
+      }
+      const segment = value[1];
+      if (segment === 'workflow-create') {
+        navigate('/workflow?create=blank');
+        return;
+      }
+      if (segment === 'none') {
+        setPublishedChatbotWorkflowAppId(null);
+        return;
+      }
+      if (segment === 'app' && typeof value[2] === 'string' && value[2].length > 0) {
+        setPublishedChatbotWorkflowAppId(value[2]);
+      }
     },
-    [setPublishedChatbotWorkflowAppId],
+    [navigate, setPublishedChatbotWorkflowAppId],
   );
 
   useEffect(() => {
@@ -1222,7 +1268,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     toggleHistoryPanel,
     publishedChatbotWorkflowApps: publishedChatbotApps,
     publishedChatbotWorkflowAppId,
-    navigateWorkflowCreateBlank,
-    onPublishedChatbotWorkflowAppChange,
+    publishedChatbotRagValueSelector,
+    publishedChatbotRagVariableOptions,
+    handlePublishedChatbotRagVariableChange,
   };
 };

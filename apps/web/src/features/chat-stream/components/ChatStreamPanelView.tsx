@@ -8,6 +8,8 @@ import {
 } from '../../agent-tools/takeout';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
+import VariableSelect from '../../../components/form/variable-select';
+import Field from '../../../pages/workflow/base/field';
 import {
   formatUploadSize,
   getRenderableImageName,
@@ -84,10 +86,9 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
     toggleHistoryPanel,
-    publishedChatbotWorkflowApps,
-    publishedChatbotWorkflowAppId,
-    navigateWorkflowCreateBlank,
-    onPublishedChatbotWorkflowAppChange,
+    publishedChatbotRagValueSelector,
+    publishedChatbotRagVariableOptions,
+    handlePublishedChatbotRagVariableChange,
   } = controller;
 
   return (
@@ -393,34 +394,16 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                   </button>
                 ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={navigateWorkflowCreateBlank}
-                    disabled={isStreaming || isOrchestrating || isAnalyzingImage}
-                    title="打开工作流应用列表并弹出创建空白应用"
-                    className="inline-flex h-8 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="text-sm font-bold leading-none">＋</span>
-                    <span>创建知识库</span>
-                  </button>
-                  <label className="inline-flex h-8 max-w-[min(100%,14rem)] items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50/90 pl-2 pr-1 text-xs text-slate-600">
-                    <span className="shrink-0 pl-0.5 font-medium text-slate-500">RAG</span>
-                    <select
-                      value={publishedChatbotWorkflowAppId ?? ''}
-                      onChange={onPublishedChatbotWorkflowAppChange}
+                <div className="min-w-0 max-w-[min(100%,20rem)]">
+                  <Field title="" compact>
+                    <VariableSelect
+                      value={publishedChatbotRagValueSelector}
+                      options={publishedChatbotRagVariableOptions}
+                      placeholder="选择 RAG 应用"
+                      onChange={handlePublishedChatbotRagVariableChange}
                       disabled={isStreaming || isOrchestrating || isAnalyzingImage}
-                      aria-label="选用已发布的 RAG 应用"
-                      className="max-w-[11rem] cursor-pointer truncate rounded-md border-0 bg-transparent py-1 pl-1 pr-6 text-xs font-medium text-slate-800 outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <option value="">应用（未选）</option>
-                      {publishedChatbotWorkflowApps.map((row) => (
-                        <option key={row.id} value={row.id}>
-                          {row.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    />
+                  </Field>
                 </div>
               </div>
 
