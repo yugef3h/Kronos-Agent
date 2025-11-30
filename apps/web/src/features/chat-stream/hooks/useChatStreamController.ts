@@ -490,14 +490,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const publishedChatbotRagVariableOptions = useMemo((): VariableOption[] => {
     return [
       {
-        label: 'RAG.应用（未选）',
-        triggerLabel: '应用（未选）',
-        valueSelector: ['playground', 'none'],
-        valueType: 'string',
-        source: 'node',
-      },
-      {
-        label: 'RAG.＋创建知识库',
+        label: '.＋创建知识库',
         triggerLabel: '＋创建知识库',
         valueSelector: ['playground', 'workflow-create'],
         valueType: 'string',
@@ -505,7 +498,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       },
       ...publishedChatbotApps.map(
         (app): VariableOption => ({
-          label: `RAG.${app.name}`,
+          label: `.${app.name}`,
           triggerLabel: app.name,
           valueSelector: ['playground', 'app', app.id],
           valueType: 'string',

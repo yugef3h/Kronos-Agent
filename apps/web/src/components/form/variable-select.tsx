@@ -142,7 +142,20 @@ const VariableSelect: React.FC<{
   openSignal?: string | null;
   onOpenChange?: (isOpen: boolean) => void;
   disabled?: boolean;
-}> = ({ value, options, onChange, placeholder, openSignal, onOpenChange, disabled = false }) => {
+  className?: string;
+  /** 与快捷胶囊按钮一致：h-8 + rounded-full + slate 边框/底色 */
+  pillTrigger?: boolean;
+}> = ({
+  value,
+  options,
+  onChange,
+  placeholder,
+  openSignal,
+  onOpenChange,
+  disabled = false,
+  className,
+  pillTrigger = false,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [floatingStyle, setFloatingStyle] = useState<React.CSSProperties>({});
@@ -287,7 +300,7 @@ const VariableSelect: React.FC<{
   }, [isOpen, disabled, groupedOptions.length, searchText]);
 
   return (
-    <div ref={wrapperRef} className={cn('relative w-full', disabled && 'pointer-events-none opacity-60')}>
+    <div ref={wrapperRef} className={cn('relative w-full', disabled && 'pointer-events-none opacity-60', className)}>
       <button
         type="button"
         role="combobox"
@@ -295,9 +308,16 @@ const VariableSelect: React.FC<{
         aria-controls={listboxId}
         disabled={disabled}
         className={cn(
-          panelControlClassName,
-          'flex items-center justify-between bg-white pr-2.5 text-left',
-          isOpen && 'border-[#5b7cff] bg-white',
+          pillTrigger
+            ? cn(
+                'inline-flex h-8 w-full shrink-0 items-center justify-between gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-left text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/60',
+                isOpen && 'border-cyan-300 bg-cyan-50 text-cyan-800',
+              )
+            : cn(
+                panelControlClassName,
+                'flex items-center justify-between bg-white pr-2.5 text-left',
+                isOpen && 'border-[#5b7cff] bg-white',
+              ),
         )}
         onClick={() => {
           if (disabled) {

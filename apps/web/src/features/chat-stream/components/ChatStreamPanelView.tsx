@@ -9,7 +9,6 @@ import {
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
 import VariableSelect from '../../../components/form/variable-select';
-import Field from '../../../pages/workflow/base/field';
 import {
   formatUploadSize,
   getRenderableImageName,
@@ -394,17 +393,15 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     </button>
                   ))}
 
-                  <div className="w-[200px] shrink-0">
-                    <Field title="" compact>
-                      <VariableSelect
-                        value={publishedChatbotRagValueSelector}
-                        options={publishedChatbotRagVariableOptions}
-                        placeholder="选择或创建 RAG 应用"
-                        onChange={handlePublishedChatbotRagVariableChange}
-                        disabled={isStreaming || isOrchestrating || isAnalyzingImage}
-                      />
-                    </Field>
-                  </div>
+                  <VariableSelect
+                    className="w-[160px]"
+                    pillTrigger
+                    value={publishedChatbotRagValueSelector}
+                    options={publishedChatbotRagVariableOptions}
+                    placeholder="选择或创建 RAG 应用"
+                    onChange={handlePublishedChatbotRagVariableChange}
+                    disabled={isStreaming || isOrchestrating || isAnalyzingImage}
+                  />
                 </div>
               </div>
 
