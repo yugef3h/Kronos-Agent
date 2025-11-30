@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import InfoTooltip from '../base/info-tooltip';
-import VariableSelect from '../base/variable-select';
+import VariableSelect from '../../../components/form/variable-select';
 import ExpandCollapseButton from '../base/expand-collapse-button';
 import PanelAlert from '../base/panel-alert';
 import AddItemButton from '../base/add-item-button';

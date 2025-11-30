@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useEdges, useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
-import VariableSelect from '../base/variable-select';
+import VariableSelect from '../../../components/form/variable-select';
 import {
   PanelCard,
   PanelChoiceGroup,

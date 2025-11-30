@@ -100,6 +100,8 @@ export type CompletionParamDefinition = {
 
 export type VariableOption = {
   label: string
+  /** 收起态展示文案；默认用 `label` */
+  triggerLabel?: string
   valueSelector: ValueSelector
   valueType: 'string' | 'file' | 'object' | 'array' | 'number' | 'boolean'
   source: 'system' | 'node'
