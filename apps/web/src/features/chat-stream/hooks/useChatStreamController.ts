@@ -158,6 +158,7 @@ export type UseChatStreamControllerResult = {
   publishedChatbotRagValueSelector: ValueSelector;
   publishedChatbotRagVariableOptions: VariableOption[];
   handlePublishedChatbotRagVariableChange: (value: ValueSelector) => void;
+  clearPublishedChatbotRagSelection: () => void;
 };
 
 const PROMPT_MAX_HEIGHT = 300;
@@ -528,6 +529,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     },
     [navigate, setPublishedChatbotWorkflowAppId],
   );
+
+  const clearPublishedChatbotRagSelection = useCallback(() => {
+    setPublishedChatbotWorkflowAppId(null);
+  }, [setPublishedChatbotWorkflowAppId]);
 
   useEffect(() => {
     if (!authToken) {
@@ -1264,5 +1269,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     publishedChatbotRagValueSelector,
     publishedChatbotRagVariableOptions,
     handlePublishedChatbotRagVariableChange,
+    clearPublishedChatbotRagSelection,
   };
 };

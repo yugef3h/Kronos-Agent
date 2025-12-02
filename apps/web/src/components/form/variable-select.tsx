@@ -145,6 +145,9 @@ const VariableSelect: React.FC<{
   className?: string;
   /** 与快捷胶囊按钮一致：h-8 + rounded-full + slate 边框/底色 */
   pillTrigger?: boolean;
+  /** 为 true 时用右侧「×」替代下拉箭头，并需配合 `onClear` */
+  showClear?: boolean;
+  onClear?: () => void;
 }> = ({
   value,
   options,
@@ -155,6 +158,8 @@ const VariableSelect: React.FC<{
   disabled = false,
   className,
   pillTrigger = false,
+  showClear = false,
+  onClear,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -299,6 +304,8 @@ const VariableSelect: React.FC<{
     };
   }, [isOpen, disabled, groupedOptions.length, searchText]);
 
+  const showClearControl = Boolean(showClear && onClear && !disabled);
+
   return (
     <div ref={wrapperRef} className={cn('relative w-full', disabled && 'pointer-events-none opacity-60', className)}>
       <button
@@ -310,12 +317,14 @@ const VariableSelect: React.FC<{
         className={cn(
           pillTrigger
             ? cn(
-                'inline-flex h-8 w-full shrink-0 items-center justify-between gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 text-left text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/60',
+                'inline-flex h-8 w-full shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 pl-3 text-left text-xs font-medium text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/60',
+                showClearControl ? 'pr-9' : 'pr-3',
                 isOpen && 'border-cyan-300 bg-cyan-50 text-cyan-800',
               )
             : cn(
                 panelControlClassName,
-                'flex items-center justify-between bg-white pr-2.5 text-left',
+                'relative flex items-center justify-between bg-white text-left',
+                showClearControl ? 'pr-8 pl-2.5' : 'pr-2.5',
                 isOpen && 'border-[#5b7cff] bg-white',
               ),
         )}
@@ -326,20 +335,43 @@ const VariableSelect: React.FC<{
           setIsOpen((open) => !open);
         }}
       >
-        <span className={cn('truncate', !selectedOption && 'text-slate-400')}>
+        <span className={cn('min-w-0 flex-1 truncate text-left', !selectedOption && 'text-slate-400')}>
           {(selectedOption?.triggerLabel ?? selectedOption?.label) ?? placeholder}
         </span>
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 12 12"
-          fill="none"
-          aria-hidden="true"
-          className={cn('shrink-0 text-slate-400 transition-transform', isOpen && 'rotate-180')}
-        >
-          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        {!showClearControl && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            aria-hidden="true"
+            className={cn('shrink-0 text-slate-400 transition-transform', isOpen && 'rotate-180')}
+          >
+            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
       </button>
+      {showClearControl && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="清除选择"
+          className={cn(
+            'absolute right-1 top-1/2 z-[1] flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200/90 hover:text-slate-800',
+            pillTrigger ? 'right-1' : 'right-1.5',
+          )}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsOpen(false);
+            onClear?.();
+          }}
+        >
+          <svg viewBox="0 0 12 12" width="12" height="12" fill="none" aria-hidden className="shrink-0">
+            <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
 
       {isOpen && !disabled && (
         <div

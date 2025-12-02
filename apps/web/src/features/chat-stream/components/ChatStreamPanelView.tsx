@@ -85,9 +85,11 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
     toggleHistoryPanel,
+    publishedChatbotWorkflowAppId,
     publishedChatbotRagValueSelector,
     publishedChatbotRagVariableOptions,
     handlePublishedChatbotRagVariableChange,
+    clearPublishedChatbotRagSelection,
   } = controller;
 
   return (
@@ -400,6 +402,8 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     options={publishedChatbotRagVariableOptions}
                     placeholder="选择或创建 RAG 应用"
                     onChange={handlePublishedChatbotRagVariableChange}
+                    showClear={Boolean(publishedChatbotWorkflowAppId)}
+                    onClear={clearPublishedChatbotRagSelection}
                     disabled={isStreaming || isOrchestrating || isAnalyzingImage}
                   />
                 </div>
