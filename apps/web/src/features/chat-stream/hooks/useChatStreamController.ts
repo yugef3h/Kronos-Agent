@@ -159,6 +159,9 @@ export type UseChatStreamControllerResult = {
   publishedChatbotRagVariableOptions: VariableOption[];
   handlePublishedChatbotRagVariableChange: (value: ValueSelector) => void;
   clearPublishedChatbotRagSelection: () => void;
+  isWorkflowBlankCreateDialogOpen: boolean;
+  closeWorkflowBlankCreateDialog: () => void;
+  handleWorkflowBlankAppCreated: (app: WorkflowAppRecord) => void;
 };
 
 const PROMPT_MAX_HEIGHT = 300;
@@ -209,6 +212,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const [publishedChatbotApps, setPublishedChatbotApps] = useState<WorkflowAppRecord[]>(() =>
     listPublishedChatbotWorkflowApps(),
   );
+  const [isWorkflowBlankCreateDialogOpen, setIsWorkflowBlankCreateDialogOpen] = useState(false);
   const activeRequestIdRef = useRef(0);
   const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
@@ -516,7 +520,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
       const segment = value[1];
       if (segment === 'workflow-create') {
-        navigate('/workflow?create=blank');
+        setIsWorkflowBlankCreateDialogOpen(true);
         return;
       }
       if (segment === 'none') {
@@ -527,7 +531,19 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         setPublishedChatbotWorkflowAppId(value[2]);
       }
     },
-    [navigate, setPublishedChatbotWorkflowAppId],
+    [setPublishedChatbotWorkflowAppId],
+  );
+
+  const closeWorkflowBlankCreateDialog = useCallback(() => {
+    setIsWorkflowBlankCreateDialogOpen(false);
+  }, []);
+
+  const handleWorkflowBlankAppCreated = useCallback(
+    (app: WorkflowAppRecord) => {
+      setIsWorkflowBlankCreateDialogOpen(false);
+      navigate(`/workflow/config?appId=${encodeURIComponent(app.id)}`);
+    },
+    [navigate],
   );
 
   const clearPublishedChatbotRagSelection = useCallback(() => {
@@ -1270,5 +1286,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     publishedChatbotRagVariableOptions,
     handlePublishedChatbotRagVariableChange,
     clearPublishedChatbotRagSelection,
+    isWorkflowBlankCreateDialogOpen,
+    closeWorkflowBlankCreateDialog,
+    handleWorkflowBlankAppCreated,
   };
 };

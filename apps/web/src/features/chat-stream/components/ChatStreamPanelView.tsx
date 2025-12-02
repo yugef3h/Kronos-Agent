@@ -9,6 +9,7 @@ import {
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
 import VariableSelect from '../../../components/form/variable-select';
+import { WorkflowBlankAppCreateDialog } from '../../workflow/WorkflowBlankAppCreateDialog';
 import {
   formatUploadSize,
   getRenderableImageName,
@@ -90,6 +91,9 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     publishedChatbotRagVariableOptions,
     handlePublishedChatbotRagVariableChange,
     clearPublishedChatbotRagSelection,
+    isWorkflowBlankCreateDialogOpen,
+    closeWorkflowBlankCreateDialog,
+    handleWorkflowBlankAppCreated,
   } = controller;
 
   return (
@@ -471,6 +475,12 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
           onConfirm={confirmHistorySessionSwitch}
         />
       )}
+
+      <WorkflowBlankAppCreateDialog
+        open={isWorkflowBlankCreateDialogOpen}
+        onClose={closeWorkflowBlankCreateDialog}
+        onCreated={handleWorkflowBlankAppCreated}
+      />
     </section>
   );
 };
