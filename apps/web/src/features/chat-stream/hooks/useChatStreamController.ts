@@ -83,9 +83,12 @@ import { augmentPlaygroundPromptWithChatbotAgent } from '../utils/augmentPlaygro
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
+  createDefaultChatbotOrchestration,
+  getWorkflowAppById,
   listPublishedChatbotWorkflowApps,
   type WorkflowAppRecord,
 } from '../../workflow/workflowAppStore';
+import { buildChatbotAugmentedUserPrompt, getPlaygroundWorkflowChatStreamSessionId } from '../../workflow/chatbotAugmentedStreamPrompt';
 
 export type UseChatStreamControllerResult = {
   canSend: boolean;
@@ -224,6 +227,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
 
+  const playgroundChatStreamSessionId = useMemo(
+    () => getPlaygroundWorkflowChatStreamSessionId(sessionId, publishedChatbotWorkflowAppId),
+    [sessionId, publishedChatbotWorkflowAppId],
+  );
+
   const {
     streamFlushTimerRef,
     resetAssistantStreamingState,
@@ -353,7 +361,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
 
     try {
-      const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+      const snapshot = await requestSessionSnapshot({ sessionId: playgroundChatStreamSessionId, authToken });
       const [conversationTokens, summaryTokens] = await Promise.all([
         countTextTokens(buildConversationText(snapshot.messages)),
         countTextTokens(snapshot.memorySummary),
@@ -369,7 +377,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     } catch {
       // 会话指标刷新失败时保留当前展示，避免影响主流程。
     }
-  }, [authToken, sessionId, setMemoryMetrics]);
+  }, [authToken, playgroundChatStreamSessionId, setMemoryMetrics]);
 
   const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
     if (!authToken) {
@@ -408,7 +416,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
 
     try {
-      const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+      const snapshot = await requestSessionSnapshot({ sessionId: playgroundChatStreamSessionId, authToken });
       const [conversationTokens, summaryTokens] = await Promise.all([
         countTextTokens(buildConversationText(snapshot.messages)),
         countTextTokens(snapshot.memorySummary),
@@ -426,7 +434,109 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     } catch {
       // 历史会话回显失败时保留当前界面状态。
     }
-  }, [authToken, sessionId, setLatestUserQuestion, setMemoryMetrics, setMessages]);
+  }, [authToken, playgroundChatStreamSessionId, setLatestUserQuestion, setMemoryMetrics, setMessages]);
+
+  const executePlaygroundChatStream = useCallback(
+    async (params: {
+      requestId: number;
+      controller: AbortController;
+      streamPrompt: string;
+      streamSessionId: string;
+      imageDataUrls?: string[];
+    }) => {
+      if (!authToken) {
+        return false;
+      }
+
+      const { requestId, controller, streamPrompt, streamSessionId, imageDataUrls } = params;
+      let lastSeenEventId = 0;
+      let isRequestComplete = false;
+
+      await fetchEventSource(apiUrl('/api/chat-stream'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          prompt: streamPrompt,
+          sessionId: streamSessionId,
+          ...(imageDataUrls?.length ? { imageDataUrls } : {}),
+        }),
+        signal: controller.signal,
+        onmessage(event) {
+          if (requestId !== activeRequestIdRef.current) {
+            return;
+          }
+
+          const payload = JSON.parse(event.data) as StreamChunk;
+
+          if (payload.eventId <= lastSeenEventId) {
+            return;
+          }
+          lastSeenEventId = payload.eventId;
+
+          if (payload.type === 'timeline') {
+            appendTimelineEvent({
+              eventId: payload.eventId,
+              stage: payload.stage,
+              status: payload.status,
+              message: payload.message,
+              toolName: payload.toolName,
+              toolInput: payload.toolInput,
+              toolOutput: payload.toolOutput,
+              toolError: payload.toolError,
+              timestamp: payload.timestamp,
+            });
+
+            if (payload.message.includes('LangChain 流式响应失败')) {
+              console.warn(`[ChatStreamPanel] ${payload.message}`);
+            }
+          }
+
+          if (payload.type === 'content') {
+            appendStreamingContent(payload.content);
+          }
+
+          if (payload.type === 'complete') {
+            isRequestComplete = true;
+            if (requestId === activeRequestIdRef.current) {
+              completeStreamingContent();
+            }
+          }
+        },
+        onerror(error) {
+          if (requestId === activeRequestIdRef.current) {
+            abortStreamingAssistantMessage();
+          }
+          throw error;
+        },
+        onclose() {
+          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+            abortStreamingAssistantMessage();
+            setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+          }
+
+          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+            setIsStreaming(false);
+            activeControllerRef.current = null;
+          }
+
+          interruptedRequestIdsRef.current.delete(requestId);
+        },
+      });
+      return isRequestComplete;
+    },
+    [
+      authToken,
+      appendStreamingContent,
+      appendTimelineEvent,
+      abortStreamingAssistantMessage,
+      completeStreamingContent,
+      setIsStreaming,
+      setMessages,
+    ],
+  );
 
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
@@ -599,6 +709,14 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [hasRestorableDraft, hydrateSessionMessages]);
 
   useEffect(() => {
+    if (!authToken) {
+      return;
+    }
+
+    void hydrateSessionMessages();
+  }, [authToken, publishedChatbotWorkflowAppId, hydrateSessionMessages]);
+
+  useEffect(() => {
     void refreshMemoryMetrics();
   }, [latestTimelineEventId, refreshMemoryMetrics]);
 
@@ -736,14 +854,101 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
 
       const imagePrompt = userPrompt || IMAGE_DEFAULT_PROMPT;
+      const imageSnapshot = pendingImage;
+
+      if (publishedChatbotWorkflowAppId) {
+        const app = getWorkflowAppById(publishedChatbotWorkflowAppId);
+        const orch = app?.chatbotOrchestration ?? createDefaultChatbotOrchestration();
+        if (app?.dsl.app.mode === 'chat' && app.mockPublished && orch.visionEnabled) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: 'user',
+              content: '',
+              imagePreviewUrl: imageSnapshot.dataUrl,
+              imageName: imageSnapshot.fileName,
+              isIncomplete: false,
+            },
+            { role: 'user', content: imagePrompt, isIncomplete: false },
+            { role: 'assistant', content: '', isIncomplete: false },
+          ]);
+          setLatestUserQuestion(imagePrompt);
+          setPrompt('');
+          setPendingImage(null);
+
+          const previousRequestId = activeRequestIdRef.current;
+          if (activeControllerRef.current) {
+            interruptedRequestIdsRef.current.add(previousRequestId);
+            flushRemainingAssistantBuffer();
+            abortStreamingAssistantMessage();
+            setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+            activeControllerRef.current.abort();
+          }
+
+          const requestId = previousRequestId + 1;
+          activeRequestIdRef.current = requestId;
+          const controller = new AbortController();
+          activeControllerRef.current = controller;
+
+          clearTimelineEvents();
+          startStreamingAssistantMessage();
+
+          let streamCompleted = false;
+          try {
+            const streamPrompt = await buildChatbotAugmentedUserPrompt({
+              authToken,
+              userQuery: imagePrompt,
+              orch,
+            });
+            const maxV = Math.min(10, Math.max(1, Math.round(orch.visionMaxImages ?? 3)));
+            const imageDataUrls = [imageSnapshot.dataUrl].slice(0, maxV);
+            streamCompleted = await executePlaygroundChatStream({
+              requestId,
+              controller,
+              streamPrompt,
+              streamSessionId: playgroundChatStreamSessionId,
+              imageDataUrls,
+            });
+          } catch (error) {
+            const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
+
+            if (requestId === activeRequestIdRef.current) {
+              abortStreamingAssistantMessage();
+              if (!streamCompleted) {
+                setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+              }
+              setIsStreaming(false);
+              activeControllerRef.current = null;
+            }
+
+            interruptedRequestIdsRef.current.delete(requestId);
+
+            if (isInterruptedRequest) {
+              return;
+            }
+
+            const message = error instanceof Error ? error.message : '带图对话失败，请稍后重试';
+            startAssistantTypewriter(message, {
+              replaceLastAssistant: true,
+              onComplete: () => {
+                scheduleMemoryMetricsRefresh();
+              },
+            });
+            return;
+          }
+
+          void scheduleMemoryMetricsRefresh();
+          return;
+        }
+      }
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'user',
           content: '',
-          imagePreviewUrl: pendingImage.dataUrl,
-          imageName: pendingImage.fileName,
+          imagePreviewUrl: imageSnapshot.dataUrl,
+          imageName: imageSnapshot.fileName,
           isIncomplete: false,
         },
         { role: 'user', content: imagePrompt, isIncomplete: false },
@@ -757,7 +962,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       try {
         const response = await requestImageRecognition({
           authToken,
-          imageDataUrl: pendingImage.dataUrl,
+          imageDataUrl: imageSnapshot.dataUrl,
           prompt: imagePrompt,
           sessionId,
         });
@@ -921,8 +1126,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     activeRequestIdRef.current = requestId;
     const controller = new AbortController();
     activeControllerRef.current = controller;
-    let lastSeenEventId = 0;
-    let isRequestComplete = false;
 
     clearTimelineEvents();
     startStreamingAssistantMessage();
@@ -946,82 +1149,20 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
     }
 
+    let streamCompleted = false;
     try {
-      await fetchEventSource(apiUrl('/api/chat-stream'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ prompt: streamPrompt, sessionId }),
-        signal: controller.signal,
-        onmessage(event) {
-          if (requestId !== activeRequestIdRef.current) {
-            return;
-          }
-
-          const payload = JSON.parse(event.data) as StreamChunk;
-
-          if (payload.eventId <= lastSeenEventId) {
-            return;
-          }
-          lastSeenEventId = payload.eventId;
-
-          if (payload.type === 'timeline') {
-            appendTimelineEvent({
-              eventId: payload.eventId,
-              stage: payload.stage,
-              status: payload.status,
-              message: payload.message,
-              toolName: payload.toolName,
-              toolInput: payload.toolInput,
-              toolOutput: payload.toolOutput,
-              toolError: payload.toolError,
-              timestamp: payload.timestamp,
-            });
-
-            if (payload.message.includes('LangChain 流式响应失败')) {
-              console.warn(`[ChatStreamPanel] ${payload.message}`);
-            }
-          }
-
-          if (payload.type === 'content') {
-            appendStreamingContent(payload.content);
-          }
-
-          if (payload.type === 'complete') {
-            isRequestComplete = true;
-            if (requestId === activeRequestIdRef.current) {
-              completeStreamingContent();
-            }
-          }
-        },
-        onerror(error) {
-          if (requestId === activeRequestIdRef.current) {
-            abortStreamingAssistantMessage();
-          }
-          throw error;
-        },
-        onclose() {
-          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-            abortStreamingAssistantMessage();
-            setMessages((prev) => markLastAssistantMessageIncomplete(prev));
-          }
-
-          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-            setIsStreaming(false);
-            activeControllerRef.current = null;
-          }
-
-          interruptedRequestIdsRef.current.delete(requestId);
-        },
+      streamCompleted = await executePlaygroundChatStream({
+        requestId,
+        controller,
+        streamPrompt,
+        streamSessionId: playgroundChatStreamSessionId,
       });
     } catch {
       const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
 
       if (requestId === activeRequestIdRef.current) {
         abortStreamingAssistantMessage();
-        if (!isRequestComplete) {
+        if (!streamCompleted) {
           setMessages((prev) => markLastAssistantMessageIncomplete(prev));
         }
         setIsStreaming(false);
@@ -1034,7 +1175,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
     }
-  }, [abortStreamingAssistantMessage, appendStreamingContent, appendTimelineEvent, authToken, canSend, clearTimelineEvents, completeStreamingContent, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, prompt, publishedChatbotWorkflowAppId, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
+  }, [abortStreamingAssistantMessage, authToken, canSend, clearTimelineEvents, executePlaygroundChatStream, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, playgroundChatStreamSessionId, prompt, publishedChatbotWorkflowAppId, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
 
   const handleExplainImageClick = useCallback(() => {
     if (!pendingImage || prompt.trim().length > 0) {
