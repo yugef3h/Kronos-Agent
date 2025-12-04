@@ -395,7 +395,7 @@ const VariableSelect: React.FC<{
               ref={searchInputRef}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
-              placeholder="搜索变量"
+              placeholder="搜索"
               className="h-6 w-full border-0 bg-transparent p-0 text-[13px] text-slate-700 outline-none placeholder:text-slate-400"
             />
           </div>

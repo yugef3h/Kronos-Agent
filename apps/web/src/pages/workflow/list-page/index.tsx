@@ -34,6 +34,9 @@ export const WorkflowPage = () => {
     const onFocus = () => {
       setApps(listWorkflowApps());
     };
+    const onWorkflowAppsChanged = () => {
+      setApps(listWorkflowApps());
+    };
     const onStorage = (event: StorageEvent) => {
       if (
         event.key === WORKFLOW_APPS_STORAGE_KEY ||
@@ -43,9 +46,11 @@ export const WorkflowPage = () => {
       }
     };
     window.addEventListener('focus', onFocus);
+    window.addEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
     window.addEventListener('storage', onStorage);
     return () => {
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
@@ -112,10 +117,10 @@ export const WorkflowPage = () => {
                 className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-lg">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-lg">
                     🤖
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900 group-hover:text-cyan-700">
                       {app.name}
                     </p>
@@ -123,6 +128,27 @@ export const WorkflowPage = () => {
                       更新时间 {formatTimestamp(app.updatedAt)}
                     </p>
                   </div>
+                  {app.dsl.app.mode === 'chat' && app.mockPublished ? (
+                    <span
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100"
+                      title="已发布（本地）"
+                      role="img"
+                      aria-label="已发布"
+                    >
+                      <svg
+                        viewBox="0 0 12 12"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M2.5 6.2 5.1 8.7 9.5 3.3" />
+                      </svg>
+                    </span>
+                  ) : null}
                 </div>
 
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
