@@ -1,0 +1,59 @@
+import type { WorkflowChatbotOrchestration } from './workflowAppStore';
+import { requestKnowledgeRetrievalQuery } from '../../lib/api';
+import { buildChatbotRetrievalInput } from '../../pages/workflow/config-page/chatbotRetrievalInput';
+import { applyPromptVariables } from '../../pages/workflow/config-page/promptVariablesUtils';
+import { ensureKnowledgeDatasetAuthToken } from '../../pages/workflow/features/knowledge-retrieval-panel/dataset-store';
+
+/**
+ * 与 `/workflow/config` 调试区一致：知识库检索 + 系统提示（含 `{{var}}`）+ 当前用户问题段落。
+ */
+export const buildChatbotAugmentedUserPrompt = async (params: {
+  authToken: string;
+  userQuery: string;
+  orch: WorkflowChatbotOrchestration;
+  /** 与编排页「调试变量」表对齐；缺省按 key 给空串 */
+  promptVariableValues?: Record<string, string>;
+}): Promise<string> => {
+  const token =
+    params.authToken.trim().length > 0
+      ? params.authToken.trim()
+      : await ensureKnowledgeDatasetAuthToken();
+
+  let contextBlock = '';
+  if (params.orch.datasetIds.length > 0) {
+    const retrieval = await requestKnowledgeRetrievalQuery({
+      authToken: token,
+      input: buildChatbotRetrievalInput(params.userQuery, params.orch),
+    });
+    contextBlock =
+      retrieval.items.length > 0
+        ? retrieval.items.map((item, i) => `[${i + 1}] ${item.text}`).join('\n\n')
+        : '（本次检索无命中片段，请检查知识库或 query。）';
+  }
+
+  const values: Record<string, string> = {};
+  for (const v of params.orch.promptVariables ?? []) {
+    values[v.key] = params.promptVariableValues?.[v.key] ?? '';
+  }
+  const baseSystem = params.orch.systemPrompt.trim() || '你是帮助用户的助手。';
+  const resolvedSystem = applyPromptVariables(baseSystem, values);
+
+  return [resolvedSystem, params.orch.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '', `## 当前用户问题\n${params.userQuery}`]
+    .filter(Boolean)
+    .join('\n\n');
+};
+
+/**
+ * 已选「假发布」Chatbot 时，与编排页 `workflow-chatbot-${appId}` 类似：按应用隔离服务端会话；
+ * 同时带上当前 Playground `sessionId`，避免多开页签互相覆盖。
+ */
+export const getPlaygroundWorkflowChatStreamSessionId = (
+  baseSessionId: string,
+  workflowAppId: string | null | undefined,
+): string => {
+  const id = workflowAppId?.trim();
+  if (!id) {
+    return baseSessionId;
+  }
+  return `playground-${baseSessionId}-chatbot-${id}`;
+};

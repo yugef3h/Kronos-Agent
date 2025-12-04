@@ -12,12 +12,11 @@ import {
   type WorkflowChatbotPromptVariable,
   type WorkflowChatbotRecallSettings,
 } from '../../../features/workflow/workflowAppStore';
-import { apiUrl, requestKnowledgeRetrievalQuery } from '../../../lib/api';
+import { apiUrl } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
-import { buildChatbotRetrievalInput } from './chatbotRetrievalInput';
+import { buildChatbotAugmentedUserPrompt } from '../../../features/workflow/chatbotAugmentedStreamPrompt';
 import { ChatbotPromptEditor, IconBraceVar } from './chatbot-prompt-editor';
 import {
-  applyPromptVariables,
   extractDoubleBraceVariableKeys,
   isValidPromptVariableKey,
   replaceDoubleBraceKeyInPrompt,
@@ -392,33 +391,13 @@ export const WorkflowConfigPage = () => {
         throw new Error('需要开发 JWT（知识库鉴权）；请从其它页完成登录或检查后端 /api/dev/token。');
       }
 
-      let contextBlock = '';
-      if (o.datasetIds.length > 0) {
-        const retrieval = await requestKnowledgeRetrievalQuery({
-          authToken: token,
-          input: buildChatbotRetrievalInput(text, o),
-        });
-        contextBlock =
-          retrieval.items.length > 0
-            ? retrieval.items.map((item, i) => `[${i + 1}] ${item.text}`).join('\n\n')
-            : '（本次检索无命中片段，请检查知识库或 query。）';
-      }
-
       const dv = debugVariableValuesLatest.current ?? {};
-      const values: Record<string, string> = {};
-      for (const v of o.promptVariables ?? []) {
-        values[v.key] = dv[v.key] ?? '';
-      }
-      const baseSystem = o.systemPrompt.trim() || '你是帮助用户的助手。';
-      const resolvedSystem = applyPromptVariables(baseSystem, values);
-
-      const augmented = [
-        resolvedSystem,
-        o.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '',
-        `## 当前用户问题\n${text}`,
-      ]
-        .filter(Boolean)
-        .join('\n\n');
+      const augmented = await buildChatbotAugmentedUserPrompt({
+        authToken: token,
+        userQuery: text,
+        orch: o,
+        promptVariableValues: dv,
+      });
 
       const sessionId = `workflow-chatbot-${appId}`;
       let lastEventId = 0;
