@@ -110,6 +110,17 @@ export const WorkflowPage = () => {
 
             {apps.map((app) => {
               const thumbSrc = getWorkflowDraftThumbnailSrc(app);
+              const isPublished =
+                app.dsl.app.mode === 'chat' && Boolean(app.mockPublished);
+              const descTrimmed = app.description?.trim() ?? '';
+              const descriptionText =
+                descTrimmed.length === 0
+                  ? isPublished
+                    ? '已发布'
+                    : '无描述'
+                  : isPublished
+                    ? `已发布，${descTrimmed}`
+                    : descTrimmed;
               return (
               <Link
                 key={app.id}
@@ -128,7 +139,7 @@ export const WorkflowPage = () => {
                       更新时间 {formatTimestamp(app.updatedAt)}
                     </p>
                   </div>
-                  {app.dsl.app.mode === 'chat' && app.mockPublished ? (
+                  {isPublished ? (
                     <span
                       className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100"
                       title="已发布（本地）"
@@ -152,7 +163,7 @@ export const WorkflowPage = () => {
                 </div>
 
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                  {app.description || '无描述'}
+                  {descriptionText}
                 </p>
 
                 {thumbSrc ? (
