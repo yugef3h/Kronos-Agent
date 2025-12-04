@@ -355,13 +355,15 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1]?.eventId || 0 : 0;
   }, [timelineEvents]);
 
-  const refreshMemoryMetrics = useCallback(async () => {
+  const refreshMemoryMetrics = useCallback(async (snapshotSessionId?: string) => {
     if (!authToken) {
       return;
     }
 
+    const sid = snapshotSessionId ?? playgroundChatStreamSessionId;
+
     try {
-      const snapshot = await requestSessionSnapshot({ sessionId: playgroundChatStreamSessionId, authToken });
+      const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
       const [conversationTokens, summaryTokens] = await Promise.all([
         countTextTokens(buildConversationText(snapshot.messages)),
         countTextTokens(snapshot.memorySummary),
@@ -410,13 +412,15 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
   }, [authToken]);
 
-  const hydrateSessionMessages = useCallback(async () => {
+  const hydrateSessionMessages = useCallback(async (snapshotSessionId?: string) => {
     if (!authToken) {
       return;
     }
 
+    const sid = snapshotSessionId ?? playgroundChatStreamSessionId;
+
     try {
-      const snapshot = await requestSessionSnapshot({ sessionId: playgroundChatStreamSessionId, authToken });
+      const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
       const [conversationTokens, summaryTokens] = await Promise.all([
         countTextTokens(buildConversationText(snapshot.messages)),
         countTextTokens(snapshot.memorySummary),
@@ -657,8 +661,39 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   );
 
   const clearPublishedChatbotRagSelection = useCallback(() => {
+    if (activeControllerRef.current) {
+      interruptedRequestIdsRef.current.add(activeRequestIdRef.current);
+      flushRemainingAssistantBuffer();
+      abortStreamingAssistantMessage();
+      setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+      activeControllerRef.current.abort();
+      activeControllerRef.current = null;
+    }
+
+    setIsStreaming(false);
+    setIsOrchestrating(false);
+    resetAssistantStreamingState();
+    clearTimelineEvents();
     setPublishedChatbotWorkflowAppId(null);
-  }, [setPublishedChatbotWorkflowAppId]);
+
+    if (authToken) {
+      void hydrateSessionMessages(sessionId);
+      void refreshMemoryMetrics(sessionId);
+    }
+  }, [
+    abortStreamingAssistantMessage,
+    authToken,
+    clearTimelineEvents,
+    flushRemainingAssistantBuffer,
+    hydrateSessionMessages,
+    refreshMemoryMetrics,
+    resetAssistantStreamingState,
+    sessionId,
+    setIsOrchestrating,
+    setIsStreaming,
+    setMessages,
+    setPublishedChatbotWorkflowAppId,
+  ]);
 
   useEffect(() => {
     if (!authToken) {
