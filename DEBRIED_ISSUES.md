@@ -1,4 +1,4 @@
-## 2026-05-16 Playground 已选 RAG/Chatbot 应用但对话未走「与 Bot 聊天」链路
+## 2025-05-16 Playground 已选 RAG/Chatbot 应用但对话未走「与 Bot 聊天」链路
 
 - 现象：首页 Playground 从下拉框选中已假发布的 Chatbot 应用后发送问题，回复不像编排页「与 Bot 聊天」那样带知识库检索与系统提示拼接，表现为 RAG 未生效。
 - 根因：`useChatStreamController` 的 `sendPrompt` 在调用 `buildPublishedChatbotPlaygroundAugmentedPrompt`（原 `augmentPlaygroundPromptWithChatbotAgent`）之前会先执行 `tryHandleTakeout()`。`requestTakeoutOrchestration` 对大量普通问句会返回 `action === 'chat'` 或 `'ask_slot'`，分支内 `startAssistantTypewriter` 后直接 `return`，从未执行检索与 `/api/chat-stream` 的增强 prompt 流程。
