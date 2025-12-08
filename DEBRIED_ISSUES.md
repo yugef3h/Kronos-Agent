@@ -1,3 +1,9 @@
+## 2026-05-16 Playground 已选 RAG/Chatbot 应用但对话未走「与 Bot 聊天」链路
+
+- 现象：首页 Playground 从下拉框选中已假发布的 Chatbot 应用后发送问题，回复不像编排页「与 Bot 聊天」那样带知识库检索与系统提示拼接，表现为 RAG 未生效。
+- 根因：`useChatStreamController` 的 `sendPrompt` 在调用 `buildPublishedChatbotPlaygroundAugmentedPrompt`（原 `augmentPlaygroundPromptWithChatbotAgent`）之前会先执行 `tryHandleTakeout()`。`requestTakeoutOrchestration` 对大量普通问句会返回 `action === 'chat'` 或 `'ask_slot'`，分支内 `startAssistantTypewriter` 后直接 `return`，从未执行检索与 `/api/chat-stream` 的增强 prompt 流程。
+- 修复：当 `publishedChatbotWorkflowAppId` 已设置时跳过 `tryHandleTakeout` 与「无 JWT 时仅凭文案进外卖会话」的短路，强制与编排页调试一致走检索 + `chat-stream`。Playground 侧增强 prompt 收口到 `apps/web/src/features/workflow/publishedChatbotPlaygroundPrompt.ts`，删除 `chat-stream/utils/augmentPlaygroundPromptWithChatbotAgent.ts`，文本与带图（vision）路径共用同一解析与拼接入口。
+
 ## 2025-05-14 工作流 Chatbot 调试：流式中断与大图上传
 
 - 现象：编排页「调试与预览」在 LLM 流式阶段报错「流式连接中断」；配图时更明显。

@@ -79,16 +79,17 @@ import {
 } from '../utils/chatStreamHelpers';
 import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
-import { augmentPlaygroundPromptWithChatbotAgent } from '../utils/augmentPlaygroundPromptWithChatbotAgent';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
-  createDefaultChatbotOrchestration,
-  getWorkflowAppById,
   listPublishedChatbotWorkflowApps,
   type WorkflowAppRecord,
 } from '../../workflow/workflowAppStore';
-import { buildChatbotAugmentedUserPrompt, getPlaygroundWorkflowChatStreamSessionId } from '../../workflow/chatbotAugmentedStreamPrompt';
+import { getPlaygroundWorkflowChatStreamSessionId } from '../../workflow/chatbotAugmentedStreamPrompt';
+import {
+  buildPublishedChatbotPlaygroundAugmentedPrompt,
+  resolvePublishedChatbotForPlayground,
+} from '../../workflow/publishedChatbotPlaygroundPrompt';
 
 export type UseChatStreamControllerResult = {
   canSend: boolean;
@@ -892,9 +893,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const imageSnapshot = pendingImage;
 
       if (publishedChatbotWorkflowAppId) {
-        const app = getWorkflowAppById(publishedChatbotWorkflowAppId);
-        const orch = app?.chatbotOrchestration ?? createDefaultChatbotOrchestration();
-        if (app?.dsl.app.mode === 'chat' && app.mockPublished && orch.visionEnabled) {
+        const published = resolvePublishedChatbotForPlayground(publishedChatbotWorkflowAppId);
+        if (published.kind === 'active' && published.orch.visionEnabled) {
           setMessages((prev) => [
             ...prev,
             {
@@ -930,12 +930,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
           let streamCompleted = false;
           try {
-            const streamPrompt = await buildChatbotAugmentedUserPrompt({
+            const streamPrompt = await buildPublishedChatbotPlaygroundAugmentedPrompt({
               authToken,
               userQuery: imagePrompt,
-              orch,
+              workflowAppId: publishedChatbotWorkflowAppId,
             });
-            const maxV = Math.min(10, Math.max(1, Math.round(orch.visionMaxImages ?? 3)));
+            const maxV = Math.min(10, Math.max(1, Math.round(published.orch.visionMaxImages ?? 3)));
             const imageDataUrls = [imageSnapshot.dataUrl].slice(0, maxV);
             streamCompleted = await executePlaygroundChatStream({
               requestId,
@@ -1134,11 +1134,17 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
     };
 
-    if (await tryHandleTakeout()) {
+    // 已选「假发布」Chatbot 时与编排页调试一致：必须走检索 + chat-stream，不能让外卖编排短路掉增强 prompt。
+    if (!publishedChatbotWorkflowAppId && (await tryHandleTakeout())) {
       return;
     }
 
-    if (!authToken && !isAwaitingTakeoutFollowup && isTakeoutIntentPrompt(userPrompt)) {
+    if (
+      !publishedChatbotWorkflowAppId
+      && !authToken
+      && !isAwaitingTakeoutFollowup
+      && isTakeoutIntentPrompt(userPrompt)
+    ) {
       await startTakeoutConversation();
       return;
     }
@@ -1168,9 +1174,9 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     let streamPrompt = userPrompt;
     if (publishedChatbotWorkflowAppId) {
       try {
-        streamPrompt = await augmentPlaygroundPromptWithChatbotAgent({
+        streamPrompt = await buildPublishedChatbotPlaygroundAugmentedPrompt({
           authToken,
-          userPrompt,
+          userQuery: userPrompt,
           workflowAppId: publishedChatbotWorkflowAppId,
         });
       } catch (error) {
