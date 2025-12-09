@@ -46,11 +46,38 @@ export type Session = {
   memorySummaryUpdatedAt: number | null;
 };
 
+export type PlaygroundHistorySurface = 'default' | 'published';
+
 export type RecentDialogueItem = {
   id: string;
+  /** 服务端快照/落盘文件名对应的会话键（可能与 Playground 页签 sessionId 不同） */
   sessionId: string;
   updatedAt: number;
   userContent: string;
+  playgroundSurface: PlaygroundHistorySurface;
+  /** Playground 页签 sessionStorage 中的基础会话 id */
+  basePlaygroundSessionId: string;
+  /** 仅当 playgroundSurface 为 published 时有值 */
+  publishedChatbotWorkflowAppId: string | null;
+};
+
+const tryParsePublishedPlaygroundStreamSessionId = (
+  streamSessionId: string,
+): { baseSessionId: string; workflowAppId: string } | null => {
+  const marker = '-chatbot-';
+  if (!streamSessionId.startsWith('playground-')) {
+    return null;
+  }
+  const markerIndex = streamSessionId.indexOf(marker);
+  if (markerIndex < 0) {
+    return null;
+  }
+  const baseSessionId = streamSessionId.slice('playground-'.length, markerIndex);
+  const workflowAppId = streamSessionId.slice(markerIndex + marker.length);
+  if (!baseSessionId || !workflowAppId) {
+    return null;
+  }
+  return { baseSessionId, workflowAppId };
 };
 
 // 持久化目录：apps/server/data/sessions/（此文件位于 src/domain/，上溯两级到 server root）
@@ -84,6 +111,11 @@ const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentD
         const [raw, fileStat] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
         const session = normalizeSession(JSON.parse(raw) as Session, fileStat.mtimeMs);
         const sessionId = file.slice(0, -5);
+        const parsed = tryParsePublishedPlaygroundStreamSessionId(sessionId);
+        const playgroundSurface: PlaygroundHistorySurface = parsed ? 'published' : 'default';
+        const basePlaygroundSessionId = parsed?.baseSessionId ?? sessionId;
+        const publishedChatbotWorkflowAppId = parsed?.workflowAppId ?? null;
+
         for (let index = session.messages.length - 1; index >= 0; index -= 1) {
           const message = session.messages[index];
           if (message.role === 'user') {
@@ -92,6 +124,9 @@ const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentD
               sessionId,
               updatedAt: fileStat.mtimeMs,
               userContent: message.content,
+              playgroundSurface,
+              basePlaygroundSessionId,
+              publishedChatbotWorkflowAppId,
             } satisfies RecentDialogueItem;
           }
         }
