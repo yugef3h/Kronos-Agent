@@ -14,11 +14,17 @@ export type MemoryLiveMetrics = {
   isSummaryThresholdReached: boolean;
 };
 
+export type PlaygroundHistorySurface = 'default' | 'published';
+
 export type RecentDialogueItem = {
   id: string;
+  /** 服务端快照键（落盘文件名），可能与页签 sessionId 不同 */
   sessionId: string;
   updatedAt: number;
   userContent: string;
+  playgroundSurface: PlaygroundHistorySurface;
+  basePlaygroundSessionId: string;
+  publishedChatbotWorkflowAppId: string | null;
 };
 
 export type PromptQuickAction = {

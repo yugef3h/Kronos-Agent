@@ -104,11 +104,70 @@ export type SessionSnapshotResponse = {
 	};
 };
 
+export type PlaygroundHistorySurface = 'default' | 'published';
+
 export type RecentDialogueItem = {
 	id: string;
 	sessionId: string;
 	updatedAt: number;
 	userContent: string;
+	playgroundSurface: PlaygroundHistorySurface;
+	basePlaygroundSessionId: string;
+	publishedChatbotWorkflowAppId: string | null;
+};
+
+type RecentDialogueItemDto = {
+	id: string;
+	sessionId: string;
+	updatedAt: number;
+	userContent: string;
+	playgroundSurface?: PlaygroundHistorySurface;
+	basePlaygroundSessionId?: string;
+	publishedChatbotWorkflowAppId?: string | null;
+};
+
+const PUBLISHED_PLAYGROUND_STREAM_MARKER = '-chatbot-';
+
+const tryParsePublishedPlaygroundStreamSessionId = (
+	streamSessionId: string,
+): { baseSessionId: string; workflowAppId: string } | null => {
+	if (!streamSessionId.startsWith('playground-')) {
+		return null;
+	}
+	const markerIndex = streamSessionId.indexOf(PUBLISHED_PLAYGROUND_STREAM_MARKER);
+	if (markerIndex < 0) {
+		return null;
+	}
+	const baseSessionId = streamSessionId.slice('playground-'.length, markerIndex);
+	const workflowAppId = streamSessionId.slice(markerIndex + PUBLISHED_PLAYGROUND_STREAM_MARKER.length);
+	if (!baseSessionId || !workflowAppId) {
+		return null;
+	}
+	return { baseSessionId, workflowAppId };
+};
+
+const normalizeRecentDialogueItemDto = (row: RecentDialogueItemDto): RecentDialogueItem => {
+	const parsed = tryParsePublishedPlaygroundStreamSessionId(row.sessionId);
+	if (parsed) {
+		return {
+			id: row.id,
+			sessionId: row.sessionId,
+			updatedAt: row.updatedAt,
+			userContent: row.userContent,
+			playgroundSurface: 'published',
+			basePlaygroundSessionId: row.basePlaygroundSessionId ?? parsed.baseSessionId,
+			publishedChatbotWorkflowAppId: row.publishedChatbotWorkflowAppId ?? parsed.workflowAppId,
+		};
+	}
+	return {
+		id: row.id,
+		sessionId: row.sessionId,
+		updatedAt: row.updatedAt,
+		userContent: row.userContent,
+		playgroundSurface: 'default',
+		basePlaygroundSessionId: row.sessionId,
+		publishedChatbotWorkflowAppId: null,
+	};
 };
 
 export type RecentSessionResponse = {
@@ -576,7 +635,10 @@ export const requestRecentSessions = async (params: {
 			throw new Error(await readApiErrorMessage(response, 'Failed to request recent sessions'));
 	}
 
-	return (await response.json()) as RecentSessionResponse;
+	const payload = (await response.json()) as { items: RecentDialogueItemDto[] };
+	return {
+		items: payload.items.map(normalizeRecentDialogueItemDto),
+	};
 };
 
 export const requestHotTopics = async (params: {

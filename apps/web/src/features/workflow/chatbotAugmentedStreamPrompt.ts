@@ -57,3 +57,27 @@ export const getPlaygroundWorkflowChatStreamSessionId = (
   }
   return `playground-${baseSessionId}-chatbot-${id}`;
 };
+
+const PUBLISHED_PLAYGROUND_STREAM_MARKER = '-chatbot-';
+
+/**
+ * 将 `getPlaygroundWorkflowChatStreamSessionId` 生成的快照 sessionId 还原为页签 session + 应用 id。
+ * 若 `streamSessionId` 不是该形态则返回 null。
+ */
+export const tryParsePlaygroundPublishedChatStreamSession = (
+  streamSessionId: string,
+): { baseSessionId: string; workflowAppId: string } | null => {
+  if (!streamSessionId.startsWith('playground-')) {
+    return null;
+  }
+  const markerIndex = streamSessionId.indexOf(PUBLISHED_PLAYGROUND_STREAM_MARKER);
+  if (markerIndex < 0) {
+    return null;
+  }
+  const baseSessionId = streamSessionId.slice('playground-'.length, markerIndex);
+  const workflowAppId = streamSessionId.slice(markerIndex + PUBLISHED_PLAYGROUND_STREAM_MARKER.length);
+  if (!baseSessionId || !workflowAppId) {
+    return null;
+  }
+  return { baseSessionId, workflowAppId };
+};
