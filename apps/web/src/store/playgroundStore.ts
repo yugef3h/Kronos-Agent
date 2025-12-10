@@ -98,6 +98,11 @@ type PlaygroundState = {
   setAuthToken: (value: string) => void;
   setLatestUserQuestion: (value: string) => void;
   setPublishedChatbotWorkflowAppId: (value: string | null) => void;
+  /** 历史对话切换：原子更新页签 session 与已发布应用选择，避免中间态错连快照 */
+  switchPlaygroundHistorySession: (routing: {
+    basePlaygroundSessionId: string;
+    publishedChatbotWorkflowAppId: string | null;
+  }) => void;
   appendTimelineEvent: (value: TimelineEvent) => void;
   clearTimelineEvents: () => void;
   setChatMessages: (value: SetStateAction<LocalChatMessage[]>) => void;
@@ -133,6 +138,16 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setPublishedChatbotWorkflowAppId: (value) => {
     writePublishedChatbotWorkflowAppId(value);
     set({ publishedChatbotWorkflowAppId: value });
+  },
+  switchPlaygroundHistorySession: ({ basePlaygroundSessionId, publishedChatbotWorkflowAppId }) => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, basePlaygroundSessionId);
+    writePublishedChatbotWorkflowAppId(publishedChatbotWorkflowAppId);
+    set({
+      sessionId: basePlaygroundSessionId,
+      publishedChatbotWorkflowAppId,
+      timelineEvents: [],
+      ...createInitialChatPanelState(),
+    });
   },
   appendTimelineEvent: (value) => set((state) => ({ timelineEvents: [...state.timelineEvents, value] })),
   clearTimelineEvents: () => set({ timelineEvents: [] }),

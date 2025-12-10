@@ -1,14 +1,18 @@
+import type { RecentDialogueItem } from '../types';
+
 type HistorySwitchConfirmDialogProps = {
-  targetSessionId: string;
+  target: RecentDialogueItem;
   onCancel: () => void;
   onConfirm: () => void;
 };
 
 export const HistorySwitchConfirmDialog = ({
-  targetSessionId,
+  target,
   onCancel,
   onConfirm,
 }: HistorySwitchConfirmDialogProps) => {
+  const surfaceLabel = target.playgroundSurface === 'published' ? '已发布应用对话' : '默认 Playground';
+
   return (
     <div className="absolute inset-0 z-[70] flex items-end justify-center bg-black/45 px-0 pt-8 md:items-center md:px-4">
       <div className="w-full max-w-sm overflow-hidden rounded-t-[24px] bg-white p-4 shadow-[0_30px_70px_-24px_rgba(2,6,23,0.5)] md:rounded-[24px] md:p-5">
@@ -23,7 +27,7 @@ export const HistorySwitchConfirmDialog = ({
             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
             aria-label="关闭历史切换确认"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M18 6 6 18" />
               <path d="m6 6 12 12" />
             </svg>
@@ -32,7 +36,17 @@ export const HistorySwitchConfirmDialog = ({
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 text-sm leading-6 text-slate-600">
           <p>当前聊天面板里已经有内容，继续切换会清空当前上下文并加载历史会话。</p>
-          <p className="mt-2 text-xs text-slate-500">目标 session: {targetSessionId}</p>
+          <p className="mt-2 text-xs text-slate-500">
+            目标：{surfaceLabel}
+            <br />
+            页签 session：<span className="font-mono">{target.basePlaygroundSessionId}</span>
+            {target.playgroundSurface === 'published' && target.publishedChatbotWorkflowAppId ? (
+              <>
+                <br />
+                应用 id：<span className="font-mono">{target.publishedChatbotWorkflowAppId}</span>
+              </>
+            ) : null}
+          </p>
         </div>
 
         <div className="mt-5 flex gap-2">

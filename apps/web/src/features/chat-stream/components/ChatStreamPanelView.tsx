@@ -38,7 +38,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     confirmHistorySessionSwitch,
     cancelHistorySessionSwitch,
     historyPanelRef,
-    historySwitchConfirmTargetId,
+    historySwitchConfirmTarget,
     hotTopics,
     imageInputRef,
     isAnalyzingImage,
@@ -104,6 +104,11 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <h2 className="mt-1 font-display text-xl text-ink">Kronos Chat</h2>
+          {publishedChatbotWorkflowAppId ? (
+            <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-600" role="status">
+              当前会话已收录进右上角「<span className="font-semibold text-slate-800">历史对话</span>」；可随时切回默认 Playground 或该应用下的其他记录。
+            </p>
+          ) : null}
         </div>
 
         <div ref={historyPanelRef} className="relative">
@@ -123,21 +128,32 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                 {!isHistoryLoading && recentDialogues.length === 0 && (
                   <p className="rounded-lg bg-slate-50 px-2 py-2 text-xs text-slate-500">暂无本地缓存对话</p>
                 )}
-                {!isHistoryLoading && recentDialogues.map((item) => (
+                {!isHistoryLoading && recentDialogues.map((item) => {
+                  const isActiveRow =
+                    item.basePlaygroundSessionId === sessionId &&
+                    (item.publishedChatbotWorkflowAppId ?? null) === (publishedChatbotWorkflowAppId ?? null);
+                  return (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => handleHistoryItemClick(item.sessionId)}
-                    className={`w-full rounded-xl border px-2 py-2 text-left transition ${item.sessionId === sessionId
+                    onClick={() => handleHistoryItemClick(item)}
+                    className={`w-full rounded-xl border px-2 py-2 text-left transition ${isActiveRow
                       ? 'border-cyan-300 bg-cyan-50/70'
                       : 'border-slate-100 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
                       }`}
                   >
-                    <p className="text-[11px] text-slate-500">{formatTimestamp(item.updatedAt)} | session: {item.sessionId}</p>
+                    <p className="text-[11px] text-slate-500">
+                      {formatTimestamp(item.updatedAt)}
+                      {' · '}
+                      <span className={item.playgroundSurface === 'published' ? 'text-cyan-700' : 'text-slate-600'}>
+                        {item.playgroundSurface === 'published' ? '已发布应用' : '默认'}
+                      </span>
+                    </p>
                     <div className="mt-1" />
                     <p className="line-clamp-1 text-xs text-slate-700" title={item.userContent || '（无用户输入）'}>{item.userContent || '（无用户输入）'}</p>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -468,9 +484,9 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
         onPaymentPasswordChange={onPaymentPasswordChange}
       />
 
-      {historySwitchConfirmTargetId && (
+      {historySwitchConfirmTarget && (
         <HistorySwitchConfirmDialog
-          targetSessionId={historySwitchConfirmTargetId}
+          target={historySwitchConfirmTarget}
           onCancel={cancelHistorySessionSwitch}
           onConfirm={confirmHistorySessionSwitch}
         />

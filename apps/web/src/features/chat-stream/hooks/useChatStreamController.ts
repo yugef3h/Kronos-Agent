@@ -99,7 +99,7 @@ export type UseChatStreamControllerResult = {
   handleDocumentFileChange: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleExplainFileClick: () => void;
   handleExplainImageClick: () => void;
-  handleHistoryItemClick: (targetSessionId: string) => void;
+  handleHistoryItemClick: (target: RecentDialogueItem) => void;
   handleHotTopicClick: (topic: string) => void;
   handleImageFileChange: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -108,7 +108,7 @@ export type UseChatStreamControllerResult = {
   confirmHistorySessionSwitch: () => void;
   cancelHistorySessionSwitch: () => void;
   historyPanelRef: MutableRefObject<HTMLDivElement | null>;
-  historySwitchConfirmTargetId: string | null;
+  historySwitchConfirmTarget: RecentDialogueItem | null;
   hotTopics: string[];
   imageInputRef: MutableRefObject<HTMLInputElement | null>;
   isAnalyzingImage: boolean;
@@ -185,7 +185,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     isAwaitingTakeoutFollowup,
     memoryMetrics,
     takeoutFlowState: persistedTakeoutFlowState,
-    setSessionId,
+    switchPlaygroundHistorySession,
     setAuthToken,
     setLatestUserQuestion,
     appendTimelineEvent,
@@ -209,7 +209,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [historySwitchConfirmTargetId, setHistorySwitchConfirmTargetId] = useState<string | null>(null);
+  const [historySwitchConfirmTarget, setHistorySwitchConfirmTarget] = useState<RecentDialogueItem | null>(null);
   const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
   const [hotTopics, setHotTopics] = useState<string[]>(() => getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...DEFAULT_HOT_TOPICS]);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -286,6 +286,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       || persistedTakeoutFlowState.flowId !== 0
     );
   }, [messages.length, pendingFile, pendingImage, prompt, persistedTakeoutFlowState.flowId]);
+
+  useEffect(() => {
+    setHistorySwitchConfirmTarget(null);
+  }, [publishedChatbotWorkflowAppId]);
 
   const scrollToBottom = useCallback(() => {
     const element = messageListRef.current;
@@ -675,6 +679,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setIsOrchestrating(false);
     resetAssistantStreamingState();
     clearTimelineEvents();
+    setHistorySwitchConfirmTarget(null);
     setPublishedChatbotWorkflowAppId(null);
 
     if (authToken) {
@@ -792,7 +797,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [adjustPromptTextareaHeight, prompt]);
 
   useEffect(() => {
-    if (!isHistoryOpen || historySwitchConfirmTargetId) {
+    if (!isHistoryOpen || historySwitchConfirmTarget) {
       return undefined;
     }
 
@@ -807,7 +812,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return () => {
       document.removeEventListener('mousedown', handleDocumentClick);
     };
-  }, [historySwitchConfirmTargetId, isHistoryOpen]);
+  }, [historySwitchConfirmTarget, isHistoryOpen]);
 
   useEffect(() => {
     const element = messageListRef.current;
@@ -1253,17 +1258,30 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     void sendPrompt(topic);
   }, [isAnalyzingImage, isOrchestrating, isStreaming, sendPrompt]);
 
-  const applyHistorySessionSwitch = useCallback((targetSessionId: string) => {
-    setIsHistoryOpen(false);
-    activeControllerRef.current?.abort();
-    activeControllerRef.current = null;
-    resetAssistantStreamingState();
-    setIsStreaming(false);
-    setIsOrchestrating(false);
-    setIsAwaitingTakeoutFollowup(false);
-    clearTimelineEvents();
-    setSessionId(targetSessionId);
-  }, [clearTimelineEvents, resetAssistantStreamingState, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setSessionId]);
+  const applyHistorySessionSwitch = useCallback(
+    (target: RecentDialogueItem) => {
+      setIsHistoryOpen(false);
+      activeControllerRef.current?.abort();
+      activeControllerRef.current = null;
+      resetAssistantStreamingState();
+      setIsStreaming(false);
+      setIsOrchestrating(false);
+      setIsAwaitingTakeoutFollowup(false);
+      clearTimelineEvents();
+      switchPlaygroundHistorySession({
+        basePlaygroundSessionId: target.basePlaygroundSessionId,
+        publishedChatbotWorkflowAppId: target.publishedChatbotWorkflowAppId,
+      });
+    },
+    [
+      clearTimelineEvents,
+      resetAssistantStreamingState,
+      setIsAwaitingTakeoutFollowup,
+      setIsOrchestrating,
+      setIsStreaming,
+      switchPlaygroundHistorySession,
+    ],
+  );
 
   const toggleHistoryPanel = useCallback(() => {
     const nextOpen = !isHistoryOpen;
@@ -1274,33 +1292,39 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
   }, [isHistoryOpen, refreshRecentSessions]);
 
-  const handleHistoryItemClick = useCallback((targetSessionId: string) => {
-    if (targetSessionId === sessionId) {
-      setIsHistoryOpen(false);
-      return;
-    }
+  const handleHistoryItemClick = useCallback(
+    (target: RecentDialogueItem) => {
+      const sameRouting =
+        target.basePlaygroundSessionId === sessionId &&
+        (target.publishedChatbotWorkflowAppId ?? null) === (publishedChatbotWorkflowAppId ?? null);
+      if (sameRouting) {
+        setIsHistoryOpen(false);
+        return;
+      }
 
-    if (messages.length > 0) {
-      setHistorySwitchConfirmTargetId(targetSessionId);
-      return;
-    }
+      if (hasRestorableDraft) {
+        setHistorySwitchConfirmTarget(target);
+        return;
+      }
 
-    applyHistorySessionSwitch(targetSessionId);
-  }, [applyHistorySessionSwitch, messages.length, sessionId]);
+      applyHistorySessionSwitch(target);
+    },
+    [applyHistorySessionSwitch, hasRestorableDraft, publishedChatbotWorkflowAppId, sessionId],
+  );
 
   const cancelHistorySessionSwitch = useCallback(() => {
     setIsHistoryOpen(true);
-    setHistorySwitchConfirmTargetId(null);
+    setHistorySwitchConfirmTarget(null);
   }, []);
 
   const confirmHistorySessionSwitch = useCallback(() => {
-    if (!historySwitchConfirmTargetId) {
+    if (!historySwitchConfirmTarget) {
       return;
     }
 
-    applyHistorySessionSwitch(historySwitchConfirmTargetId);
-    setHistorySwitchConfirmTargetId(null);
-  }, [applyHistorySessionSwitch, historySwitchConfirmTargetId]);
+    applyHistorySessionSwitch(historySwitchConfirmTarget);
+    setHistorySwitchConfirmTarget(null);
+  }, [applyHistorySessionSwitch, historySwitchConfirmTarget]);
 
   const handleQuickActionClick = useCallback((action: PromptQuickAction['key']) => {
     if (action === 'takeout') {
@@ -1413,7 +1437,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     handleQuickActionClick,
     handleTakeoutCancel,
     historyPanelRef,
-    historySwitchConfirmTargetId,
+    historySwitchConfirmTarget,
     hotTopics,
     imageInputRef,
     isAnalyzingImage,
