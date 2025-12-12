@@ -7,18 +7,25 @@ import { streamMockReply } from './mockReplyService.js';
 
 export async function* streamChat(params: {
   prompt: string;
+  /** 落盘到 session 的用户消息正文；不传则使用 prompt。 */
+  sessionUserContent?: string;
   sessionId: string;
   lastEventId: number;
   imageDataUrls?: string[];
 }) {
-  const { prompt, sessionId, lastEventId, imageDataUrls } = params;
+  const { prompt, sessionUserContent, sessionId, lastEventId, imageDataUrls } = params;
   const session = getSession(sessionId);
   const userMessageTimestamp = Date.now();
 
+  const persistedUserLine =
+    typeof sessionUserContent === 'string' && sessionUserContent.trim().length > 0
+      ? sessionUserContent.trim()
+      : prompt;
+
   const userContent =
     imageDataUrls && imageDataUrls.length > 0
-      ? `${prompt}\n[附图×${imageDataUrls.length}]`
-      : prompt;
+      ? `${persistedUserLine}\n[附图×${imageDataUrls.length}]`
+      : persistedUserLine;
 
   session.messages.push({ role: 'user', content: userContent, timestamp: userMessageTimestamp });
   let assistantText = '';

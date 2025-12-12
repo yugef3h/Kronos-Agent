@@ -55,6 +55,8 @@ import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEva
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
+  /** 写入会话历史的用户可见文案；缺省则与 prompt 相同（兼容旧客户端）。 */
+  sessionUserContent: z.string().min(1).optional(),
   sessionId: z.string().min(1),
   imageDataUrls: z.array(z.string().min(32).max(6_000_000)).max(10).optional(),
 });
@@ -167,6 +169,7 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
 
   const stream = streamChat({
     prompt: parsed.data.prompt,
+    sessionUserContent: parsed.data.sessionUserContent,
     sessionId: parsed.data.sessionId,
     lastEventId,
     imageDataUrls: imageDataUrls && imageDataUrls.length > 0 ? imageDataUrls : undefined,

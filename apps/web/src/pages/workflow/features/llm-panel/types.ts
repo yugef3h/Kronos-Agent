@@ -103,7 +103,7 @@ export type VariableOption = {
   /** 收起态展示文案；默认用 `label` */
   triggerLabel?: string
   valueSelector: ValueSelector
-  valueType: 'string' | 'file' | 'object' | 'array' | 'number' | 'boolean'
+  valueType: 'string' | 'file' | 'object' | 'array' | 'number' | 'boolean' | 'RAG'
   source: 'system' | 'node'
 }
 

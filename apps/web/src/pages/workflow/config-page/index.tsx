@@ -411,6 +411,7 @@ export const WorkflowConfigPage = () => {
         },
         body: JSON.stringify({
           prompt: augmented,
+          sessionUserContent: text,
           sessionId,
           ...(imageDataUrls?.length ? { imageDataUrls } : {}),
         }),

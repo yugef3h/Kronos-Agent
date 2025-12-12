@@ -91,7 +91,7 @@ const resolveTypeLabel = (option: VariableOption) => {
     case 'array':
       return variableKey.includes('file') ? 'Array[File]' : 'Array[Object]';
     default:
-      return 'String';
+      return option.valueType || 'String';
   }
 };
 

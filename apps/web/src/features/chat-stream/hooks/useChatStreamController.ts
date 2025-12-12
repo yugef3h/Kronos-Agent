@@ -450,6 +450,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       requestId: number;
       controller: AbortController;
       streamPrompt: string;
+      /** 与 streamPrompt 不一致时传入，供服务端写入会话历史（如已发布 RAG 增强前的用户原话）。 */
+      sessionUserContent?: string;
       streamSessionId: string;
       imageDataUrls?: string[];
     }) => {
@@ -457,7 +459,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return false;
       }
 
-      const { requestId, controller, streamPrompt, streamSessionId, imageDataUrls } = params;
+      const { requestId, controller, streamPrompt, sessionUserContent, streamSessionId, imageDataUrls } = params;
       let lastSeenEventId = 0;
       let isRequestComplete = false;
 
@@ -470,6 +472,9 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         body: JSON.stringify({
           prompt: streamPrompt,
           sessionId: streamSessionId,
+          ...(typeof sessionUserContent === 'string' && sessionUserContent.trim().length > 0
+            ? { sessionUserContent: sessionUserContent.trim() }
+            : {}),
           ...(imageDataUrls?.length ? { imageDataUrls } : {}),
         }),
         signal: controller.signal,
@@ -617,7 +622,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         label: '.＋创建知识库',
         triggerLabel: '＋创建知识库',
         valueSelector: ['playground', 'workflow-create'],
-        valueType: 'string',
+        valueType: 'RAG',
         source: 'node',
       },
       ...publishedChatbotApps.map(
@@ -625,7 +630,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           label: `.${app.name}`,
           triggerLabel: app.name,
           valueSelector: ['playground', 'app', app.id],
-          valueType: 'string',
+          valueType: 'RAG',
           source: 'node',
         }),
       ),
@@ -946,6 +951,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               requestId,
               controller,
               streamPrompt,
+              sessionUserContent: imagePrompt,
               streamSessionId: playgroundChatStreamSessionId,
               imageDataUrls,
             });
@@ -1201,6 +1207,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         requestId,
         controller,
         streamPrompt,
+        ...(publishedChatbotWorkflowAppId ? { sessionUserContent: userPrompt } : {}),
         streamSessionId: playgroundChatStreamSessionId,
       });
     } catch {
