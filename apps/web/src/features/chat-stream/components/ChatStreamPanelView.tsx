@@ -104,11 +104,11 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <h2 className="mt-1 font-display text-xl text-ink">Kronos Chat</h2>
-          {publishedChatbotWorkflowAppId ? (
+          {/* {publishedChatbotWorkflowAppId ? (
             <p className="mt-2 max-w-xl text-xs leading-relaxed text-slate-600" role="status">
               当前会话已收录进右上角「<span className="font-semibold text-slate-800">历史对话</span>」；可随时切回默认 Playground 或该应用下的其他记录。
             </p>
-          ) : null}
+          ) : null} */}
         </div>
 
         <div ref={historyPanelRef} className="relative">
