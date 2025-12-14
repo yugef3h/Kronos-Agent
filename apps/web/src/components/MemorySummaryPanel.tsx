@@ -145,7 +145,7 @@ export const MemorySummaryPanel = () => {
           {recentWindow.length === 0 ? (
             <p className="mt-2 text-xs text-slate-500">当前快照里没有消息。发送一条对话后会在此列出末尾多轮。</p>
           ) : (
-            <ol className="mt-2 max-h-52 space-y-2 overflow-auto pr-1" start={recentWindowStartIndex}>
+            <ol className="mt-2 max-h-52 list-none space-y-2 overflow-auto pr-1">
               {recentWindow.map((message, index) => {
                 const displayIndex = recentWindowStartIndex + index;
                 const attachmentHint =
