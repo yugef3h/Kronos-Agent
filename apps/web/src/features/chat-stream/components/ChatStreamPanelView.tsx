@@ -23,7 +23,6 @@ type ChatStreamPanelViewProps = {
 export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) => {
   const {
     canSend,
-    currentTimelineEvent,
     fileInputRef,
     formatTimestamp,
     handleDocumentFileChange,
@@ -48,7 +47,6 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     isStreaming,
     isTakeoutAgreementChecked,
     isTakeoutLoading,
-    memoryMetrics,
     messageListRef,
     messages,
     modalState,
@@ -80,8 +78,6 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     showHotTopics,
     showScrollToBottom,
     showTakeoutScrollHint,
-    stageLabelMap,
-    statusLabelMap,
     takeoutFlowState,
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
@@ -444,27 +440,6 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                 </svg>
               </button>
             </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-600">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span>
-                <span className={`inline-block h-2 w-2 rounded-full ${isStreaming ? 'animate-pulse bg-emerald-500' : 'bg-slate-300'}`} />
-              </span>
-              <span>消息数: <b className="text-slate-800">{memoryMetrics.messageCount}</b> / {memoryMetrics.summaryTriggerMessageCount}</span>
-              <span>会话 token: <b className="text-slate-800">{memoryMetrics.conversationTokensEstimate}</b></span>
-              <span>摘要 token: <b className="text-slate-800">{memoryMetrics.summaryTokensEstimate}</b></span>
-              <span>输入预算: <b className="text-slate-800">{memoryMetrics.budgetTokensEstimate}</b></span>
-              <span className={`font-medium ${memoryMetrics.isSummaryThresholdReached ? 'text-emerald-700' : 'text-amber-700'}`}>
-                摘要: {memoryMetrics.isSummaryThresholdReached ? '已触发' : '未触发'}
-              </span>
-            </div>
-
-            {currentTimelineEvent && (
-              <p className="mt-1 truncate text-slate-500">
-                {stageLabelMap[currentTimelineEvent.stage]} / {statusLabelMap[currentTimelineEvent.status]}: {currentTimelineEvent.message}
-              </p>
-            )}
           </div>
         </div>
       </div>
