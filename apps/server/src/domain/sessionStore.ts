@@ -44,6 +44,8 @@ export type Session = {
   messages: Message[];
   memorySummary: string;
   memorySummaryUpdatedAt: number | null;
+  /** 与 `createMemoryPlan` 中 `summaryArchiveMessageCount` 一致；缺省按 0 处理 */
+  summaryArchiveMessageCount?: number;
 };
 
 export type PlaygroundHistorySurface = 'default' | 'published';
@@ -198,6 +200,7 @@ export const getSession = (sessionId: string): Session => {
     messages: [],
     memorySummary: '',
     memorySummaryUpdatedAt: null,
+    summaryArchiveMessageCount: 0,
   };
   sessions.set(sessionId, created);
   return created;

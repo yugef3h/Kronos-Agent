@@ -49,16 +49,22 @@ export const createMemoryPlan = (params: {
   };
 
   let summaryUpdated = false;
+  let summaryArchiveMessageCount = params.memoryState.summaryArchiveMessageCount ?? 0;
   const hasEnoughMessages = messages.length >= SUMMARY_TRIGGER_MESSAGE_COUNT;
 
   if (hasEnoughMessages) {
-    const summarizeUntil = Math.max(0, messages.length - RECENT_MESSAGES_TO_KEEP);
-    const summarySource = messages.slice(0, summarizeUntil);
+    const archiveUpto = Math.max(0, messages.length - RECENT_MESSAGES_TO_KEEP);
+    const mergeFrom = Math.min(summaryArchiveMessageCount, archiveUpto);
 
-    if (summarySource.length > 0) {
-      memoryState.summary = buildMergedSummary(memoryState.summary, summarySource);
-      memoryState.summaryUpdatedAt = Date.now();
-      summaryUpdated = true;
+    if (archiveUpto > mergeFrom) {
+      const summarySource = messages.slice(mergeFrom, archiveUpto);
+
+      if (summarySource.length > 0) {
+        memoryState.summary = buildMergedSummary(memoryState.summary, summarySource);
+        memoryState.summaryUpdatedAt = Date.now();
+        summaryUpdated = true;
+        summaryArchiveMessageCount = archiveUpto;
+      }
     }
   }
 
@@ -89,6 +95,7 @@ export const createMemoryPlan = (params: {
     history: selectedHistory,
     memorySummary: memoryState.summary,
     summaryUpdated,
+    summaryArchiveMessageCount,
     diagnostics: {
       totalInputTokensEstimate,
       budgetTokensEstimate,

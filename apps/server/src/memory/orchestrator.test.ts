@@ -24,6 +24,37 @@ describe('createMemoryPlan', () => {
     expect(result.summaryUpdated).toBe(true);
     expect(result.memorySummary.length).toBeGreaterThan(0);
     expect(result.history.length).toBeLessThanOrEqual(8);
+    expect(result.summaryArchiveMessageCount).toBe(14 - 8);
+  });
+
+  it('should not duplicate summary when applying the same transcript twice', () => {
+    const messages = createMessages(12);
+
+    const first = createMemoryPlan({
+      prompt: '继续',
+      messages,
+      memoryState: {
+        summary: '',
+        summaryUpdatedAt: null,
+      },
+    });
+
+    expect(first.summaryUpdated).toBe(true);
+    expect(first.summaryArchiveMessageCount).toBe(12 - 8);
+
+    const second = createMemoryPlan({
+      prompt: '继续',
+      messages,
+      memoryState: {
+        summary: first.memorySummary,
+        summaryUpdatedAt: first.summaryUpdated ? Date.now() : null,
+        summaryArchiveMessageCount: first.summaryArchiveMessageCount,
+      },
+    });
+
+    expect(second.summaryUpdated).toBe(false);
+    expect(second.memorySummary).toBe(first.memorySummary);
+    expect(second.summaryArchiveMessageCount).toBe(first.summaryArchiveMessageCount);
   });
 
   it('should trim history when token budget is exceeded', () => {
