@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { STAGE_LABEL_MAP, STATUS_LABEL_MAP } from '../features/chat-stream/constants';
+import { getPlaygroundWorkflowChatStreamSessionId } from '../features/workflow/chatbotAugmentedStreamPrompt';
 import { requestSessionSnapshot } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 export const MemorySummaryPanel = () => {
-  const { sessionId, authToken, timelineEvents, memoryMetrics, isStreaming } = usePlaygroundStore();
+  const { sessionId, authToken, publishedChatbotWorkflowAppId, timelineEvents, memoryMetrics, isStreaming } =
+    usePlaygroundStore();
+
+  const snapshotSessionId = useMemo(
+    () => getPlaygroundWorkflowChatStreamSessionId(sessionId, publishedChatbotWorkflowAppId),
+    [sessionId, publishedChatbotWorkflowAppId],
+  );
   const [memorySummary, setMemorySummary] = useState('');
   const [memorySummaryUpdatedAt, setMemorySummaryUpdatedAt] = useState<number | null>(null);
 
@@ -26,7 +33,7 @@ export const MemorySummaryPanel = () => {
 
     const load = async () => {
       try {
-        const snapshot = await requestSessionSnapshot({ sessionId, authToken });
+        const snapshot = await requestSessionSnapshot({ sessionId: snapshotSessionId, authToken });
         if (canceled) {
           return;
         }
@@ -44,7 +51,7 @@ export const MemorySummaryPanel = () => {
     return () => {
       canceled = true;
     };
-  }, [authToken, latestEventId, sessionId]);
+  }, [authToken, latestEventId, snapshotSessionId]);
 
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">
