@@ -58,7 +58,6 @@ import {
   FILE_DEFAULT_PROMPT,
   HOT_TOPICS_CACHE_KEY,
   IMAGE_DEFAULT_PROMPT,
-  MAX_CONTEXT_TOKENS,
   PROMPT_QUICK_ACTIONS,
   STAGE_LABEL_MAP,
   STATUS_LABEL_MAP,
@@ -72,11 +71,10 @@ import type {
   RecentDialogueItem,
 } from '../types';
 import {
-  buildConversationText,
-  countTextTokens,
-  hydrateRenderableMessages,
-  markLastAssistantMessageIncomplete,
-} from '../utils/chatStreamHelpers';
+  applySessionSnapshotMemoryPatch,
+  buildSessionSnapshotMemoryPatch,
+} from '../applySessionSnapshot';
+import { hydrateRenderableMessages, markLastAssistantMessageIncomplete } from '../utils/chatStreamHelpers';
 import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
 import {
@@ -199,10 +197,23 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setIsAnalyzingImage,
     setIsAwaitingTakeoutFollowup,
     setMemoryMetrics,
+    setMemorySummary,
+    setMemorySummaryUpdatedAt,
     setTakeoutFlowState,
     publishedChatbotWorkflowAppId,
     setPublishedChatbotWorkflowAppId,
   } = usePlaygroundStore();
+
+  const applySnapshotMemory = useCallback(
+    (patch: Awaited<ReturnType<typeof buildSessionSnapshotMemoryPatch>>) => {
+      applySessionSnapshotMemoryPatch(patch, {
+        setMemoryMetrics,
+        setMemorySummary,
+        setMemorySummaryUpdatedAt,
+      });
+    },
+    [setMemoryMetrics, setMemorySummary, setMemorySummaryUpdatedAt],
+  );
 
   const navigate = useNavigate();
   const [, setIsGeneratingToken] = useState(false);
@@ -369,22 +380,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
     try {
       const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
-      const [conversationTokens, summaryTokens] = await Promise.all([
-        countTextTokens(buildConversationText(snapshot.messages)),
-        countTextTokens(snapshot.memorySummary),
-      ]);
-      const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
-
-      setMemoryMetrics({
-        ...snapshot.memoryMetrics,
-        conversationTokensEstimate: conversationTokens,
-        summaryTokensEstimate: summaryTokens,
-        budgetTokensEstimate: budgetTokens,
-      });
+      const patch = await buildSessionSnapshotMemoryPatch(snapshot);
+      applySnapshotMemory(patch);
     } catch {
       // 会话指标刷新失败时保留当前展示，避免影响主流程。
     }
-  }, [authToken, playgroundChatStreamSessionId, setMemoryMetrics]);
+  }, [applySnapshotMemory, authToken, playgroundChatStreamSessionId]);
 
   const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
     if (!authToken) {
@@ -426,24 +427,15 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
     try {
       const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
-      const [conversationTokens, summaryTokens] = await Promise.all([
-        countTextTokens(buildConversationText(snapshot.messages)),
-        countTextTokens(snapshot.memorySummary),
-      ]);
-      const budgetTokens = Math.max(0, MAX_CONTEXT_TOKENS - conversationTokens - summaryTokens);
+      const patch = await buildSessionSnapshotMemoryPatch(snapshot);
 
       setMessages(hydrateRenderableMessages(snapshot.messages));
       setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
-      setMemoryMetrics({
-        ...snapshot.memoryMetrics,
-        conversationTokensEstimate: conversationTokens,
-        summaryTokensEstimate: summaryTokens,
-        budgetTokensEstimate: budgetTokens,
-      });
+      applySnapshotMemory(patch);
     } catch {
       // 历史会话回显失败时保留当前界面状态。
     }
-  }, [authToken, playgroundChatStreamSessionId, setLatestUserQuestion, setMemoryMetrics, setMessages]);
+  }, [applySnapshotMemory, authToken, playgroundChatStreamSessionId, setLatestUserQuestion, setMessages]);
 
   const executePlaygroundChatStream = useCallback(
     async (params: {

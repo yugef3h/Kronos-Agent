@@ -58,6 +58,8 @@ export const createInitialChatPanelState = () => ({
   isAnalyzingImage: false,
   isAwaitingTakeoutFollowup: false,
   memoryMetrics: createInitialMemoryMetrics(),
+  memorySummary: '',
+  memorySummaryUpdatedAt: null as number | null,
   takeoutFlowState: createInitialTakeoutFlowState(),
 });
 
@@ -91,6 +93,8 @@ type PlaygroundState = {
   isAnalyzingImage: boolean;
   isAwaitingTakeoutFollowup: boolean;
   memoryMetrics: MemoryLiveMetrics;
+  memorySummary: string;
+  memorySummaryUpdatedAt: number | null;
   takeoutFlowState: TakeoutFlowState;
   setTemperature: (value: number) => void;
   setTopP: (value: number) => void;
@@ -114,6 +118,8 @@ type PlaygroundState = {
   setIsAnalyzingImage: (value: SetStateAction<boolean>) => void;
   setIsAwaitingTakeoutFollowup: (value: SetStateAction<boolean>) => void;
   setMemoryMetrics: (value: SetStateAction<MemoryLiveMetrics>) => void;
+  setMemorySummary: (value: SetStateAction<string>) => void;
+  setMemorySummaryUpdatedAt: (value: SetStateAction<number | null>) => void;
   setTakeoutFlowState: (value: SetStateAction<TakeoutFlowState>) => void;
   resetChatPanelState: () => void;
 };
@@ -162,6 +168,9 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
     isAwaitingTakeoutFollowup: applyStateAction(state.isAwaitingTakeoutFollowup, value),
   })),
   setMemoryMetrics: (value) => set((state) => ({ memoryMetrics: applyStateAction(state.memoryMetrics, value) })),
+  setMemorySummary: (value) => set((state) => ({ memorySummary: applyStateAction(state.memorySummary, value) })),
+  setMemorySummaryUpdatedAt: (value) =>
+    set((state) => ({ memorySummaryUpdatedAt: applyStateAction(state.memorySummaryUpdatedAt, value) })),
   setTakeoutFlowState: (value) => set((state) => ({ takeoutFlowState: applyStateAction(state.takeoutFlowState, value) })),
   resetChatPanelState: () => set(createInitialChatPanelState()),
 }));
