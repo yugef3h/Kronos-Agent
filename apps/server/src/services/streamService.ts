@@ -37,6 +37,7 @@ export async function* streamChat(params: {
     memoryState: {
       summary: session.memorySummary,
       summaryUpdatedAt: session.memorySummaryUpdatedAt,
+      summaryArchiveMessageCount: session.summaryArchiveMessageCount,
     },
   });
 
@@ -45,6 +46,8 @@ export async function* streamChat(params: {
   if (memoryPlan.summaryUpdated) {
     session.memorySummaryUpdatedAt = Date.now();
   }
+
+  session.summaryArchiveMessageCount = memoryPlan.summaryArchiveMessageCount;
 
   eventId += 1;
   if (eventId > lastEventId) {
@@ -154,6 +157,24 @@ export async function* streamChat(params: {
 
   session.messages.push({ role: 'assistant', content: assistantText, timestamp: Date.now() });
   session.lastId = completeId;
+
+  const finalizePlan = createMemoryPlan({
+    prompt,
+    messages: session.messages,
+    memoryState: {
+      summary: session.memorySummary,
+      summaryUpdatedAt: session.memorySummaryUpdatedAt,
+      summaryArchiveMessageCount: session.summaryArchiveMessageCount,
+    },
+  });
+
+  session.memorySummary = finalizePlan.memorySummary;
+
+  if (finalizePlan.summaryUpdated) {
+    session.memorySummaryUpdatedAt = Date.now();
+  }
+
+  session.summaryArchiveMessageCount = finalizePlan.summaryArchiveMessageCount;
 
   // 每轮对话结束后异步写盘，保证服务重启后历史可恢复
   void persistSession(sessionId, session);
