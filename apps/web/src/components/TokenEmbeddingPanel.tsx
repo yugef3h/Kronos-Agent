@@ -61,7 +61,7 @@ const getDisplayTokenText = (text: string): string => {
     .replace(/\n/g, '↵')
     .replace(/\t/g, '⇥')
     .replace(/ /g, '␠')
-  ;
+    ;
 
   return replaceUnsupportedControlChars(normalized);
 };
@@ -155,7 +155,7 @@ export const TokenEmbeddingPanel = () => {
   const [isSseTemplateMode, setIsSseTemplateMode] = useState(true);
   const [tokens, setTokens] = useState<ParsedToken[]>([]);
   const [serverAttentionMatrix, setServerAttentionMatrix] = useState<number[][] | null>(null);
-  const [attentionDataSource, setAttentionDataSource] = useState<AttentionDataSource>('frontend-sim');
+  const [, setAttentionDataSource] = useState<AttentionDataSource>('frontend-sim');
   const [attentionNote, setAttentionNote] = useState('前端模拟注意力（字符语义 + 距离偏置）');
   const [hasPythonServiceAttention, setHasPythonServiceAttention] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -360,30 +360,32 @@ export const TokenEmbeddingPanel = () => {
           </p>
         </div>
       </div>
-      <p className="mt-1 text-sm text-slate-600">第一步看 Token 切分，核心步看关联热力图。</p>
-      <p className="mt-1 text-xs text-slate-500">
+      {/* <p className="mt-1 text-sm text-slate-600">第一步看 Token 切分，核心步看关联热力图。</p> */}
+      {/* <p className="mt-1 text-xs text-slate-500">
         输入模式：{isSseTemplateMode ? 'SSE Chat Stream 最新问题（默认）' : '自定义文本'}
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
+      </p> */}
+      {/* <p className="mt-1 text-xs text-slate-500">
         关联数据源：{attentionDataSource === 'embedding-association' ? '后端关联（可由 Python 微服务或 embedding 生成）' : '前端模拟'}
-      </p>
+      </p> */}
 
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
         <textarea
           value={activeInputText}
           onChange={(event) => setInputText(event.target.value)}
           disabled={isSseTemplateMode}
-          className="min-h-28 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none ring-cyan-300 transition focus:ring disabled:cursor-not-allowed disabled:bg-slate-50"
+          className="min-h-16 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none ring-cyan-300 transition focus:ring disabled:cursor-not-allowed disabled:bg-slate-50"
           placeholder="关闭右上角开关后可输入自定义文本"
         />
+
         <button
           type="button"
           onClick={() => void parseTokens()}
-          disabled={isParsing}
+          disabled={isParsing || isSseTemplateMode}
           className="h-fit rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isParsing ? '解析中...' : '解析 Token'}
         </button>
+
       </div>
 
       {errorText && <p className="mt-2 text-xs text-rose-600">{errorText}</p>}
