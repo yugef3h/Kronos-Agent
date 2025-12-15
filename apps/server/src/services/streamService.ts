@@ -152,11 +152,7 @@ export async function* streamChat(params: {
     }
   }
 
-  const completeId = eventId + 1;
-  yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
-
   session.messages.push({ role: 'assistant', content: assistantText, timestamp: Date.now() });
-  session.lastId = completeId;
 
   const finalizePlan = createMemoryPlan({
     prompt,
@@ -176,6 +172,11 @@ export async function* streamChat(params: {
 
   session.summaryArchiveMessageCount = finalizePlan.summaryArchiveMessageCount;
 
-  // 每轮对话结束后异步写盘，保证服务重启后历史可恢复
+  const completeId = eventId + 1;
+  session.lastId = completeId;
+
+  // 须在 complete 之前落盘助手消息与滚动摘要，否则客户端收到 complete 后拉快照会读到空摘要
+  yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
+
   void persistSession(sessionId, session);
 }
