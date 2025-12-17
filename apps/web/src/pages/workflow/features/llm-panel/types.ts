@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 export type ValueSelector = string[]
 
 export type PromptRole = 'system' | 'user' | 'assistant'
@@ -101,7 +103,7 @@ export type CompletionParamDefinition = {
 export type VariableOption = {
   label: string
   /** 收起态展示文案；默认用 `label` */
-  triggerLabel?: string
+  triggerLabel?: string | ReactNode
   valueSelector: ValueSelector
   valueType: 'string' | 'file' | 'object' | 'array' | 'number' | 'boolean' | 'RAG'
   source: 'system' | 'node'

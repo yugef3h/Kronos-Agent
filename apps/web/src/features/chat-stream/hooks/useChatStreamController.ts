@@ -612,7 +612,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return [
       {
         label: '.＋创建知识库',
-        triggerLabel: '＋创建知识库',
+        triggerLabel: createElement('span', { className: 'text-blue-600' }, '＋创建知识库'),
         valueSelector: ['playground', 'workflow-create'],
         valueType: 'RAG',
         source: 'node',
