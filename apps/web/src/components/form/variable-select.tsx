@@ -148,6 +148,8 @@ const VariableSelect: React.FC<{
   /** 为 true 时用右侧「×」替代下拉箭头，并需配合 `onClear` */
   showClear?: boolean;
   onClear?: () => void;
+  /** 下拉列表单项 class，如 `py-2 min-h-9` 调高行高 */
+  optionClassName?: string;
 }> = ({
   value,
   options,
@@ -160,6 +162,7 @@ const VariableSelect: React.FC<{
   pillTrigger = false,
   showClear = false,
   onClear,
+  optionClassName,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -423,7 +426,8 @@ const VariableSelect: React.FC<{
                           role="option"
                           aria-selected={serializedOption === serializedValue}
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-[12px] px-2.5 py-[1px] text-left text-[12px] transition',
+                            'flex w-full items-center gap-2 rounded-[12px] px-2.5 text-left text-[12px] transition',
+                            optionClassName ?? 'py-[1px]',
                             serializedOption === serializedValue
                               ? 'bg-blue-50/80 text-slate-900 ring-1 ring-blue-100'
                               : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',

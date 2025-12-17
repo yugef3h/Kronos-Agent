@@ -416,6 +416,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                     pillTrigger
                     value={publishedChatbotRagValueSelector}
                     options={publishedChatbotRagVariableOptions}
+                    optionClassName="min-h-9 py-2"
                     placeholder="选择或创建 RAG 应用"
                     onChange={handlePublishedChatbotRagVariableChange}
                     showClear={Boolean(publishedChatbotWorkflowAppId)}
