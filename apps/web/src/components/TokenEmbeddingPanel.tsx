@@ -503,7 +503,7 @@ export const TokenEmbeddingPanel = () => {
         </>
       ) : (
         <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          未检测到 Python 微服务生成的真实向量 Token，已隐藏核心关联热力图与详情区域。
+          未检测到 Python 微服务生成的真实向量 Token。
         </p>
       )}
     </section>
