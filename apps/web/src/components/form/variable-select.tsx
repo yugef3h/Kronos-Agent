@@ -95,6 +95,9 @@ const resolveTypeLabel = (option: VariableOption) => {
   }
 };
 
+const isCustomOptionLabel = (label: VariableOption['triggerLabel']): boolean =>
+  label != null && typeof label !== 'string' && typeof label !== 'number';
+
 const buildVariableGroups = (options: VariableOption[], searchText: string): VariableGroup[] => {
   const normalizedSearch = searchText.trim().toLowerCase();
   const groups = new Map<string, VariableGroup>();
@@ -338,7 +341,13 @@ const VariableSelect: React.FC<{
           setIsOpen((open) => !open);
         }}
       >
-        <span className={cn('min-w-0 flex-1 truncate text-left', !selectedOption && 'text-slate-400')}>
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate text-left',
+            !selectedOption && 'text-slate-400',
+            selectedOption && isCustomOptionLabel(selectedOption.triggerLabel) && 'text-inherit',
+          )}
+        >
           {(selectedOption?.triggerLabel ?? selectedOption?.label) ?? placeholder}
         </span>
         {!showClearControl && (
@@ -437,8 +446,13 @@ const VariableSelect: React.FC<{
                             setIsOpen(false);
                           }}
                         >
-                          <span className="min-w-0 flex-1 truncate font-semibold text-[10px] text-slate-800">
-                            {option.displayLabel}
+                          <span
+                            className={cn(
+                              'min-w-0 flex-1 truncate font-semibold text-[10px]',
+                              !isCustomOptionLabel(option.triggerLabel) && 'text-slate-800',
+                            )}
+                          >
+                            {option.triggerLabel ?? option.displayLabel}
                           </span>
                           <span className={cn('shrink-0 text-[11px] font-medium')}>{option.typeLabel}</span>
                         </button>
