@@ -76,14 +76,6 @@ pnpm dev
 - Token/Embedding 面板支持 Top-K 最大漂移 Chunk 列表，点击可高亮对应位移箭头。
 - Top-K 选中项会在主模型与对比模型双图同步高亮对应点，便于演示对比路径与落点。
 
-### 长上下文记忆策略
-
-- 滚动摘要阈值：默认累计到 12 条消息后，自动将较旧对话压缩为 memory summary。
-- 预算编排策略：优先保留最近 8 条消息，并按输入预算上限（窗口 60%，预留输出 token）动态裁剪。
-- 调试可视化：SSE 轨迹会输出本轮 history/summary/budget 的估算 token，Memory 面板展示摘要状态与更新时间。
-
-开发态 JWT 自动签发流程见 `docs/JWT_DEV_TOKEN.md`。
-
 常用命令：
 
 - `pnpm dev`：同时启动前后端开发服务
