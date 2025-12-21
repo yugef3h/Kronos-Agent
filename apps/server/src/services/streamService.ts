@@ -1,7 +1,5 @@
 import { getSession, persistSession } from '../domain/sessionStore.js';
-import { env } from '../config/env.js';
-import { streamLangChainReply } from './langchainChatService.js';
-import { streamLangGraphReply } from './langgraphWorkflowService.js';
+import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
 import { streamMockReply } from './mockReplyService.js';
 
@@ -63,20 +61,13 @@ export async function* streamChat(params: {
   }
 
   try {
-    const streamSource = env.LANGGRAPH_ENABLED
-      ? streamLangGraphReply({
-          prompt,
-          history: memoryPlan.history,
-          memorySummary: memoryPlan.memorySummary,
-          sessionId,
-          imageDataUrls,
-        })
-      : streamLangChainReply({
-          prompt,
-          history: memoryPlan.history,
-          memorySummary: memoryPlan.memorySummary,
-          imageDataUrls,
-        });
+    const streamSource = streamPlaygroundAgentReply({
+      prompt,
+      history: memoryPlan.history,
+      memorySummary: memoryPlan.memorySummary,
+      sessionId,
+      imageDataUrls,
+    });
 
     for await (const event of streamSource) {
       eventId += 1;
@@ -129,7 +120,7 @@ export async function* streamChat(params: {
       type: 'timeline',
       stage: 'reason',
       status: 'info',
-      message: `LangChain 流式响应失败，已启用 Mock 降级回复。原因：${fallbackReason}`,
+      message: `Playground 流式响应失败，已启用 Mock 降级回复。原因：${fallbackReason}`,
       sessionId,
       eventId,
       timestamp: Date.now(),
