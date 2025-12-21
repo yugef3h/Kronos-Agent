@@ -21,9 +21,12 @@ import {
   invokePlaygroundTool,
   listRegistryTools,
   resolveToolInvokeInput,
+  shouldUseWebSearch,
 } from '../tools/index.js';
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
+import type { ModelToolCall } from '../toolCallExtractor.js';
+import { WEB_SEARCH_TOOL_NAME } from '../tools/tavilyWebSearchTool.js';
 
 const toLangChainMessage = (message: Message): HumanMessage | AIMessage => {
   if (message.role === 'user') {
@@ -67,6 +70,8 @@ const createToolEnabledModel = (registry: PlaygroundToolRegistry) => {
   return chatModel.bindTools(tools, { tool_choice: 'auto' });
 };
 
+const PLAYGROUND_CHAT_LOG_PREFIX = '[playground-chat]';
+
 /** 方案 A：plan → tool → reason（线性兜底路径）。 */
 export async function* streamLinearChatReply(params: {
   prompt: string;
@@ -74,6 +79,7 @@ export async function* streamLinearChatReply(params: {
   memorySummary?: string;
   imageDataUrls?: string[];
   registry?: PlaygroundToolRegistry;
+  sessionId?: string;
 }): AsyncGenerator<LangChainStreamEvent> {
   const registry = params.registry ?? playgroundToolRegistry;
   const toolEnabledModel = createToolEnabledModel(registry);
@@ -94,9 +100,23 @@ export async function* streamLinearChatReply(params: {
     invokePlanning: () => toolEnabledModel.invoke(planningMessages),
     timeoutMs: env.DOUBAO_PLAN_TIMEOUT_MS,
   });
-  const modelToolCalls = planningStep.modelToolCalls;
+  let modelToolCalls: ModelToolCall[] = planningStep.modelToolCalls;
 
   yield createTimelineEvent('plan', 'info', planningStep.message);
+
+  if (modelToolCalls.length === 0 && registry.web_search && shouldUseWebSearch(params.prompt)) {
+    modelToolCalls = [{ name: WEB_SEARCH_TOOL_NAME, args: { query: params.prompt } }];
+    console.warn(
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear web_search rule-trigger sessionId=${params.sessionId ?? 'unknown'} timedOut=${planningStep.timedOut}`,
+    );
+    yield createTimelineEvent(
+      'plan',
+      'info',
+      planningStep.timedOut
+        ? '规划超时，已按实时性问题规则补调 web_search。'
+        : '规划未选择工具，已按实时性问题规则补调 web_search。',
+    );
+  }
 
   const toolOutputs: string[] = [];
 

@@ -13,6 +13,8 @@ export type AgentStreamParams = {
   imageDataUrls?: string[];
 };
 
+const PLAYGROUND_CHAT_LOG_PREFIX = '[playground-chat]';
+
 const toSafeErrorText = (error: unknown): string => {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message.trim().slice(0, 180);
@@ -21,19 +23,26 @@ const toSafeErrorText = (error: unknown): string => {
   return 'unknown upstream error';
 };
 
-/** B 为主（LangGraph），失败则兜底 A（线性 plan-tool-reason）。 */
+/** B 为主（LangGraph），失败则兜底 A（线性 plan-tool-reason，含 web_search 补调）。 */
 export async function* streamPlaygroundAgentReply(
   params: AgentStreamParams,
 ): AsyncGenerator<LangChainStreamEvent> {
   if (!env.LANGGRAPH_ENABLED) {
+    console.warn(
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-only sessionId=${params.sessionId} langgraphEnabled=false`,
+    );
+
     yield* streamLinearChatReply({
       prompt: params.prompt,
       history: params.history,
       memorySummary: params.memorySummary,
       imageDataUrls: params.imageDataUrls,
+      sessionId: params.sessionId,
     });
     return;
   }
+
+  console.warn(`${PLAYGROUND_CHAT_LOG_PREFIX} path=B-langgraph sessionId=${params.sessionId}`);
 
   try {
     yield* streamLangGraphChatReply({
@@ -43,10 +52,17 @@ export async function* streamPlaygroundAgentReply(
       sessionId: params.sessionId,
       imageDataUrls: params.imageDataUrls,
     });
+
+    console.warn(
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=B-langgraph completed sessionId=${params.sessionId}`,
+    );
   } catch (error) {
     const reason = toSafeErrorText(error);
     console.warn(
-      `[streamPlaygroundAgentReply] LangGraph failed for session ${params.sessionId}, falling back to linear. reason: ${reason}`,
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=B-langgraph failed sessionId=${params.sessionId} reason=${reason}`,
+    );
+    console.warn(
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-fallback sessionId=${params.sessionId} (will run plan-tool-reason + web_search rules)`,
     );
 
     yield createTimelineEvent(
@@ -60,6 +76,11 @@ export async function* streamPlaygroundAgentReply(
       history: params.history,
       memorySummary: params.memorySummary,
       imageDataUrls: params.imageDataUrls,
+      sessionId: params.sessionId,
     });
+
+    console.warn(
+      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-fallback completed sessionId=${params.sessionId}`,
+    );
   }
 }
