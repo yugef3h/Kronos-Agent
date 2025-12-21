@@ -10,9 +10,9 @@
     "lint": "eslint \"src/**/*.ts\" --max-warnings=0"
   },
   "dependencies": {
-    "@langchain/core": "^0.3.58",
+    "@langchain/core": "^1.1.46",
     "@langchain/langgraph": "1.2.6",
-    "@langchain/openai": "^0.5.16",
+    "@langchain/openai": "^1.4.5",
     "@langchain/textsplitters": "^1.0.1",
     "@tavily/core": "^0.7.3",
     "@types/pdf-parse": "^1.1.5",
