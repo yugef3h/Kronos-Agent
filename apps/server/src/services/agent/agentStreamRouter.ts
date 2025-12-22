@@ -54,9 +54,6 @@ export async function* streamPlaygroundAgentReply(
     });
   } catch (error) {
     const reason = toSafeErrorText(error);
-    console.warn(
-      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-fallback sessionId=${params.sessionId} (will run plan-tool-reason + web_search rules)`,
-    );
 
     yield createTimelineEvent(
       'plan',
@@ -71,9 +68,5 @@ export async function* streamPlaygroundAgentReply(
       imageDataUrls: params.imageDataUrls,
       sessionId: params.sessionId,
     });
-
-    console.warn(
-      `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-fallback completed sessionId=${params.sessionId}`,
-    );
   }
 }
