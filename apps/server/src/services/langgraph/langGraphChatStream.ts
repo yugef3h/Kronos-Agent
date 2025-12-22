@@ -6,7 +6,7 @@ import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
 import { chatModel } from '../chat/chatModel.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
 import { createTimelineEvent } from '../chat/timelineEvents.js';
-import { listRegistryTools } from '../tools/index.js';
+import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/index.js';
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
 import {
@@ -30,7 +30,7 @@ const isStreamTuple = (chunk: unknown): chunk is [string, unknown] => {
   return Array.isArray(chunk) && chunk.length === 2 && typeof chunk[0] === 'string';
 };
 
-/** 方案 B：LangGraph React Agent（主路径）。 */
+/** 方案 B：LangGraph React Agent。 */
 export async function* streamLangGraphChatReply(params: {
   prompt: string;
   history: Message[];
@@ -41,6 +41,7 @@ export async function* streamLangGraphChatReply(params: {
 }): AsyncGenerator<LangChainStreamEvent> {
   const registry = params.registry ?? playgroundToolRegistry;
   const tools = listRegistryTools(registry);
+  const agentHint = buildPlaygroundAgentSystemHint(registry);
 
   yield createTimelineEvent('plan', 'start', 'LangGraph React Agent 初始化。');
 
@@ -50,6 +51,7 @@ export async function* streamLangGraphChatReply(params: {
   });
 
   const initialMessages: BaseMessage[] = [
+    ...(agentHint ? [new SystemMessage(agentHint)] : []),
     ...(params.memorySummary && params.memorySummary.trim().length > 0
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
       : []),
