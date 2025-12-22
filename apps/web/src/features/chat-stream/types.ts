@@ -32,6 +32,13 @@ export type PromptQuickAction = {
   label: string;
 };
 
+export type PlaygroundModality = 'image' | 'file' | 'takeout';
+
+export type AssistantInvocationSummary = {
+  tools: string[];
+  modalities: PlaygroundModality[];
+};
+
 export type LocalChatMessage = TakeoutChatMessage & {
   imagePreviewUrl?: string;
   imageName?: string;
@@ -39,10 +46,12 @@ export type LocalChatMessage = TakeoutChatMessage & {
   fileExtension?: string;
   fileSize?: number;
   isStreamingText?: boolean;
+  assistantInvocation?: AssistantInvocationSummary;
 };
 
 export type AssistantTypewriterOptions = {
   replaceLastAssistant?: boolean;
+  assistantInvocation?: AssistantInvocationSummary;
   onComplete?: () => void;
 };
 

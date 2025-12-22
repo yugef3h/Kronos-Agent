@@ -32,6 +32,11 @@ import {
   setCachedLocalStorage,
 } from '../../../lib/localStorageCache';
 import { usePlaygroundStore } from '../../../store/playgroundStore';
+import {
+  createAssistantInvocation,
+  extractToolNamesFromTimeline,
+  mergeAssistantInvocation,
+} from '../assistantInvocation';
 import type { StreamChunk, TimelineEvent } from '../../../types/chat';
 import type { ValueSelector, VariableOption } from '../../../pages/workflow/features/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
@@ -258,6 +263,24 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setIsStreaming,
     activeControllerRef,
   });
+
+  const patchLastAssistantInvocation = useCallback((patch: Parameters<typeof mergeAssistantInvocation>[1]) => {
+    setMessages((prev) => {
+      const draft = [...prev];
+      const last = draft[draft.length - 1];
+
+      if (!last || last.role !== 'assistant') {
+        return prev;
+      }
+
+      draft[draft.length - 1] = {
+        ...last,
+        assistantInvocation: mergeAssistantInvocation(last.assistantInvocation, patch),
+      };
+
+      return draft;
+    });
+  }, [setMessages]);
 
   const {
     flowState: takeoutFlowState,
@@ -498,6 +521,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
             if (payload.message.includes('LangChain 流式响应失败')) {
               console.warn(`[ChatStreamPanel] ${payload.message}`);
             }
+
+            if (payload.stage === 'tool' && payload.status === 'end' && payload.toolName) {
+              patchLastAssistantInvocation({ tools: [payload.toolName] });
+            }
           }
 
           if (payload.type === 'content') {
@@ -507,6 +534,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           if (payload.type === 'complete') {
             isRequestComplete = true;
             if (requestId === activeRequestIdRef.current) {
+              const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
+              if (tools.length > 0) {
+                patchLastAssistantInvocation({ tools });
+              }
               completeStreamingContent();
             }
           }
@@ -539,6 +570,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       appendTimelineEvent,
       abortStreamingAssistantMessage,
       completeStreamingContent,
+      patchLastAssistantInvocation,
       setIsStreaming,
       setMessages,
     ],
@@ -907,7 +939,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               isIncomplete: false,
             },
             { role: 'user', content: imagePrompt, isIncomplete: false },
-            { role: 'assistant', content: '', isIncomplete: false },
+            {
+              role: 'assistant',
+              content: '',
+              isIncomplete: false,
+              assistantInvocation: createAssistantInvocation({ modalities: ['image'] }),
+            },
           ]);
           setLatestUserQuestion(imagePrompt);
           setPrompt('');
@@ -928,7 +965,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           activeControllerRef.current = controller;
 
           clearTimelineEvents();
-          startStreamingAssistantMessage();
+          startStreamingAssistantMessage(createAssistantInvocation({ modalities: ['image'] }));
 
           let streamCompleted = false;
           try {
@@ -990,12 +1027,19 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           isIncomplete: false,
         },
         { role: 'user', content: imagePrompt, isIncomplete: false },
-        { role: 'assistant', content: '', isIncomplete: false },
+        {
+          role: 'assistant',
+          content: '',
+          isIncomplete: false,
+          assistantInvocation: createAssistantInvocation({ modalities: ['image'] }),
+        },
       ]);
       setLatestUserQuestion(imagePrompt);
       setPrompt('');
       setPendingImage(null);
       setIsAnalyzingImage(true);
+
+      const imageInvocation = createAssistantInvocation({ modalities: ['image'] });
 
       try {
         const response = await requestImageRecognition({
@@ -1007,6 +1051,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
         startAssistantTypewriter(response.reply, {
           replaceLastAssistant: true,
+          assistantInvocation: imageInvocation,
           onComplete: () => {
             scheduleMemoryMetricsRefresh();
           },
@@ -1015,6 +1060,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
         startAssistantTypewriter(message, {
           replaceLastAssistant: true,
+          assistantInvocation: imageInvocation,
           onComplete: () => {
             scheduleMemoryMetricsRefresh();
           },
@@ -1049,12 +1095,19 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           isIncomplete: false,
         },
         { role: 'user', content: filePrompt, isIncomplete: false },
-        { role: 'assistant', content: '', isIncomplete: false },
+        {
+          role: 'assistant',
+          content: '',
+          isIncomplete: false,
+          assistantInvocation: createAssistantInvocation({ modalities: ['file'] }),
+        },
       ]);
       setLatestUserQuestion(filePrompt);
       setPrompt('');
       setPendingFile(null);
       setIsAnalyzingImage(true);
+
+      const fileInvocation = createAssistantInvocation({ modalities: ['file'] });
 
       try {
         const response = await requestFileAnalysis({
@@ -1068,6 +1121,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
         startAssistantTypewriter(response.reply, {
           replaceLastAssistant: true,
+          assistantInvocation: fileInvocation,
           onComplete: () => {
             scheduleMemoryMetricsRefresh();
           },
@@ -1076,6 +1130,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         const message = error instanceof Error ? error.message : '文件解读失败，请稍后重试';
         startAssistantTypewriter(message, {
           replaceLastAssistant: true,
+          assistantInvocation: fileInvocation,
           onComplete: () => {
             scheduleMemoryMetricsRefresh();
           },
@@ -1337,10 +1392,16 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
 
       const takeoutPrompt = getTakeoutQuickActionPrompt(prompt);
+      const takeoutInvocation = createAssistantInvocation({ modalities: ['takeout'] });
       setMessages((prev) => [
         ...prev,
         { role: 'user', content: takeoutPrompt, isIncomplete: false },
-        { role: 'assistant', content: '', isIncomplete: false },
+        {
+          role: 'assistant',
+          content: '',
+          isIncomplete: false,
+          assistantInvocation: takeoutInvocation,
+        },
       ]);
       setPrompt('');
       setLatestUserQuestion(takeoutPrompt);
@@ -1348,6 +1409,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       takeoutQuickReplyTimerRef.current = window.setTimeout(() => {
         startAssistantTypewriter(TAKEOUT_QUICK_ACTION_REPLY, {
           replaceLastAssistant: true,
+          assistantInvocation: takeoutInvocation,
           onComplete: () => {
             setIsAwaitingTakeoutFollowup(true);
             scheduleMemoryMetricsRefresh();

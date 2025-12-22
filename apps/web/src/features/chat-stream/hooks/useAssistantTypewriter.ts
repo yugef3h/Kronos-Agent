@@ -153,6 +153,7 @@ export const useAssistantTypewriter = ({
             content: '',
             isIncomplete: false,
             isStreamingText: true,
+            assistantInvocation: options?.assistantInvocation ?? last.assistantInvocation,
           };
 
           return draft;
@@ -161,18 +162,30 @@ export const useAssistantTypewriter = ({
 
       return [
         ...draft,
-        { role: 'assistant', content: '', isIncomplete: false, isStreamingText: true },
+        {
+          role: 'assistant',
+          content: '',
+          isIncomplete: false,
+          isStreamingText: true,
+          assistantInvocation: options?.assistantInvocation,
+        },
       ];
     });
 
     scheduleAssistantBufferDrain();
   }, [resetAssistantStreamingState, scheduleAssistantBufferDrain, setIsStreaming, setMessages]);
 
-  const startStreamingAssistantMessage = useCallback(() => {
+  const startStreamingAssistantMessage = useCallback((assistantInvocation?: LocalChatMessage['assistantInvocation']) => {
     resetAssistantStreamingState();
     setMessages((prev) => [
       ...prev,
-      { role: 'assistant', content: '', isStreamingText: true, isIncomplete: false },
+      {
+        role: 'assistant',
+        content: '',
+        isStreamingText: true,
+        isIncomplete: false,
+        assistantInvocation,
+      },
     ]);
     setIsStreaming(true);
   }, [resetAssistantStreamingState, setIsStreaming, setMessages]);

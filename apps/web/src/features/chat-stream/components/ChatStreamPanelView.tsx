@@ -1,5 +1,7 @@
 import taobaoIcon from '../../../assets/taobao.png';
 import { MarkdownMessage } from '../../../components/MarkdownMessage';
+import { resolveAssistantInvocation } from '../assistantInvocation';
+import { AssistantInvocationBar } from './AssistantInvocationBar';
 import { FILE_INPUT_ACCEPT } from '../../agent-tools/file';
 import {
   TakeoutMessageCard,
@@ -188,6 +190,9 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
             {messages.map((message, index) => {
               const imageSource = getRenderableImageSource(message);
               const imageName = getRenderableImageName(message);
+              const assistantInvocation = message.role === 'assistant'
+                ? resolveAssistantInvocation(message, messages, index)
+                : null;
 
               return (
                 <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -201,6 +206,12 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                         : 'border-slate-200/90 bg-white px-3.5 py-2.5 text-slate-700'
                       }`}
                   >
+                    {assistantInvocation ? (
+                      <AssistantInvocationBar
+                        invocation={assistantInvocation}
+                        className={isTakeoutWideCardMessage(message) ? 'px-3.5' : undefined}
+                      />
+                    ) : null}
                     {message.flowType === 'takeout' && message.takeoutMessageType ? (
                       <TakeoutMessageCard
                         message={message}

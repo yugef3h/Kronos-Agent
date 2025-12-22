@@ -13,6 +13,7 @@ import {
   createInitialTakeoutFlowState,
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
+import { createAssistantInvocation } from '../../chat-stream/assistantInvocation';
 import { requestAppendSessionMessages, requestTakeoutCatalog } from '../../../lib/api';
 import {
   hasTakeoutBindingConfirmed,
@@ -132,6 +133,10 @@ export const useTakeoutTool = ({
 
   const appendAssistantTextMessage = useCallback(
     (content: string, options?: TakeoutAssistantMessageOptions) => {
+      const assistantInvocation = options?.flowType === 'takeout'
+        ? createAssistantInvocation({ modalities: ['takeout'] })
+        : undefined;
+
       setMessages((prev) => [
         ...prev,
         {
@@ -141,6 +146,7 @@ export const useTakeoutTool = ({
           flowType: options?.flowType,
           flowId: options?.flowId,
           takeoutMessageType: options?.takeoutMessageType,
+          assistantInvocation,
         },
       ]);
     },
@@ -157,6 +163,7 @@ export const useTakeoutTool = ({
           flowType: 'takeout',
           takeoutMessageType,
           flowId,
+          assistantInvocation: createAssistantInvocation({ modalities: ['takeout'] }),
         },
       ]);
     },
