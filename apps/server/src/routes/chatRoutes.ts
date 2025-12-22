@@ -167,6 +167,10 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
 
   const imageDataUrls = parsed.data.imageDataUrls?.filter((u) => u.startsWith('data:image/'));
 
+  console.warn(
+    `[playground-chat] POST /api/chat-stream sessionId=${parsed.data.sessionId} promptChars=${parsed.data.prompt.length}`,
+  );
+
   const stream = streamChat({
     prompt: parsed.data.prompt,
     sessionUserContent: parsed.data.sessionUserContent,
@@ -740,7 +744,7 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
     history: parsed.data.history,
   });
 
-  if (parsed.data.sessionId) {
+  if (parsed.data.sessionId && result.action !== 'delegate_chat_stream') {
     persistSessionMessagesSafely({
       sessionId: parsed.data.sessionId,
       messages: [

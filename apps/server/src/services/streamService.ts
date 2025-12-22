@@ -61,6 +61,7 @@ export async function* streamChat(params: {
   }
 
   try {
+    console.warn(`[playground-chat] streamChat agent pipeline start sessionId=${sessionId}`);
     const streamSource = streamPlaygroundAgentReply({
       prompt,
       history: memoryPlan.history,

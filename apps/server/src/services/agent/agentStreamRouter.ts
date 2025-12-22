@@ -52,15 +52,8 @@ export async function* streamPlaygroundAgentReply(
       sessionId: params.sessionId,
       imageDataUrls: params.imageDataUrls,
     });
-
-    console.warn(
-      `${PLAYGROUND_CHAT_LOG_PREFIX} path=B-langgraph completed sessionId=${params.sessionId}`,
-    );
   } catch (error) {
     const reason = toSafeErrorText(error);
-    console.warn(
-      `${PLAYGROUND_CHAT_LOG_PREFIX} path=B-langgraph failed sessionId=${params.sessionId} reason=${reason}`,
-    );
     console.warn(
       `${PLAYGROUND_CHAT_LOG_PREFIX} path=A-linear-fallback sessionId=${params.sessionId} (will run plan-tool-reason + web_search rules)`,
     );
