@@ -90,6 +90,7 @@ pnpm dev
 1. 在 `apps/web` 工作流面板深化 **ReAct 轨迹与工具调用** 可视化（与已有 LangChain / SSE 链路衔接）。
 2. 在 `packages/core` 落地统一事件协议，支持前后端同构调试。
 3. RAG：检索对比 / 批量评测的 **独立产品 UI**（当前 API 已具备）；按需补充解析流水线日志、跨库全局搜索等（见 `RAG_Prod_capability.md` 缺口列）。
+4. 图片文件等上 cdn 链接
 
 ## Apache 2.0 合规声明模板（已启用）
 
