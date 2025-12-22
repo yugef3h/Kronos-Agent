@@ -1,0 +1,10 @@
+@import 'highlight.js/styles/github-dark.css';
+
+.markdown-code-block .hljs {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-code-block pre {
+  tab-size: 2;
+}
