@@ -123,12 +123,38 @@ export const mapLangGraphUpdateToTimelineEvents = (
   return events;
 };
 
-// 查找最新的助手消息文本
-export const findLatestAssistantText = (messages: BaseMessage[]): string => {
-  const lastAssistant = [...messages].reverse().find((msg) => {
-    const type = readMessageType(msg);
-    return type === 'ai' || type === 'assistant';
-  });
+const isHumanMessage = (message: BaseMessage): boolean => {
+  const type = readMessageType(message);
+  return type === 'human' || type === 'user';
+};
 
+const isAssistantMessage = (message: BaseMessage): boolean => {
+  const type = readMessageType(message);
+  return type === 'ai' || type === 'assistant';
+};
+
+/** 全量 state 中最后一条助手消息（含历史轮次，勿单独用于流式 delta）。 */
+export const findLatestAssistantText = (messages: BaseMessage[]): string => {
+  const lastAssistant = [...messages].reverse().find((msg) => isAssistantMessage(msg));
   return readMessageText(lastAssistant);
+};
+
+/**
+ * 仅取「最后一条用户消息之后」的助手正文，避免 LangGraph checkpoint 把上一轮回复当成本轮增量。
+ */
+export const findCurrentTurnAssistantText = (messages: BaseMessage[]): string => {
+  let lastHumanIndex = -1;
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (isHumanMessage(messages[index]!)) {
+      lastHumanIndex = index;
+      break;
+    }
+  }
+
+  const afterHuman = messages.slice(lastHumanIndex + 1);
+  const turnAssistants = afterHuman.filter((msg) => isAssistantMessage(msg));
+  const lastTurnAssistant = turnAssistants[turnAssistants.length - 1];
+
+  return readMessageText(lastTurnAssistant);
 };

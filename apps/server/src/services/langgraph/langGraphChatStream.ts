@@ -10,7 +10,7 @@ import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/inde
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
 import {
-  findLatestAssistantText,
+  findCurrentTurnAssistantText,
   mapLangGraphUpdateToTimelineEvents,
 } from './toolStreamMapper.js';
 
@@ -62,11 +62,14 @@ export async function* streamLangGraphChatReply(params: {
   yield createTimelineEvent('plan', 'info', `LangGraph 已启动（已注册 ${tools.length} 个工具）。`);
   yield createTimelineEvent('reason', 'start', 'LangGraph 推理开始。');
 
+  // 每轮独立 thread，避免 checkpoint 污染；会话历史已由 initialMessages 传入。
+  const turnThreadId = `${params.sessionId ?? 'session'}-turn-${Date.now()}`;
+
   const stream = await agent.stream(
     { messages: initialMessages },
     {
       streamMode: ['updates', 'values'] as ['updates', 'values'],
-      configurable: { thread_id: params.sessionId ?? `session-${Date.now()}` },
+      configurable: { thread_id: turnThreadId },
       recursionLimit: env.LANGGRAPH_MAX_TOOL_STEPS,
     },
   );
@@ -93,7 +96,7 @@ export async function* streamLangGraphChatReply(params: {
 
       if (mode === 'values' && typeof payload === 'object' && payload !== null) {
         const messages = (payload as LangGraphStreamState).messages;
-        const fullText = findLatestAssistantText(messages ?? []);
+        const fullText = findCurrentTurnAssistantText(messages ?? []);
         const delta = fullText.slice(previousText.length);
         if (delta.length > 0) {
           previousText = fullText;
@@ -106,7 +109,7 @@ export async function* streamLangGraphChatReply(params: {
 
     if (typeof chunk === 'object' && chunk !== null && 'messages' in chunk) {
       const messages = (chunk as LangGraphStreamState).messages ?? [];
-      const fullText = findLatestAssistantText(messages);
+      const fullText = findCurrentTurnAssistantText(messages);
       const delta = fullText.slice(previousText.length);
       if (delta.length > 0) {
         previousText = fullText;
