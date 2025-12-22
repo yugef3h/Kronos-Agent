@@ -3,7 +3,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { analyzeTakeoutIntent } from './takeoutIntentService.js';
 import { TAKEOUT_ORCHESTRATION_PROMPT } from '../const/prompt.js';
 
-export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call';
+export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call' | 'delegate_chat_stream';
 
 export type TakeoutOrchestrationResult = {
   action: TakeoutOrchestrationAction;
@@ -61,16 +61,29 @@ const normalizeMessageContent = (content: unknown): string => {
   return '';
 };
 
-export const parseTakeoutOrchestrationOutput = (output: string): TakeoutOrchestrationResult => {
+export const parseTakeoutOrchestrationOutput = (
+  output: string,
+  prompt: string,
+  history: string[] = [],
+): TakeoutOrchestrationResult => {
   const toolMatch = output.match(/\[\[TAKEOUT_TOOL\]\](\{[\s\S]*\})/);
   const hasAskSlotTag = output.includes('[[ASK_SLOT]]');
   const hasChatTag = output.includes('[[CHAT]]');
+  const hasDelegateTag = output.includes('[[DELEGATE]]');
 
   const assistantReply = output
     .replace(/\[\[TAKEOUT_TOOL\]\]\{[\s\S]*\}/g, '')
     .replace(/\[\[ASK_SLOT\]\]/g, '')
     .replace(/\[\[CHAT\]\]/g, '')
+    .replace(/\[\[DELEGATE\]\]/g, '')
     .trim();
+
+  if (hasDelegateTag) {
+    return {
+      action: 'delegate_chat_stream',
+      assistantReply: '',
+    };
+  }
 
   if (toolMatch?.[1]) {
     try {
@@ -109,10 +122,18 @@ export const parseTakeoutOrchestrationOutput = (output: string): TakeoutOrchestr
     };
   }
 
-  // 兼容模型未按标签输出的情况，默认走聊天分支。
+  // 模型未打标签：规则判定非外卖则交回 Playground Agent。
+  const ruleAnalysis = analyzeTakeoutIntent({ prompt, history });
+  if (ruleAnalysis.intent === 'non_takeout') {
+    return {
+      action: 'delegate_chat_stream',
+      assistantReply: '',
+    };
+  }
+
   return {
     action: 'chat',
-    assistantReply,
+    assistantReply: assistantReply || output.trim(),
   };
 };
 
@@ -121,6 +142,14 @@ export const orchestrateTakeoutPrompt = async (params: {
   history?: string[];
 }): Promise<TakeoutOrchestrationResult> => {
   const history = params.history || [];
+  const ruleAnalysis = analyzeTakeoutIntent({ prompt: params.prompt, history });
+
+  if (ruleAnalysis.intent === 'non_takeout') {
+    return {
+      action: 'delegate_chat_stream',
+      assistantReply: '',
+    };
+  }
 
   try {
     const orchestratorModel = createOrchestratorModel();
@@ -132,7 +161,7 @@ export const orchestrateTakeoutPrompt = async (params: {
     ]);
 
     const output = normalizeMessageContent(response.content);
-    return parseTakeoutOrchestrationOutput(output);
+    return parseTakeoutOrchestrationOutput(output, params.prompt, history);
   } catch {
     // 模型不可用时使用规则兜底，保证前端体验不断流。
     const fallback = analyzeTakeoutIntent({ prompt: params.prompt, history });
@@ -158,8 +187,8 @@ export const orchestrateTakeoutPrompt = async (params: {
     }
 
     return {
-      action: 'chat',
-      assistantReply: '收到，我在。你可以直接告诉我你现在想做什么。',
+      action: 'delegate_chat_stream',
+      assistantReply: '',
     };
   }
 };

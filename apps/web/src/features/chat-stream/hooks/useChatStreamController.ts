@@ -1110,6 +1110,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           sessionId,
         });
 
+        if (orchestrated.action === 'delegate_chat_stream') {
+          return false;
+        }
+
         if (orchestrated.action === 'chat' || orchestrated.action === 'ask_slot') {
           startAssistantTypewriter(orchestrated.assistantReply, {
             onComplete: () => {
@@ -1137,7 +1141,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       }
     };
 
-    // 已选「假发布」Chatbot 时与编排页调试一致：必须走检索 + chat-stream，不能让外卖编排短路掉增强 prompt。
+    // 先走外卖编排判定；非外卖时 orchestrate 返回 delegate_chat_stream，tryHandleTakeout 为 false 并继续 chat-stream。
     if (!publishedChatbotWorkflowAppId && (await tryHandleTakeout())) {
       return;
     }
@@ -1172,6 +1176,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     activeControllerRef.current = controller;
 
     clearTimelineEvents();
+    resetAssistantStreamingState();
     startStreamingAssistantMessage();
 
     let streamPrompt = userPrompt;
@@ -1220,7 +1225,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
     }
-  }, [abortStreamingAssistantMessage, authToken, canSend, clearTimelineEvents, executePlaygroundChatStream, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, playgroundChatStreamSessionId, prompt, publishedChatbotWorkflowAppId, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
+  }, [abortStreamingAssistantMessage, authToken, canSend, clearTimelineEvents, executePlaygroundChatStream, flushRemainingAssistantBuffer, isAnalyzingImage, isAwaitingTakeoutFollowup, isOrchestrating, isStreaming, messages, pendingFile, pendingImage, playgroundChatStreamSessionId, prompt, publishedChatbotWorkflowAppId, resetAssistantStreamingState, scheduleMemoryMetricsRefresh, sessionId, setIsAnalyzingImage, setIsAwaitingTakeoutFollowup, setIsOrchestrating, setIsStreaming, setLatestUserQuestion, setMessages, setPendingFile, setPendingImage, setPrompt, startAssistantTypewriter, startStreamingAssistantMessage, startTakeoutConversation]);
 
   const handleExplainImageClick = useCallback(() => {
     if (!pendingImage || prompt.trim().length > 0) {

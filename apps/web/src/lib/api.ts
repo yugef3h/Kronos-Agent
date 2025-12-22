@@ -219,7 +219,7 @@ export type TakeoutIntentAnalysisResponse = {
 };
 
 export type TakeoutOrchestrationResponse = {
-	action: 'chat' | 'ask_slot' | 'tool_call';
+	action: 'chat' | 'ask_slot' | 'tool_call' | 'delegate_chat_stream';
 	assistantReply: string;
 	toolCall?: {
 		name: 'takeout';
