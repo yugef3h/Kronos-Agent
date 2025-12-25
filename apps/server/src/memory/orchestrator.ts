@@ -26,11 +26,24 @@ const formatMessageLine = (message: Message, index: number): string => {
   return `${index + 1}. ${speaker}: ${compactText}`;
 };
 
+/** 去掉历史 merge 误嵌套的「已有摘要:」前缀，保留正文用于滚动追加 */
+const normalizeStoredSummary = (summary: string): string => {
+  let text = summary.trim();
+  const legacyPrefix = '已有摘要:';
+
+  while (text.startsWith(legacyPrefix)) {
+    text = text.slice(legacyPrefix.length).trimStart();
+  }
+
+  return text;
+};
+
 const buildMergedSummary = (existingSummary: string, historyToSummarize: Message[]): string => {
   const lines = historyToSummarize.map(formatMessageLine);
   const recentDigest = trimToMaxChars(lines.join('\n'), 900);
-  const merged = existingSummary.trim().length
-    ? `已有摘要:\n${existingSummary.trim()}\n\n新增对话摘要:\n${recentDigest}`
+  const prior = normalizeStoredSummary(existingSummary);
+  const merged = prior.length
+    ? `${prior}\n\n新增对话摘要:\n${recentDigest}`
     : `对话摘要:\n${recentDigest}`;
 
   // 这里采用确定性压缩，避免在摘要阶段再次调用模型造成额外 token 消耗和时延。
