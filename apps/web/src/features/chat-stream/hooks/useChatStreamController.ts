@@ -63,6 +63,7 @@ import {
   FILE_DEFAULT_PROMPT,
   HOT_TOPICS_CACHE_KEY,
   IMAGE_DEFAULT_PROMPT,
+  MESSAGE_LIST_STICK_THRESHOLD_PX,
   PROMPT_QUICK_ACTIONS,
   STAGE_LABEL_MAP,
   STATUS_LABEL_MAP,
@@ -242,6 +243,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottomRef = useRef(true);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
 
   const playgroundChatStreamSessionId = useMemo(
@@ -325,11 +327,26 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setHistorySwitchConfirmTarget(null);
   }, [publishedChatbotWorkflowAppId]);
 
+  const updateMessageListScrollPin = useCallback(() => {
+    const element = messageListRef.current;
+    if (!element) {
+      return;
+    }
+
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= MESSAGE_LIST_STICK_THRESHOLD_PX;
+    setShowScrollToBottom(distanceFromBottom > MESSAGE_LIST_STICK_THRESHOLD_PX);
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     const element = messageListRef.current;
-    if (element) {
-      element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    if (!element) {
+      return;
     }
+
+    stickToBottomRef.current = true;
+    element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
+    setShowScrollToBottom(false);
   }, []);
 
   const adjustPromptTextareaHeight = useCallback(() => {
@@ -814,7 +831,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
   useEffect(() => {
     const element = messageListRef.current;
-    if (!element) {
+    if (!element || !stickToBottomRef.current) {
       return;
     }
 
@@ -849,14 +866,10 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       return undefined;
     }
 
-    const handleScroll = () => {
-      const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
-      setShowScrollToBottom(distanceFromBottom > 80);
-    };
-
-    element.addEventListener('scroll', handleScroll, { passive: true });
-    return () => element.removeEventListener('scroll', handleScroll);
-  }, []);
+    updateMessageListScrollPin();
+    element.addEventListener('scroll', updateMessageListScrollPin, { passive: true });
+    return () => element.removeEventListener('scroll', updateMessageListScrollPin);
+  }, [updateMessageListScrollPin]);
 
   useEffect(() => {
     const flushTimerId = streamFlushTimerRef.current;
@@ -912,6 +925,8 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     if (!overridePrompt && !canSend) {
       return;
     }
+
+    stickToBottomRef.current = true;
 
     if (pendingImage) {
       if (isStreaming || isOrchestrating || isAnalyzingImage) {

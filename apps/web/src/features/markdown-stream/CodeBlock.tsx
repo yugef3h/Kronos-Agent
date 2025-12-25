@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo } from 'react';
+import { CodeBlockCopyButton } from './CodeBlockCopyButton';
 import { highlightCodeBlock, normalizeHighlightLanguage } from './codeHighlight';
 
 type CodeBlockProps = {
@@ -16,21 +17,20 @@ export const CodeBlock = ({ code, language = '', isStreaming = false }: CodeBloc
     [deferredCode, normalizedLanguage],
   );
 
+  const languageLabel = normalizedLanguage !== 'plaintext' ? normalizedLanguage : '代码';
+
   return (
     <div className="markdown-code-block group relative mt-3 first:mt-0">
-      {normalizedLanguage !== 'plaintext' ? (
-        <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-slate-800 bg-slate-900 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-slate-400">
-          <span>{normalizedLanguage}</span>
-          {isStreaming ? <span className="text-cyan-400/90">输出中</span> : null}
+      <div className="flex items-center justify-between rounded-t-2xl border border-b-0 border-slate-800 bg-slate-900 px-2 py-1.5 pl-3 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+        <span>{languageLabel}</span>
+        <div className="flex items-center gap-1">
+          {isStreaming ? <span className="mr-1 normal-case tracking-normal text-cyan-400/90">输出中</span> : null}
+          <CodeBlockCopyButton code={code} />
         </div>
-      ) : null}
-      <pre
-        className={`overflow-x-auto rounded-2xl bg-slate-950 px-4 py-3 text-[13px] leading-6 text-slate-100 shadow-inner ${
-          normalizedLanguage !== 'plaintext' ? 'rounded-t-none border border-t-0 border-slate-800' : ''
-        }`}
-      >
+      </div>
+      <pre className="overflow-x-auto rounded-b-2xl rounded-t-none border border-t-0 border-slate-800 bg-slate-950 px-4 py-3 text-[13px] leading-6 text-slate-100 shadow-inner">
         <code
-          className={`hljs block font-mono whitespace-pre ${normalizedLanguage !== 'plaintext' ? `language-${normalizedLanguage}` : ''}`}
+          className={`hljs block font-mono whitespace-pre language-${normalizedLanguage}`}
           dangerouslySetInnerHTML={{ __html: highlightedHtml }}
         />
         {isStreaming ? (
