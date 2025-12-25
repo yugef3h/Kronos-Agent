@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 import './common.css';
+import './features/markdown-stream/highlight.css';
 
 const queryClient = new QueryClient();
 

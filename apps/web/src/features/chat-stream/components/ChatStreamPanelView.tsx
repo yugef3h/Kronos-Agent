@@ -1,5 +1,5 @@
 import taobaoIcon from '../../../assets/taobao.png';
-import { MarkdownMessage } from '../../../components/MarkdownMessage';
+import { StreamingMarkdownMessage } from '../../markdown-stream/StreamingMarkdownMessage';
 import { resolveAssistantInvocation } from '../assistantInvocation';
 import { AssistantInvocationBar } from './AssistantInvocationBar';
 import { FILE_INPUT_ACCEPT } from '../../agent-tools/file';
@@ -258,8 +258,12 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
                       </span>
-                    ) : message.role === 'assistant' && !message.isStreamingText ? (
-                      <MarkdownMessage content={message.content} isIncomplete={message.isIncomplete} />
+                    ) : message.role === 'assistant' ? (
+                      <StreamingMarkdownMessage
+                        content={message.content}
+                        isIncomplete={message.isIncomplete}
+                        isStreaming={Boolean(message.isStreamingText)}
+                      />
                     ) : (
                       renderPlainMessageContent(message)
                     )}
