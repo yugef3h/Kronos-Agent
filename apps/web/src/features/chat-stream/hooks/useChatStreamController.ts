@@ -37,6 +37,7 @@ import {
   extractToolNamesFromTimeline,
   mergeAssistantInvocation,
 } from '../assistantInvocation';
+import { isPlaygroundToolName } from '../invocationRegistry';
 import type { StreamChunk, TimelineEvent } from '../../../types/chat';
 import type { ValueSelector, VariableOption } from '../../../pages/workflow/features/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
@@ -539,7 +540,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               console.warn(`[ChatStreamPanel] ${payload.message}`);
             }
 
-            if (payload.stage === 'tool' && payload.status === 'end' && payload.toolName) {
+            if (
+              payload.stage === 'tool'
+              && payload.status === 'end'
+              && payload.toolName
+              && isPlaygroundToolName(payload.toolName)
+            ) {
               patchLastAssistantInvocation({ tools: [payload.toolName] });
             }
           }

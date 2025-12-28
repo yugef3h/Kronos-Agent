@@ -1,6 +1,13 @@
 import type { TimelineEvent } from '../../types/chat';
 import { getRenderableImageSource } from './utils/chatStreamHelpers';
-import type { AssistantInvocationSummary, LocalChatMessage, PlaygroundModality } from './types';
+import {
+  isPlaygroundToolName,
+  MODALITY_INVOCATION_LABELS,
+  TOOL_INVOCATION_LABELS,
+} from './invocationRegistry';
+import type { AssistantInvocationSummary, LocalChatMessage, PlaygroundModality, PlaygroundToolName } from './types';
+
+export { MODALITY_INVOCATION_LABELS, TOOL_INVOCATION_LABELS };
 
 export const createAssistantInvocation = (
   partial?: Partial<AssistantInvocationSummary>,
@@ -17,10 +24,10 @@ export const mergeAssistantInvocation = (
   modalities: [...new Set([...(current?.modalities ?? []), ...(patch.modalities ?? [])])],
 });
 
-export const extractToolNamesFromTimeline = (events: TimelineEvent[]): string[] => {
+export const extractToolNamesFromTimeline = (events: TimelineEvent[]): PlaygroundToolName[] => {
   const names = events
-    .filter((event) => event.stage === 'tool' && event.status === 'end' && event.toolName)
-    .map((event) => event.toolName as string);
+    .map((event) => event.toolName)
+    .filter((toolName): toolName is PlaygroundToolName => Boolean(toolName && isPlaygroundToolName(toolName)));
 
   return [...new Set(names)];
 };
@@ -81,12 +88,3 @@ export const resolveAssistantInvocation = (
   return summary;
 };
 
-export const TOOL_INVOCATION_LABELS: Record<string, string> = {
-  web_search: '网页搜索',
-};
-
-export const MODALITY_INVOCATION_LABELS: Record<PlaygroundModality, string> = {
-  image: '图片',
-  file: '文件',
-  takeout: '外卖',
-};

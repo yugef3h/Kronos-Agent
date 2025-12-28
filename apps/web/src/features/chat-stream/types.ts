@@ -32,10 +32,12 @@ export type PromptQuickAction = {
   label: string;
 };
 
-export type PlaygroundModality = 'image' | 'file' | 'takeout';
+import type { PlaygroundModality, PlaygroundToolName } from './invocationRegistry';
+
+export type { PlaygroundModality, PlaygroundToolName };
 
 export type AssistantInvocationSummary = {
-  tools: string[];
+  tools: PlaygroundToolName[];
   modalities: PlaygroundModality[];
 };
 
