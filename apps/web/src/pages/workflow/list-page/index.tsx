@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { WorkflowAppCardMenu } from '../../../features/workflow/WorkflowAppCardMenu';
+import { WorkflowAppEditDialog } from '../../../features/workflow/WorkflowAppEditDialog';
 import { WorkflowBlankAppCreateDialog } from '../../../features/workflow/WorkflowBlankAppCreateDialog';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
+  deleteWorkflowApp,
   getWorkflowAppEditorPath,
   getWorkflowDraftThumbnailSrc,
   listWorkflowApps,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
+  type WorkflowAppRecord,
 } from '../../../features/workflow/workflowAppStore';
 
 const formatTimestamp = (timestamp: number): string => {
@@ -24,6 +28,7 @@ export const WorkflowPage = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [apps, setApps] = useState(() => listWorkflowApps());
+  const [editingApp, setEditingApp] = useState<WorkflowAppRecord | null>(null);
   const isCreateModalOpen = searchParams.get('create') === 'blank';
 
   useEffect(() => {
@@ -178,13 +183,14 @@ export const WorkflowPage = () => {
                   </div>
                 ) : null}
 
-                <div className="mt-4 flex items-center justify-between">
-                  {/* <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700">
-                    {app.dsl.nodes.length} 节点
-                  </span> */}
-                  <span className="text-xs font-semibold text-cyan-700 opacity-0 transition group-hover:opacity-100">
-                    点击进入
-                  </span>
+                <div className="mt-4 flex items-center justify-end">
+                  <WorkflowAppCardMenu
+                    onEdit={() => setEditingApp(app)}
+                    onDelete={() => {
+                      deleteWorkflowApp(app.id);
+                      setApps(listWorkflowApps());
+                    }}
+                  />
                 </div>
               </Link>
             );
@@ -199,6 +205,15 @@ export const WorkflowPage = () => {
           setApps(listWorkflowApps());
           closeCreateModal();
           navigate(getWorkflowAppEditorPath(app));
+        }}
+      />
+
+      <WorkflowAppEditDialog
+        app={editingApp}
+        onClose={() => setEditingApp(null)}
+        onSaved={() => {
+          setApps(listWorkflowApps());
+          setEditingApp(null);
         }}
       />
     </>
