@@ -634,6 +634,67 @@ export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowA
   return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp
 }
 
+export const updateWorkflowAppMeta = (
+  appId: string,
+  payload: { name: string; description?: string },
+): WorkflowAppRecord | undefined => {
+  const name = payload.name.trim();
+  if (!name) {
+    throw new Error('应用名称不能为空');
+  }
+
+  const apps = readAppRecords();
+  const appIndex = apps.findIndex((app) => app.id === appId);
+  if (appIndex < 0) {
+    return undefined;
+  }
+
+  const prev = apps[appIndex];
+  const description = payload.description?.trim() ?? '';
+  const updatedApp: WorkflowAppRecord = {
+    ...prev,
+    name,
+    description,
+    updatedAt: Date.now(),
+    dsl: {
+      ...prev.dsl,
+      app: {
+        ...prev.dsl.app,
+        name,
+        description,
+      },
+    },
+  };
+  delete updatedApp.draftPreviewDataUrl;
+
+  apps[appIndex] = updatedApp;
+  writeAppRecords(apps);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+  }
+
+  const previewUrl = readWorkflowDraftPreviewDataUrl(appId);
+  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp;
+};
+
+export const deleteWorkflowApp = (appId: string): boolean => {
+  const apps = readAppRecords();
+  const next = apps.filter((app) => app.id !== appId);
+  if (next.length === apps.length) {
+    return false;
+  }
+
+  writeAppRecords(next);
+  setWorkflowDraftPreview(appId, null);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+  }
+
+  return true;
+};
+
 export const createWorkflowApp = (payload: {
   name: string;
   description?: string;
