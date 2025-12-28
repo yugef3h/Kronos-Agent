@@ -18,7 +18,7 @@ export const MemorySummaryPanel = () => {
       </p>
 
       <div className="mt-4 rounded-xl border border-amber-200/80 border-l-4 border-l-amber-400 bg-amber-50/40 p-3">
-        <h3 className="text-sm font-semibold text-amber-950">滚动摘要（长期记忆）</h3>
+        <h3 className="text-sm font-semibold text-amber-950">滚动摘要</h3>
         {/* <p className="mt-1 text-xs text-slate-500">
           最近更新:{' '}
           <span className="font-medium text-slate-700">
