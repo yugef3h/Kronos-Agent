@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../pages/workflow/utils/classnames';
+
+const stopCardNavigation = (event: ReactMouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
 
 type WorkflowAppCardMenuProps = {
   appName: string;
@@ -25,7 +31,7 @@ export const WorkflowAppCardMenu = ({ appName, className, onEdit, onDelete }: Wo
     if (!open) {
       return;
     }
-    const onDocumentMouseDown = (event: MouseEvent) => {
+    const onDocumentMouseDown = (event: globalThis.MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
@@ -36,110 +42,118 @@ export const WorkflowAppCardMenu = ({ appName, className, onEdit, onDelete }: Wo
 
   return (
     <>
-    <div
-      ref={rootRef}
-      className={cn(
-        'relative shrink-0 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100',
-        className,
-      )}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      }}
-    >
-      <button
-        type="button"
-        aria-label="更多操作"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen((current) => !current);
-        }}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50 text-slate-500 transition hover:border-slate-300 hover:bg-white hover:text-slate-700"
-      >
-        <VerticalDotsIcon />
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 bottom-full z-20 mb-1 min-w-[7.5rem] overflow-hidden rounded-xl border border-slate-200/90 bg-white py-1 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.28)]"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setOpen(false);
-              onEdit();
-            }}
-          >
-            编辑信息
-          </button>
-          <div className="mx-2 my-1 h-px bg-slate-100" role="separator" />
-          <button
-            type="button"
-            role="menuitem"
-            className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              setOpen(false);
-              setConfirmOpen(true);
-            }}
-          >
-            删除
-          </button>
-        </div>
-      ) : null}
-    </div>
-
-    {confirmOpen ? (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 px-3"
-        onClick={() => setConfirmOpen(false)}
-        role="presentation"
+        ref={rootRef}
+        className={cn(
+          'relative shrink-0 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100',
+          className,
+        )}
+        onClick={stopCardNavigation}
+        onMouseDown={stopCardNavigation}
       >
-        <div
-          className="w-full max-w-sm rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)]"
-          onClick={(event) => event.stopPropagation()}
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="workflow-app-delete-title"
+        <button
+          type="button"
+          aria-label="更多操作"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          onClick={(event) => {
+            stopCardNavigation(event);
+            setOpen((current) => !current);
+          }}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/90 bg-slate-50 text-slate-500 transition hover:border-slate-300 hover:bg-white hover:text-slate-700"
         >
-          <h3 id="workflow-app-delete-title" className="text-base font-semibold text-slate-900">
-            删除应用？
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            确定删除「{appName}」？此操作不可恢复。
-          </p>
-          <div className="mt-5 flex items-center justify-end gap-2">
+          <VerticalDotsIcon />
+        </button>
+
+        {open ? (
+          <div
+            role="menu"
+            className="absolute right-0 bottom-full z-20 mb-1 min-w-[7.5rem] overflow-hidden rounded-xl border border-slate-200/90 bg-white py-1 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.28)]"
+            onClick={stopCardNavigation}
+            onMouseDown={stopCardNavigation}
+          >
             <button
               type="button"
-              onClick={() => setConfirmOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmOpen(false);
-                onDelete();
+              role="menuitem"
+              className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+              onClick={(event) => {
+                stopCardNavigation(event);
+                setOpen(false);
+                onEdit();
               }}
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+            >
+              编辑信息
+            </button>
+            <div className="mx-2 my-1 h-px bg-slate-100" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
+              onClick={(event) => {
+                stopCardNavigation(event);
+                setOpen(false);
+                setConfirmOpen(true);
+              }}
             >
               删除
             </button>
           </div>
-        </div>
+        ) : null}
       </div>
-    ) : null}
+
+      {confirmOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 px-3"
+              onClick={(event) => {
+                stopCardNavigation(event);
+                setConfirmOpen(false);
+              }}
+              onMouseDown={stopCardNavigation}
+              role="presentation"
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)]"
+                onClick={stopCardNavigation}
+                onMouseDown={stopCardNavigation}
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="workflow-app-delete-title"
+              >
+                <h3 id="workflow-app-delete-title" className="text-base font-semibold text-slate-900">
+                  删除应用？
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  确定删除「{appName}」？此操作不可恢复。
+                </p>
+                <div className="mt-5 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      stopCardNavigation(event);
+                      setConfirmOpen(false);
+                    }}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      stopCardNavigation(event);
+                      setConfirmOpen(false);
+                      onDelete();
+                    }}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 };
