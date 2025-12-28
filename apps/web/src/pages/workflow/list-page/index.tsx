@@ -130,7 +130,7 @@ export const WorkflowPage = () => {
               <Link
                 key={app.id}
                 to={getWorkflowAppEditorPath(app)}
-                className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                className="group relative block rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-lg">
@@ -183,15 +183,15 @@ export const WorkflowPage = () => {
                   </div>
                 ) : null}
 
-                <div className="mt-4 flex items-center justify-end">
-                  <WorkflowAppCardMenu
-                    onEdit={() => setEditingApp(app)}
-                    onDelete={() => {
-                      deleteWorkflowApp(app.id);
-                      setApps(listWorkflowApps());
-                    }}
-                  />
-                </div>
+                <WorkflowAppCardMenu
+                  className="absolute bottom-4 right-4 z-10"
+                  appName={app.name}
+                  onEdit={() => setEditingApp(app)}
+                  onDelete={() => {
+                    deleteWorkflowApp(app.id);
+                    setApps(listWorkflowApps());
+                  }}
+                />
               </Link>
             );
             })}

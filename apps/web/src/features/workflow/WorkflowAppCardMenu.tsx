@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { cn } from '../../pages/workflow/utils/classnames';
 
 type WorkflowAppCardMenuProps = {
+  appName: string;
+  className?: string;
   onEdit: () => void;
   onDelete: () => void;
 };
@@ -13,8 +16,9 @@ const VerticalDotsIcon = () => (
   </svg>
 );
 
-export const WorkflowAppCardMenu = ({ onEdit, onDelete }: WorkflowAppCardMenuProps) => {
+export const WorkflowAppCardMenu = ({ appName, className, onEdit, onDelete }: WorkflowAppCardMenuProps) => {
   const [open, setOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,9 +35,13 @@ export const WorkflowAppCardMenu = ({ onEdit, onDelete }: WorkflowAppCardMenuPro
   }, [open]);
 
   return (
+    <>
     <div
       ref={rootRef}
-      className="relative shrink-0 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+      className={cn(
+        'relative shrink-0 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100',
+        className,
+      )}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -82,7 +90,7 @@ export const WorkflowAppCardMenu = ({ onEdit, onDelete }: WorkflowAppCardMenuPro
               event.preventDefault();
               event.stopPropagation();
               setOpen(false);
-              onDelete();
+              setConfirmOpen(true);
             }}
           >
             删除
@@ -90,5 +98,48 @@ export const WorkflowAppCardMenu = ({ onEdit, onDelete }: WorkflowAppCardMenuPro
         </div>
       ) : null}
     </div>
+
+    {confirmOpen ? (
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/35 px-3"
+        onClick={() => setConfirmOpen(false)}
+        role="presentation"
+      >
+        <div
+          className="w-full max-w-sm rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.35)]"
+          onClick={(event) => event.stopPropagation()}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="workflow-app-delete-title"
+        >
+          <h3 id="workflow-app-delete-title" className="text-base font-semibold text-slate-900">
+            删除应用？
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            确定删除「{appName}」？此操作不可恢复。
+          </p>
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmOpen(false);
+                onDelete();
+              }}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+            >
+              删除
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 };
