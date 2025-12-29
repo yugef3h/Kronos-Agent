@@ -1013,7 +1013,7 @@ export const RagPage = () => {
                   handleDatasetSelection(dataset.id, { openDetail: true });
                 }
               }}
-              className={`group relative min-h-[240px] rounded-2xl border bg-white p-4 pb-11 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedDatasetId === dataset.id ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200/80 hover:border-cyan-300'}`}
+              className={`group relative min-h-[180px] rounded-2xl border bg-white p-4 pb-11 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedDatasetId === dataset.id ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200/80 hover:border-cyan-300'}`}
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-xs font-semibold uppercase tracking-wide text-cyan-700">
