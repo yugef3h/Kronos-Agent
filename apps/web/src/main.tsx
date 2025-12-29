@@ -3,7 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { ensureBundledWorkflowApps } from './features/workflow/seed/bundledWorkflowApps';
 import './index.css';
+
+ensureBundledWorkflowApps();
 import './common.css';
 import './features/markdown-stream/highlight.css';
 

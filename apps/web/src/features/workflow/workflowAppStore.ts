@@ -1,4 +1,5 @@
 import { apiUrl } from '../../lib/api';
+import { getBundledWorkflowPreviewSrc } from './seed/bundledWorkflowApps';
 
 export type LegacyWorkflowNodeType =
   | 'trigger'
@@ -383,6 +384,10 @@ export const markWorkflowDraftPreviewBackendSynced = (appId: string, synced: boo
 export const getWorkflowDraftThumbnailSrc = (app: WorkflowAppRecord): string | undefined => {
   if (app.draftPreviewDataUrl) {
     return app.draftPreviewDataUrl;
+  }
+  const bundledPreview = getBundledWorkflowPreviewSrc(app.id);
+  if (bundledPreview) {
+    return bundledPreview;
   }
   if (app.draftPreviewBackendSynced) {
     return apiUrl(
