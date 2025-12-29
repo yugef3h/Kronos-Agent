@@ -536,15 +536,20 @@ const generateWorkflowAppId = (): string => {
   return `wf_${Date.now().toString(36)}_${randomPart}`;
 };
 
+/** 列表展示：按创建时间升序，更新不改变顺序。 */
+export const sortWorkflowAppsByCreatedAt = (apps: WorkflowAppRecord[]): WorkflowAppRecord[] => {
+  return [...apps].sort((a, b) => a.createdAt - b.createdAt);
+};
+
 export const listWorkflowApps = (): WorkflowAppRecord[] => {
-  return readAppRecords().sort((a, b) => b.updatedAt - a.updatedAt);
+  return sortWorkflowAppsByCreatedAt(readAppRecords());
 };
 
 /** 已假发布且为 Chatbot（`dsl.app.mode === 'chat'`）的应用，供首页对话 RAG 应用下拉使用。 */
 export const listPublishedChatbotWorkflowApps = (): WorkflowAppRecord[] => {
-  return readAppRecords()
-    .filter((app) => app.dsl.app.mode === 'chat' && Boolean(app.mockPublished))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+  return sortWorkflowAppsByCreatedAt(
+    readAppRecords().filter((app) => app.dsl.app.mode === 'chat' && Boolean(app.mockPublished)),
+  );
 };
 
 export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolean): WorkflowAppRecord | undefined => {
