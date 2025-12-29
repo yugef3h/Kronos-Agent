@@ -11,7 +11,9 @@ local_docs
 # 持久化数据（本地缓存，不入仓库；已跟踪文件与下方例外仍保留）
 apps/server/data/*
 !apps/server/data/knowledge-datasets.json
-!apps/server/data/sessions/
+!apps/server/data/workflow-examples/
+!apps/server/data/workflow-examples/**
+apps/server/data/sessions/*
 !apps/server/data/sessions/.gitkeep
 apps/server/data/workflow-draft-previews/
 __pycache__/

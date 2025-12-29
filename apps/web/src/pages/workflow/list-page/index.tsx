@@ -12,6 +12,7 @@ import {
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
   type WorkflowAppRecord,
 } from '../../../features/workflow/workflowAppStore';
+import { WORKFLOW_EXAMPLES_CHANGED_EVENT } from '../../../features/workflow/workflowExampleClient';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -52,10 +53,12 @@ export const WorkflowPage = () => {
     };
     window.addEventListener('focus', onFocus);
     window.addEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
+    window.addEventListener(WORKFLOW_EXAMPLES_CHANGED_EVENT, onWorkflowAppsChanged);
     window.addEventListener('storage', onStorage);
     return () => {
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('kronos:workflow-apps-changed', onWorkflowAppsChanged);
+      window.removeEventListener(WORKFLOW_EXAMPLES_CHANGED_EVENT, onWorkflowAppsChanged);
       window.removeEventListener('storage', onStorage);
     };
   }, []);
@@ -130,7 +133,7 @@ export const WorkflowPage = () => {
               <Link
                 key={app.id}
                 to={getWorkflowAppEditorPath(app)}
-                className="group relative block min-h-[272px] rounded-2xl border border-slate-200/80 bg-white p-4 pb-11 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
+                className="group relative block min-h-[262px] rounded-2xl border border-slate-200/80 bg-white p-4 pb-11 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-lg">

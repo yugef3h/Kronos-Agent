@@ -1,5 +1,11 @@
 import { apiUrl } from '../../lib/api';
-import { getBundledWorkflowPreviewSrc } from './seed/bundledWorkflowApps';
+import {
+  deleteWorkflowExampleApp,
+  getWorkflowExampleAppsCache,
+  getWorkflowExamplePreviewSrc,
+  isWorkflowExampleAppId,
+  saveWorkflowExampleApp,
+} from './workflowExampleClient';
 
 export type LegacyWorkflowNodeType =
   | 'trigger'
@@ -385,9 +391,8 @@ export const getWorkflowDraftThumbnailSrc = (app: WorkflowAppRecord): string | u
   if (app.draftPreviewDataUrl) {
     return app.draftPreviewDataUrl;
   }
-  const bundledPreview = getBundledWorkflowPreviewSrc(app.id);
-  if (bundledPreview) {
-    return bundledPreview;
+  if (isWorkflowExampleAppId(app.id)) {
+    return getWorkflowExamplePreviewSrc(app);
   }
   if (app.draftPreviewBackendSynced) {
     return apiUrl(
@@ -546,18 +551,49 @@ export const sortWorkflowAppsByCreatedAt = (apps: WorkflowAppRecord[]): Workflow
   return [...apps].sort((a, b) => a.createdAt - b.createdAt);
 };
 
-export const listWorkflowApps = (): WorkflowAppRecord[] => {
-  return sortWorkflowAppsByCreatedAt(readAppRecords());
+const mergeLocalAndExampleApps = (): WorkflowAppRecord[] => {
+  const local = readAppRecords();
+  const localIds = new Set(local.map((app) => app.id));
+  const examples = getWorkflowExampleAppsCache().filter((app) => !localIds.has(app.id));
+  return sortWorkflowAppsByCreatedAt([...examples, ...local]);
 };
+
+const findExampleApp = (appId: string): WorkflowAppRecord | undefined =>
+  getWorkflowExampleAppsCache().find((app) => app.id === appId);
+
+const persistWorkflowExampleRecord = (record: WorkflowAppRecord): void => {
+  const rest = { ...record };
+  delete rest.draftPreviewDataUrl;
+  void saveWorkflowExampleApp(rest);
+};
+
+export const listWorkflowApps = (): WorkflowAppRecord[] => mergeLocalAndExampleApps();
 
 /** 已假发布且为 Chatbot（`dsl.app.mode === 'chat'`）的应用，供首页对话 RAG 应用下拉使用。 */
 export const listPublishedChatbotWorkflowApps = (): WorkflowAppRecord[] => {
   return sortWorkflowAppsByCreatedAt(
-    readAppRecords().filter((app) => app.dsl.app.mode === 'chat' && Boolean(app.mockPublished)),
+    mergeLocalAndExampleApps().filter(
+      (app) => app.dsl.app.mode === 'chat' && Boolean(app.mockPublished),
+    ),
   );
 };
 
 export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolean): WorkflowAppRecord | undefined => {
+  const example = findExampleApp(appId);
+  if (example) {
+    const updatedApp: WorkflowAppRecord = {
+      ...example,
+      updatedAt: Date.now(),
+      mockPublished,
+    };
+    delete updatedApp.draftPreviewDataUrl;
+    persistWorkflowExampleRecord(updatedApp);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+    }
+    return updatedApp;
+  }
+
   const apps = readAppRecords();
   const appIndex = apps.findIndex((app) => app.id === appId);
   if (appIndex < 0) {
@@ -584,8 +620,11 @@ export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolea
 };
 
 export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined => {
-  const app = readAppRecords().find((a) => a.id === id);
-  return app;
+  const local = readAppRecords().find((a) => a.id === id);
+  if (local) {
+    return local;
+  }
+  return findExampleApp(id);
 };
 
 export const getWorkflowAppEditorPath = (app: WorkflowAppRecord): string => {
@@ -600,6 +639,19 @@ export const updateWorkflowAppChatbotOrchestration = (
   appId: string,
   recipe: (previous: WorkflowChatbotOrchestration) => WorkflowChatbotOrchestration,
 ): WorkflowAppRecord | undefined => {
+  const example = findExampleApp(appId);
+  if (example) {
+    const base = example.chatbotOrchestration ?? createDefaultChatbotOrchestration();
+    const updatedApp: WorkflowAppRecord = {
+      ...example,
+      updatedAt: Date.now(),
+      chatbotOrchestration: recipe(base),
+    };
+    delete updatedApp.draftPreviewDataUrl;
+    persistWorkflowExampleRecord(updatedApp);
+    return updatedApp;
+  }
+
   const apps = readAppRecords();
   const appIndex = apps.findIndex((app) => app.id === appId);
   if (appIndex < 0) {
@@ -623,26 +675,38 @@ export const updateWorkflowAppChatbotOrchestration = (
 };
 
 export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowAppRecord | undefined => {
-  const apps = readAppRecords()
-  const appIndex = apps.findIndex(app => app.id === appId)
+  const example = findExampleApp(appId);
+  if (example) {
+    const updatedApp: WorkflowAppRecord = {
+      ...example,
+      updatedAt: Date.now(),
+      dsl,
+    };
+    delete updatedApp.draftPreviewDataUrl;
+    persistWorkflowExampleRecord(updatedApp);
+    return updatedApp;
+  }
 
-  if (appIndex < 0)
-    return undefined
+  const apps = readAppRecords();
+  const appIndex = apps.findIndex((app) => app.id === appId);
+  if (appIndex < 0) {
+    return undefined;
+  }
 
-  const prev = apps[appIndex]
+  const prev = apps[appIndex];
   const updatedApp: WorkflowAppRecord = {
     ...prev,
     updatedAt: Date.now(),
     dsl,
-  }
-  delete updatedApp.draftPreviewDataUrl
+  };
+  delete updatedApp.draftPreviewDataUrl;
 
-  apps[appIndex] = updatedApp
-  writeAppRecords(apps)
+  apps[appIndex] = updatedApp;
+  writeAppRecords(apps);
 
-  const previewUrl = readWorkflowDraftPreviewDataUrl(appId)
-  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp
-}
+  const previewUrl = readWorkflowDraftPreviewDataUrl(appId);
+  return previewUrl ? { ...updatedApp, draftPreviewDataUrl: previewUrl } : updatedApp;
+};
 
 export const updateWorkflowAppMeta = (
   appId: string,
@@ -651,6 +715,31 @@ export const updateWorkflowAppMeta = (
   const name = payload.name.trim();
   if (!name) {
     throw new Error('应用名称不能为空');
+  }
+
+  const example = findExampleApp(appId);
+  if (example) {
+    const description = payload.description?.trim() ?? '';
+    const updatedApp: WorkflowAppRecord = {
+      ...example,
+      name,
+      description,
+      updatedAt: Date.now(),
+      dsl: {
+        ...example.dsl,
+        app: {
+          ...example.dsl.app,
+          name,
+          description,
+        },
+      },
+    };
+    delete updatedApp.draftPreviewDataUrl;
+    persistWorkflowExampleRecord(updatedApp);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+    }
+    return updatedApp;
   }
 
   const apps = readAppRecords();
@@ -689,6 +778,14 @@ export const updateWorkflowAppMeta = (
 };
 
 export const deleteWorkflowApp = (appId: string): boolean => {
+  if (isWorkflowExampleAppId(appId)) {
+    void deleteWorkflowExampleApp(appId);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+    }
+    return true;
+  }
+
   const apps = readAppRecords();
   const next = apps.filter((app) => app.id !== appId);
   if (next.length === apps.length) {

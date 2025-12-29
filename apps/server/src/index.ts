@@ -56,6 +56,11 @@ const maybeSkipAuth = (req: express.Request, res: express.Response, next: expres
     next();
     return;
   }
+  // 仓库内置示例：只读列表与缩略图无需 JWT（fork 开箱可见）
+  if (req.originalUrl.startsWith('/api/workflow/examples')) {
+    next();
+    return;
+  }
   authenticateJwt(req, res, next);
 };
 
