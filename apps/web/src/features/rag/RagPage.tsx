@@ -22,7 +22,10 @@ import type {
   LocalImportPreview,
   PendingImportConfig,
 } from './types';
+import { KnowledgeDatasetCardMenu } from './components/knowledge-dataset-card-menu';
+import { KnowledgeDatasetEditDialog } from './components/knowledge-dataset-edit-dialog';
 import {
+  buildDatasetMetaUpdateInput,
   buildDocumentMetadata,
   createImportFormState,
   createMetadataDrafts,
@@ -36,6 +39,7 @@ import {
   PREVIEW_CHUNK_LIMIT,
   readFileAsDataUrl,
 } from './utils';
+import type { KnowledgeDatasetDetail } from '../../pages/workflow/features/knowledge-retrieval-panel/types';
 import { appendTagItems } from './tag-input-utils';
 
 const RagImportDialog = lazy(async () => {
@@ -59,8 +63,10 @@ export const RagPage = () => {
     errorMessage,
     refresh,
     createDataset,
+    updateDataset,
     deleteDataset,
   } = useKnowledgeDatasets();
+  const [editingDataset, setEditingDataset] = useState<KnowledgeDatasetDetail | null>(null);
   const [pendingTargetDatasetId, setPendingTargetDatasetId] = useState('');
   const [pageError, setPageError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -763,11 +769,24 @@ export const RagPage = () => {
     event.target.value = '';
   };
 
-  const handleDeleteDataset = async (datasetId: string, name: string) => {
-    if (!window.confirm(`确认删除知识库“${name}”？`)) {
-      return;
-    }
+  const handleUpdateDatasetMeta = useCallback(
+    async (payload: { name: string; description: string }) => {
+      if (!editingDataset) {
+        return;
+      }
 
+      await updateDataset(
+        editingDataset.id,
+        buildDatasetMetaUpdateInput(editingDataset, payload),
+      );
+      setPageError('');
+      setSuccessMessage('知识库信息已更新。');
+      setEditingDataset(null);
+    },
+    [editingDataset, updateDataset],
+  );
+
+  const handleDeleteDataset = async (datasetId: string) => {
     try {
       await deleteDataset(datasetId);
       if (selectedDatasetId === datasetId) {
@@ -994,7 +1013,7 @@ export const RagPage = () => {
                   handleDatasetSelection(dataset.id, { openDetail: true });
                 }
               }}
-              className={`group rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedDatasetId === dataset.id ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200/80 hover:border-cyan-300'}`}
+              className={`group relative min-h-[240px] rounded-2xl border bg-white p-4 pb-11 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedDatasetId === dataset.id ? 'border-cyan-400 ring-2 ring-cyan-100' : 'border-slate-200/80 hover:border-cyan-300'}`}
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 text-xs font-semibold uppercase tracking-wide text-cyan-700">
@@ -1021,19 +1040,15 @@ export const RagPage = () => {
                 <span>{dataset.chunkCount ?? 0} chunks</span>
               </div>
 
-              <div className="mt-4 flex items-center justify-end gap-2 ">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void handleDeleteDataset(dataset.id, dataset.name);
-                  }}
-                  disabled={isImporting || isMutating || isLoading}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  删除
-                </button>
-              </div>
+              <KnowledgeDatasetCardMenu
+                className="absolute bottom-4 right-4 z-10"
+                datasetName={dataset.name}
+                disabled={isImporting || isMutating || isLoading}
+                onEdit={() => setEditingDataset(dataset)}
+                onDelete={() => {
+                  void handleDeleteDataset(dataset.id);
+                }}
+              />
             </article>
           ))}
         </div>
@@ -1078,6 +1093,13 @@ export const RagPage = () => {
           />
         </Suspense>
       ) : null}
+
+      <KnowledgeDatasetEditDialog
+        dataset={editingDataset}
+        isSubmitting={isMutating}
+        onClose={() => setEditingDataset(null)}
+        onSave={handleUpdateDatasetMeta}
+      />
 
       {isDatasetDetailDialogOpen ? (
         <Suspense fallback={null}>

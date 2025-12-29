@@ -1,3 +1,5 @@
+import type { KnowledgeDatasetMutationInput } from '../../lib/api';
+import type { KnowledgeDatasetDetail } from '../../pages/workflow/features/knowledge-retrieval-panel/types';
 import type { ImportFormState, ImportMetadataFieldDraft } from './types';
 
 export const DOCUMENT_INPUT_ACCEPT = '.txt,.md,.mdx,.json,.csv,.yaml,.yml,.pdf,.doc,.docx,.xls,.xlsx,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -184,6 +186,24 @@ export const buildDocumentMetadata = (fields: ImportMetadataFieldDraft[]) => {
     return accumulator;
   }, {});
 };
+
+export const buildDatasetMetaUpdateInput = (
+  dataset: KnowledgeDatasetDetail,
+  patch: { name: string; description: string },
+): KnowledgeDatasetMutationInput => ({
+  name: patch.name.trim(),
+  description: patch.description.trim(),
+  is_multimodal: dataset.is_multimodal,
+  doc_metadata: dataset.doc_metadata.map((field) => ({ key: field.key, label: field.label })),
+  indexing_technique: dataset.indexing_technique,
+  embedding_model: dataset.embedding_model,
+  embedding_model_provider: dataset.embedding_model_provider,
+  retrieval_model: dataset.retrieval_model,
+  process_rule: dataset.process_rule,
+  summary_index_setting: dataset.summary_index_setting,
+  doc_form: dataset.doc_form,
+  doc_language: dataset.doc_language,
+});
 
 export const readFileAsDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
