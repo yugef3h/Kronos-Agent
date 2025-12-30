@@ -1,0 +1,20 @@
+[
+  {
+    "id": "28ddb86d-6523-43ba-9676-054039c71fa3",
+    "datasetId": "ai工程师转型技能表-2026",
+    "name": "AI工程师转型技能表_2026.xlsx",
+    "extension": "xlsx",
+    "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "size": 22205,
+    "status": "completed",
+    "createdAt": 1776915110030,
+    "updatedAt": 1776915110030,
+    "sourcePath": "documents/28ddb86d-6523-43ba-9676-054039c71fa3/source/original.xlsx",
+    "parsedTextPath": "documents/28ddb86d-6523-43ba-9676-054039c71fa3/parsed/content.txt",
+    "chunkPath": "documents/28ddb86d-6523-43ba-9676-054039c71fa3/chunks/chunks.jsonl",
+    "chunkCount": 7,
+    "characterCount": 9893,
+    "previewText": "# 技能清单与掌握度矩阵\n2026年大厂AI工程师技能清单与掌握度矩阵（前端+Go背景）\n数据来源：字节跳动/阿里/腾讯/百度招聘JD分析 + 2026春招面试复盘 | 更新日期：2026年4月\n技能模块 | 具体技术/工具 | 掌握度要求\n(1-10分) | 优先级 | 必学/加分 | 您的背景\n关联度 | 学习资源推荐 | 预计学习时长 | 面试出现频率 | 备注\n编程语言 | Python (核心生态) | 8 | 最高 | 必学...",
+    "metadata": {}
+  }
+]
