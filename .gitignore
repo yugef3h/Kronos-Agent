@@ -13,6 +13,8 @@ apps/server/data/*
 !apps/server/data/knowledge-datasets.json
 !apps/server/data/workflow-examples/
 !apps/server/data/workflow-examples/**
+!apps/server/data/knowledge-examples/
+!apps/server/data/knowledge-examples/**
 apps/server/data/sessions/*
 !apps/server/data/sessions/.gitkeep
 apps/server/data/workflow-draft-previews/

@@ -1,6 +1,13 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { dirname, join } from 'path';
+import {
+  deleteKnowledgeExampleDataset,
+  getKnowledgeExampleDataset,
+  isKnowledgeExampleDatasetId,
+  listKnowledgeExampleDatasets,
+  saveKnowledgeExampleDataset,
+} from '../services/knowledgeExampleStore.js';
 
 export type KnowledgeMetadataField = {
   key: string;
@@ -431,13 +438,19 @@ export const initKnowledgeDatasetStore = async (): Promise<void> => {
 
 export const listKnowledgeDatasets = async (): Promise<KnowledgeDatasetRecord[]> => {
   await ensureInitialized();
-  return sortDatasets([...datasets.values()]).map(cloneDataset);
+  const localIds = new Set(datasets.keys());
+  const examples = (await listKnowledgeExampleDatasets()).filter((item) => !localIds.has(item.id));
+  return sortDatasets([...examples, ...datasets.values()]).map(cloneDataset);
 };
 
 export const getKnowledgeDatasetById = async (datasetId: string): Promise<KnowledgeDatasetRecord | null> => {
   await ensureInitialized();
   const dataset = datasets.get(datasetId);
-  return dataset ? cloneDataset(dataset) : null;
+  if (dataset) {
+    return cloneDataset(dataset);
+  }
+  const example = await getKnowledgeExampleDataset(datasetId);
+  return example ? cloneDataset(example) : null;
 };
 
 export const createKnowledgeDataset = async (input: KnowledgeDatasetInput): Promise<KnowledgeDatasetRecord> => {
@@ -448,7 +461,7 @@ export const createKnowledgeDataset = async (input: KnowledgeDatasetInput): Prom
   let nextId = baseId;
   let suffix = 1;
 
-  while (datasets.has(nextId)) {
+  while (datasets.has(nextId) || (await getKnowledgeExampleDataset(nextId))) {
     suffix += 1;
     nextId = `${baseId}-${suffix}`;
   }
@@ -487,7 +500,7 @@ export const updateKnowledgeDataset = async (
 ): Promise<KnowledgeDatasetRecord> => {
   await ensureInitialized();
 
-  const existing = datasets.get(datasetId);
+  const existing = datasets.get(datasetId) ?? (await getKnowledgeExampleDataset(datasetId));
   if (!existing) {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
@@ -511,6 +524,11 @@ export const updateKnowledgeDataset = async (
     updatedAt: Date.now(),
   };
 
+  if (isKnowledgeExampleDatasetId(datasetId)) {
+    await saveKnowledgeExampleDataset(updated);
+    return cloneDataset(updated);
+  }
+
   datasets.set(datasetId, updated);
   await enqueuePersist();
 
@@ -519,6 +537,11 @@ export const updateKnowledgeDataset = async (
 
 export const deleteKnowledgeDataset = async (datasetId: string): Promise<void> => {
   await ensureInitialized();
+
+  if (isKnowledgeExampleDatasetId(datasetId)) {
+    await deleteKnowledgeExampleDataset(datasetId);
+    return;
+  }
 
   if (!datasets.has(datasetId)) {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
@@ -534,7 +557,7 @@ export const updateKnowledgeDatasetStats = async (
 ): Promise<KnowledgeDatasetRecord> => {
   await ensureInitialized();
 
-  const existing = datasets.get(datasetId);
+  const existing = datasets.get(datasetId) ?? (await getKnowledgeExampleDataset(datasetId));
   if (!existing) {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
@@ -545,6 +568,11 @@ export const updateKnowledgeDatasetStats = async (
     chunkCount: typeof stats.chunkCount === 'number' ? Math.max(0, Math.floor(stats.chunkCount)) : existing.chunkCount,
     updatedAt: Date.now(),
   };
+
+  if (isKnowledgeExampleDatasetId(datasetId)) {
+    await saveKnowledgeExampleDataset(updated);
+    return cloneDataset(updated);
+  }
 
   datasets.set(datasetId, updated);
   await enqueuePersist();

@@ -1,7 +1,13 @@
-import { existsSync } from 'fs';
 import { mkdir, readFile, rm, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
-import { dirname, extname, join } from 'path';
+import { extname, join } from 'path';
+import {
+  getLocalKnowledgeDatasetsDir,
+  isKnowledgeExampleDatasetId,
+  resolveKnowledgeDatasetDataDir,
+  resolveKnowledgeStoredPath,
+} from './knowledgeDataPaths.js';
+import { deleteKnowledgeExampleDataset } from '../services/knowledgeExampleStore.js';
 import {
   buildKnowledgeDocumentChunks,
   type KnowledgeChunkPreview,
@@ -75,32 +81,18 @@ export type KnowledgeDatasetChunkRecord = {
   document: KnowledgeDocumentRecord;
 };
 
-const resolveDefaultDatasetsDir = () => {
-  const cwd = process.cwd();
-  const repoScopedDir = join(cwd, 'apps/server/data/knowledge-datasets');
-  if (existsSync(join(cwd, 'apps/server'))) {
-    return repoScopedDir;
-  }
-
-  return join(cwd, 'data/knowledge-datasets');
-};
-
-const DEFAULT_DATASETS_DIR = resolveDefaultDatasetsDir();
-
 const getDatasetsDir = () => {
   if (process.env.KNOWLEDGE_DATASETS_DIR) {
     return process.env.KNOWLEDGE_DATASETS_DIR;
   }
-
-  if (process.env.KNOWLEDGE_DATASETS_STORE_PATH) {
-    return join(dirname(process.env.KNOWLEDGE_DATASETS_STORE_PATH), 'knowledge-datasets');
-  }
-
-  return DEFAULT_DATASETS_DIR;
+  return getLocalKnowledgeDatasetsDir();
 };
 
-const getDatasetDir = (datasetId: string) => join(getDatasetsDir(), datasetId);
+const getDatasetDir = (datasetId: string) => resolveKnowledgeDatasetDataDir(datasetId);
 const getDocumentsIndexPath = (datasetId: string) => join(getDatasetDir(datasetId), 'documents', 'documents.json');
+
+const resolveDocumentFilePath = (datasetId: string, storedPath: string): string =>
+  resolveKnowledgeStoredPath(datasetId, storedPath);
 
 const ensureDatasetDirectories = async (datasetId: string) => {
   const documentsDir = join(getDatasetDir(datasetId), 'documents');
@@ -124,8 +116,8 @@ const writeDocumentsIndex = async (datasetId: string, records: KnowledgeDocument
   await writeFile(getDocumentsIndexPath(datasetId), JSON.stringify(records, null, 2), 'utf-8');
 };
 
-const readStoredChunks = async (chunkPath: string): Promise<StoredChunk[]> => {
-  const raw = await readFile(chunkPath, 'utf-8');
+const readStoredChunks = async (datasetId: string, chunkPath: string): Promise<StoredChunk[]> => {
+  const raw = await readFile(resolveDocumentFilePath(datasetId, chunkPath), 'utf-8');
 
   return raw
     .split('\n')
@@ -147,9 +139,9 @@ const readStoredChunks = async (chunkPath: string): Promise<StoredChunk[]> => {
     .sort((left, right) => left.index - right.index);
 };
 
-const writeStoredChunks = async (chunkPath: string, chunks: StoredChunk[]) => {
+const writeStoredChunks = async (datasetId: string, chunkPath: string, chunks: StoredChunk[]) => {
   await writeFile(
-    chunkPath,
+    resolveDocumentFilePath(datasetId, chunkPath),
     chunks.map((chunk) => JSON.stringify(chunk)).join('\n'),
     'utf-8',
   );
@@ -157,6 +149,7 @@ const writeStoredChunks = async (chunkPath: string, chunks: StoredChunk[]) => {
 
 /** Step4：按 chunk id 合并向量到既有 `chunks.jsonl` 行，供 LangChain 检索读盘或增量更新。 */
 export const mergeEmbeddingsIntoChunkFile = async (
+  datasetId: string,
   chunkPath: string,
   embeddingsByChunkId: Record<string, number[]>,
 ): Promise<void> => {
@@ -164,7 +157,7 @@ export const mergeEmbeddingsIntoChunkFile = async (
     return;
   }
 
-  const chunks = await readStoredChunks(chunkPath);
+  const chunks = await readStoredChunks(datasetId, chunkPath);
   const next = chunks.map((chunk) => {
     const emb = embeddingsByChunkId[chunk.id];
     if (!emb?.length) {
@@ -172,7 +165,7 @@ export const mergeEmbeddingsIntoChunkFile = async (
     }
     return { ...chunk, embedding: emb };
   });
-  await writeStoredChunks(chunkPath, next);
+  await writeStoredChunks(datasetId, chunkPath, next);
 };
 
 const buildPreviewText = (text: string) => {
@@ -229,7 +222,7 @@ export const persistImportedDocument = async (params: {
     },
   }));
 
-  await writeStoredChunks(chunksFilePath, storedChunks);
+  await writeStoredChunks(params.dataset.id, chunksFilePath, storedChunks);
   await writeFile(
     previewFilePath,
     JSON.stringify({ chunks: params.chunks.slice(0, 8) }, null, 2),
@@ -293,7 +286,7 @@ export const getKnowledgeDocumentBlocks = async (
     throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
   }
 
-  const chunks = (await readStoredChunks(document.chunkPath))
+  const chunks = (await readStoredChunks(datasetId, document.chunkPath))
     .map((chunk) => ({
       id: chunk.id,
       index: chunk.index,
@@ -321,7 +314,7 @@ export const listKnowledgeDatasetChunks = async (
   const documents = await readDocumentsIndex(datasetId);
   const results = await Promise.all(
     documents.map(async (document) => {
-      const chunks = await readStoredChunks(document.chunkPath);
+      const chunks = await readStoredChunks(datasetId, document.chunkPath);
       return chunks.map((chunk) => ({
         chunk,
         document,
@@ -333,7 +326,11 @@ export const listKnowledgeDatasetChunks = async (
 };
 
 export const deleteKnowledgeDatasetFiles = async (datasetId: string): Promise<void> => {
-  await rm(getDatasetDir(datasetId), { recursive: true, force: true });
+  if (isKnowledgeExampleDatasetId(datasetId)) {
+    await deleteKnowledgeExampleDataset(datasetId);
+    return;
+  }
+  await rm(join(getDatasetsDir(), datasetId), { recursive: true, force: true });
 };
 
 export const previewKnowledgeDocuments = async (params: {
@@ -409,7 +406,7 @@ export const updateKnowledgeDocumentBlockKeywords = async (params: {
     throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
   }
 
-  const chunks = await readStoredChunks(document.chunkPath);
+  const chunks = await readStoredChunks(params.datasetId, document.chunkPath);
   const nextKeywords = normalizeKeywords(params.keywords);
   const targetChunk = chunks.find((chunk) => chunk.id === params.chunkId);
 
@@ -428,7 +425,7 @@ export const updateKnowledgeDocumentBlockKeywords = async (params: {
     };
   });
 
-  await writeStoredChunks(document.chunkPath, nextChunks);
+  await writeStoredChunks(params.datasetId, document.chunkPath, nextChunks);
 
   const updatedAt = Date.now();
   const nextRecords = records.map((item) => {

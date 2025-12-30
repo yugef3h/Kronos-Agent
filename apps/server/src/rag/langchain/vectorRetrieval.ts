@@ -94,7 +94,7 @@ export async function runLangchainVectorRetrievalQuery(
     }
   }
 
-  const pathToNewVectors: Record<string, Record<string, number[]>> = {};
+  const pathToNewVectors: Record<string, { datasetId: string; chunkPath: string; byId: Record<string, number[]> }> = {};
 
   /** 批量向量化并持久化到各 document 的 chunks.jsonl（按 chunkPath 分组）。 */
   if (needEmbed.length) {
@@ -112,15 +112,18 @@ export async function runLangchainVectorRetrievalQuery(
       if (!vector?.length) {
         return;
       }
-      const path = record.document.chunkPath;
-      if (!pathToNewVectors[path]) {
-        pathToNewVectors[path] = {};
+      const chunkPath = record.document.chunkPath;
+      const vectorKey = `${record.chunk.datasetId}::${chunkPath}`;
+      if (!pathToNewVectors[vectorKey]) {
+        pathToNewVectors[vectorKey] = { datasetId: record.chunk.datasetId, chunkPath, byId: {} };
       }
-      pathToNewVectors[path][record.chunk.id] = vector;
+      pathToNewVectors[vectorKey].byId[record.chunk.id] = vector;
     });
 
     await Promise.all(
-      Object.entries(pathToNewVectors).map(([chunkPath, byId]) => mergeEmbeddingsIntoChunkFile(chunkPath, byId)),
+      Object.values(pathToNewVectors).map((entry) =>
+        mergeEmbeddingsIntoChunkFile(entry.datasetId, entry.chunkPath, entry.byId),
+      ),
     );
   }
 

@@ -123,7 +123,7 @@ export async function importKnowledgeDocument(params: {
         byId[chunk.id] = vector;
       }
     });
-    await mergeEmbeddingsIntoChunkFile(persisted.record.chunkPath, byId);
+    await mergeEmbeddingsIntoChunkFile(persisted.record.datasetId, persisted.record.chunkPath, byId);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown';
     console.warn(`[rag/langchain] chunk embedding persist failed (retrieval will embed on-the-fly): ${message}`);
