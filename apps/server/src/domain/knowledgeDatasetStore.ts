@@ -8,6 +8,7 @@ import {
   listKnowledgeExampleDatasets,
   saveKnowledgeExampleDataset,
 } from '../services/knowledgeExampleStore.js';
+import { assertKnowledgeDatasetNotUsedByWorkflow } from '../services/workflowKnowledgeDependencies.js';
 
 export type KnowledgeMetadataField = {
   key: string;
@@ -537,6 +538,8 @@ export const updateKnowledgeDataset = async (
 
 export const deleteKnowledgeDataset = async (datasetId: string): Promise<void> => {
   await ensureInitialized();
+
+  await assertKnowledgeDatasetNotUsedByWorkflow(datasetId);
 
   if (isKnowledgeExampleDatasetId(datasetId)) {
     await deleteKnowledgeExampleDataset(datasetId);

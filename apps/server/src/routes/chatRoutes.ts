@@ -51,6 +51,7 @@ import {
   saveWorkflowExamplePreviewJpeg,
   type WorkflowExampleAppRecord,
 } from '../services/workflowExampleStore.js';
+import { KnowledgeDatasetInUseByWorkflowError } from '../services/workflowKnowledgeDependencies.js';
 import { join } from 'path';
 import { computeKnowledgeDatasetHealth } from '../services/knowledgeDatasetHealthService.js';
 import {
@@ -287,6 +288,11 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
     response.status(204).end();
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (error instanceof KnowledgeDatasetInUseByWorkflowError) {
+      response.status(409).json({ error: error.message, usages: error.usages });
+      return;
+    }
 
     if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
       response.status(404).json({ error: 'Knowledge dataset not found' });

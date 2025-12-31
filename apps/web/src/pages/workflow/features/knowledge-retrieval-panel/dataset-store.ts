@@ -9,6 +9,10 @@ import {
   type KnowledgeDatasetResponseItem,
 } from '../../../../lib/api'
 import { usePlaygroundStore } from '../../../../store/playgroundStore'
+import {
+  findWorkflowAppsUsingDataset,
+  formatWorkflowDatasetInUseMessage,
+} from '../../../../features/workflow/workflowKnowledgeDependencies'
 import type { KnowledgeDatasetDetail, KnowledgeMetadataField } from './types'
 
 const KNOWLEDGE_DATASETS_UPDATED_EVENT = 'kronos:workflow:knowledge-datasets-updated'
@@ -204,6 +208,11 @@ const updateRemoteKnowledgeDataset = async (datasetId: string, input: KnowledgeD
 }
 
 const deleteRemoteKnowledgeDataset = async (datasetId: string) => {
+  const blockingApps = findWorkflowAppsUsingDataset(datasetId)
+  if (blockingApps.length > 0) {
+    throw new Error(formatWorkflowDatasetInUseMessage(blockingApps))
+  }
+
   const authToken = await ensureKnowledgeDatasetAuthToken()
   if (!authToken) {
     throw new Error(KNOWLEDGE_DATASET_AUTH_ERROR)

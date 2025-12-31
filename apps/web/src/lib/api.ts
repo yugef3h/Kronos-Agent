@@ -929,8 +929,23 @@ export const requestDeleteKnowledgeDataset = async (params: {
 		},
 	});
 
+	if (response.status === 409) {
+		const payload = (await response.json().catch(() => ({}))) as {
+			error?: string;
+			usages?: Array<{ appId: string; appName: string }>;
+		};
+		const names = Array.isArray(payload.usages)
+			? payload.usages.map((usage) => `「${usage.appName}」`).join('、')
+			: '';
+		throw new Error(
+			names
+				? `该知识库正被工作流应用 ${names} 使用，无法删除`
+				: '该知识库正被工作流应用使用，无法删除',
+		);
+	}
+
 	if (!response.ok) {
-		throw new Error('Failed to delete knowledge dataset');
+		throw new Error(await readApiErrorMessage(response, 'Failed to delete knowledge dataset'));
 	}
 };
 
