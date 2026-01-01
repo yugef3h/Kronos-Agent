@@ -536,6 +536,19 @@ export const updateKnowledgeDataset = async (
   return cloneDataset(updated);
 };
 
+/** 从本地 knowledge-datasets.json 移除（示例迁出时用，不删 example 数据） */
+export const removeKnowledgeDatasetFromLocalIndex = async (datasetId: string): Promise<boolean> => {
+  await ensureInitialized();
+
+  if (!datasets.has(datasetId)) {
+    return false;
+  }
+
+  datasets.delete(datasetId);
+  await enqueuePersist();
+  return true;
+};
+
 export const deleteKnowledgeDataset = async (datasetId: string): Promise<void> => {
   await ensureInitialized();
 

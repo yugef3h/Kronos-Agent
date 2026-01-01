@@ -2,6 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 export const resolveLocalKnowledgeDatasetsDir = (): string => {
+  const fromEnv = process.env.KNOWLEDGE_DATASETS_DIR?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
   const cwd = process.cwd();
   const repoScopedDir = join(cwd, 'apps/server/data/knowledge-datasets');
   if (existsSync(join(cwd, 'apps/server'))) {
@@ -11,6 +16,11 @@ export const resolveLocalKnowledgeDatasetsDir = (): string => {
 };
 
 export const resolveKnowledgeExamplesDir = (): string => {
+  const fromEnv = process.env.KNOWLEDGE_EXAMPLES_DIR?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
   const cwd = process.cwd();
   const repoScopedDir = join(cwd, 'apps/server/data/knowledge-examples');
   if (existsSync(join(cwd, 'apps/server'))) {
@@ -19,22 +29,25 @@ export const resolveKnowledgeExamplesDir = (): string => {
   return join(cwd, 'data/knowledge-examples');
 };
 
-const LOCAL_DATASETS_DIR = resolveLocalKnowledgeDatasetsDir();
-const EXAMPLES_DIR = resolveKnowledgeExamplesDir();
+export const getLocalKnowledgeDatasetsDir = (): string => resolveLocalKnowledgeDatasetsDir();
 
-export const getLocalKnowledgeDatasetsDir = (): string => LOCAL_DATASETS_DIR;
-
-export const getKnowledgeExamplesDir = (): string => EXAMPLES_DIR;
+export const getKnowledgeExamplesDir = (): string => resolveKnowledgeExamplesDir();
 
 export const isKnowledgeExampleDatasetId = (datasetId: string): boolean =>
-  existsSync(join(EXAMPLES_DIR, `${datasetId}.json`));
+  existsSync(join(resolveKnowledgeExamplesDir(), `${datasetId}.json`));
 
-const LOCAL_INDEX_FILE = join(dirname(LOCAL_DATASETS_DIR), 'knowledge-datasets.json');
+const resolveLocalIndexFile = (): string => {
+  const fromEnv = process.env.KNOWLEDGE_DATASETS_STORE_PATH?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+  return join(dirname(resolveLocalKnowledgeDatasetsDir()), 'knowledge-datasets.json');
+};
 
 /** 是否在本地 knowledge-datasets.json 索引中（与 example 元数据并列判断） */
 export const isInLocalKnowledgeDatasetIndex = (datasetId: string): boolean => {
   try {
-    const raw = readFileSync(LOCAL_INDEX_FILE, 'utf-8');
+    const raw = readFileSync(resolveLocalIndexFile(), 'utf-8');
     const parsed = JSON.parse(raw) as Array<{ id?: string }>;
     return Array.isArray(parsed) && parsed.some((row) => row?.id === datasetId);
   } catch {
@@ -49,8 +62,8 @@ export const isInLocalKnowledgeDatasetIndex = (datasetId: string): boolean => {
  * 3. 否则回退 example
  */
 export const resolveKnowledgeDatasetDataDir = (datasetId: string): string => {
-  const localDir = join(LOCAL_DATASETS_DIR, datasetId);
-  const exampleDir = join(EXAMPLES_DIR, datasetId);
+  const localDir = join(resolveLocalKnowledgeDatasetsDir(), datasetId);
+  const exampleDir = join(resolveKnowledgeExamplesDir(), datasetId);
   const exampleHasDocs = existsSync(join(exampleDir, 'documents'));
   const localHasDocs = existsSync(join(localDir, 'documents'));
 

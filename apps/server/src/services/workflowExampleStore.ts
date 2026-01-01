@@ -2,6 +2,7 @@ import { access, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/pro
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizeWorkflowAppId, workflowDraftPreviewFilePath } from './workflowDraftPreviewDiskStore.js';
+import { syncKnowledgeDatasetsForWorkflowExample } from './workflowExampleKnowledgeSync.js';
 
 const resolveExamplesDir = (): string => {
   const cwd = process.cwd();
@@ -88,6 +89,11 @@ export async function saveWorkflowExampleApp(record: WorkflowExampleAppRecord): 
   await mkdir(EXAMPLES_DIR, { recursive: true });
   const payload: WorkflowExampleAppRecord = { ...record, id };
   await writeFile(exampleAppFilePath(id)!, JSON.stringify(payload, null, 2), 'utf-8');
+  try {
+    await syncKnowledgeDatasetsForWorkflowExample(payload);
+  } catch (error) {
+    console.warn(`[workflow:example] 同步关联知识库失败: ${id}`, error);
+  }
   return true;
 }
 

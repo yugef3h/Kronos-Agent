@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { allowedOrigins, env } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
+import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
 import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { getRagEngineMode } from './rag/engine.js';
@@ -69,6 +70,9 @@ app.use('/api', maybeSkipAuth, chatRoutes);
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();
 await initKnowledgeDatasetStore();
+void reconcileAllWorkflowExampleKnowledge().catch((error) => {
+  console.warn('[workflow:example:knowledge] startup reconcile failed:', error);
+});
 
 const PORT = env.PORT;
 

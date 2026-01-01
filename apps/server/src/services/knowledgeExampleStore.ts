@@ -5,16 +5,15 @@ import { getKnowledgeExamplesDir, isKnowledgeExampleDatasetId } from '../domain/
 
 export { isKnowledgeExampleDatasetId };
 
-const EXAMPLES_DIR = getKnowledgeExamplesDir();
-
-const exampleMetaPath = (datasetId: string): string => join(EXAMPLES_DIR, `${datasetId}.json`);
+const exampleMetaPath = (datasetId: string): string => join(getKnowledgeExamplesDir(), `${datasetId}.json`);
 
 export const getKnowledgeExampleDatasetDataDir = (datasetId: string): string =>
-  join(EXAMPLES_DIR, datasetId);
+  join(getKnowledgeExamplesDir(), datasetId);
 
 export async function listKnowledgeExampleDatasets(): Promise<KnowledgeDatasetRecord[]> {
-  await mkdir(EXAMPLES_DIR, { recursive: true });
-  const files = await readdir(EXAMPLES_DIR);
+  const examplesDir = getKnowledgeExamplesDir();
+  await mkdir(examplesDir, { recursive: true });
+  const files = await readdir(examplesDir);
   const items: KnowledgeDatasetRecord[] = [];
 
   for (const file of files) {
@@ -22,7 +21,7 @@ export async function listKnowledgeExampleDatasets(): Promise<KnowledgeDatasetRe
       continue;
     }
     try {
-      const raw = await readFile(join(EXAMPLES_DIR, file), 'utf-8');
+      const raw = await readFile(join(examplesDir, file), 'utf-8');
       const parsed = JSON.parse(raw) as KnowledgeDatasetRecord;
       if (parsed?.id) {
         items.push(parsed);
@@ -49,7 +48,8 @@ export async function getKnowledgeExampleDataset(
 }
 
 export async function saveKnowledgeExampleDataset(record: KnowledgeDatasetRecord): Promise<void> {
-  await mkdir(EXAMPLES_DIR, { recursive: true });
+  const examplesDir = getKnowledgeExamplesDir();
+  await mkdir(examplesDir, { recursive: true });
   await writeFile(exampleMetaPath(record.id), JSON.stringify(record, null, 2), 'utf-8');
 }
 
