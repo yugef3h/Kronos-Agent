@@ -75,6 +75,14 @@ export async function putWorkflowExamplePreview(
       },
     );
     if (response.ok) {
+      const idx = exampleAppsCache.findIndex((a) => a.id === appId);
+      if (idx >= 0) {
+        exampleAppsCache = [
+          ...exampleAppsCache.slice(0, idx),
+          { ...exampleAppsCache[idx], hasDraftPreview: true },
+          ...exampleAppsCache.slice(idx + 1),
+        ];
+      }
       return { ok: true, status: response.status };
     }
     const errorMessage = await response.text();
@@ -88,7 +96,11 @@ export async function putWorkflowExamplePreview(
   }
 }
 
-export const getWorkflowExamplePreviewSrc = (app: WorkflowAppRecord): string =>
-  apiUrl(
+export const getWorkflowExamplePreviewSrc = (app: WorkflowAppRecord): string | undefined => {
+  if (!app.hasDraftPreview) {
+    return undefined;
+  }
+  return apiUrl(
     `/api/workflow/examples/${encodeURIComponent(app.id)}/draft-preview?v=${encodeURIComponent(String(app.updatedAt))}`,
   );
+};

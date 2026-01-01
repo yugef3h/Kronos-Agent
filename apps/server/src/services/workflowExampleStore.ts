@@ -44,6 +44,16 @@ export const workflowExamplePreviewFilePath = (appId: string): string | null => 
   return join(PREVIEWS_DIR, `${id}.jpg`);
 };
 
+/** 列表用：示例是否已有缩略图（previews 或历史 workflow-draft-previews） */
+export const workflowExampleHasDraftPreview = (appId: string): boolean => {
+  const primary = workflowExamplePreviewFilePath(appId);
+  if (primary && existsSync(primary)) {
+    return true;
+  }
+  const legacy = workflowDraftPreviewFilePath(appId);
+  return Boolean(legacy && existsSync(legacy));
+};
+
 export async function listWorkflowExampleApps(): Promise<WorkflowExampleAppRecord[]> {
   await mkdir(EXAMPLES_DIR, { recursive: true });
   const files = await readdir(EXAMPLES_DIR);
@@ -88,6 +98,7 @@ export async function saveWorkflowExampleApp(record: WorkflowExampleAppRecord): 
   }
   await mkdir(EXAMPLES_DIR, { recursive: true });
   const payload: WorkflowExampleAppRecord = { ...record, id };
+  delete (payload as WorkflowExampleAppRecord & { hasDraftPreview?: boolean }).hasDraftPreview;
   await writeFile(exampleAppFilePath(id)!, JSON.stringify(payload, null, 2), 'utf-8');
   try {
     await syncKnowledgeDatasetsForWorkflowExample(payload);

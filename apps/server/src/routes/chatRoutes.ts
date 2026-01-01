@@ -46,6 +46,7 @@ import {
 import {
   deleteWorkflowExampleApp,
   listWorkflowExampleApps,
+  workflowExampleHasDraftPreview,
   readWorkflowExamplePreviewFallback,
   saveWorkflowExampleApp,
   saveWorkflowExamplePreviewJpeg,
@@ -649,7 +650,12 @@ chatRoutes.get('/workflow/apps/:appId/draft-preview', async (request: Request, r
 
 chatRoutes.get('/workflow/examples', async (_request: Request, response: Response) => {
   const apps = await listWorkflowExampleApps();
-  response.json({ apps });
+  response.json({
+    apps: apps.map((app) => ({
+      ...app,
+      hasDraftPreview: workflowExampleHasDraftPreview(app.id),
+    })),
+  });
 });
 
 chatRoutes.put('/workflow/examples/:appId', async (request: Request, response: Response) => {

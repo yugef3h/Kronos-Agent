@@ -272,6 +272,8 @@ export type WorkflowAppRecord = {
   draftPreviewDataUrl?: string;
   /** 缩略图已同步到后端 `apps/server/data/workflow-draft-previews`，列表可用 GET URL */
   draftPreviewBackendSynced?: boolean;
+  /** 内置示例：服务端 `workflow-examples/previews` 是否存在缩略图（列表 API 注入，不入库 JSON） */
+  hasDraftPreview?: boolean;
   dsl: WorkflowDSL;
   /** 仅 `dsl.app.mode === 'chat'` 时使用 */
   chatbotOrchestration?: WorkflowChatbotOrchestration;
@@ -564,6 +566,7 @@ const findExampleApp = (appId: string): WorkflowAppRecord | undefined =>
 const persistWorkflowExampleRecord = (record: WorkflowAppRecord): void => {
   const rest = { ...record };
   delete rest.draftPreviewDataUrl;
+  delete rest.hasDraftPreview;
   void saveWorkflowExampleApp(rest);
 };
 
