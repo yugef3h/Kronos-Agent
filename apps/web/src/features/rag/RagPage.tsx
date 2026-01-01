@@ -61,6 +61,7 @@ export const RagPage = () => {
     isLoading,
     isMutating,
     errorMessage,
+    clearErrorMessage,
     refresh,
     createDataset,
     updateDataset,
@@ -100,6 +101,23 @@ export const RagPage = () => {
     folderInputRef.current?.setAttribute('webkitdirectory', '');
     folderInputRef.current?.setAttribute('directory', '');
   }, []);
+
+  const bannerError = pageError || errorMessage;
+
+  useEffect(() => {
+    if (!bannerError) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPageError('');
+      clearErrorMessage();
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [bannerError, clearErrorMessage]);
 
   const totals = useMemo(
     () =>
@@ -914,8 +932,8 @@ export const RagPage = () => {
           </div>
         </div>
 
-        {pageError || errorMessage ? (
-          <p className="mt-4 text-sm text-rose-600">{pageError || errorMessage}</p>
+        {bannerError ? (
+          <p className="mt-4 text-sm text-rose-600">{bannerError}</p>
         ) : null}
         {successMessage ? (
           <p className="mt-4 text-sm text-emerald-700">{successMessage}</p>

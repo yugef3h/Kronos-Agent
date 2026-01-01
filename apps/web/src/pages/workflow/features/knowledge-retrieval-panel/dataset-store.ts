@@ -343,12 +343,17 @@ export const useKnowledgeDatasets = () => {
     }
   }, [refresh, syncFromCache])
 
+  const clearErrorMessage = useCallback(() => {
+    setErrorMessage('')
+  }, [])
+
   return {
     datasets,
     isLoading,
     hasHydrated,
     isMutating,
     errorMessage,
+    clearErrorMessage,
     refresh,
     createDataset,
     updateDataset,
