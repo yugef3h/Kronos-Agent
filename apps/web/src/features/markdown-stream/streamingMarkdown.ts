@@ -70,7 +70,10 @@ export const inferCodeLanguage = (content: string): string => {
   }
 
   const sample = content.trim().slice(0, 400);
-  if (/\b(import|export)\b/.test(sample) && /from ['"]/.test(sample)) {
+  if (
+    (/\b(import|export)\b/.test(sample) && /from ['"]/.test(sample)) ||
+    /^\s*export\s+(const|let|var|function|class|type|interface|enum|default)\b/m.test(sample)
+  ) {
     return 'typescript';
   }
   if (/^\s*def \w+\(/m.test(sample) || /:\s*$/m.test(sample)) {

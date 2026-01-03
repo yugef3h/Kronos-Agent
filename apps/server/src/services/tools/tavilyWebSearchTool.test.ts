@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-jest.unstable_mockModule('@tavily/core', () => ({
+jest.mock('@tavily/core', () => ({
   tavily: () => ({
     search: jest.fn(async () => ({
       results: [{ title: 'Live', url: 'https://news.test', content: 'Update' }],
@@ -8,7 +8,7 @@ jest.unstable_mockModule('@tavily/core', () => ({
   }),
 }));
 
-const { createTavilyWebSearchTool } = await import('./tavilyWebSearchTool');
+import { createTavilyWebSearchTool } from './tavilyWebSearchTool.js';
 
 describe('createTavilyWebSearchTool', () => {
   it('returns formatted search output', async () => {

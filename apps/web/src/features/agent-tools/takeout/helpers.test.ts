@@ -20,6 +20,7 @@ describe('takeout helpers', () => {
       selectedSnackId: null,
       isFoodListVisible: false,
       isCheckoutVisible: false,
+      isPaymentCompleted: false,
       isCallingApi: false,
       address: MOCK_ADDRESS,
       discount: MOCK_DISCOUNT,

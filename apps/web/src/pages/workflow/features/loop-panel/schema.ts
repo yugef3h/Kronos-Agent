@@ -178,6 +178,7 @@ export const getLoopVariableTypeLabel = (valueType: LoopVariableType) => {
     boolean: 'Boolean',
     array: 'Array',
     object: 'Object',
+    RAG: 'RAG',
   }
 
   return labels[valueType]

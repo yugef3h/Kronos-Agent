@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -18,12 +18,17 @@ describe('knowledgeDatasetStore', () => {
     tempDir = await mkdtemp(join(tmpdir(), 'kronos-knowledge-datasets-'));
     storeFilePath = join(tempDir, 'knowledge-datasets.json');
     process.env.KNOWLEDGE_DATASETS_STORE_PATH = storeFilePath;
+    process.env.KNOWLEDGE_DATASETS_DIR = join(tempDir, 'knowledge-datasets');
+    process.env.KNOWLEDGE_EXAMPLES_DIR = join(tempDir, 'knowledge-examples-empty');
+    await mkdir(process.env.KNOWLEDGE_EXAMPLES_DIR, { recursive: true });
     resetKnowledgeDatasetStoreForTests();
   });
 
   afterEach(async () => {
     resetKnowledgeDatasetStoreForTests();
     delete process.env.KNOWLEDGE_DATASETS_STORE_PATH;
+    delete process.env.KNOWLEDGE_DATASETS_DIR;
+    delete process.env.KNOWLEDGE_EXAMPLES_DIR;
     await rm(tempDir, { recursive: true, force: true });
   });
 

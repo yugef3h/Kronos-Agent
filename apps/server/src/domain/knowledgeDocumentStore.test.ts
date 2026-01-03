@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as xlsx from 'xlsx';
@@ -28,6 +28,9 @@ describe('knowledgeDocumentStore', () => {
     tempDir = await mkdtemp(join(tmpdir(), 'kronos-knowledge-documents-'));
     storeFilePath = join(tempDir, 'knowledge-datasets.json');
     process.env.KNOWLEDGE_DATASETS_STORE_PATH = storeFilePath;
+    process.env.KNOWLEDGE_DATASETS_DIR = join(tempDir, 'knowledge-datasets');
+    process.env.KNOWLEDGE_EXAMPLES_DIR = join(tempDir, 'knowledge-examples-empty');
+    await mkdir(process.env.KNOWLEDGE_EXAMPLES_DIR, { recursive: true });
     resetKnowledgeDatasetStoreForTests();
     await initKnowledgeDatasetStore();
   });
@@ -36,6 +39,7 @@ describe('knowledgeDocumentStore', () => {
     resetKnowledgeDatasetStoreForTests();
     delete process.env.KNOWLEDGE_DATASETS_STORE_PATH;
     delete process.env.KNOWLEDGE_DATASETS_DIR;
+    delete process.env.KNOWLEDGE_EXAMPLES_DIR;
     await rm(tempDir, { recursive: true, force: true });
   });
 

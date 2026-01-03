@@ -1,4 +1,5 @@
 import { apiUrl } from '../../lib/api';
+import { isViteDev } from '../../lib/viteEnv';
 import {
   deleteWorkflowExampleApp,
   getWorkflowExampleAppsCache,
@@ -314,7 +315,7 @@ const readWorkflowDraftPreviewDataUrl = (appId: string): string | undefined => {
 
 const writeWorkflowDraftPreviewDataUrl = (appId: string, dataUrl: string | null | undefined): void => {
   if (!canUseLocalStorage()) {
-    if (import.meta.env.DEV) {
+    if (isViteDev()) {
       console.warn('[workflow:preview] 无 localStorage，跳过侧键缩略图（可依赖后端）', { appId });
     }
     return;
@@ -338,7 +339,7 @@ const writeWorkflowDraftPreviewDataUrl = (appId: string, dataUrl: string | null 
 /** 列表缩略图：按 appId 写入独立 localStorage 键（`kronos_workflow_draft_preview_v1:{id}`） */
 export const setWorkflowDraftPreview = (appId: string, dataUrl: string | null): void => {
   writeWorkflowDraftPreviewDataUrl(appId, dataUrl);
-  if (import.meta.env.DEV && canUseLocalStorage()) {
+  if (isViteDev() && canUseLocalStorage()) {
     const key = workflowDraftPreviewKey(appId);
     const roundTrip =
       typeof dataUrl === 'string' && dataUrl.length > 0

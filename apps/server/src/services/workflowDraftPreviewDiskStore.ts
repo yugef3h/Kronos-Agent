@@ -1,9 +1,17 @@
+import { existsSync } from 'node:fs';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const serverRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const PREVIEW_DIR = join(serverRoot, 'data', 'workflow-draft-previews');
+const resolvePreviewDir = (): string => {
+  const cwd = process.cwd();
+  const repoScoped = join(cwd, 'apps/server/data/workflow-draft-previews');
+  if (existsSync(join(cwd, 'apps/server'))) {
+    return repoScoped;
+  }
+  return join(cwd, 'data/workflow-draft-previews');
+};
+
+const PREVIEW_DIR = resolvePreviewDir();
 
 export const normalizeWorkflowAppId = (id: string): string | null => {
   const normalized = id.trim();

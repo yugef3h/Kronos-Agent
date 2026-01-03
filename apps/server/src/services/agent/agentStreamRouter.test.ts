@@ -9,7 +9,7 @@ const graphEvents: LangChainStreamEvent[] = [
   { type: 'timeline', stage: 'plan', status: 'start', message: 'graph', timestamp: 1 },
 ];
 
-jest.unstable_mockModule('../langgraph/langGraphChatStream.js', () => ({
+jest.mock('../langgraph/langGraphChatStream.js', () => ({
   streamLangGraphChatReply: async function* () {
     for (const event of graphEvents) {
       yield event;
@@ -18,7 +18,7 @@ jest.unstable_mockModule('../langgraph/langGraphChatStream.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('../linear/linearChatStream.js', () => ({
+jest.mock('../linear/linearChatStream.js', () => ({
   streamLinearChatReply: async function* () {
     for (const event of linearEvents) {
       yield event;
@@ -26,13 +26,13 @@ jest.unstable_mockModule('../linear/linearChatStream.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('../../config/env.js', () => ({
+jest.mock('../../config/env.js', () => ({
   env: {
     LANGGRAPH_ENABLED: true,
   },
 }));
 
-const { streamPlaygroundAgentReply } = await import('./agentStreamRouter');
+import { streamPlaygroundAgentReply } from './agentStreamRouter.js';
 
 describe('streamPlaygroundAgentReply', () => {
   it('falls back to linear when langgraph throws', async () => {
