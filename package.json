@@ -14,7 +14,8 @@
     "test": "jest --runInBand",
     "lint": "pnpm --filter @kronos/server lint && pnpm --filter @kronos/web lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "export:workflow-examples": "python3 apps/server/devtools/export-workflow-examples.py"
   },
   "keywords": [],
   "author": "yugef3h",
