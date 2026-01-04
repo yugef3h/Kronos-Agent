@@ -141,8 +141,8 @@ export async function runLangchainVectorRetrievalQuery(
 
       let chunkVector = chunkRecord.chunk.embedding;
       if (!Array.isArray(chunkVector) || !chunkVector.length) {
-        const fromDisk = pathToNewVectors[chunkRecord.document.chunkPath]?.[chunkRecord.chunk.id];
-        chunkVector = fromDisk;
+        const vectorKey = `${chunkRecord.chunk.datasetId}::${chunkRecord.document.chunkPath}`;
+        chunkVector = pathToNewVectors[vectorKey]?.byId[chunkRecord.chunk.id];
       }
       if (!Array.isArray(chunkVector) || !chunkVector.length) {
         continue;
