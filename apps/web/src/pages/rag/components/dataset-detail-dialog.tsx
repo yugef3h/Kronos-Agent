@@ -3,7 +3,7 @@ import {
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '../../../pages/workflow/base/dialog';
+} from '../../workflow/base/dialog';
 import type { KnowledgeDatasetDetail } from '../../../domains/knowledge/types';
 import type { DatasetDocumentDetail, FlattenedDatasetDocumentBlock, KnowledgeDatasetHealthReport } from '../types';
 import { formatTimestamp } from '../utils';

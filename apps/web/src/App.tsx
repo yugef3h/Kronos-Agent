@@ -8,7 +8,7 @@ import { WorkflowDraftPage } from './pages/workflow/draft-page';
 import { WorkflowPage } from './pages/workflow/list-page';
 
 const RagPage = lazy(async () => {
-  const module = await import('./features/rag');
+  const module = await import('./pages/rag');
   return { default: module.RagPage };
 });
 
