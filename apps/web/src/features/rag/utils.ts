@@ -1,5 +1,5 @@
 import type { KnowledgeDatasetMutationInput } from '../../lib/api';
-import type { KnowledgeDatasetDetail } from '../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { KnowledgeDatasetDetail } from '../../domains/knowledge/types';
 import type { ImportFormState, ImportMetadataFieldDraft } from './types';
 
 export const DOCUMENT_INPUT_ACCEPT = '.txt,.md,.mdx,.json,.csv,.yaml,.yml,.pdf,.doc,.docx,.xls,.xlsx,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';

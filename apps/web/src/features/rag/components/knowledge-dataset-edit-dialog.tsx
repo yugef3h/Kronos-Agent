@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import type { KnowledgeDatasetDetail } from '../../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { KnowledgeDatasetDetail } from '../../../domains/knowledge/types';
 
 export type KnowledgeDatasetEditDialogProps = {
   dataset: KnowledgeDatasetDetail | null;

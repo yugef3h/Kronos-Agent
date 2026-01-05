@@ -2,7 +2,7 @@ import type { WorkflowChatbotOrchestration } from './workflowAppStore';
 import { requestKnowledgeRetrievalQuery } from '../../lib/api';
 import { buildChatbotRetrievalInput } from '../../pages/workflow/config-page/chatbotRetrievalInput';
 import { applyPromptVariables } from '../../pages/workflow/config-page/promptVariablesUtils';
-import { ensureKnowledgeDatasetAuthToken } from '../../pages/workflow/features/knowledge-retrieval-panel/dataset-store';
+import { ensureKnowledgeDatasetAuthToken } from '../../domains/knowledge/dataset-store';
 
 /**
  * 与 `/workflow/config` 调试区一致：知识库检索 + 系统提示（含 `{{var}}`）+ 当前用户问题段落。

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { KnowledgeDatasetDetail } from '../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { KnowledgeDatasetDetail } from '../domains/knowledge/types';
 import { Dialog, DialogContent, DialogTitle } from '../pages/workflow/base/dialog';
 import PanelAlert from '../pages/workflow/base/panel-alert';
 import { PanelToken } from '../pages/workflow/base/panel-form';
-import { buildKnowledgeDatasetPagePath } from '../pages/workflow/features/knowledge-retrieval-panel/navigation';
+import { buildKnowledgeDatasetPagePath } from '../domains/knowledge/navigation';
 
 export const formatDatasetUpdatedAt = (value?: number) => {
   if (!value) return '未同步';

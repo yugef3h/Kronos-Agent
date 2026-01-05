@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '../../../pages/workflow/base/dialog';
-import type { KnowledgeDatasetDetail } from '../../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { KnowledgeDatasetDetail } from '../../../domains/knowledge/types';
 import type { ImportFormState, LocalImportPreview, PendingImportConfig } from '../types';
 import { formatFileSize } from '../utils';
 

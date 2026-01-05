@@ -7,12 +7,12 @@ import {
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
   requestUpdateKnowledgeDocumentBlockKeywords,
-} from './api';
+} from '../../domains/knowledge/api';
 import { useSearchParams } from 'react-router-dom';
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
-} from '../../pages/workflow/features/knowledge-retrieval-panel/dataset-store';
+} from '../../domains/knowledge/dataset-store';
 import type {
   DatasetDocumentBlocksMap,
   DatasetDocumentDetail,
@@ -39,7 +39,7 @@ import {
   PREVIEW_CHUNK_LIMIT,
   readFileAsDataUrl,
 } from './utils';
-import type { KnowledgeDatasetDetail } from '../../pages/workflow/features/knowledge-retrieval-panel/types';
+import type { KnowledgeDatasetDetail } from '../../domains/knowledge/types';
 import { appendTagItems } from './tag-input-utils';
 
 const RagImportDialog = lazy(async () => {
