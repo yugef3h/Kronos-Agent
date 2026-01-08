@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useEdges, useNodes, useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
-import VariableSelect from '../../../components/form/variable-select';
+import VariableSelect from '../../../../components/form/variable-select';
 import Field from '../base/field';
 import PanelAlert from '../base/panel-alert';
 import {
@@ -15,13 +15,13 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import { getIterationOutputTypeLabel } from '../../../domains/workflow/editor/panels/iteration-panel/schema';
-import { useIterationPanelConfig } from '../../../domains/workflow/editor/panels/iteration-panel/use-iteration-panel-config';
+import { getIterationOutputTypeLabel } from '../panels/iteration-panel/schema';
+import { useIterationPanelConfig } from '../panels/iteration-panel/use-iteration-panel-config';
 import type {
   IterationErrorHandleMode,
   IterationNodeConfig,
-} from '../../../domains/workflow/editor/panels/iteration-panel/types';
-import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
+} from '../panels/iteration-panel/types';
+import type { VariableOption } from '../panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
 
 const ITERATION_ERROR_MODE_OPTIONS: Array<{ label: string; value: IterationErrorHandleMode }> = [

@@ -7,7 +7,7 @@ import { IconOutput } from '../assets/output';
 import {
   CONTAINER_NODE_BOARD_TOP,
   CONTAINER_NODE_HORIZONTAL_PADDING,
-} from '../../../domains/workflow/editor/panels/container-panel/canvas';
+} from '../panels/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 import WorkflowNodeSummary from './workflow-node-summary';
 

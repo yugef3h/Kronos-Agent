@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { cn } from '../../pages/workflow/utils/classnames';
+import { cn } from '../editor/utils/classnames';
 
 const stopCardNavigation = (event: ReactMouseEvent) => {
   event.preventDefault();

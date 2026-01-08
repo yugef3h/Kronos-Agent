@@ -1,7 +1,7 @@
 import { Tooltip } from '@base-ui/react/tooltip';
 import type { ReactNode } from 'react';
 
-import { cn } from '../../pages/workflow/utils/classnames';
+import { cn } from '../../domains/workflow/editor/utils/classnames';
 
 export type PanelInfoHintProps = {
   /** 提示正文（白底浮层内） */

@@ -4,7 +4,7 @@ import {
   DialogCloseButton,
   DialogContent,
   DialogTitle,
-} from '../../workflow/base/dialog';
+} from '../../../domains/workflow/editor/base/dialog';
 import type { KnowledgeDatasetDetail } from '../../../domains/knowledge/types';
 import type { ImportFormState, LocalImportPreview, PendingImportConfig } from '../types';
 import { formatFileSize } from '../utils';

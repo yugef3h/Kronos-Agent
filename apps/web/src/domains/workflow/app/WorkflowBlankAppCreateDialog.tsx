@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { cn } from '../../pages/workflow/utils/classnames';
+import { cn } from '../editor/utils/classnames';
 import {
   createWorkflowApp,
   type WorkflowAppCreationMode,

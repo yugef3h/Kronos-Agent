@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import InfoTooltip from '../base/info-tooltip';
-import VariableSelect from '../../../components/form/variable-select';
+import VariableSelect from '../../../../components/form/variable-select';
 import ExpandCollapseButton from '../base/expand-collapse-button';
 import PanelAlert from '../base/panel-alert';
 import AddItemButton from '../base/add-item-button';
@@ -19,18 +19,18 @@ import {
   PanelToggle,
   PanelToken,
 } from '../base/panel-form';
-import { COMPLETION_PARAM_DEFINITIONS } from '../../../domains/workflow/editor/panels/llm-panel/catalog';
+import { COMPLETION_PARAM_DEFINITIONS } from '../panels/llm-panel/catalog';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import { useLLMPanelConfig } from '../../../domains/workflow/editor/panels/llm-panel/use-llm-panel-config';
+import { useLLMPanelConfig } from '../panels/llm-panel/use-llm-panel-config';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
-import { buildLLMNodeOutputs, buildLLMOutputTypes } from '../../../domains/workflow/editor/panels/llm-panel/schema';
+import { buildLLMNodeOutputs, buildLLMOutputTypes } from '../panels/llm-panel/schema';
 import type {
   ChatPromptItem,
   CompletionPromptItem,
   LLMNodeConfig,
   StructuredOutputConfig,
-} from '../../../domains/workflow/editor/panels/llm-panel/types';
+} from '../panels/llm-panel/types';
 import type { PanelFieldControl } from '../base/panel-form';
 
 

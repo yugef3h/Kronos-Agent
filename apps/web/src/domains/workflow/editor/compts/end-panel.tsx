@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react'
 import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import PanelAlert from '../base/panel-alert'
-import VariableSelect from '../../../components/form/variable-select'
+import VariableSelect from '../../../../components/form/variable-select'
 import {
   PanelCard,
   PanelInput,
@@ -11,8 +11,8 @@ import {
 } from '../base/panel-form'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
-import { useEndPanelConfig } from '../../../domains/workflow/editor/panels/end-panel/use-end-panel-config'
-import { buildEndNodeOutputs, buildEndOutputTypes } from '../../../domains/workflow/editor/panels/end-panel/schema'
+import { useEndPanelConfig } from '../panels/end-panel/use-end-panel-config'
+import { buildEndNodeOutputs, buildEndOutputTypes } from '../panels/end-panel/schema'
 import { buildWorkflowVariableOptions } from '../utils/variable-options'
 
 const EndPanel = ({ id, data }: NodePanelProps) => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useEdges, useNodes, useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
-import VariableSelect from '../../../components/form/variable-select';
+import VariableSelect from '../../../../components/form/variable-select';
 import Field from '../base/field';
 import {
   PanelCard,
@@ -15,20 +15,20 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
+import type { VariableOption } from '../panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
 import {
   comparisonOperatorRequiresValue,
   getComparisonOperatorLabel,
   getComparisonOptionsByVariableType,
   getLoopVariableTypeLabel,
-} from '../../../domains/workflow/editor/panels/loop-panel/schema';
-import { useLoopPanelConfig } from '../../../domains/workflow/editor/panels/loop-panel/use-loop-panel-config';
+} from '../panels/loop-panel/schema';
+import { useLoopPanelConfig } from '../panels/loop-panel/use-loop-panel-config';
 import type {
   LoopBreakCondition,
   LoopNodeConfig,
   LoopVariable,
-} from '../../../domains/workflow/editor/panels/loop-panel/types';
+} from '../panels/loop-panel/types';
 import InfoTooltip from '../base/info-tooltip';
 
 const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {

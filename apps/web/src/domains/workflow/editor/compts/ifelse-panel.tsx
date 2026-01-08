@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useEdges, useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
-import VariableSelect from '../../../components/form/variable-select';
+import VariableSelect from '../../../../components/form/variable-select';
 import {
   PanelCard,
   PanelChoiceGroup,
@@ -12,16 +12,16 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
+import type { VariableOption } from '../panels/llm-panel/types';
 import {
   buildIfElseTargetBranches,
   comparisonOperatorRequiresValue,
   getComparisonOperatorLabel,
   getComparisonOptionsByVariableType,
   getIfElseCaseLabel,
-} from '../../../domains/workflow/editor/panels/ifelse-panel/schema';
-import { useIfElsePanelConfig } from '../../../domains/workflow/editor/panels/ifelse-panel/use-ifelse-panel-config';
-import type { IfElseCondition, IfElseNodeConfig } from '../../../domains/workflow/editor/panels/ifelse-panel/types';
+} from '../panels/ifelse-panel/schema';
+import { useIfElsePanelConfig } from '../panels/ifelse-panel/use-ifelse-panel-config';
+import type { IfElseCondition, IfElseNodeConfig } from '../panels/ifelse-panel/types';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 
 const serializeValueSelector = (valueSelector: string[]) => valueSelector.join('.');

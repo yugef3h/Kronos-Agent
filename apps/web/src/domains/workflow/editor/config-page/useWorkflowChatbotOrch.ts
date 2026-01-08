@@ -8,7 +8,7 @@ import {
   getWorkflowAppById,
   updateWorkflowAppChatbotOrchestration,
   type WorkflowChatbotOrchestration,
-} from '../../../domains/workflow/app/workflowAppStore';
+} from '../../app/workflowAppStore';
 import { normalizePromptVariablesList, syncPromptVariablesToBraceKeys } from './promptVariablesUtils';
 
 const newPersistRowId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

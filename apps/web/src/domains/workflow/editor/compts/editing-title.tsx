@@ -1,4 +1,4 @@
-import { useWorkflowDraftStore } from '../../../store/workflowDraftStore';
+import { useWorkflowDraftStore } from '../../../../store/workflowDraftStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getWorkflowDraftStatusView } from '../utils/workflow-draft-status';
 

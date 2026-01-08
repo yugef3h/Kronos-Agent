@@ -1,10 +1,1 @@
-import { WorkflowMain } from "./main"
-import { WorkflowChildren } from "./workflow-children"
-
-export const WorkflowDraftPage = () => {
-  return (
-    <WorkflowMain>
-      <WorkflowChildren />
-    </WorkflowMain>
-  )
-}
+export { WorkflowDraftPage } from '../../../domains/workflow/editor/draft-page';

@@ -1,7 +1,7 @@
 import type { WorkflowChatbotOrchestration } from './workflowAppStore';
 import { requestKnowledgeRetrievalQuery } from '../../lib/api';
-import { buildChatbotRetrievalInput } from '../../pages/workflow/config-page/chatbotRetrievalInput';
-import { applyPromptVariables } from '../../pages/workflow/config-page/promptVariablesUtils';
+import { buildChatbotRetrievalInput } from '../editor/config-page/chatbotRetrievalInput';
+import { applyPromptVariables } from '../editor/config-page/promptVariablesUtils';
 import { ensureKnowledgeDatasetAuthToken } from '../../domains/knowledge/dataset-store';
 
 /**

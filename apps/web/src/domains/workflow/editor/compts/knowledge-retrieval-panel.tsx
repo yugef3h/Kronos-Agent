@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
-import VariableSelect from '../../../components/form/variable-select'
+import VariableSelect from '../../../../components/form/variable-select'
 import Field from '../base/field'
 import PanelAlert from '../base/panel-alert'
 import {
@@ -14,24 +14,24 @@ import {
 } from '../base/panel-form'
 import {
   requestKnowledgeRetrievalQuery,
-} from '../../../lib/api'
+} from '../../../../lib/api'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
-} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/dataset-store'
-import { useKnowledgeRetrievalPanelConfig } from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
+} from '../panels/knowledge-retrieval-panel/dataset-store'
+import { useKnowledgeRetrievalPanelConfig } from '../panels/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
 import type {
   KnowledgeRetrievalDebugRun,
   KnowledgeRetrievalNodeConfig,
-} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/types'
+} from '../panels/knowledge-retrieval-panel/types'
 import type { PanelFieldControl } from '../base/panel-form'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 import {
   formatDatasetUpdatedAt,
   KnowledgeDatasetPickerDialog,
-} from '../../../components/knowledge-dataset-picker-dialog'
+} from '../../../../components/knowledge-dataset-picker-dialog'
 
 type NumberSliderFieldConfig = Extract<PanelFieldControl, { controlType: 'numberSlider' }>
 

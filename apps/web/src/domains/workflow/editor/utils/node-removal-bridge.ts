@@ -1,6 +1,6 @@
 import { MarkerType, type Node } from 'reactflow';
 import { ITERATION_CHILDREN_Z_INDEX, CUSTOM_EDGE } from '../layout-constants';
-import { getContainerBlockEnum } from '../../../domains/workflow/editor/panels/container-panel/canvas';
+import { getContainerBlockEnum } from '../panels/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 import type { Edge } from '../types/common';
 import { createWorkflowEdgeData } from './edge-data';

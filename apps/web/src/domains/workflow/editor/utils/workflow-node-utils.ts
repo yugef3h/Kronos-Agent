@@ -16,7 +16,7 @@ import {
   isContainerNodeKind,
   isContainerStartKind,
   CONTAINER_START_NODE_COLLAPSED_WIDTH,
-} from '../../../domains/workflow/editor/panels/container-panel/canvas';
+} from '../panels/container-panel/canvas';
 import { buildCanvasNodeData } from './workflow-dsl';
 
 const COLUMN_X_TOLERANCE = 24;

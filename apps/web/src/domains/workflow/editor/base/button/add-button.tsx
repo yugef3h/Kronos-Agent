@@ -1,5 +1,5 @@
 'use client'
-import { cn } from 'pages/workflow/utils/classnames'
+import { cn } from '../../utils/classnames'
 import type { FC } from 'react'
 import * as React from 'react'
 

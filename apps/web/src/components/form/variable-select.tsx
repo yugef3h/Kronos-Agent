@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { panelControlClassName } from './panel-form';
-import { cn } from '../../pages/workflow/utils/classnames';
+import { cn } from '../../domains/workflow/editor/utils/classnames';
 import type { ValueSelector, VariableOption } from '../../domains/workflow/editor/panels/llm-panel/types';
 
 const serializeValueSelector = (valueSelector: ValueSelector): string => valueSelector.join('.');

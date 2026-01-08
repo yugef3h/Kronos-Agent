@@ -22,14 +22,14 @@ import {
   getStartVariableTypeLabel,
   START_SYSTEM_VARIABLES,
   validateStartNodeConfig,
-} from '../../../domains/workflow/editor/panels/start-panel/schema';
-import { useStartPanelConfig } from '../../../domains/workflow/editor/panels/start-panel/use-start-panel-config';
-import { getStartVariableSummary } from '../../../domains/workflow/editor/panels/start-panel/list-utils';
+} from '../panels/start-panel/schema';
+import { useStartPanelConfig } from '../panels/start-panel/use-start-panel-config';
+import { getStartVariableSummary } from '../panels/start-panel/list-utils';
 import type {
   StartValidationIssue,
   StartVariable,
   StartVariableType,
-} from '../../../domains/workflow/editor/panels/start-panel/types';
+} from '../panels/start-panel/types';
 import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
 
 const START_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: StartVariableType }> = [
