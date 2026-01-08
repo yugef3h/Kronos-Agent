@@ -11,10 +11,10 @@ import {
   type WorkflowChatbotMetadataCondition,
   type WorkflowChatbotPromptVariable,
   type WorkflowChatbotRecallSettings,
-} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
+} from '../../../domains/workflow/app/workflowAppStore';
 import { apiUrl } from '../../../lib/api';
 import type { StreamChunk } from '../../../types/chat';
-import { buildChatbotAugmentedUserPrompt } from '../../../../../domains/workflow/editor/panels/workflow/chatbotAugmentedStreamPrompt';
+import { buildChatbotAugmentedUserPrompt } from '../../../domains/workflow/app/chatbotAugmentedStreamPrompt';
 import { ChatbotPromptEditor, IconBraceVar } from './chatbot-prompt-editor';
 import {
   extractDoubleBraceVariableKeys,
@@ -31,7 +31,7 @@ import {
 import { KnowledgeDatasetPickerDialog } from '../../../components/knowledge-dataset-picker-dialog';
 import { PanelInfoHint } from '../../../components/form/panel-info-hint';
 import { PanelSliderInput, PanelToggle } from '../../../components/form/panel-form';
-import { prepareImageForAnalyze } from '../../../../../domains/workflow/editor/panels/agent-tools/image';
+import { prepareImageForAnalyze } from '../../../../../features/agent-tools/image';
 
 type ChatLine = { id: string; role: 'user' | 'assistant'; content: string; imageCount?: number };
 

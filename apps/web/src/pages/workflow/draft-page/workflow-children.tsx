@@ -28,7 +28,7 @@ import {
   type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-import { getWorkflowAppById } from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
+import { getWorkflowAppById } from '../../../domains/workflow/app/workflowAppStore';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,

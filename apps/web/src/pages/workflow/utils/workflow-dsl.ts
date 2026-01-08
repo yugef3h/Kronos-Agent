@@ -7,7 +7,7 @@ import type {
   WorkflowGraphEdge,
   WorkflowGraphNode,
   WorkflowGraphNodeSemanticType,
-} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore'
+} from '../../../domains/workflow/app/workflowAppStore'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import {

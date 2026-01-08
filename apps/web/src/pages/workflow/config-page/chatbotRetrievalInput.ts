@@ -2,7 +2,7 @@ import type { KnowledgeRetrievalQueryInput } from '../../../lib/api';
 import {
   createDefaultChatbotRecallSettings,
   type WorkflowChatbotOrchestration,
-} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
+} from '../../../domains/workflow/app/workflowAppStore';
 import { createDefaultKnowledgeRetrievalNodeConfig } from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/schema';
 
 /** 将编排 recall 草稿映射为 `knowledge-retrieval/query` 请求体（自研与 LangChain 引擎共用）。 */

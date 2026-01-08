@@ -12,7 +12,7 @@ import { usePlaygroundStore } from '../../store/playgroundStore'
 import {
   findWorkflowAppsUsingDataset,
   formatWorkflowDatasetInUseMessage,
-} from '../../features/workflow/workflowKnowledgeDependencies'
+} from '../workflow/app/workflowKnowledgeDependencies'
 import type { KnowledgeDatasetDetail, KnowledgeMetadataField } from './types'
 
 const KNOWLEDGE_DATASETS_UPDATED_EVENT = 'kronos:workflow:knowledge-datasets-updated'

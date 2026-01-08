@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Node } from 'reactflow';
-import { syncWorkflowDraftPreviewToBackend } from '../../../../../domains/workflow/editor/panels/workflow/workflowDraftPreviewBackendSync';
+import { syncWorkflowDraftPreviewToBackend } from '../../../domains/workflow/app/workflowDraftPreviewBackendSync';
 import {
   getWorkflowAppById,
   setWorkflowDraftPreview,
   updateWorkflowAppDsl,
   type WorkflowAppRecord,
   type WorkflowDSL,
-} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
+} from '../../../domains/workflow/app/workflowAppStore';
 import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../store/workflowDraftStore';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';

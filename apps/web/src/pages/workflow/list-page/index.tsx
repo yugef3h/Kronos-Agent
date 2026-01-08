@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { WorkflowAppCardMenu } from '../../../../../domains/workflow/editor/panels/workflow/WorkflowAppCardMenu';
-import { WorkflowAppEditDialog } from '../../../../../domains/workflow/editor/panels/workflow/WorkflowAppEditDialog';
-import { WorkflowBlankAppCreateDialog } from '../../../../../domains/workflow/editor/panels/workflow/WorkflowBlankAppCreateDialog';
+import { WorkflowAppCardMenu } from '../../../domains/workflow/app/WorkflowAppCardMenu';
+import { WorkflowAppEditDialog } from '../../../domains/workflow/app/WorkflowAppEditDialog';
+import { WorkflowBlankAppCreateDialog } from '../../../domains/workflow/app/WorkflowBlankAppCreateDialog';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   deleteWorkflowApp,
@@ -11,8 +11,8 @@ import {
   listWorkflowApps,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
   type WorkflowAppRecord,
-} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
-import { WORKFLOW_EXAMPLES_CHANGED_EVENT } from '../../../../../domains/workflow/editor/panels/workflow/workflowExampleClient';
+} from '../../../domains/workflow/app/workflowAppStore';
+import { WORKFLOW_EXAMPLES_CHANGED_EVENT } from '../../../domains/workflow/app/workflowExampleClient';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {

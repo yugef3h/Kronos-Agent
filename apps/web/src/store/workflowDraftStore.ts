@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { WorkflowDSL } from '../features/workflow/workflowAppStore';
+import type { WorkflowDSL } from '../domains/workflow/app/workflowAppStore';
 
 export type WorkflowDraftBackup = {
   appId: string;
