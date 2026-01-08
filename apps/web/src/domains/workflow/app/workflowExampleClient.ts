@@ -1,4 +1,4 @@
-import { apiUrl } from '../../lib/api';
+import { apiUrl } from '../../../lib/api';
 import type { WorkflowAppRecord } from './workflowAppStore';
 
 let exampleAppsCache: WorkflowAppRecord[] = [];

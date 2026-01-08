@@ -3,7 +3,7 @@ import type { ValueSelector } from '../llm-panel/types'
 export type {
   KnowledgeDatasetDetail,
   KnowledgeMetadataField,
-} from '../../../knowledge/types'
+} from '../../../../knowledge/types'
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay'
 

@@ -89,12 +89,12 @@ import {
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
   listPublishedChatbotWorkflowApps,
   type WorkflowAppRecord,
-} from '../../workflow/workflowAppStore';
-import { getPlaygroundWorkflowChatStreamSessionId } from '../../workflow/chatbotAugmentedStreamPrompt';
+} from '../../../domains/workflow/app/workflowAppStore';
+import { getPlaygroundWorkflowChatStreamSessionId } from '../../../domains/workflow/app/chatbotAugmentedStreamPrompt';
 import {
   buildPublishedChatbotPlaygroundAugmentedPrompt,
   resolvePublishedChatbotForPlayground,
-} from '../../workflow/publishedChatbotPlaygroundPrompt';
+} from '../../../domains/workflow/app/publishedChatbotPlaygroundPrompt';
 
 export type UseChatStreamControllerResult = {
   canSend: boolean;

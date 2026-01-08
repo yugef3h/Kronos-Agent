@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
-import { AgentOrchestratorPanel } from '../components/AgentOrchestratorPanel';
-import { ChatStreamPanel } from '../components/ChatStreamPanel';
-import { MemorySummaryPanel } from '../components/MemorySummaryPanel';
-import { SamplingInspector } from '../components/SamplingInspector';
-import { TokenEmbeddingPanel } from '../components/TokenEmbeddingPanel';
-import { ToolInvocationPanel } from '../components/ToolInvocationPanel';
+import { AgentOrchestratorPanel } from '../../components/AgentOrchestratorPanel';
+import { ChatStreamPanel } from '../../components/ChatStreamPanel';
+import { MemorySummaryPanel } from '../../components/MemorySummaryPanel';
+import { SamplingInspector } from '../../components/SamplingInspector';
+import { TokenEmbeddingPanel } from '../../components/TokenEmbeddingPanel';
+import { ToolInvocationPanel } from '../../components/ToolInvocationPanel';
 
 export const HomePage = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);

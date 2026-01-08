@@ -11,7 +11,7 @@ import {
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
 import VariableSelect from '../../../components/form/variable-select';
-import { WorkflowBlankAppCreateDialog } from '../../workflow/WorkflowBlankAppCreateDialog';
+import { WorkflowBlankAppCreateDialog } from '../../../domains/workflow/app/WorkflowBlankAppCreateDialog';
 import {
   formatUploadSize,
   getRenderableImageName,

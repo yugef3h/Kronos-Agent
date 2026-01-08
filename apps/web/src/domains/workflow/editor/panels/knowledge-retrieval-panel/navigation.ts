@@ -1,1 +1,1 @@
-export { buildKnowledgeDatasetPagePath } from '../../../knowledge/navigation'
+export { buildKnowledgeDatasetPagePath } from '../../../../knowledge/navigation'

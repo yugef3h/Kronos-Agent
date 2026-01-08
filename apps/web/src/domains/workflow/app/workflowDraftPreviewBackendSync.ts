@@ -1,4 +1,4 @@
-import { putWorkflowDraftPreview } from '../../lib/api';
+import { putWorkflowDraftPreview } from '../../../lib/api';
 import { isWorkflowExampleAppId, putWorkflowExamplePreview } from './workflowExampleClient';
 import { markWorkflowDraftPreviewBackendSynced } from './workflowAppStore';
 

@@ -1,4 +1,4 @@
-import type { KnowledgeRetrievalQueryInput } from '../../../lib/api';
+import type { KnowledgeRetrievalQueryInput } from '../../../../lib/api';
 import {
   createDefaultChatbotRecallSettings,
   type WorkflowChatbotOrchestration,

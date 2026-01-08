@@ -1,5 +1,5 @@
-import { apiUrl } from '../../lib/api';
-import { isViteDev } from '../../lib/viteEnv';
+import { apiUrl } from '../../../lib/api';
+import { isViteDev } from '../../../lib/viteEnv';
 import {
   deleteWorkflowExampleApp,
   getWorkflowExampleAppsCache,

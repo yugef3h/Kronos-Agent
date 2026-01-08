@@ -9,7 +9,7 @@ import {
   type WorkflowAppRecord,
   type WorkflowDSL,
 } from '../../app/workflowAppStore';
-import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../store/workflowDraftStore';
+import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../../store/workflowDraftStore';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { createWorkflowDslFromCanvas, hydrateCanvasNodesFromDsl } from '../utils/workflow-dsl';
