@@ -39,7 +39,7 @@ import {
 } from '../assistantInvocation';
 import { isPlaygroundToolName } from '../invocationRegistry';
 import type { StreamChunk, TimelineEvent } from '../../../types/chat';
-import type { ValueSelector, VariableOption } from '../../../pages/workflow/features/llm-panel/types';
+import type { ValueSelector, VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
 import {
   MOCK_ADDRESS,

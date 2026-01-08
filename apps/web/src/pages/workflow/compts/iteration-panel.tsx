@@ -15,13 +15,13 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import { getIterationOutputTypeLabel } from '../features/iteration-panel/schema';
-import { useIterationPanelConfig } from '../features/iteration-panel/use-iteration-panel-config';
+import { getIterationOutputTypeLabel } from '../../../domains/workflow/editor/panels/iteration-panel/schema';
+import { useIterationPanelConfig } from '../../../domains/workflow/editor/panels/iteration-panel/use-iteration-panel-config';
 import type {
   IterationErrorHandleMode,
   IterationNodeConfig,
-} from '../features/iteration-panel/types';
-import type { VariableOption } from '../features/llm-panel/types';
+} from '../../../domains/workflow/editor/panels/iteration-panel/types';
+import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
 
 const ITERATION_ERROR_MODE_OPTIONS: Array<{ label: string; value: IterationErrorHandleMode }> = [

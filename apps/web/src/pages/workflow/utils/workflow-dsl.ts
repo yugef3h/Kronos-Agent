@@ -7,39 +7,39 @@ import type {
   WorkflowGraphEdge,
   WorkflowGraphNode,
   WorkflowGraphNodeSemanticType,
-} from '../../../features/workflow/workflowAppStore'
+} from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import {
   buildIfElseTargetBranches,
   createDefaultIfElseNodeConfig,
   normalizeIfElseNodeConfig,
-} from '../features/ifelse-panel/schema'
+} from '../../../domains/workflow/editor/panels/ifelse-panel/schema'
 import {
   buildIterationChildren,
   createDefaultIterationNodeConfig,
   normalizeIterationNodeConfig,
-} from '../features/iteration-panel/schema'
-import { buildLLMNodeOutputs, buildLLMOutputTypes, normalizeLLMNodeConfig } from '../features/llm-panel/schema'
+} from '../../../domains/workflow/editor/panels/iteration-panel/schema'
+import { buildLLMNodeOutputs, buildLLMOutputTypes, normalizeLLMNodeConfig } from '../../../domains/workflow/editor/panels/llm-panel/schema'
 import {
   createDefaultKnowledgeRetrievalNodeConfig,
   normalizeKnowledgeRetrievalNodeConfig,
-} from '../features/knowledge-retrieval-panel/schema'
-import { getKnowledgeDatasetsByIds } from '../features/knowledge-retrieval-panel/dataset-store'
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/schema'
+import { getKnowledgeDatasetsByIds } from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/dataset-store'
 import {
   buildLoopChildren,
   createDefaultLoopNodeConfig,
   normalizeLoopNodeConfig,
-} from '../features/loop-panel/schema'
+} from '../../../domains/workflow/editor/panels/loop-panel/schema'
 import {
   buildEndNodeOutputs,
   normalizeEndNodeConfig,
-} from '../features/end-panel/schema'
+} from '../../../domains/workflow/editor/panels/end-panel/schema'
 import {
   buildStartNodeOutputs,
   buildStartOutputTypes,
   normalizeStartNodeConfig,
-} from '../features/start-panel/schema'
+} from '../../../domains/workflow/editor/panels/start-panel/schema'
 
 type AnyWorkflowDSL = WorkflowDSL | LegacyWorkflowDSL
 

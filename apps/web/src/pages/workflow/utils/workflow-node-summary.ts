@@ -1,11 +1,11 @@
-import { getModelCatalogItem } from '../features/llm-panel/catalog'
-import { normalizeLLMNodeConfig } from '../features/llm-panel/schema'
-import { normalizeStartNodeConfig, getStartVariableTypeLabel } from '../features/start-panel/schema'
+import { getModelCatalogItem } from '../../../domains/workflow/editor/panels/llm-panel/catalog'
+import { normalizeLLMNodeConfig } from '../../../domains/workflow/editor/panels/llm-panel/schema'
+import { normalizeStartNodeConfig, getStartVariableTypeLabel } from '../../../domains/workflow/editor/panels/start-panel/schema'
 import {
   getKnowledgeSelectedDatasets,
   normalizeKnowledgeRetrievalNodeConfig,
-} from '../features/knowledge-retrieval-panel/schema'
-import { normalizeEndNodeConfig } from '../features/end-panel/schema'
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/schema'
+import { normalizeEndNodeConfig } from '../../../domains/workflow/editor/panels/end-panel/schema'
 import type { CanvasNodeData } from '../types/canvas'
 import { serializeValueSelector } from './variable-options'
 

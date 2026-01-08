@@ -3,4 +3,4 @@ export {
   getKnowledgeDatasetsByIds,
   listKnowledgeDatasets,
   useKnowledgeDatasets,
-} from '../../../../domains/knowledge/dataset-store'
+} from '../../../knowledge/dataset-store'

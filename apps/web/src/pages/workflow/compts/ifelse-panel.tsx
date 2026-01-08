@@ -12,16 +12,16 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import type { VariableOption } from '../features/llm-panel/types';
+import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import {
   buildIfElseTargetBranches,
   comparisonOperatorRequiresValue,
   getComparisonOperatorLabel,
   getComparisonOptionsByVariableType,
   getIfElseCaseLabel,
-} from '../features/ifelse-panel/schema';
-import { useIfElsePanelConfig } from '../features/ifelse-panel/use-ifelse-panel-config';
-import type { IfElseCondition, IfElseNodeConfig } from '../features/ifelse-panel/types';
+} from '../../../domains/workflow/editor/panels/ifelse-panel/schema';
+import { useIfElsePanelConfig } from '../../../domains/workflow/editor/panels/ifelse-panel/use-ifelse-panel-config';
+import type { IfElseCondition, IfElseNodeConfig } from '../../../domains/workflow/editor/panels/ifelse-panel/types';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 
 const serializeValueSelector = (valueSelector: string[]) => valueSelector.join('.');

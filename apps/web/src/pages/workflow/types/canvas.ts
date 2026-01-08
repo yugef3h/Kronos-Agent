@@ -1,6 +1,6 @@
-import type { ContainerChildSummary } from '../features/container-panel/runtime'
-import type { IfElseBranch } from '../features/ifelse-panel/types'
-import type { KnowledgeDatasetDetail, KnowledgeRetrievalDebugRun } from '../features/knowledge-retrieval-panel/types'
+import type { ContainerChildSummary } from '../../../domains/workflow/editor/panels/container-panel/runtime'
+import type { IfElseBranch } from '../../../domains/workflow/editor/panels/ifelse-panel/types'
+import type { KnowledgeDatasetDetail, KnowledgeRetrievalDebugRun } from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/types'
 
 export type WorkflowCanvasNodeKind =
   | 'llm'

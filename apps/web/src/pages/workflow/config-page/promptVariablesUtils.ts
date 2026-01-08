@@ -1,4 +1,4 @@
-import type { WorkflowChatbotPromptVariable } from '../../../features/workflow/workflowAppStore';
+import type { WorkflowChatbotPromptVariable } from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
 
 /** 与提示词中 `{{name}}` 占位符匹配的变量名（字母/数字/下划线，不以数字开头） */
 export const isValidPromptVariableKey = (key: string) => /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(key.trim());

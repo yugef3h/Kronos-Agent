@@ -1,4 +1,4 @@
-import type { VariableOption, ValueSelector } from '../features/llm-panel/types'
+import type { VariableOption, ValueSelector } from '../../../domains/workflow/editor/panels/llm-panel/types'
 import type { CanvasNodeData } from '../types/canvas'
 
 type WorkflowNodeSnapshot = { id: string; data: CanvasNodeData; parentId?: string }

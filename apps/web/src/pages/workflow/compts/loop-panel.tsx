@@ -15,20 +15,20 @@ import {
 } from '../base/panel-form';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import type { VariableOption } from '../features/llm-panel/types';
+import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
 import {
   comparisonOperatorRequiresValue,
   getComparisonOperatorLabel,
   getComparisonOptionsByVariableType,
   getLoopVariableTypeLabel,
-} from '../features/loop-panel/schema';
-import { useLoopPanelConfig } from '../features/loop-panel/use-loop-panel-config';
+} from '../../../domains/workflow/editor/panels/loop-panel/schema';
+import { useLoopPanelConfig } from '../../../domains/workflow/editor/panels/loop-panel/use-loop-panel-config';
 import type {
   LoopBreakCondition,
   LoopNodeConfig,
   LoopVariable,
-} from '../features/loop-panel/types';
+} from '../../../domains/workflow/editor/panels/loop-panel/types';
 import InfoTooltip from '../base/info-tooltip';
 
 const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {

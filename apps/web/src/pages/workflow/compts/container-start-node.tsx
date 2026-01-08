@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { X_OFFSET } from '../layout-constants';
-import { CONTAINER_START_ICON_OFFSET } from '../features/container-panel/canvas';
+import { CONTAINER_START_ICON_OFFSET } from '../../../domains/workflow/editor/panels/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
 import { IconStart } from '../assets/start';
 

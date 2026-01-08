@@ -17,9 +17,9 @@ import {
   CONTAINER_START_NODE_WIDTH,
   isContainerEndKind,
   isContainerStartKind,
-} from '../features/container-panel/canvas';
-import { normalizeIterationNodeConfig } from '../features/iteration-panel/schema';
-import { normalizeLoopNodeConfig } from '../features/loop-panel/schema';
+} from '../../../domains/workflow/editor/panels/container-panel/canvas';
+import { normalizeIterationNodeConfig } from '../../../domains/workflow/editor/panels/iteration-panel/schema';
+import { normalizeLoopNodeConfig } from '../../../domains/workflow/editor/panels/loop-panel/schema';
 import {
   areContainerChildrenEqual,
   resolveIterationItemValueType,

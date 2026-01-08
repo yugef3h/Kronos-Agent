@@ -19,18 +19,18 @@ import {
   PanelToggle,
   PanelToken,
 } from '../base/panel-form';
-import { COMPLETION_PARAM_DEFINITIONS } from '../features/llm-panel/catalog';
+import { COMPLETION_PARAM_DEFINITIONS } from '../../../domains/workflow/editor/panels/llm-panel/catalog';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import { useLLMPanelConfig } from '../features/llm-panel/use-llm-panel-config';
+import { useLLMPanelConfig } from '../../../domains/workflow/editor/panels/llm-panel/use-llm-panel-config';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
-import { buildLLMNodeOutputs, buildLLMOutputTypes } from '../features/llm-panel/schema';
+import { buildLLMNodeOutputs, buildLLMOutputTypes } from '../../../domains/workflow/editor/panels/llm-panel/schema';
 import type {
   ChatPromptItem,
   CompletionPromptItem,
   LLMNodeConfig,
   StructuredOutputConfig,
-} from '../features/llm-panel/types';
+} from '../../../domains/workflow/editor/panels/llm-panel/types';
 import type { PanelFieldControl } from '../base/panel-form';
 
 

@@ -11,8 +11,8 @@ import {
 } from '../base/panel-form'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
-import { useEndPanelConfig } from '../features/end-panel/use-end-panel-config'
-import { buildEndNodeOutputs, buildEndOutputTypes } from '../features/end-panel/schema'
+import { useEndPanelConfig } from '../../../domains/workflow/editor/panels/end-panel/use-end-panel-config'
+import { buildEndNodeOutputs, buildEndOutputTypes } from '../../../domains/workflow/editor/panels/end-panel/schema'
 import { buildWorkflowVariableOptions } from '../utils/variable-options'
 
 const EndPanel = ({ id, data }: NodePanelProps) => {

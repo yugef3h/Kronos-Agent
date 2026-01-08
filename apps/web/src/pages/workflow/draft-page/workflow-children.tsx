@@ -28,7 +28,7 @@ import {
   type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-import { getWorkflowAppById } from '../../../features/workflow/workflowAppStore';
+import { getWorkflowAppById } from '../../../../../domains/workflow/editor/panels/workflow/workflowAppStore';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -62,7 +62,7 @@ import {
   getContainerBlockEnum,
   isContainerEndKind,
   isContainerStartKind,
-} from '../features/container-panel/canvas';
+} from '../../../domains/workflow/editor/panels/container-panel/canvas';
 import { createWorkflowEdgeData } from '../utils/edge-data';
 import {
   createInitialTriggerNode,
@@ -86,30 +86,30 @@ import {
 } from '../compts/container-node-ui';
 import { ContainerStartNode } from '../compts/container-start-node';
 import WorkflowNodeSummary from '../compts/workflow-node-summary';
-import type { VariableOption } from '../features/llm-panel/types';
-import { normalizeLLMNodeConfig, validateLLMNodeConfig } from '../features/llm-panel/schema';
+import type { VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
+import { normalizeLLMNodeConfig, validateLLMNodeConfig } from '../../../domains/workflow/editor/panels/llm-panel/schema';
 import {
   buildIfElseConditionSummary,
   buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
   validateIfElseNodeConfig,
-} from '../features/ifelse-panel/schema';
-import type { IfElseCaseItem } from '../features/ifelse-panel/types';
+} from '../../../domains/workflow/editor/panels/ifelse-panel/schema';
+import type { IfElseCaseItem } from '../../../domains/workflow/editor/panels/ifelse-panel/types';
 import {
   normalizeIterationNodeConfig,
   validateIterationNodeConfig,
-} from '../features/iteration-panel/schema';
+} from '../../../domains/workflow/editor/panels/iteration-panel/schema';
 import {
   getKnowledgeDatasetsByIds,
   useKnowledgeDatasets,
-} from '../features/knowledge-retrieval-panel/dataset-store';
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/dataset-store';
 import {
   normalizeKnowledgeRetrievalNodeConfig,
   validateKnowledgeRetrievalNodeConfig,
-} from '../features/knowledge-retrieval-panel/schema';
-import { normalizeEndNodeConfig, validateEndNodeConfig } from '../features/end-panel/schema';
-import { normalizeStartNodeConfig, validateStartNodeConfig } from '../features/start-panel/schema';
-import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../features/loop-panel/schema';
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/schema';
+import { normalizeEndNodeConfig, validateEndNodeConfig } from '../../../domains/workflow/editor/panels/end-panel/schema';
+import { normalizeStartNodeConfig, validateStartNodeConfig } from '../../../domains/workflow/editor/panels/start-panel/schema';
+import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../../../domains/workflow/editor/panels/loop-panel/schema';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import {
   areKnowledgeDatasetsEqual,

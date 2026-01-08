@@ -20,12 +20,12 @@ import type { CanvasNodeData } from '../types/canvas'
 import {
   ensureKnowledgeDatasetAuthToken,
   useKnowledgeDatasets,
-} from '../features/knowledge-retrieval-panel/dataset-store'
-import { useKnowledgeRetrievalPanelConfig } from '../features/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/dataset-store'
+import { useKnowledgeRetrievalPanelConfig } from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
 import type {
   KnowledgeRetrievalDebugRun,
   KnowledgeRetrievalNodeConfig,
-} from '../features/knowledge-retrieval-panel/types'
+} from '../../../domains/workflow/editor/panels/knowledge-retrieval-panel/types'
 import type { PanelFieldControl } from '../base/panel-form'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 import {
