@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { AgentOrchestratorPanel } from '../../components/AgentOrchestratorPanel';
 import { ChatStreamPanel } from '../../components/ChatStreamPanel';
 import { MemorySummaryPanel } from '../../components/MemorySummaryPanel';
-import { SamplingInspector } from '../../components/SamplingInspector';
-import { TokenEmbeddingPanel } from '../../components/TokenEmbeddingPanel';
-import { ToolInvocationPanel } from '../../components/ToolInvocationPanel';
+// import { SamplingInspector } from '../../components/SamplingInspector';
+// import { TokenEmbeddingPanel } from '../../components/TokenEmbeddingPanel';
+// import { ToolInvocationPanel } from '../../components/ToolInvocationPanel';
 
 export const HomePage = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -27,7 +27,7 @@ export const HomePage = () => {
 
         <aside className="soft-scrollbar hidden w-[550px] shrink-0 space-y-3 overflow-y-auto pb-2 pr-1 lg:block">
           <MemorySummaryPanel />
-          <TokenEmbeddingPanel />
+          {/* <TokenEmbeddingPanel /> */}
           <AgentOrchestratorPanel />
         </aside>
       </div>
@@ -52,11 +52,9 @@ export const HomePage = () => {
               </button>
             </div>
             <div className="space-y-3 pb-6">
-              <TokenEmbeddingPanel />
-              <ToolInvocationPanel />
+              {/* <TokenEmbeddingPanel /> */}
               <MemorySummaryPanel />
               <AgentOrchestratorPanel />
-              <SamplingInspector />
             </div>
           </aside>
         </div>
