@@ -39,6 +39,13 @@ describe('takeoutOrchestratorService parser', () => {
     expect(result.assistantReply).toBe('');
   });
 
+  it('asks slot for weak takeout phrasing when model returns no marker', () => {
+    const result = parseTakeoutOrchestrationOutput('好的。', '中午想吃个外卖');
+
+    expect(result.action).toBe('ask_slot');
+    expect(result.assistantReply.length).toBeGreaterThan(0);
+  });
+
   it('parses explicit delegate marker', () => {
     const result = parseTakeoutOrchestrationOutput('[[DELEGATE]]', '今天天气怎么样');
 

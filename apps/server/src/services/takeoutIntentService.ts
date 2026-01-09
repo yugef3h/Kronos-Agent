@@ -17,7 +17,8 @@ export type TakeoutIntentAnalysis = {
 };
 
 const TAKEOUT_KEYWORDS = [
-  '外卖', '点餐', '下单', '帮我点', '订餐', '奶茶', '咖啡', '牛肉面', '酸辣粉', '黄焖鸡', '午饭', '晚饭',
+  '外卖', '点餐', '下单', '帮我点', '订餐', '想吃', '吃点', '来一份', '奶茶', '咖啡', '牛肉面', '酸辣粉',
+  '黄焖鸡', '午饭', '晚饭', '汉堡', '米线',
 ];
 
 const NEGATIVE_KEYWORDS = ['菜谱', '做法', '怎么做', '教程', '营养', '热量', '门店测评', '点评'];
@@ -79,6 +80,30 @@ const hasAnyKeyword = (prompt: string, keywords: string[]): boolean => {
   return keywords.some((word) => prompt.includes(word));
 };
 
+/** 是否存在任一外卖相关信号（用于决定是否调用编排 LLM，避免弱信号被规则直接 delegate）。 */
+export const hasTakeoutSignals = (params: { prompt: string; history?: string[] }): boolean => {
+  const prompt = params.prompt.trim();
+  if (prompt.length === 0) {
+    return false;
+  }
+
+  const context = `${(params.history || []).join(' ')} ${prompt}`;
+  if (hasAnyKeyword(context, TAKEOUT_KEYWORDS)) {
+    return true;
+  }
+
+  if (/帮我点|下单|订餐|订|来一份|买|想吃|吃点|点一份|点个/.test(context)) {
+    return true;
+  }
+
+  return readDishType(context) !== null;
+};
+
+export const isClearlyNonTakeout = (params: { prompt: string; history?: string[] }): boolean => {
+  const analysis = analyzeTakeoutIntent(params);
+  return analysis.intent === 'non_takeout' && !hasTakeoutSignals(params);
+};
+
 export const analyzeTakeoutIntent = (params: {
   prompt: string;
   history?: string[];
@@ -89,7 +114,7 @@ export const analyzeTakeoutIntent = (params: {
 
   const hasTakeoutSignal = hasAnyKeyword(context, TAKEOUT_KEYWORDS);
   const hasNegativeSignal = hasAnyKeyword(context, NEGATIVE_KEYWORDS);
-  const hasOrderVerb = /帮我点|下单|订|来一份|买/.test(context);
+  const hasOrderVerb = /帮我点|下单|订餐|订一份|来一份|买一份|买点|想吃|吃点|点一份|点个|买/.test(context);
 
   const slots: TakeoutSlots = {
     dishType: readDishType(context),

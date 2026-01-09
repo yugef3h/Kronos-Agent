@@ -1,4 +1,4 @@
-import { analyzeTakeoutIntent } from './takeoutIntentService';
+import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from './takeoutIntentService';
 
 describe('takeoutIntentService', () => {
   it('detects high-confidence takeout order with slots', () => {
@@ -31,5 +31,10 @@ describe('takeoutIntentService', () => {
     expect(result.intent).toBe('takeout_recommend');
     expect(result.confidence).toBeGreaterThanOrEqual(0.5);
     expect(result.nextAction).toBe('ask_for_slot');
+  });
+
+  it('detects takeout signals for colloquial ordering phrases', () => {
+    expect(hasTakeoutSignals({ prompt: '中午想吃个外卖' })).toBe(true);
+    expect(isClearlyNonTakeout({ prompt: '中午想吃个外卖' })).toBe(false);
   });
 });

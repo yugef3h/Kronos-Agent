@@ -7,7 +7,7 @@ export const TAKEOUT_SNACK_OPTIONS: TakeoutSnackOption[] = [
   { id: 'snack-pie', name: '甜派', count: 'x1' },
 ];
 
-const TAKEOUT_TRIGGER_REGEX = /(点外卖|帮我点|订购|吃|外卖|牛肉面|酸辣粉|黄焖鸡|汉堡|奶茶|米线)/;
+const TAKEOUT_TRIGGER_REGEX = /(点外卖|帮我点|想吃|吃点|订购|外卖|牛肉面|酸辣粉|黄焖鸡|汉堡|奶茶|米线|订餐|来一份|点一份)/;
 
 export const createInitialTakeoutFlowState = (flowId = 0): TakeoutFlowState => ({
   flowId,

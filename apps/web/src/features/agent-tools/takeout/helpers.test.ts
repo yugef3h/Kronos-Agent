@@ -32,6 +32,7 @@ describe('takeout helpers', () => {
   it('matches common takeout prompts', () => {
     expect(isTakeoutIntentPrompt('帮我点外卖')).toBe(true);
     expect(isTakeoutIntentPrompt('订一份牛肉面')).toBe(true);
+    expect(isTakeoutIntentPrompt('中午想吃个外卖')).toBe(true);
     expect(isTakeoutIntentPrompt('帮我整理今天的会议纪要')).toBe(false);
   });
 

@@ -1,6 +1,6 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
-import { analyzeTakeoutIntent } from './takeoutIntentService.js';
+import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from './takeoutIntentService.js';
 import { TAKEOUT_ORCHESTRATION_PROMPT } from '../const/prompt.js';
 
 export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call' | 'delegate_chat_stream';
@@ -122,12 +122,32 @@ export const parseTakeoutOrchestrationOutput = (
     };
   }
 
-  // 模型未打标签：规则判定非外卖则交回 Playground Agent。
-  const ruleAnalysis = analyzeTakeoutIntent({ prompt, history });
-  if (ruleAnalysis.intent === 'non_takeout') {
+  // 模型未打标签：仅在高置信非外卖且无外卖信号时交回 Playground Agent。
+  if (isClearlyNonTakeout({ prompt, history })) {
     return {
       action: 'delegate_chat_stream',
       assistantReply: '',
+    };
+  }
+
+  const ruleAnalysis = analyzeTakeoutIntent({ prompt, history });
+  if (ruleAnalysis.nextAction === 'start_takeout_flow') {
+    return {
+      action: 'tool_call',
+      assistantReply: assistantReply || '好的，这就帮你安排外卖。',
+      toolCall: {
+        name: 'takeout',
+        params: {
+          food: ruleAnalysis.slots.dishType || '外卖',
+        },
+      },
+    };
+  }
+
+  if (ruleAnalysis.nextAction === 'ask_for_slot' || hasTakeoutSignals({ prompt, history })) {
+    return {
+      action: 'ask_slot',
+      assistantReply: assistantReply || '可以，想吃什么？告诉我菜品我就帮你继续。',
     };
   }
 
@@ -142,9 +162,8 @@ export const orchestrateTakeoutPrompt = async (params: {
   history?: string[];
 }): Promise<TakeoutOrchestrationResult> => {
   const history = params.history || [];
-  const ruleAnalysis = analyzeTakeoutIntent({ prompt: params.prompt, history });
 
-  if (ruleAnalysis.intent === 'non_takeout') {
+  if (isClearlyNonTakeout({ prompt: params.prompt, history })) {
     return {
       action: 'delegate_chat_stream',
       assistantReply: '',

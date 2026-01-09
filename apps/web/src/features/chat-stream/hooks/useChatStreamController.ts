@@ -1212,14 +1212,24 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
         return false;
       } catch {
+        if (isTakeoutIntentPrompt(userPrompt)) {
+          if (isAwaitingTakeoutFollowup) {
+            setIsAwaitingTakeoutFollowup(false);
+          }
+
+          await startTakeoutConversation(userPrompt);
+          scheduleMemoryMetricsRefresh();
+          return true;
+        }
+
         return false;
       } finally {
         setIsOrchestrating(false);
       }
     };
 
-    // 先走外卖编排判定；非外卖时 orchestrate 返回 delegate_chat_stream，tryHandleTakeout 为 false 并继续 chat-stream。
-    if (!publishedChatbotWorkflowAppId && (await tryHandleTakeout())) {
+    // 先走外卖编排（LLM 路由器）；非外卖时 orchestrate 返回 delegate_chat_stream，再进入 RAG / 默认 Agent。
+    if (await tryHandleTakeout()) {
       return;
     }
 
