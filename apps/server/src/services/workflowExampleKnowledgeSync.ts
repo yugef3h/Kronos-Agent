@@ -13,7 +13,7 @@ import {
   isInLocalKnowledgeDatasetIndex,
   isKnowledgeExampleDatasetId,
 } from '../domain/knowledgeDataPaths.js';
-import { saveKnowledgeExampleDataset } from './knowledgeExampleStore.js';
+import { getKnowledgeExampleDataset, saveKnowledgeExampleDataset } from './knowledgeExampleStore.js';
 import { collectDatasetIdsFromWorkflowApp } from './workflowKnowledgeDependencies.js';
 import { listWorkflowExampleApps, type WorkflowExampleAppRecord } from './workflowExampleStore.js';
 
@@ -159,21 +159,33 @@ export const promoteKnowledgeDatasetToExample = async (datasetId: string): Promi
   const localDir = join(getLocalKnowledgeDatasetsDir(), datasetId);
   const exampleDir = join(getKnowledgeExamplesDir(), datasetId);
   const sourceDir = await pickDocumentsSourceDir(datasetId, localDir, exampleDir);
+  const existingExample = await getKnowledgeExampleDataset(datasetId);
+
+  let documentsMutated = false;
 
   if (sourceDir) {
+    documentsMutated = sourceDir !== exampleDir;
     await copyDocumentsTreeToExample(datasetId, sourceDir, exampleDir);
-  } else if (!isKnowledgeExampleDatasetId(datasetId)) {
+  } else if (!existingExample) {
     await mkdir(exampleDir, { recursive: true });
+    documentsMutated = true;
   }
 
   const stats = await readExampleDocumentStats(exampleDir);
-  const payload: KnowledgeDatasetRecord = {
-    ...record,
-    documentCount: stats.documentCount || record.documentCount,
-    chunkCount: stats.chunkCount || record.chunkCount,
-    updatedAt: Date.now(),
-  };
-  await saveKnowledgeExampleDataset(payload);
+  const nextDocumentCount = stats.documentCount || record.documentCount;
+  const nextChunkCount = stats.chunkCount || record.chunkCount;
+  const statsChanged = nextDocumentCount !== record.documentCount || nextChunkCount !== record.chunkCount;
+  const metaChanged = documentsMutated || statsChanged || !existingExample;
+
+  if (metaChanged) {
+    const payload: KnowledgeDatasetRecord = {
+      ...record,
+      documentCount: nextDocumentCount,
+      chunkCount: nextChunkCount,
+      updatedAt: documentsMutated || statsChanged || !existingExample ? Date.now() : existingExample.updatedAt,
+    };
+    await saveKnowledgeExampleDataset(payload);
+  }
 
   if (isInLocalKnowledgeDatasetIndex(datasetId)) {
     await removeKnowledgeDatasetFromLocalIndex(datasetId);

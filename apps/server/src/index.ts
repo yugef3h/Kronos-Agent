@@ -70,9 +70,11 @@ app.use('/api', maybeSkipAuth, chatRoutes);
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();
 await initKnowledgeDatasetStore();
-void reconcileAllWorkflowExampleKnowledge().catch((error) => {
-  console.warn('[workflow:example:knowledge] startup reconcile failed:', error);
-});
+if (process.env.NODE_ENV === 'production') {
+  void reconcileAllWorkflowExampleKnowledge().catch((error) => {
+    console.warn('[workflow:example:knowledge] startup reconcile failed:', error);
+  });
+}
 
 const PORT = env.PORT;
 

@@ -578,10 +578,21 @@ export const updateKnowledgeDatasetStats = async (
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
+  const nextDocumentCount = typeof stats.documentCount === 'number'
+    ? Math.max(0, Math.floor(stats.documentCount))
+    : existing.documentCount;
+  const nextChunkCount = typeof stats.chunkCount === 'number'
+    ? Math.max(0, Math.floor(stats.chunkCount))
+    : existing.chunkCount;
+
+  if (nextDocumentCount === existing.documentCount && nextChunkCount === existing.chunkCount) {
+    return cloneDataset(existing);
+  }
+
   const updated: KnowledgeDatasetRecord = {
     ...existing,
-    documentCount: typeof stats.documentCount === 'number' ? Math.max(0, Math.floor(stats.documentCount)) : existing.documentCount,
-    chunkCount: typeof stats.chunkCount === 'number' ? Math.max(0, Math.floor(stats.chunkCount)) : existing.chunkCount,
+    documentCount: nextDocumentCount,
+    chunkCount: nextChunkCount,
     updatedAt: Date.now(),
   };
 

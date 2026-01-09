@@ -110,4 +110,83 @@ describe('workflowExampleKnowledgeSync', () => {
 
     await expect(access(join(localDatasetsDir, datasetId))).rejects.toThrow();
   });
+
+  it('does not bump updatedAt when example meta is already in sync', async () => {
+    const datasetId = 'stable-example';
+    const createdAt = 1_700_000_000_000;
+    const updatedAt = 1_700_000_100_000;
+
+    await writeFile(
+      join(examplesDir, `${datasetId}.json`),
+      JSON.stringify({
+        id: datasetId,
+        name: 'Stable Example',
+        description: 'test',
+        is_multimodal: false,
+        doc_metadata: [],
+        indexing_technique: 'high_quality',
+        embedding_model: 'default-embedding',
+        embedding_model_provider: 'default',
+        retrieval_model: {
+          search_method: 'semantic_search',
+          top_k: 5,
+          score_threshold_enabled: false,
+          score_threshold: null,
+          reranking_enable: false,
+          reranking_mode: 'weighted_score',
+          weights: { semantic: 1, keyword: 0, full_text: 0 },
+        },
+        process_rule: {
+          mode: 'custom',
+          rules: {
+            pre_processing_rules: [],
+            segmentation: {
+              separator: '\n\n',
+              max_tokens: 500,
+              chunk_overlap: 80,
+            },
+            parent_mode: 'paragraph',
+            subchunk_segmentation: {
+              separator: '\n',
+              max_tokens: 200,
+              chunk_overlap: 30,
+            },
+          },
+        },
+        summary_index_setting: { enable: false },
+        doc_form: 'text_model',
+        doc_language: 'Chinese Simplified',
+        documentCount: 1,
+        chunkCount: 2,
+        createdAt,
+        updatedAt,
+      }),
+      'utf-8',
+    );
+
+    const exampleDatasetDir = join(examplesDir, datasetId);
+    const docId = 'doc-stable-1';
+    await mkdir(join(exampleDatasetDir, 'documents', docId, 'chunks'), { recursive: true });
+    await writeFile(
+      join(exampleDatasetDir, 'documents', 'documents.json'),
+      JSON.stringify([
+        {
+          id: docId,
+          datasetId,
+          name: 'a.txt',
+          chunkCount: 2,
+          chunkPath: `documents/${docId}/chunks/chunks.jsonl`,
+        },
+      ]),
+      'utf-8',
+    );
+
+    await initKnowledgeDatasetStore();
+    await promoteKnowledgeDatasetToExample(datasetId);
+
+    const exampleMeta = JSON.parse(await readFile(join(examplesDir, `${datasetId}.json`), 'utf-8')) as {
+      updatedAt: number;
+    };
+    expect(exampleMeta.updatedAt).toBe(updatedAt);
+  });
 });
