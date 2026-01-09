@@ -8,6 +8,7 @@ import {
   TakeoutToolModals,
   isTakeoutWideCardMessage,
 } from '../../agent-tools/takeout';
+// import { ChatTimelineFold } from './ChatTimelineFold';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
 import VariableSelect from '../../../components/form/variable-select';
@@ -25,6 +26,7 @@ type ChatStreamPanelViewProps = {
 export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) => {
   const {
     canSend,
+    // currentTimelineEvent,
     fileInputRef,
     formatTimestamp,
     handleDocumentFileChange,
@@ -74,6 +76,8 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     scrollToBottom,
     sendPrompt,
     sessionId,
+    // stageLabelMap,
+    // statusLabelMap,
     setPendingFile,
     setPendingImage,
     setPrompt,
@@ -83,6 +87,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     takeoutFlowState,
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
+    // timelineEvents,
     toggleHistoryPanel,
     publishedChatbotWorkflowAppId,
     publishedChatbotRagValueSelector,
@@ -300,6 +305,13 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
         </div>
 
         <div className="mt-3 w-full self-center space-y-2">
+          {/* <ChatTimelineFold
+            timelineEvents={timelineEvents}
+            currentTimelineEvent={currentTimelineEvent}
+            stageLabelMap={stageLabelMap}
+            statusLabelMap={statusLabelMap}
+            isActive={isStreaming || isOrchestrating}
+          /> */}
           <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
             <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleDocumentFileChange} />
             <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFileChange} />

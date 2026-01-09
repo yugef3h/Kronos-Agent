@@ -158,6 +158,7 @@ export type UseChatStreamControllerResult = {
   showTakeoutScrollHint: boolean;
   stageLabelMap: Record<TimelineEvent['stage'], string>;
   statusLabelMap: Record<TimelineEvent['status'], string>;
+  timelineEvents: TimelineEvent[];
   takeoutFlowState: TakeoutFlowState;
   takeoutFoodsScrollerRef: MutableRefObject<HTMLDivElement | null>;
   takeoutLoadingLabel: string;
@@ -1569,6 +1570,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     showTakeoutScrollHint,
     stageLabelMap: STAGE_LABEL_MAP,
     statusLabelMap: STATUS_LABEL_MAP,
+    timelineEvents,
     takeoutFlowState,
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
