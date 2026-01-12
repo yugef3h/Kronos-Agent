@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.middleware.auth import JwtAuthMiddleware
+from app.routes.dev_token import router as dev_token_router
 
 settings = get_settings()
 
@@ -18,6 +20,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(JwtAuthMiddleware, settings=settings)
+app.include_router(dev_token_router)
 
 
 @app.get("/healthz")
