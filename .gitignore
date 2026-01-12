@@ -20,4 +20,5 @@ apps/server/data/sessions/*
 apps/server/data/workflow-draft-previews/
 __pycache__/
 *.pyc
+apps/server_py/.venv/
 .pnpm-store/
