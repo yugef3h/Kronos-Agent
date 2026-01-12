@@ -3,3 +3,5 @@ uvicorn[standard]==0.34.0
 pydantic-settings==2.7.1
 python-dotenv==1.0.1
 PyJWT==2.10.1
+langchain-core==0.3.49
+langchain-openai==0.3.11
