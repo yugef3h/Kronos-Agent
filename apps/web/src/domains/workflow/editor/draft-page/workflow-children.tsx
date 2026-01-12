@@ -793,6 +793,8 @@ type ChecklistGroup = {
   issues: ChecklistIssue[];
 };
 
+// 有限状态机（FSM）（Dify 运行时内核）+ 声明式任务图（DAG）（Dify 画布 / DSL）
+// 状态：排队 → 运行中 → 成功 → 失败 → 重试 → 取消
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
