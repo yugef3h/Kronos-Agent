@@ -1,25 +1,37 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Optional
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-SERVER_ROOT = Path(__file__).resolve().parent.parent
-REPO_SERVER_ENV = SERVER_ROOT.parent / "server" / ".env"
+SERVER_PY_ROOT = Path(__file__).resolve().parent.parent
+APPS_ROOT = SERVER_PY_ROOT.parent
+SHARED_ENV_FILE = APPS_ROOT / ".env"
+LEGACY_ENV_FILE = APPS_ROOT / "server" / ".env"
+
+
+def resolve_env_file() -> Optional[Path]:
+    """Node / Python 共用：优先 apps/.env，兼容旧版 apps/server/.env。"""
+    if SHARED_ENV_FILE.exists():
+        return SHARED_ENV_FILE
+    if LEGACY_ENV_FILE.exists():
+        return LEGACY_ENV_FILE
+    return None
 
 LOCAL_DEV_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 )
 
+_resolved_env_file = resolve_env_file()
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(REPO_SERVER_ENV) if REPO_SERVER_ENV.exists() else None,
+        env_file=str(_resolved_env_file) if _resolved_env_file else None,
         env_file_encoding="utf-8",
         extra="ignore",
     )

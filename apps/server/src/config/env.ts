@@ -1,10 +1,22 @@
 import { config } from 'dotenv';
+import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
-const serverRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-config({ path: join(serverRoot, '.env') });
+const serverPackageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const appsRoot = join(serverPackageRoot, '..');
+
+/** Node / Python 共用：优先 apps/.env，兼容旧版 apps/server/.env */
+const resolveEnvFilePath = (): string | undefined => {
+  const candidates = [join(appsRoot, '.env'), join(serverPackageRoot, '.env')];
+  return candidates.find((path) => existsSync(path));
+};
+
+const envFilePath = resolveEnvFilePath();
+if (envFilePath) {
+  config({ path: envFilePath });
+}
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(3001),

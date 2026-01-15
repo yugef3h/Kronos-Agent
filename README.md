@@ -48,7 +48,7 @@ pnpm install
 pnpm dev
 ```
 
-服务端需要先配置环境变量：复制 `apps/server/.env.example` 为 `apps/server/.env`，并填写 JWT 与豆包模型参数。
+服务端需要先配置环境变量：复制 `apps/.env.example` 为 `apps/.env`，并填写 JWT 与豆包模型参数（Node / Python 后端共用）。
 
 访问:
 

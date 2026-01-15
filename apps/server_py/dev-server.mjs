@@ -6,15 +6,21 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const serverPyRoot = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(serverPyRoot, '../..');
-const serverEnvPath = join(repoRoot, 'apps/server/.env');
+const appsRoot = join(serverPyRoot, '..');
+const repoRoot = join(appsRoot, '..');
+
+const resolveEnvFilePath = () => {
+  const candidates = [join(appsRoot, '.env'), join(appsRoot, 'server/.env')];
+  return candidates.find((path) => existsSync(path));
+};
 
 const loadServerEnv = () => {
-  if (!existsSync(serverEnvPath)) {
+  const envFilePath = resolveEnvFilePath();
+  if (!envFilePath) {
     return;
   }
 
-  const content = readFileSync(serverEnvPath, 'utf8');
+  const content = readFileSync(envFilePath, 'utf8');
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) {

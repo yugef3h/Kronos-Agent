@@ -156,7 +156,7 @@ Mock `fetch`，断言返回字符串格式即可。
 
 ## 本地验证
 
-1. `apps/server/.env` 配好相关 key，重启 `pnpm dev`
+1. `apps/.env` 配好相关 key，重启 `pnpm dev`
 2. Playground 提问，时间线应出现 `工具 / <name>`
 3. `LANGGRAPH_ENABLED=false` 再走一遍，确认线性 A 也能调到
 4. 临时让 LangGraph 抛错，确认仍 **fallback 到 A**（`agentStreamRouter`）
