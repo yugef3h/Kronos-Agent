@@ -34,6 +34,7 @@ import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
+import { uploadImageToImgbb } from '../services/imgbbUploadService.js';
 import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
@@ -103,6 +104,11 @@ const takeoutOrchestrationSchema = z.object({
 const takeoutCatalogSchema = z.object({
   prompt: z.string().min(1),
   address: z.string().min(1).optional(),
+});
+
+const imageHostUploadSchema = z.object({
+  imageDataUrl: z.string().min(64).max(8_000_000),
+  fileName: z.string().min(1).max(240).optional(),
 });
 
 const imageAnalyzeSchema = z.object({
@@ -888,6 +894,31 @@ chatRoutes.post('/takeout/catalog', async (request: Request, response: Response)
   });
 
   response.json(result);
+});
+
+chatRoutes.post('/image/host-upload', async (request: Request, response: Response) => {
+  const parsed = imageHostUploadSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    sendValidationError(response, parsed.error);
+    return;
+  }
+
+  if (!parsed.data.imageDataUrl.startsWith('data:image/')) {
+    response.status(400).json({ error: 'imageDataUrl must be a data:image/ URL' });
+    return;
+  }
+
+  try {
+    const result = await uploadImageToImgbb({
+      dataUrl: parsed.data.imageDataUrl,
+      fileName: parsed.data.fileName,
+    });
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    response.status(500).json({ error: `Image host upload failed: ${reason}` });
+  }
 });
 
 chatRoutes.post('/image/analyze', async (request: Request, response: Response) => {

@@ -261,6 +261,10 @@ export type TakeoutCatalogResponse = {
 	foods: TakeoutCatalogFoodResponse[];
 };
 
+export type ImageHostUploadResponse = {
+	url: string;
+};
+
 export type ImageRecognitionResponse = {
 	reply: string;
 	model: string;
@@ -753,6 +757,30 @@ export const requestTakeoutCatalog = async (params: {
 	}
 
 	return (await response.json()) as TakeoutCatalogResponse;
+};
+
+export const requestImageHostUpload = async (params: {
+	authToken: string;
+	imageDataUrl: string;
+	fileName?: string;
+}): Promise<ImageHostUploadResponse> => {
+	const response = await fetch(apiUrl('/api/image/host-upload'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			imageDataUrl: params.imageDataUrl,
+			fileName: params.fileName,
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to upload image to host');
+	}
+
+	return (await response.json()) as ImageHostUploadResponse;
 };
 
 export const requestImageRecognition = async (params: {

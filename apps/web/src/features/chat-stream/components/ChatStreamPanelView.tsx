@@ -399,7 +399,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
               onKeyDown={handlePromptKeyDown}
               className="max-h-[160px] min-h-[44px] w-full resize-none border-none bg-transparent py-1 text-sm leading-6 text-slate-800 outline-none"
               placeholder={pendingImage
-                ? isAnalyzingImage
+                ? pendingImage.imgbbUploadState === 'pending'
                   ? '图片上传中，请稍候…'
                   : '可继续输入问题，或点“解释图片”直接发送'
                 : pendingFile

@@ -16,4 +16,6 @@ export type ImageSelectionResult = {
   mimeType: SupportedImageMimeType;
   size: number;
   dataUrl: string;
+  remoteUrl?: string;
+  imgbbUploadState?: 'pending' | 'ready' | 'failed';
 };

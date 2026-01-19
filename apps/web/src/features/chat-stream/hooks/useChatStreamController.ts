@@ -57,6 +57,7 @@ import {
 } from '../../agent-tools/file';
 import {
   prepareImageForAnalyze,
+  resolveImageUrlForBackend,
   uploadImageToImgbb,
   type ImageSelectionResult,
 } from '../../agent-tools/image';
@@ -248,6 +249,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
+  const pendingImageUploadRef = useRef<Promise<string | null> | null>(null);
 
   const playgroundChatStreamSessionId = useMemo(
     () => getPlaygroundWorkflowChatStreamSessionId(sessionId, publishedChatbotWorkflowAppId),
@@ -329,6 +331,12 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   useEffect(() => {
     setHistorySwitchConfirmTarget(null);
   }, [publishedChatbotWorkflowAppId]);
+
+  useEffect(() => {
+    if (!pendingImage) {
+      pendingImageUploadRef.current = null;
+    }
+  }, [pendingImage]);
 
   const updateMessageListScrollPin = useCallback(() => {
     const element = messageListRef.current;
@@ -949,16 +957,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const imagePrompt = userPrompt || IMAGE_DEFAULT_PROMPT;
       const imageSnapshot = pendingImage;
 
-      setIsAnalyzingImage(true);
-      let imageRemoteUrl: string;
-      try {
-        imageRemoteUrl = await uploadImageToImgbb(imageSnapshot);
-      } catch (error) {
-        setIsAnalyzingImage(false);
-        const message = error instanceof Error ? error.message : '图床上传失败，请稍后重试';
-        startAssistantTypewriter(message);
-        return;
-      }
+      const imagePayload = await resolveImageUrlForBackend(
+        imageSnapshot,
+        pendingImageUploadRef.current,
+      );
+      pendingImageUploadRef.current = null;
 
       if (publishedChatbotWorkflowAppId) {
         const published = resolvePublishedChatbotForPlayground(publishedChatbotWorkflowAppId);
@@ -983,7 +986,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           setLatestUserQuestion(imagePrompt);
           setPrompt('');
           setPendingImage(null);
-          setIsAnalyzingImage(false);
 
           const previousRequestId = activeRequestIdRef.current;
           if (activeControllerRef.current) {
@@ -1010,7 +1012,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               workflowAppId: publishedChatbotWorkflowAppId,
             });
             const maxV = Math.min(10, Math.max(1, Math.round(published.orch.visionMaxImages ?? 3)));
-            const imageDataUrls = [imageRemoteUrl].slice(0, maxV);
+            const imageDataUrls = [imagePayload].slice(0, maxV);
             streamCompleted = await executePlaygroundChatStream({
               requestId,
               controller,
@@ -1072,13 +1074,14 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       setLatestUserQuestion(imagePrompt);
       setPrompt('');
       setPendingImage(null);
+      setIsAnalyzingImage(true);
 
       const imageInvocation = createAssistantInvocation({ modalities: ['image'] });
 
       try {
         const response = await requestImageRecognition({
           authToken,
-          imageDataUrl: imageRemoteUrl,
+          imageDataUrl: imagePayload,
           prompt: imagePrompt,
           sessionId,
         });
@@ -1499,15 +1502,47 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     try {
       const preparedImage = await prepareImageForAnalyze(selectedFile);
       setPendingFile(null);
-      setPendingImage(preparedImage);
+      setPendingImage({ ...preparedImage, imgbbUploadState: 'pending' });
+
+      if (!authToken) {
+        setPendingImage({ ...preparedImage, imgbbUploadState: 'failed' });
+        requestAnimationFrame(() => {
+          promptTextareaRef.current?.focus();
+        });
+        return;
+      }
+
+      const uploadPromise = uploadImageToImgbb(preparedImage, authToken)
+        .then((remoteUrl) => {
+          setPendingImage((prev) => {
+            if (!prev || prev.dataUrl !== preparedImage.dataUrl) {
+              return prev;
+            }
+            return { ...prev, remoteUrl, imgbbUploadState: 'ready' };
+          });
+          return remoteUrl;
+        })
+        .catch(() => {
+          setPendingImage((prev) => {
+            if (!prev || prev.dataUrl !== preparedImage.dataUrl) {
+              return prev;
+            }
+            return { ...prev, imgbbUploadState: 'failed' };
+          });
+          return null;
+        });
+
+      pendingImageUploadRef.current = uploadPromise;
+
       requestAnimationFrame(() => {
         promptTextareaRef.current?.focus();
       });
     } catch (error) {
+      pendingImageUploadRef.current = null;
       const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
       startAssistantTypewriter(message);
     }
-  }, [setPendingFile, setPendingImage, startAssistantTypewriter]);
+  }, [authToken, setPendingFile, setPendingImage, startAssistantTypewriter]);
 
   const handleDocumentFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];

@@ -31,6 +31,8 @@ const envSchema = z.object({
   LANGGRAPH_ENABLED: z.coerce.boolean().default(true),
   LANGGRAPH_MAX_TOOL_STEPS: z.coerce.number().int().positive().default(8),
   TAVILY_API_KEY: z.string().optional(),
+  /** ImgBB 图床；Playground 选图上传 */
+  IMGBB_API_KEY: z.string().optional(),
   ATTENTION_PY_ENABLED: z.coerce.boolean().default(false),
   ATTENTION_PY_BASE_URL: z.string().url().default('http://127.0.0.1:8008'),
   ATTENTION_PY_TIMEOUT_MS: z.coerce.number().int().positive().default(1200),
