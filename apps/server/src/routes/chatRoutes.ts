@@ -106,13 +106,24 @@ const takeoutCatalogSchema = z.object({
   address: z.string().min(1).optional(),
 });
 
+/** data URL（base64 较长）或 ImgBB 等 https 直链 */
+const imageRefSchema = z.string().min(1).max(8_000_000).refine((value) => {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('data:image/')) {
+    return trimmed.length >= 64;
+  }
+  return /^https?:\/\//i.test(trimmed) && trimmed.length >= 12;
+}, {
+  message: 'imageDataUrl must be a data:image/ URL or http(s) image URL',
+});
+
 const imageHostUploadSchema = z.object({
   imageDataUrl: z.string().min(64).max(8_000_000),
   fileName: z.string().min(1).max(240).optional(),
 });
 
 const imageAnalyzeSchema = z.object({
-  imageDataUrl: z.string().min(64).max(8_000_000),
+  imageDataUrl: imageRefSchema,
   prompt: z.string().max(400).optional(),
   sessionId: z.string().min(1).optional(),
 });
