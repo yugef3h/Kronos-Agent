@@ -126,7 +126,7 @@ export const AppShell = () => {
       </header>
 
       {/* 内容区域（优化内边距） */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 overflow-hidden p-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1680px] flex-1 flex-col overflow-hidden p-3">
         <Outlet />
       </div>
     </main>

@@ -11,7 +11,7 @@ export const HomePage = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="relative h-[calc(100vh-80px)] min-w-0 flex-1 overflow-hidden">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <button
         type="button"
         onClick={() => setIsMobileSidebarOpen(true)}
@@ -21,7 +21,7 @@ export const HomePage = () => {
       </button>
 
       <div className="flex h-full w-full min-w-0 gap-3 md:gap-4">
-        <section className="min-w-0 flex-1">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ChatStreamPanel />
         </section>
 
