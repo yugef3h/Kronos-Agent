@@ -1,10 +1,13 @@
 import { HumanMessage } from '@langchain/core/messages';
 
-const isDataImageUrl = (value: string) => value.trim().startsWith('data:image/');
+const isImageUrl = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed.startsWith('data:image/') || /^https?:\/\//i.test(trimmed);
+};
 
-/** 当前轮用户消息：纯文本或多模态（文本 + data URL 图片） */
+/** 当前轮用户消息：纯文本或多模态（文本 + data URL / HTTPS 图片） */
 export const buildUserHumanMessage = (prompt: string, imageDataUrls?: string[]): HumanMessage => {
-  const urls = (imageDataUrls ?? []).map((u) => u.trim()).filter(isDataImageUrl);
+  const urls = (imageDataUrls ?? []).map((u) => u.trim()).filter(isImageUrl);
   if (urls.length === 0) {
     return new HumanMessage(prompt);
   }

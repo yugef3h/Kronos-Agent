@@ -4,6 +4,7 @@ export {
   isImageSizeAllowed,
   isSupportedImageMimeType,
 } from './helpers';
+export { uploadImageToImgbb } from './imgbbUpload';
 export { prepareImageForAnalyze } from './service';
 export {
   IMAGE_COMPRESS_MAX_EDGE_PX,

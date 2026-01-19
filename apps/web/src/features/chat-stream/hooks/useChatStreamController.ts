@@ -57,6 +57,7 @@ import {
 } from '../../agent-tools/file';
 import {
   prepareImageForAnalyze,
+  uploadImageToImgbb,
   type ImageSelectionResult,
 } from '../../agent-tools/image';
 import {
@@ -948,6 +949,17 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const imagePrompt = userPrompt || IMAGE_DEFAULT_PROMPT;
       const imageSnapshot = pendingImage;
 
+      setIsAnalyzingImage(true);
+      let imageRemoteUrl: string;
+      try {
+        imageRemoteUrl = await uploadImageToImgbb(imageSnapshot);
+      } catch (error) {
+        setIsAnalyzingImage(false);
+        const message = error instanceof Error ? error.message : '图床上传失败，请稍后重试';
+        startAssistantTypewriter(message);
+        return;
+      }
+
       if (publishedChatbotWorkflowAppId) {
         const published = resolvePublishedChatbotForPlayground(publishedChatbotWorkflowAppId);
         if (published.kind === 'active' && published.orch.visionEnabled) {
@@ -971,6 +983,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           setLatestUserQuestion(imagePrompt);
           setPrompt('');
           setPendingImage(null);
+          setIsAnalyzingImage(false);
 
           const previousRequestId = activeRequestIdRef.current;
           if (activeControllerRef.current) {
@@ -997,7 +1010,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               workflowAppId: publishedChatbotWorkflowAppId,
             });
             const maxV = Math.min(10, Math.max(1, Math.round(published.orch.visionMaxImages ?? 3)));
-            const imageDataUrls = [imageSnapshot.dataUrl].slice(0, maxV);
+            const imageDataUrls = [imageRemoteUrl].slice(0, maxV);
             streamCompleted = await executePlaygroundChatStream({
               requestId,
               controller,
@@ -1059,14 +1072,13 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       setLatestUserQuestion(imagePrompt);
       setPrompt('');
       setPendingImage(null);
-      setIsAnalyzingImage(true);
 
       const imageInvocation = createAssistantInvocation({ modalities: ['image'] });
 
       try {
         const response = await requestImageRecognition({
           authToken,
-          imageDataUrl: imageSnapshot.dataUrl,
+          imageDataUrl: imageRemoteUrl,
           prompt: imagePrompt,
           sessionId,
         });

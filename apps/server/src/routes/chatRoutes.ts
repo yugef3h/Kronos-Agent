@@ -175,7 +175,10 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
   response.setHeader('Connection', 'keep-alive');
   response.setHeader('X-Accel-Buffering', 'no');
 
-  const imageDataUrls = parsed.data.imageDataUrls?.filter((u) => u.startsWith('data:image/'));
+  const imageDataUrls = parsed.data.imageDataUrls?.filter((u) => {
+    const trimmed = u.trim();
+    return trimmed.startsWith('data:image/') || /^https?:\/\//i.test(trimmed);
+  });
 
   console.warn(
     `[playground-chat] POST /api/chat-stream sessionId=${parsed.data.sessionId} promptChars=${parsed.data.prompt.length}`,
@@ -896,12 +899,14 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
   }
 
   try {
-    const attachment = await saveImageAttachment({
-      dataUrl: parsed.data.imageDataUrl,
-    });
+    const imageRef = parsed.data.imageDataUrl.trim();
+    const isDataImage = imageRef.startsWith('data:image/');
+    const attachment = isDataImage
+      ? await saveImageAttachment({ dataUrl: imageRef })
+      : null;
 
     const result = await recognizeImageByDoubao({
-      imageDataUrl: parsed.data.imageDataUrl,
+      imageDataUrl: imageRef,
       prompt: parsed.data.prompt,
     });
 
@@ -910,14 +915,17 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
       persistSessionMessagesSafely({
         sessionId: parsed.data.sessionId,
         messages: [
-          { role: 'user', content: '', attachments: [attachment] },
+          ...(attachment ? [{ role: 'user' as const, content: '', attachments: [attachment] }] : []),
           { role: 'user', content: userPrompt },
           { role: 'assistant', content: result.reply },
         ],
       });
     }
 
-    response.json({ ...result, attachmentId: attachment.id });
+    response.json({
+      ...result,
+      ...(attachment ? { attachmentId: attachment.id } : {}),
+    });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Image recognition failed: ${reason}` });
