@@ -76,8 +76,8 @@ export const WorkflowPage = () => {
   };
 
   return (
-    <>
-      <section className="min-w-0 flex-1 rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-[0_24px_60px_-32px_rgba(8,145,178,0.35)]">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <section className="soft-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-sky-50 p-5 shadow-[0_24px_60px_-32px_rgba(8,145,178,0.35)]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-700">
               Applications
@@ -199,7 +199,7 @@ export const WorkflowPage = () => {
             );
             })}
           </div>
-        </section>
+      </section>
 
       <WorkflowBlankAppCreateDialog
         open={isCreateModalOpen}
@@ -219,6 +219,6 @@ export const WorkflowPage = () => {
           setEditingApp(null);
         }}
       />
-    </>
+    </div>
   );
 };
