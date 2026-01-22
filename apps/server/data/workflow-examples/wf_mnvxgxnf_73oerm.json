@@ -1,9 +1,9 @@
 {
   "id": "wf_mnvxgxnf_73oerm",
-  "name": "AI 应用智能助手",
-  "description": "解答AI相关问题，包括RAG、提示词工程、ReAct、多 Agent 等知识",
+  "name": "AI 应用智能客服助手",
+  "description": "解答AI相关问题，包括RAG、提示词工程、ReAct、多 Agent 等知识。",
   "createdAt": 1776008272731,
-  "updatedAt": 1779205096754,
+  "updatedAt": 1779205225748,
   "dsl": {
     "app": {
       "description": "",
@@ -11,7 +11,7 @@
       "icon_background": "#FFEAD5",
       "icon_type": "emoji",
       "mode": "workflow",
-      "name": "AI 应用智能助手",
+      "name": "AI 应用智能客服助手",
       "use_icon_as_answer_icon": false
     },
     "dependencies": [],
@@ -94,7 +94,7 @@
               "_waitingRun": true,
               "sourceType": "start",
               "targetType": "knowledge-retrieval",
-              "_connectedNodeIsSelected": false
+              "_connectedNodeIsSelected": true
             }
           },
           {
@@ -142,11 +142,11 @@
             },
             "width": 242,
             "height": 109,
-            "selected": false,
+            "selected": true,
             "sourcePosition": "right",
             "targetPosition": "left",
             "data": {
-              "selected": false,
+              "selected": true,
               "title": "用户输入",
               "type": "start",
               "variables": [
@@ -219,11 +219,11 @@
             "type": "custom",
             "position": {
               "x": 681,
-              "y": 279
+              "y": 280
             },
             "positionAbsolute": {
               "x": 681,
-              "y": 279
+              "y": 280
             },
             "width": 242,
             "height": 88,
@@ -267,10 +267,13 @@
                 ]
               },
               "vision": {
-                "enabled": false,
+                "enabled": true,
                 "configs": {
-                  "detail": "high",
-                  "variable_selector": []
+                  "detail": "low",
+                  "variable_selector": [
+                    "sys",
+                    "files"
+                  ]
                 }
               },
               "structured_output_enabled": false,
