@@ -38,10 +38,12 @@ export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise
     throw new Error(`Failed to save workflow example (${response.status})`);
   }
   const idx = exampleAppsCache.findIndex((a) => a.id === record.id);
+  const prevHasDraftPreview = idx >= 0 ? exampleAppsCache[idx].hasDraftPreview : false;
+  const cached: WorkflowAppRecord = prevHasDraftPreview ? { ...record, hasDraftPreview: true } : record;
   if (idx >= 0) {
-    exampleAppsCache = [...exampleAppsCache.slice(0, idx), record, ...exampleAppsCache.slice(idx + 1)];
+    exampleAppsCache = [...exampleAppsCache.slice(0, idx), cached, ...exampleAppsCache.slice(idx + 1)];
   } else {
-    exampleAppsCache = [...exampleAppsCache, record];
+    exampleAppsCache = [...exampleAppsCache, cached];
   }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(WORKFLOW_EXAMPLES_CHANGED_EVENT));

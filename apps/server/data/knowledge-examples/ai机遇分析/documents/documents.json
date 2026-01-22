@@ -1,0 +1,20 @@
+[
+  {
+    "id": "f661db60-2904-4af7-82f3-c5c219bd576b",
+    "datasetId": "ai机遇分析",
+    "name": "AI机遇分析.txt",
+    "extension": "txt",
+    "mimeType": "text/plain",
+    "size": 5564,
+    "status": "completed",
+    "createdAt": 1775923596551,
+    "updatedAt": 1775923596551,
+    "sourcePath": "documents/f661db60-2904-4af7-82f3-c5c219bd576b/source/original.txt",
+    "parsedTextPath": "documents/f661db60-2904-4af7-82f3-c5c219bd576b/parsed/content.txt",
+    "chunkPath": "documents/f661db60-2904-4af7-82f3-c5c219bd576b/chunks/chunks.jsonl",
+    "chunkCount": 6,
+    "characterCount": 2362,
+    "previewText": "截至2026年4月，AI正处于**技术能力质变、产业全面落地、风险集中显现**的分水岭：机遇集中在**智能体（Agent）、行业深度应用、科学AI、个人生产力革命**；风险则集中在**安全失控、就业冲击、伦理失范、产业泡沫、算力垄断**。以下是最新、最核心的机遇与风险分析。\n\n---\n\n### 一、核心机遇（2026年）\n\n#### 1. 技术范式跃迁：从“生成”到“自主行动”\n- **AI Agent 爆发**：AI从“聊天工具”升级...",
+    "metadata": {}
+  }
+]

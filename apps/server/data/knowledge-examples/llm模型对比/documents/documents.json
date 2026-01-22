@@ -1,0 +1,20 @@
+[
+  {
+    "id": "dbfd9530-db17-4dd9-a949-044cdb2c01cb",
+    "datasetId": "llm模型对比",
+    "name": "LLM模型对比.txt",
+    "extension": "txt",
+    "mimeType": "text/plain",
+    "size": 3410,
+    "status": "completed",
+    "createdAt": 1776008071610,
+    "updatedAt": 1776008071610,
+    "sourcePath": "documents/dbfd9530-db17-4dd9-a949-044cdb2c01cb/source/original.txt",
+    "parsedTextPath": "documents/dbfd9530-db17-4dd9-a949-044cdb2c01cb/parsed/content.txt",
+    "chunkPath": "documents/dbfd9530-db17-4dd9-a949-044cdb2c01cb/chunks/chunks.jsonl",
+    "chunkCount": 8,
+    "characterCount": 1420,
+    "previewText": "截至2026年4月，主流大语言模型（LLM）已非常成熟，但仍存在**能力极强、但有明显短板**的特点。以下是当前LLM的核心优劣：\n\n### 一、核心优势（优点）\n1. **语言理解与生成极强**\n- 能读懂复杂长文、对话、指令，生成流畅、自然、逻辑连贯的文本。\n- 支持多轮深度对话、文案创作、代码、翻译、摘要、问答等几乎所有NLP任务。\n\n2. **泛化与零样本能力强**\n- 无需专门训练，直接用自然语言提示（Prompt）就能做新任...",
+    "metadata": {}
+  }
+]

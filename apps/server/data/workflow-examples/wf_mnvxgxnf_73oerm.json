@@ -1,9 +1,9 @@
 {
   "id": "wf_mnvxgxnf_73oerm",
-  "name": "客服自动化流程",
-  "description": "",
+  "name": "AI 应用智能助手",
+  "description": "解答AI相关问题，包括RAG、提示词工程、ReAct、多 Agent 等知识",
   "createdAt": 1776008272731,
-  "updatedAt": 1779203702326,
+  "updatedAt": 1779205096754,
   "dsl": {
     "app": {
       "description": "",
@@ -11,7 +11,7 @@
       "icon_background": "#FFEAD5",
       "icon_type": "emoji",
       "mode": "workflow",
-      "name": "客服自动化流程",
+      "name": "AI 应用智能助手",
       "use_icon_as_answer_icon": false
     },
     "dependencies": [],
@@ -199,7 +199,11 @@
               ],
               "query_attachment_selector": [],
               "dataset_ids": [
-                "ai工程师转型技能表-2026"
+                "ai工程师转型技能表-2026",
+                "agent面试题库",
+                "ai机遇分析",
+                "rag面试题库",
+                "llm模型对比"
               ],
               "retrieval_mode": "multiple",
               "multiple_retrieval_config": {

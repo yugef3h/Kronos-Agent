@@ -1,0 +1,20 @@
+[
+  {
+    "id": "a610fd13-5db1-4594-bb49-37d14ec1bd8b",
+    "datasetId": "rag面试题库",
+    "name": "RAG面试题库.txt",
+    "extension": "txt",
+    "mimeType": "text/plain",
+    "size": 2290,
+    "status": "completed",
+    "createdAt": 1779204880785,
+    "updatedAt": 1779204880785,
+    "sourcePath": "documents/a610fd13-5db1-4594-bb49-37d14ec1bd8b/source/original.txt",
+    "parsedTextPath": "documents/a610fd13-5db1-4594-bb49-37d14ec1bd8b/parsed/content.txt",
+    "chunkPath": "documents/a610fd13-5db1-4594-bb49-37d14ec1bd8b/chunks/chunks.jsonl",
+    "chunkCount": 6,
+    "characterCount": 876,
+    "previewText": "大模型RAG开发高频面试题完整版答案\n1.大模型应用开发三种主要模式\n（1）提示词工程：纯prompt约束，轻量化，无私有数据，易幻觉\n（2）微调训练：训练模型适配业务，效果稳定，成本高更新慢\n（3）RAG检索增强：外接知识库检索生成，易落地易更新，企业主流\n\n2.文档分块策略\n固定分块、语义分块、标题分块、递归字符分块、滑动重叠分块\n项目选用：递归字符+滑动重叠分片\n原因：适配多格式文档，防止语义断裂，速度快，参数可调适配业务\n\n3....",
+    "metadata": {}
+  }
+]

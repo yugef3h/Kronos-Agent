@@ -1,0 +1,20 @@
+[
+  {
+    "id": "6a70b2f5-0ae5-4d61-ab64-766a268ebcaa",
+    "datasetId": "agent面试题库",
+    "name": "Agent面试题库.txt",
+    "extension": "txt",
+    "mimeType": "text/plain",
+    "size": 4217,
+    "status": "completed",
+    "createdAt": 1779205060636,
+    "updatedAt": 1779205060636,
+    "sourcePath": "documents/6a70b2f5-0ae5-4d61-ab64-766a268ebcaa/source/original.txt",
+    "parsedTextPath": "documents/6a70b2f5-0ae5-4d61-ab64-766a268ebcaa/parsed/content.txt",
+    "chunkPath": "documents/6a70b2f5-0ae5-4d61-ab64-766a268ebcaa/chunks/chunks.jsonl",
+    "chunkCount": 11,
+    "characterCount": 1735,
+    "previewText": "ReAct与多Agent智能体面试题及标准答案\n一、ReAct 相关面试题\n1.什么是ReAct\nReAct即推理+行动，大模型一边进行逻辑思考推理，一边自主调用外部工具执行实际动作，结合思维推理与外部实操，循环迭代完成复杂任务，是主流通用Agent实现范式。\n\n2.ReAct核心流程\n用户提问→模型推理思考Thought→确定执行动作Action→调用工具获取观察Observation→结合结果再次推理→信息充足输出答案，多轮循环执行...",
+    "metadata": {}
+  }
+]
