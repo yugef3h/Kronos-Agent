@@ -390,12 +390,15 @@ export const markWorkflowDraftPreviewBackendSynced = (appId: string, synced: boo
 };
 
 /** 列表 `<img src>`：优先本地 data URL，否则已同步后端时用 GET（需 `pnpm dev` 起 server） */
-export const getWorkflowDraftThumbnailSrc = (app: WorkflowAppRecord): string | undefined => {
+export const getWorkflowDraftThumbnailSrc = (
+  app: WorkflowAppRecord,
+  options?: { cacheBust?: number },
+): string | undefined => {
   if (app.draftPreviewDataUrl) {
     return app.draftPreviewDataUrl;
   }
   if (isWorkflowExampleAppId(app.id)) {
-    return getWorkflowExamplePreviewSrc(app);
+    return getWorkflowExamplePreviewSrc(app, options?.cacheBust);
   }
   if (app.draftPreviewBackendSynced) {
     return apiUrl(

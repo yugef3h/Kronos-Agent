@@ -12,7 +12,10 @@ import {
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
   type WorkflowAppRecord,
 } from '../../../domains/workflow/app/workflowAppStore';
-import { WORKFLOW_EXAMPLES_CHANGED_EVENT } from '../../../domains/workflow/app/workflowExampleClient';
+import {
+  fetchWorkflowExampleApps,
+  WORKFLOW_EXAMPLES_CHANGED_EVENT,
+} from '../../../domains/workflow/app/workflowExampleClient';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -29,6 +32,8 @@ export const WorkflowPage = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [apps, setApps] = useState(() => listWorkflowApps());
+  /** 列表进入/拉完示例后 bump 一次，示例缩略图 URL 带 `t=` 绕过浏览器缓存 */
+  const [previewCacheBust, setPreviewCacheBust] = useState(() => Date.now());
   const [editingApp, setEditingApp] = useState<WorkflowAppRecord | null>(null);
   const isCreateModalOpen = searchParams.get('create') === 'blank';
 
@@ -37,10 +42,31 @@ export const WorkflowPage = () => {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
+    let cancelled = false;
+    void fetchWorkflowExampleApps()
+      .then(() => {
+        if (!cancelled) {
+          setPreviewCacheBust(Date.now());
+          setApps(listWorkflowApps());
+        }
+      })
+      .catch((err) => {
+        console.warn('[workflow:example] 列表页刷新内置示例失败', err);
+        if (!cancelled) {
+          setApps(listWorkflowApps());
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [location.key]);
+
+  useEffect(() => {
     const onFocus = () => {
       setApps(listWorkflowApps());
     };
     const onWorkflowAppsChanged = () => {
+      setPreviewCacheBust(Date.now());
       setApps(listWorkflowApps());
     };
     const onStorage = (event: StorageEvent) => {
@@ -117,7 +143,7 @@ export const WorkflowPage = () => {
             </div>
 
             {apps.map((app) => {
-              const thumbSrc = getWorkflowDraftThumbnailSrc(app);
+              const thumbSrc = getWorkflowDraftThumbnailSrc(app, { cacheBust: previewCacheBust });
               const isPublished =
                 app.dsl.app.mode === 'chat' && Boolean(app.mockPublished);
               const descTrimmed = app.description?.trim() ?? '';

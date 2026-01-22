@@ -96,11 +96,18 @@ export async function putWorkflowExamplePreview(
   }
 }
 
-export const getWorkflowExamplePreviewSrc = (app: WorkflowAppRecord): string | undefined => {
+export const getWorkflowExamplePreviewSrc = (
+  app: WorkflowAppRecord,
+  cacheBust?: number,
+): string | undefined => {
   if (!app.hasDraftPreview) {
     return undefined;
   }
+  const params = new URLSearchParams({ v: String(app.updatedAt) });
+  if (cacheBust != null) {
+    params.set('t', String(cacheBust));
+  }
   return apiUrl(
-    `/api/workflow/examples/${encodeURIComponent(app.id)}/draft-preview?v=${encodeURIComponent(String(app.updatedAt))}`,
+    `/api/workflow/examples/${encodeURIComponent(app.id)}/draft-preview?${params.toString()}`,
   );
 };
