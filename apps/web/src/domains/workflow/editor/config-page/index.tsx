@@ -1,6 +1,6 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useLatest } from 'ahooks';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import {
@@ -32,6 +32,7 @@ import { KnowledgeDatasetPickerDialog } from '../../../../components/knowledge-d
 import { PanelInfoHint } from '../../../../components/form/panel-info-hint';
 import { PanelSliderInput, PanelToggle } from '../../../../components/form/panel-form';
 import { prepareImageForAnalyze } from '../../../../features/agent-tools/image';
+import { MESSAGE_LIST_STICK_THRESHOLD_PX } from '../../../../features/chat-stream/constants';
 
 type ChatLine = { id: string; role: 'user' | 'assistant'; content: string; imageCount?: number };
 
@@ -68,6 +69,35 @@ export const WorkflowConfigPage = () => {
 
   const streamAbortRef = useRef<AbortController | null>(null);
   const visionFileInputRef = useRef<HTMLInputElement | null>(null);
+  const debugMessageListRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottomRef = useRef(true);
+
+  const updateDebugMessageListScrollPin = useCallback(() => {
+    const element = debugMessageListRef.current;
+    if (!element) {
+      return;
+    }
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= MESSAGE_LIST_STICK_THRESHOLD_PX;
+  }, []);
+
+  useEffect(() => {
+    const element = debugMessageListRef.current;
+    if (!element || !stickToBottomRef.current) {
+      return;
+    }
+    element.scrollTop = element.scrollHeight;
+  }, [messages]);
+
+  useEffect(() => {
+    const element = debugMessageListRef.current;
+    if (!element) {
+      return undefined;
+    }
+    updateDebugMessageListScrollPin();
+    element.addEventListener('scroll', updateDebugMessageListScrollPin, { passive: true });
+    return () => element.removeEventListener('scroll', updateDebugMessageListScrollPin);
+  }, [updateDebugMessageListScrollPin]);
 
   const promptBraceKeys = useMemo(
     () => extractDoubleBraceVariableKeys(orch.systemPrompt),
@@ -369,6 +399,7 @@ export const WorkflowConfigPage = () => {
     setSendError('');
     setIsSending(true);
     setDebugInput('');
+    stickToBottomRef.current = true;
 
     const o = orchLatest.current ?? orch;
     const imageDataUrls =
@@ -919,7 +950,11 @@ export const WorkflowConfigPage = () => {
           <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_8px_28px_-20px_rgba(14,116,144,0.35)] backdrop-blur">
             <div className="flex min-h-0 flex-1 flex-col">
               <div className="relative flex min-h-0 flex-1">
-                <div className="soft-scrollbar h-full w-full space-y-4 overflow-y-auto bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+                <div
+                  ref={debugMessageListRef}
+                  onScroll={updateDebugMessageListScrollPin}
+                  className="soft-scrollbar h-full w-full space-y-4 overflow-y-auto bg-gradient-to-b from-white via-slate-50/35 to-cyan-50/20 pb-8 pt-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                >
                   {messages.length === 0 ? (
                     <div className="mx-auto mt-4 max-w-5xl px-3 text-center">
                       {/* <h3 className="font-display text-lg text-slate-800 md:text-xl">调试对话</h3>
