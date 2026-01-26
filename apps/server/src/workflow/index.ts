@@ -6,4 +6,14 @@ export {
   isTerminalNodeRunStatus,
   isTerminalWorkflowRunStatus,
 } from './types.js'
-export type { RunError } from './types.js'
+export type {
+  CreateWorkflowRunInput,
+  RunError,
+  UpdateWorkflowRunPatch,
+  WorkflowRunRecord,
+} from './types.js'
+export {
+  DEFAULT_WORKFLOW_RUN_TTL_MS,
+  WorkflowRunStore,
+  workflowRunStore,
+} from './workflowRunStore.js'

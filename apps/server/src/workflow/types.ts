@@ -39,6 +39,35 @@ export type RunError = {
   details?: unknown
 }
 
+// 工作流运行记录
+export type WorkflowRunRecord = {
+  runId: string
+  appId: string
+  status: WorkflowRunStatus
+  createdAt: number
+  updatedAt: number
+  expiresAt: number
+  startedAt?: number
+  finishedAt?: number
+  error?: RunError
+}
+
+// 创建工作流运行记录
+export type CreateWorkflowRunInput = {
+  appId: string
+  ttlMs?: number
+  status?: WorkflowRunStatus
+}
+
+export type UpdateWorkflowRunPatch = {
+  status?: WorkflowRunStatus
+  startedAt?: number
+  finishedAt?: number
+  error?: RunError | null
+  touchTtl?: boolean
+  ttlMs?: number
+}
+
 export const TERMINAL_WORKFLOW_RUN_STATUSES: ReadonlySet<WorkflowRunStatus> = new Set([
   WorkflowRunStatus.Succeeded,
   WorkflowRunStatus.Failed,
