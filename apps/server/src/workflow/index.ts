@@ -32,6 +32,12 @@ export {
   normalizeStartNodeConfig,
   validateStartNodeConfig,
 } from './debug/startNodeDebugExecutor.js'
+export {
+  buildEndNodeOutputs,
+  executeEndNodeDebug,
+  normalizeEndNodeConfig,
+  validateEndNodeConfig,
+} from './debug/endNodeDebugExecutor.js'
 
 import './registerNodeDebugExecutors.js'
 export {
