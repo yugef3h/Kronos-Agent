@@ -8,10 +8,23 @@ export {
 } from './types.js'
 export type {
   CreateWorkflowRunInput,
+  NodeDebugBlockKind,
+  NodeDebugContext,
+  NodeDebugExecutor,
+  NodeDebugNodePayload,
+  NodeDebugRequest,
+  NodeDebugResult,
   RunError,
   UpdateWorkflowRunPatch,
   WorkflowRunRecord,
 } from './types.js'
+export {
+  NodeDebugExecutorNotFoundError,
+  NodeDebugExecutorRegistry,
+  executeNodeDebug,
+  nodeDebugExecutorRegistry,
+  registerNodeDebugExecutor,
+} from './nodeDebugExecutors.js'
 export {
   DEFAULT_WORKFLOW_RUN_TTL_MS,
   WorkflowRunStore,

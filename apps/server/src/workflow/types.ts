@@ -87,3 +87,45 @@ export const isTerminalWorkflowRunStatus = (status: WorkflowRunStatus): boolean 
 
 export const isTerminalNodeRunStatus = (status: NodeRunStatus): boolean =>
   TERMINAL_NODE_RUN_STATUSES.has(status)
+
+/** Dify-style block kinds supported by single-node debug executors. */
+export type NodeDebugBlockKind =
+  | 'start'
+  | 'end'
+  | 'llm'
+  | 'if-else'
+  | 'knowledge-retrieval'
+  | 'loop'
+  | 'iteration'
+
+export type NodeDebugNodePayload = {
+  id: string
+  type: NodeDebugBlockKind
+  inputs?: Record<string, unknown>
+  outputs?: Record<string, unknown>
+  data?: Record<string, unknown>
+}
+
+export type NodeDebugContext = {
+  variables?: Record<string, unknown>
+}
+
+export type NodeDebugRequest = {
+  appId?: string
+  node: NodeDebugNodePayload
+  inputs?: Record<string, unknown>
+  context?: NodeDebugContext
+}
+
+export type NodeDebugResult = {
+  nodeId: string
+  status: NodeRunStatus
+  startedAt: number
+  finishedAt: number
+  elapsedMs: number
+  inputs?: Record<string, unknown>
+  outputs?: Record<string, unknown>
+  error?: RunError
+}
+
+export type NodeDebugExecutor = (request: NodeDebugRequest) => Promise<NodeDebugResult>
