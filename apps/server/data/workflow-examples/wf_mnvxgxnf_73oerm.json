@@ -3,7 +3,7 @@
   "name": "AI 应用智能客服助手",
   "description": "解答AI相关问题，包括RAG、提示词工程、ReAct、多 Agent 等知识。",
   "createdAt": 1776008272731,
-  "updatedAt": 1779205225748,
+  "updatedAt": 1779245499168,
   "dsl": {
     "app": {
       "description": "",
@@ -142,11 +142,11 @@
             },
             "width": 242,
             "height": 109,
-            "selected": true,
+            "selected": false,
             "sourcePosition": "right",
             "targetPosition": "left",
             "data": {
-              "selected": true,
+              "selected": false,
               "title": "用户输入",
               "type": "start",
               "variables": [

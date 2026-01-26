@@ -5,13 +5,16 @@ import {
   type WorkflowRunRecord,
 } from './types.js'
 
+// 工作流运行记录默认过期时间
 export const DEFAULT_WORKFLOW_RUN_TTL_MS = 30 * 60 * 1000
 
+// 创建工作流运行记录ID
 const createRunId = (): string => {
   const randomPart = Math.random().toString(36).slice(2, 8)
   return `run_${Date.now().toString(36)}_${randomPart}`
 }
 
+// 工作流运行记录存储
 export class WorkflowRunStore {
   private readonly runs = new Map<string, WorkflowRunRecord>()
 
