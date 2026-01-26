@@ -54,6 +54,7 @@ import {
   type WorkflowExampleAppRecord,
 } from '../services/workflowExampleStore.js';
 import { KnowledgeDatasetInUseByWorkflowError } from '../services/workflowKnowledgeDependencies.js';
+import { workflowDraftRunRoutes } from './workflowDraftRunRoutes.js';
 import { join } from 'path';
 import { computeKnowledgeDatasetHealth } from '../services/knowledgeDatasetHealthService.js';
 import {
@@ -667,6 +668,8 @@ chatRoutes.get('/workflow/apps/:appId/draft-preview', async (request: Request, r
   response.setHeader('Cache-Control', 'private, max-age=120');
   response.send(buf);
 });
+
+chatRoutes.use(workflowDraftRunRoutes);
 
 chatRoutes.get('/workflow/examples', async (_request: Request, response: Response) => {
   const apps = await listWorkflowExampleApps();
