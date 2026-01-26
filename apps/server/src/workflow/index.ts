@@ -25,6 +25,15 @@ export {
   nodeDebugExecutorRegistry,
   registerNodeDebugExecutor,
 } from './nodeDebugExecutors.js'
+export { registerBuiltInNodeDebugExecutors } from './registerNodeDebugExecutors.js'
+export {
+  buildStartNodeOutputs,
+  executeStartNodeDebug,
+  normalizeStartNodeConfig,
+  validateStartNodeConfig,
+} from './debug/startNodeDebugExecutor.js'
+
+import './registerNodeDebugExecutors.js'
 export {
   DEFAULT_WORKFLOW_RUN_TTL_MS,
   WorkflowRunStore,
