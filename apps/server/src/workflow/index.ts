@@ -53,6 +53,13 @@ export {
   normalizeLLMNodeConfig,
   validateLLMNodeConfig,
 } from './debug/llmNodeDebugExecutor.js'
+export {
+  buildKnowledgeRetrievalQueryPayload,
+  executeKnowledgeRetrievalNodeDebug,
+  normalizeKnowledgeRetrievalNodeConfig,
+  resolveKnowledgeDebugQuery,
+  validateKnowledgeRetrievalNodeConfig,
+} from './debug/knowledgeRetrievalNodeDebugExecutor.js'
 
 import './registerNodeDebugExecutors.js'
 export {
