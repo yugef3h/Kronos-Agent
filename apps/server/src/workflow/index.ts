@@ -47,6 +47,12 @@ export {
   resolveMatchedIfElseBranch,
   validateIfElseNodeConfig,
 } from './debug/ifElseNodeDebugExecutor.js'
+export {
+  executeLlmNodeDebug,
+  interpolateWorkflowPrompt,
+  normalizeLLMNodeConfig,
+  validateLLMNodeConfig,
+} from './debug/llmNodeDebugExecutor.js'
 
 import './registerNodeDebugExecutors.js'
 export {
