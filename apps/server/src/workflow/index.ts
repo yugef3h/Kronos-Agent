@@ -38,6 +38,15 @@ export {
   normalizeEndNodeConfig,
   validateEndNodeConfig,
 } from './debug/endNodeDebugExecutor.js'
+export {
+  ELSE_BRANCH_ID,
+  evaluateIfElseCase,
+  evaluateIfElseCondition,
+  executeIfElseNodeDebug,
+  normalizeIfElseNodeConfig,
+  resolveMatchedIfElseBranch,
+  validateIfElseNodeConfig,
+} from './debug/ifElseNodeDebugExecutor.js'
 
 import './registerNodeDebugExecutors.js'
 export {
