@@ -32,6 +32,27 @@ export {
   transitionWorkflowRun,
 } from './workflowFsm.js'
 export {
+  NodeFsmTransitionError,
+  assertNodeRunTransition,
+  canTransitionNodeRun,
+  getAllowedNodeRunTransitions,
+  isNodeRunActive,
+  transitionNodeRun,
+} from './nodeFsm.js'
+export {
+  buildExecutionGraph,
+  getExecutionGraphSuccessors,
+} from './buildExecutionGraph.js'
+export type {
+  BuildExecutionGraphIssue,
+  BuildExecutionGraphResult,
+  ExecutionGraph,
+  ExecutionGraphNode,
+  WorkflowDslGraph,
+  WorkflowDslGraphEdge,
+  WorkflowDslGraphNode,
+} from './buildExecutionGraph.js'
+export {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
   executeNodeDebug,
