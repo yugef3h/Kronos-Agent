@@ -24,6 +24,14 @@ export type {
 } from './types.js'
 export { nodeRunStatusToWorkflowRunStatus, toWorkflowRunSummary } from './workflowRunSummary.js'
 export {
+  WorkflowFsmTransitionError,
+  assertWorkflowRunTransition,
+  canTransitionWorkflowRun,
+  getAllowedWorkflowRunTransitions,
+  isWorkflowRunActive,
+  transitionWorkflowRun,
+} from './workflowFsm.js'
+export {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
   executeNodeDebug,
