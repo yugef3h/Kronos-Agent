@@ -1,4 +1,5 @@
 import { NodeRunStatus } from '../workflow/types.js'
+import { workflowRunStore } from '../workflow/workflowRunStore.js'
 import { NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE } from './workflowNodeDebugRoutes.js'
 import { postWorkflowNodeDebugStart } from './workflowNodeDebugRoutes.testUtils.js'
 
@@ -38,7 +39,20 @@ describe('POST /workflow/debug/node (start)', () => {
           'sys.query': '什么是 RAG',
         },
       },
+      run: {
+        appId: 'wf_test',
+        kind: 'node_debug',
+        status: 'succeeded',
+        nodeDebug: {
+          nodeId: 'trigger-1',
+          nodeType: 'start',
+          status: NodeRunStatus.Succeeded,
+        },
+      },
     })
+
+    const runId = (body as { run: { runId: string } }).run.runId
+    expect(workflowRunStore.get(runId)?.nodeDebug?.outputs?.topic).toBe('RAG')
   })
 
   it('returns 400 when required start inputs are missing', async () => {

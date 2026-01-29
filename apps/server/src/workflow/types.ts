@@ -39,10 +39,13 @@ export type RunError = {
   details?: unknown
 }
 
+export type WorkflowRunKind = 'draft' | 'node_debug'
+
 // 工作流运行记录
 export type WorkflowRunRecord = {
   runId: string
   appId: string
+  kind: WorkflowRunKind
   status: WorkflowRunStatus
   createdAt: number
   updatedAt: number
@@ -50,6 +53,7 @@ export type WorkflowRunRecord = {
   startedAt?: number
   finishedAt?: number
   error?: RunError
+  nodeDebug?: NodeDebugRunSnapshot
 }
 
 // 创建工作流运行记录
@@ -57,6 +61,7 @@ export type CreateWorkflowRunInput = {
   appId: string
   ttlMs?: number
   status?: WorkflowRunStatus
+  kind?: WorkflowRunKind
 }
 
 export type UpdateWorkflowRunPatch = {
@@ -98,6 +103,19 @@ export type NodeDebugBlockKind =
   | 'loop'
   | 'iteration'
 
+/** Persisted node debug snapshot — aligns with web `NodeLastRunSnapshot` (without runId). */
+export type NodeDebugRunSnapshot = {
+  nodeId: string
+  nodeType: NodeDebugBlockKind
+  status: NodeRunStatus
+  startedAt: number
+  finishedAt: number
+  elapsedMs: number
+  inputs?: Record<string, unknown>
+  outputs?: Record<string, unknown>
+  error?: RunError
+}
+
 export type NodeDebugNodePayload = {
   id: string
   type: NodeDebugBlockKind
@@ -129,3 +147,22 @@ export type NodeDebugResult = {
 }
 
 export type NodeDebugExecutor = (request: NodeDebugRequest) => Promise<NodeDebugResult>
+
+export type SaveNodeDebugRunInput = {
+  appId: string
+  request: NodeDebugRequest
+  result: NodeDebugResult
+}
+
+/** API payload for draft-run / node-debug run metadata. */
+export type WorkflowRunSummary = {
+  runId: string
+  appId: string
+  kind: WorkflowRunKind
+  status: WorkflowRunStatus
+  startedAt: number
+  finishedAt?: number
+  elapsedMs?: number
+  error?: RunError
+  nodeDebug?: NodeDebugRunSnapshot
+}

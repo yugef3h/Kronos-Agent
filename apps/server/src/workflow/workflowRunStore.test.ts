@@ -1,4 +1,4 @@
-import { WorkflowRunStatus } from './types.js'
+import { NodeRunStatus, WorkflowRunStatus } from './types.js'
 import { WorkflowRunStore } from './workflowRunStore.js'
 
 describe('WorkflowRunStore', () => {
@@ -7,6 +7,7 @@ describe('WorkflowRunStore', () => {
     const created = store.create({ appId: 'wf_test' })
 
     expect(created.appId).toBe('wf_test')
+    expect(created.kind).toBe('draft')
     expect(created.status).toBe(WorkflowRunStatus.Queued)
 
     const loaded = store.get(created.runId)
@@ -52,5 +53,32 @@ describe('WorkflowRunStore', () => {
     store.create({ appId: 'wf_b' })
 
     expect(store.listByAppId('wf_a')).toHaveLength(1)
+  })
+
+  it('persists node debug run snapshots', () => {
+    const store = new WorkflowRunStore()
+    const saved = store.saveNodeDebugRun({
+      appId: 'wf_test',
+      request: {
+        node: { id: 'start-1', type: 'start' },
+        inputs: { query: 'hi' },
+      },
+      result: {
+        nodeId: 'start-1',
+        status: NodeRunStatus.Succeeded,
+        startedAt: 100,
+        finishedAt: 150,
+        elapsedMs: 50,
+        outputs: { query: 'hi' },
+      },
+    })
+
+    expect(saved.kind).toBe('node_debug')
+    expect(saved.status).toBe(WorkflowRunStatus.Succeeded)
+    expect(saved.nodeDebug?.nodeType).toBe('start')
+    expect(saved.nodeDebug?.outputs).toEqual({ query: 'hi' })
+
+    const loaded = store.get(saved.runId)
+    expect(loaded?.nodeDebug?.nodeId).toBe('start-1')
   })
 })

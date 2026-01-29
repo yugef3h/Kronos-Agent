@@ -4,6 +4,8 @@ import {
   NodeDebugExecutorNotFoundError,
   executeNodeDebug,
 } from '../workflow/nodeDebugExecutors.js'
+import { workflowRunStore } from '../workflow/workflowRunStore.js'
+import { toWorkflowRunSummary } from '../workflow/workflowRunSummary.js'
 import { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
 
 export const NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE = 'node_debug_executor_not_found'
@@ -26,7 +28,23 @@ export const handleWorkflowNodeDebugNodePost = async (
 
   try {
     const result = await executeNodeDebug(parsedRequest.request)
-    response.json({ result })
+    const appId = parsedRequest.request.appId
+
+    if (!appId) {
+      response.json({ result })
+      return
+    }
+
+    const runRecord = workflowRunStore.saveNodeDebugRun({
+      appId,
+      request: parsedRequest.request,
+      result,
+    })
+
+    response.json({
+      result,
+      run: toWorkflowRunSummary(runRecord),
+    })
   } catch (error) {
     if (error instanceof NodeDebugExecutorNotFoundError) {
       response.status(404).json({

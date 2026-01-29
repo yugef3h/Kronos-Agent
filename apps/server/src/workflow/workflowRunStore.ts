@@ -1,9 +1,12 @@
 import {
   WorkflowRunStatus,
   type CreateWorkflowRunInput,
+  type NodeDebugRunSnapshot,
+  type SaveNodeDebugRunInput,
   type UpdateWorkflowRunPatch,
   type WorkflowRunRecord,
 } from './types.js'
+import { nodeRunStatusToWorkflowRunStatus } from './workflowRunSummary.js'
 
 // 工作流运行记录默认过期时间
 export const DEFAULT_WORKFLOW_RUN_TTL_MS = 30 * 60 * 1000
@@ -26,6 +29,7 @@ export class WorkflowRunStore {
     const record: WorkflowRunRecord = {
       runId: createRunId(),
       appId: input.appId,
+      kind: input.kind ?? 'draft',
       status: input.status ?? WorkflowRunStatus.Queued,
       createdAt: now,
       updatedAt: now,
@@ -89,6 +93,42 @@ export class WorkflowRunStore {
     return [...this.runs.values()]
       .filter((record) => record.appId === appId)
       .map((record) => ({ ...record }))
+  }
+
+  saveNodeDebugRun(input: SaveNodeDebugRunInput): WorkflowRunRecord {
+    this.pruneExpired()
+
+    const now = Date.now()
+    const ttlMs = DEFAULT_WORKFLOW_RUN_TTL_MS
+    const { request, result } = input
+    const nodeDebug: NodeDebugRunSnapshot = {
+      nodeId: result.nodeId,
+      nodeType: request.node.type,
+      status: result.status,
+      startedAt: result.startedAt,
+      finishedAt: result.finishedAt,
+      elapsedMs: result.elapsedMs,
+      ...(result.inputs ? { inputs: result.inputs } : {}),
+      ...(result.outputs ? { outputs: result.outputs } : {}),
+      ...(result.error ? { error: result.error } : {}),
+    }
+
+    const record: WorkflowRunRecord = {
+      runId: createRunId(),
+      appId: input.appId,
+      kind: 'node_debug',
+      status: nodeRunStatusToWorkflowRunStatus(result.status),
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: now + ttlMs,
+      startedAt: result.startedAt,
+      finishedAt: result.finishedAt,
+      ...(result.error ? { error: result.error } : {}),
+      nodeDebug,
+    }
+
+    this.runs.set(record.runId, record)
+    return { ...record }
   }
 
   pruneExpired(now = Date.now()): number {

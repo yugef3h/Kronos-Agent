@@ -1,6 +1,7 @@
 import { NodeRunStatus } from '../workflow/types.js'
 import { registerNodeDebugExecutor } from '../workflow/nodeDebugExecutors.js'
 import { executeKnowledgeRetrievalNodeDebug } from '../workflow/debug/knowledgeRetrievalNodeDebugExecutor.js'
+import { workflowRunStore } from '../workflow/workflowRunStore.js'
 import { invokeWorkflowNodeDebugNodePost } from './workflowNodeDebugRoutes.testUtils.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
@@ -10,6 +11,7 @@ jest.mock('../rag/knowledgeFacade.js', () => ({
 }))
 
 const postWorkflowNodeDebugKnowledge = async (body: unknown) => {
+  workflowRunStore.clear()
   registerNodeDebugExecutor('knowledge-retrieval', executeKnowledgeRetrievalNodeDebug)
   return invokeWorkflowNodeDebugNodePost(body)
 }
@@ -66,6 +68,14 @@ describe('POST /workflow/debug/node (knowledge-retrieval)', () => {
         status: NodeRunStatus.Succeeded,
         outputs: {
           result: [{ chunk_id: 'chunk-1' }],
+        },
+      },
+      run: {
+        appId: 'wf_test',
+        kind: 'node_debug',
+        nodeDebug: {
+          nodeId: 'knowledge-1',
+          nodeType: 'knowledge-retrieval',
         },
       },
     })

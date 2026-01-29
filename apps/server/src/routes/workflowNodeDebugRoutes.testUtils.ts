@@ -1,6 +1,7 @@
 import type { Response } from 'express'
 import { registerNodeDebugExecutor } from '../workflow/nodeDebugExecutors.js'
 import { executeStartNodeDebug } from '../workflow/debug/startNodeDebugExecutor.js'
+import { workflowRunStore } from '../workflow/workflowRunStore.js'
 import { handleWorkflowNodeDebugNodePost } from './workflowNodeDebugRoutes.js'
 
 export type WorkflowNodeDebugHttpResponse = {
@@ -46,6 +47,7 @@ export const invokeWorkflowNodeDebugNodePost = async (
 export const postWorkflowNodeDebugStart = async (
   body: unknown,
 ): Promise<WorkflowNodeDebugHttpResponse> => {
+  workflowRunStore.clear()
   registerNodeDebugExecutor('start', executeStartNodeDebug)
   return invokeWorkflowNodeDebugNodePost(body)
 }
