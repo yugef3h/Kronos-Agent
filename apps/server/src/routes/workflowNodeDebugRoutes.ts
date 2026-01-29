@@ -14,7 +14,10 @@ export { nodeDebugBlockKindSchema, nodeDebugRequestSchema } from './workflowNode
 
 export const workflowNodeDebugRoutes = Router()
 
-workflowNodeDebugRoutes.post('/workflow/debug/node', async (request: Request, response: Response) => {
+export const handleWorkflowNodeDebugNodePost = async (
+  request: Pick<Request, 'body'>,
+  response: Response,
+): Promise<void> => {
   const parsedRequest = parseNodeDebugRequestBody(request.body)
   if (parsedRequest.ok === false) {
     response.status(parsedRequest.status).json(parsedRequest.payload)
@@ -40,4 +43,6 @@ workflowNodeDebugRoutes.post('/workflow/debug/node', async (request: Request, re
       code: 'node_debug_failed',
     })
   }
-})
+}
+
+workflowNodeDebugRoutes.post('/workflow/debug/node', handleWorkflowNodeDebugNodePost)
