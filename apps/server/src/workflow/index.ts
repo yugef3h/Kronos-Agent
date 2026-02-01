@@ -52,6 +52,8 @@ export type {
   WorkflowDslGraphEdge,
   WorkflowDslGraphNode,
 } from './buildExecutionGraph.js'
+export { RunContext, normalizeVariableSelector } from './runContext.js'
+export type { RunContainerFrame, RunContextInit, VariableSelector } from './runContext.js'
 export {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
