@@ -55,6 +55,20 @@ export type {
 export { RunContext, normalizeVariableSelector } from './runContext.js'
 export type { RunContainerFrame, RunContextInit, VariableSelector } from './runContext.js'
 export {
+  NodeExecutorNotFoundError,
+  NodeExecutorRegistry,
+  executeWorkflowNode,
+  nodeExecutorRegistry,
+  registerNodeExecutor,
+} from './nodeExecutors.js'
+export type {
+  NodeExecutionRequest,
+  NodeExecutionResult,
+  NodeExecutor,
+  WorkflowNodeBlockKind,
+  WorkflowNodePayload,
+} from './nodeExecutors.js'
+export {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
   executeNodeDebug,
