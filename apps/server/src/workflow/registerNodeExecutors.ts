@@ -1,4 +1,5 @@
 import { registerNodeExecutor } from './nodeExecutors.js'
+import { executeKnowledgeRetrievalNode } from './executors/knowledgeRetrievalNodeExecutor.js'
 import { executeLlmNode } from './executors/llmNodeExecutor.js'
 import { executeStartNode } from './executors/startNodeExecutor.js'
 
@@ -11,6 +12,7 @@ export const registerBuiltInNodeExecutors = (): void => {
 
   registerNodeExecutor('start', executeStartNode)
   registerNodeExecutor('llm', executeLlmNode)
+  registerNodeExecutor('knowledge-retrieval', executeKnowledgeRetrievalNode)
   hasRegisteredBuiltInExecutors = true
 }
 
