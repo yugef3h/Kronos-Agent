@@ -13,8 +13,11 @@ import { WorkflowRunStatus, NodeRunStatus, type RunError, type WorkflowRunSummar
 import { workflowRunStore } from './workflowRunStore.js'
 import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from './workflowDsl.js'
 import { extractWorkflowDraftDslGraph } from './workflowDsl.js'
+import { appendWorkflowRunEvent } from './workflowRunEvents.js'
+import { isWorkflowRunCancelled, clearWorkflowRunCancellation } from './workflowRunCancellation.js'
 
 const DEFAULT_MAX_STEPS = 128
+const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 
 export type WorkflowDraftNodeRunRecord = {
   nodeId: string
@@ -23,6 +26,7 @@ export type WorkflowDraftNodeRunRecord = {
   startedAt: number
   finishedAt: number
   elapsedMs: number
+  iterationIndex?: number
   outputs?: Record<string, unknown>
   error?: RunError
 }
@@ -32,6 +36,7 @@ export type RunWorkflowDraftInput = {
   dsl: unknown
   inputs?: Record<string, unknown>
   maxSteps?: number
+  timeoutMs?: number
 }
 
 export type RunWorkflowDraftResult = {
@@ -70,6 +75,64 @@ const toWorkflowNodePayload = (
   }
 }
 
+const appendEmbeddedNodeRuns = (
+  nodeRuns: WorkflowDraftNodeRunRecord[],
+  outputs?: Record<string, unknown>,
+): void => {
+  const embedded = outputs?.nodeRuns
+  if (!Array.isArray(embedded)) {
+    return
+  }
+
+  for (const item of embedded) {
+    if (!isRecord(item) || typeof item.nodeId !== 'string') {
+      continue
+    }
+
+    nodeRuns.push(item as WorkflowDraftNodeRunRecord)
+  }
+}
+
+const emitNodeStarted = (runId: string, nodeId: string, iterationIndex?: number): void => {
+  appendWorkflowRunEvent({
+    type: 'node_started',
+    runId,
+    timestamp: Date.now(),
+    nodeId,
+    status: NodeRunStatus.Running,
+    ...(iterationIndex !== undefined ? { iterationIndex } : {}),
+  })
+}
+
+const emitNodeFinished = (
+  runId: string,
+  record: WorkflowDraftNodeRunRecord,
+): void => {
+  appendWorkflowRunEvent({
+    type: 'node_finished',
+    runId,
+    timestamp: Date.now(),
+    nodeId: record.nodeId,
+    status: record.status,
+    ...(record.iterationIndex !== undefined ? { iterationIndex: record.iterationIndex } : {}),
+    ...(record.error ? { error: record.error } : {}),
+  })
+}
+
+const emitWorkflowFinished = (
+  runId: string,
+  status: WorkflowRunStatus,
+  error?: RunError,
+): void => {
+  appendWorkflowRunEvent({
+    type: 'workflow_finished',
+    runId,
+    timestamp: Date.now(),
+    status,
+    ...(error ? { error } : {}),
+  })
+}
+
 const toNodeRunRecord = (
   graphNode: ExecutionGraphNode,
   result: Awaited<ReturnType<typeof executeWorkflowNode>>,
@@ -91,15 +154,21 @@ export const runWorkflowDraftGraph = async (
     executionGraph: ExecutionGraph
     inputs?: Record<string, unknown>
     maxSteps?: number
+    timeoutMs?: number
   },
 ): Promise<RunWorkflowDraftResult> => {
   const startedAt = Date.now()
+  const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const runRecord = workflowRunStore.create({
     appId: input.appId,
     kind: 'draft',
     status: WorkflowRunStatus.Running,
   })
+  clearWorkflowRunCancellation(runRecord.runId)
   workflowRunStore.update(runRecord.runId, { startedAt, touchTtl: false })
+
+  const shouldCancel = (): boolean => isWorkflowRunCancelled(runRecord.runId)
+  const isTimedOut = (): boolean => Date.now() - startedAt > timeoutMs
 
   const context = new RunContext({
     runId: runRecord.runId,
@@ -119,6 +188,24 @@ export const runWorkflowDraftGraph = async (
   let workflowError: RunError | undefined
 
   while (queue.length > 0 && nodeRuns.length < maxSteps) {
+    if (shouldCancel()) {
+      workflowStatus = WorkflowRunStatus.Cancelled
+      workflowError = {
+        code: 'workflow_run_cancelled',
+        message: 'Workflow run cancelled',
+      }
+      break
+    }
+
+    if (isTimedOut()) {
+      workflowStatus = WorkflowRunStatus.Stopped
+      workflowError = {
+        code: 'workflow_run_timeout',
+        message: 'Workflow run timed out',
+      }
+      break
+    }
+
     const nodeId = queue.shift()
     if (!nodeId || visited.has(nodeId)) {
       continue
@@ -135,6 +222,8 @@ export const runWorkflowDraftGraph = async (
       continue
     }
 
+    emitNodeStarted(runRecord.runId, nodeId)
+
     const dslNode = input.graph.nodeById.get(nodeId)
     const payload = toWorkflowNodePayload(graphNode, dslNode, input.inputs)
 
@@ -145,6 +234,8 @@ export const runWorkflowDraftGraph = async (
         appId: input.appId,
         node: payload,
         context,
+        dslGraph: input.graph,
+        shouldCancel,
       })
     } catch (error) {
       if (error instanceof NodeExecutorNotFoundError) {
@@ -160,7 +251,10 @@ export const runWorkflowDraftGraph = async (
       throw error
     }
 
-    nodeRuns.push(toNodeRunRecord(graphNode, nodeResult))
+    const nodeRecord = toNodeRunRecord(graphNode, nodeResult)
+    nodeRuns.push(nodeRecord)
+    emitNodeFinished(runRecord.runId, nodeRecord)
+    appendEmbeddedNodeRuns(nodeRuns, nodeResult.outputs)
 
     if (nodeResult.status === NodeRunStatus.Failed || nodeResult.status === NodeRunStatus.Exception) {
       workflowStatus = WorkflowRunStatus.Failed
@@ -205,6 +299,8 @@ export const runWorkflowDraftGraph = async (
   }) ?? runRecord
 
   transitionWorkflowRun(WorkflowRunStatus.Running, workflowStatus)
+  emitWorkflowFinished(runRecord.runId, workflowStatus, workflowError)
+  clearWorkflowRunCancellation(runRecord.runId)
 
   return {
     run: toWorkflowRunSummary({
@@ -248,6 +344,7 @@ export const runWorkflowDraft = async (
       executionGraph: built.graph,
       inputs: input.inputs,
       maxSteps: input.maxSteps,
+      timeoutMs: input.timeoutMs,
     })
 
     return { ok: true, result }

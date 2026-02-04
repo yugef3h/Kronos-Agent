@@ -5,6 +5,7 @@ import {
   type RunError,
 } from './types.js'
 import type { RunContext } from './runContext.js'
+import type { WorkflowDraftDslGraph } from './workflowDsl.js'
 
 export type WorkflowNodeBlockKind = NodeDebugBlockKind
 
@@ -20,7 +21,9 @@ export type NodeExecutionRequest = {
   appId: string
   node: WorkflowNodePayload
   context: RunContext
+  dslGraph?: WorkflowDraftDslGraph
   branchHandleId?: string
+  shouldCancel?: () => boolean
 }
 
 export type NodeExecutionResult = {
