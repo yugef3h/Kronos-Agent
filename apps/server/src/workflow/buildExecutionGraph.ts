@@ -26,10 +26,17 @@ export type ExecutionGraphNode = {
   parentId?: string
 }
 
+export type ExecutionGraphEdge = {
+  source: string
+  target: string
+  sourceHandle?: string
+}
+
 export type ExecutionGraph = {
   nodes: Map<string, ExecutionGraphNode>
   adjacency: Map<string, string[]>
   reverseAdjacency: Map<string, string[]>
+  outboundEdges: Map<string, ExecutionGraphEdge[]>
   inDegree: Map<string, number>
   startNodeId: string
   endNodeIds: Set<string>
@@ -147,11 +154,13 @@ export const buildExecutionGraph = (graph: WorkflowDslGraph): BuildExecutionGrap
 
   const adjacency = new Map<string, string[]>()
   const reverseAdjacency = new Map<string, string[]>()
+  const outboundEdges = new Map<string, ExecutionGraphEdge[]>()
   const inDegree = new Map<string, number>()
 
   for (const nodeId of allowedIds) {
     adjacency.set(nodeId, [])
     reverseAdjacency.set(nodeId, [])
+    outboundEdges.set(nodeId, [])
     inDegree.set(nodeId, 0)
   }
 
@@ -162,6 +171,11 @@ export const buildExecutionGraph = (graph: WorkflowDslGraph): BuildExecutionGrap
 
     adjacency.get(edge.source)?.push(edge.target)
     reverseAdjacency.get(edge.target)?.push(edge.source)
+    outboundEdges.get(edge.source)?.push({
+      source: edge.source,
+      target: edge.target,
+      ...(edge.sourceHandle ? { sourceHandle: edge.sourceHandle } : {}),
+    })
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
   }
 
@@ -171,6 +185,7 @@ export const buildExecutionGraph = (graph: WorkflowDslGraph): BuildExecutionGrap
       nodes,
       adjacency,
       reverseAdjacency,
+      outboundEdges,
       inDegree,
       startNodeId: startNodeIds[0]!,
       endNodeIds,
@@ -178,19 +193,22 @@ export const buildExecutionGraph = (graph: WorkflowDslGraph): BuildExecutionGrap
   }
 }
 
+const DEFAULT_OUTBOUND_HANDLE = 'out'
+
 export const getExecutionGraphSuccessors = (
   graph: ExecutionGraph,
   nodeId: string,
   branchHandleId?: string,
 ): string[] => {
-  const successors = graph.adjacency.get(nodeId) ?? []
+  const edges = graph.outboundEdges.get(nodeId) ?? []
+
   if (!branchHandleId) {
-    return [...successors]
+    const defaultEdges = edges.filter((edge) => !edge.sourceHandle || edge.sourceHandle === DEFAULT_OUTBOUND_HANDLE)
+    const selected = defaultEdges.length > 0 ? defaultEdges : edges
+    return selected.map((edge) => edge.target)
   }
 
-  return successors.filter((targetId) => {
-    // Branch routing is resolved in step 27; keep all successors for now.
-    void targetId
-    return true
-  })
+  return edges
+    .filter((edge) => edge.sourceHandle === branchHandleId)
+    .map((edge) => edge.target)
 }

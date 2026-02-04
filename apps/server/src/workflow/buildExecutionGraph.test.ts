@@ -53,6 +53,33 @@ describe('buildExecutionGraph', () => {
     expect(built.graph.adjacency.get('loop-1')).toEqual(['end-1'])
   })
 
+  it('filters successors by if-else branch handle', () => {
+    const built = buildExecutionGraph({
+      nodes: [
+        { id: 'start-1', data: { type: 'start' } },
+        { id: 'if-1', data: { type: 'if-else' } },
+        { id: 'llm-true', data: { type: 'llm' } },
+        { id: 'llm-false', data: { type: 'llm' } },
+        { id: 'end-1', data: { type: 'end' } },
+      ],
+      edges: [
+        { source: 'start-1', target: 'if-1', sourceHandle: 'out' },
+        { source: 'if-1', target: 'llm-true', sourceHandle: 'true' },
+        { source: 'if-1', target: 'llm-false', sourceHandle: 'false' },
+        { source: 'llm-true', target: 'end-1', sourceHandle: 'out' },
+        { source: 'llm-false', target: 'end-1', sourceHandle: 'out' },
+      ],
+    })
+
+    expect(built.ok).toBe(true)
+    if (!built.ok) {
+      return
+    }
+
+    expect(getExecutionGraphSuccessors(built.graph, 'if-1', 'true')).toEqual(['llm-true'])
+    expect(getExecutionGraphSuccessors(built.graph, 'if-1', 'false')).toEqual(['llm-false'])
+  })
+
   it('reports missing start node', () => {
     const built = buildExecutionGraph({
       nodes: [{ id: 'end-1', data: { type: 'end' } }],
