@@ -68,6 +68,21 @@ export type {
   WorkflowNodeBlockKind,
   WorkflowNodePayload,
 } from './nodeExecutors.js'
+export { registerBuiltInNodeExecutors } from './registerNodeExecutors.js'
+export { executeStartNode } from './executors/startNodeExecutor.js'
+export {
+  runWorkflowDraft,
+  runWorkflowDraftGraph,
+} from './workflowDraftRunner.js'
+export type {
+  RunWorkflowDraftInput,
+  RunWorkflowDraftIssue,
+  RunWorkflowDraftResponse,
+  RunWorkflowDraftResult,
+  WorkflowDraftNodeRunRecord,
+} from './workflowDraftRunner.js'
+export { extractWorkflowDraftDslGraph } from './workflowDsl.js'
+export type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from './workflowDsl.js'
 export {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
