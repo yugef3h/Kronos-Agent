@@ -1,3 +1,7 @@
+jest.mock('../rag/knowledgeFacade.js', () => ({
+  runKnowledgeRetrievalQuery: jest.fn(),
+}))
+
 import type { Response } from 'express'
 import {
   DRAFT_RUN_NOT_IMPLEMENTED,

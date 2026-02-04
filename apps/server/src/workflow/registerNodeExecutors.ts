@@ -1,4 +1,5 @@
 import { registerNodeExecutor } from './nodeExecutors.js'
+import { executeEndNode } from './executors/endNodeExecutor.js'
 import { executeIfElseNode } from './executors/ifElseNodeExecutor.js'
 import { executeKnowledgeRetrievalNode } from './executors/knowledgeRetrievalNodeExecutor.js'
 import { executeLlmNode } from './executors/llmNodeExecutor.js'
@@ -15,6 +16,7 @@ export const registerBuiltInNodeExecutors = (): void => {
   registerNodeExecutor('llm', executeLlmNode)
   registerNodeExecutor('knowledge-retrieval', executeKnowledgeRetrievalNode)
   registerNodeExecutor('if-else', executeIfElseNode)
+  registerNodeExecutor('end', executeEndNode)
   hasRegisteredBuiltInExecutors = true
 }
 
