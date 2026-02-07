@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEdges, useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import VariableSelect from '../../../../components/form/variable-select';
@@ -23,6 +23,15 @@ import {
 import { useIfElsePanelConfig } from '../panels/ifelse-panel/use-ifelse-panel-config';
 import type { IfElseCondition, IfElseNodeConfig } from '../panels/ifelse-panel/types';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
+import PanelLastRun from '../base/panel-last-run';
+import { PanelLastRunIfElseDetails } from '../base/panel-last-run-ifelse';
+import { PanelDebugContextField } from '../base/panel-debug-context-field';
+import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
+import PanelAlert from '../base/panel-alert';
+import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
+import { parsePanelDebugContextJson } from '../utils/panel-debug-context';
 
 const serializeValueSelector = (valueSelector: string[]) => valueSelector.join('.');
 
@@ -190,8 +199,11 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
       ),
     [edges, id, nodes],
   );
+  const appId = useWorkflowAppId();
   const { activeTab } = usePanelTabs();
   const [pendingAutoOpenConditionId, setPendingAutoOpenConditionId] = useState<string | null>(null);
+  const [contextJson, setContextJson] = useState('{}');
+  const [contextParseError, setContextParseError] = useState<string | null>(null);
   const {
     config,
     handleAddCase,
@@ -222,6 +234,35 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
     },
   });
   const targetBranches = buildIfElseTargetBranches(config.cases);
+  const parsedContext = useMemo(
+    () => parsePanelDebugContextJson(contextJson),
+    [contextJson],
+  );
+  const { runDebug, isRunning, error, clearError } = useNodeDebugRun({
+    appId,
+    nodeId: id,
+    nodeKind: 'condition',
+    nodeInputs: config as unknown as Record<string, unknown>,
+    contextVariables: parsedContext.ok ? parsedContext.value : undefined,
+  });
+  const handleRunDebug = useCallback(() => {
+    if (!parsedContext.ok) {
+      setContextParseError(parsedContext.message);
+      return;
+    }
+
+    setContextParseError(null);
+    clearError();
+    void runDebug();
+  }, [clearError, parsedContext, runDebug]);
+
+  useRegisterPanelNodeDebug({
+    runDebug: handleRunDebug,
+    isRunning,
+    disabled: !parsedContext.ok,
+  });
+
+  const lastRun = resolveNodeLastRun(id, nodeData);
 
   useEffect(() => {
     const rawInputs = JSON.stringify(nodeData.inputs ?? null);
@@ -254,12 +295,32 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
   return (
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
-        <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-          <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-          <p className="text-[11px] leading-5 text-slate-500">
-            运行工作流后，这里会显示条件命中的分支、输入变量和结果，便于排查 if / elif / else 的走向。
-          </p>
-        </PanelCard>
+        <div className="space-y-3">
+          <PanelDebugContextField
+            value={contextJson}
+            onChange={(value) => {
+              setContextJson(value);
+              setContextParseError(null);
+              clearError();
+            }}
+            parseError={contextParseError}
+            hint="填写用于条件求值的 mock 变量，键名可与变量选择器路径一致（如 node-id.field）。"
+          />
+          {error ? <PanelAlert type="warning">{error}</PanelAlert> : null}
+          <button
+            type="button"
+            disabled={isRunning || !parsedContext.ok}
+            onClick={handleRunDebug}
+            className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {isRunning ? '调试中…' : '运行调试'}
+          </button>
+          {lastRun ? <PanelLastRunIfElseDetails lastRun={lastRun} /> : null}
+          <PanelLastRun
+            lastRun={lastRun}
+            emptyDescription="运行调试后，这里会显示条件命中的分支、输入变量和完整输出。"
+          />
+        </div>
       ) : null}
 
       {activeTab === 'settings' ? (
