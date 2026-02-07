@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import PanelAlert from '../base/panel-alert';
+import PanelLastRun from '../base/panel-last-run';
 import { Dialog, DialogContent, DialogTitle } from '../base/dialog';
 import {
   PanelCard,
@@ -26,11 +28,18 @@ import {
 import { useStartPanelConfig } from '../panels/start-panel/use-start-panel-config';
 import { getStartVariableSummary } from '../panels/start-panel/list-utils';
 import type {
+  StartNodeConfig,
   StartValidationIssue,
   StartVariable,
   StartVariableType,
 } from '../panels/start-panel/types';
 import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
+import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import {
+  buildStartPanelDebugInputs,
+  mergeStartPanelDebugFormValues,
+  type StartPanelDebugFormValues,
+} from '../panels/start-panel/debug-inputs';
 
 const START_VARIABLE_TYPE_OPTIONS: Array<{ label: string; value: StartVariableType }> = [
   { label: 'Text', value: 'text-input' },
@@ -187,11 +196,65 @@ const VariableDialog = ({
   );
 };
 
+const StartPanelDebugInputs = ({
+  config,
+  values,
+  isRunning,
+  error,
+  onChange,
+  onRun,
+}: {
+  config: StartNodeConfig;
+  values: StartPanelDebugFormValues;
+  isRunning: boolean;
+  error: string | null;
+  onChange: (key: string, value: string) => void;
+  onRun: () => void;
+}) => (
+  <PanelSection title="调试输入">
+    <Field title="用户问题 (query)" compact>
+      <PanelInput
+        value={values.query ?? ''}
+        placeholder="例如：帮我总结这份文档"
+        onChange={(event) => onChange('query', event.target.value)}
+      />
+    </Field>
+    {config.variables.map((variable) => {
+      const key = variable.variable.trim();
+      if (!key) {
+        return null;
+      }
+
+      return (
+        <Field key={variable.id} title={`${variable.label || key} (${key})`} compact>
+          <PanelInput
+            value={values[key] ?? ''}
+            placeholder={variable.required ? '必填' : '可选'}
+            onChange={(event) => onChange(key, event.target.value)}
+          />
+        </Field>
+      );
+    })}
+    {error ? <PanelAlert type="warning">{error}</PanelAlert> : null}
+    <button
+      type="button"
+      disabled={isRunning}
+      onClick={onRun}
+      className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+    >
+      {isRunning ? '调试中…' : '运行调试'}
+    </button>
+  </PanelSection>
+);
+
 const StartPanel = ({ id, data }: NodePanelProps) => {
   const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get('appId');
   const nodeData = data as CanvasNodeData;
   const { activeTab } = usePanelTabs();
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
+  const [debugValues, setDebugValues] = useState<StartPanelDebugFormValues>({ query: '' });
   const [draggingVariableId, setDraggingVariableId] = useState<string | null>(null);
   const [dropTargetVariableId, setDropTargetVariableId] = useState<string | null>(null);
   const [editingVariableId, setEditingVariableId] = useState<string | null>(null);
@@ -275,6 +338,42 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     }
   }, [config, id, nodeData.inputs, nodeData.outputs, setNodes]);
 
+  useEffect(() => {
+    setDebugValues((previous) => mergeStartPanelDebugFormValues(config, previous));
+  }, [config]);
+
+  const debugInputs = useMemo(
+    () => buildStartPanelDebugInputs(config, debugValues),
+    [config, debugValues],
+  );
+
+  const startNodeInputs = useMemo(
+    () => ({
+      variables: config.variables,
+    }),
+    [config.variables],
+  );
+
+  const { runDebug, isRunning, error, clearError } = useNodeDebugRun({
+    appId,
+    nodeId: id,
+    nodeKind: 'trigger',
+    nodeInputs: startNodeInputs,
+    debugInputs,
+  });
+
+  const handleDebugValueChange = useCallback((key: string, value: string) => {
+    clearError();
+    setDebugValues((previous) => ({
+      ...previous,
+      [key]: value,
+    }));
+  }, [clearError]);
+
+  const handleRunDebug = useCallback(() => {
+    void runDebug();
+  }, [runDebug]);
+
   const draftVariableIssues = useMemo(() => {
     if (!draftVariable) return [];
 
@@ -346,12 +445,20 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   return (
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
-        <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-          <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-          <p className="text-[11px] leading-5 text-slate-500">
-            工作流运行后，这里会显示入口变量实际取值、系统变量注入结果和校验摘要。
-          </p>
-        </PanelCard>
+        <div className="space-y-3">
+          <StartPanelDebugInputs
+            config={config}
+            values={debugValues}
+            isRunning={isRunning}
+            error={error}
+            onChange={handleDebugValueChange}
+            onRun={handleRunDebug}
+          />
+          <PanelLastRun
+            lastRun={nodeData._lastRun}
+            emptyDescription="填写上方调试输入并运行后，这里会显示入口变量实际取值、系统变量注入结果和校验摘要。"
+          />
+        </div>
       ) : null}
 
       {activeTab === 'settings' ? (
