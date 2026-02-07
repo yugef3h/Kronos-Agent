@@ -464,6 +464,25 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
       {activeTab === 'settings' ? (
         <>
           <PanelSection
+            title="单节点调试"
+            aside={
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={handleRunDebug}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isRunning ? '调试中…' : '调试此节点'}
+              </button>
+            }
+          >
+            <p className="text-[11px] leading-5 text-slate-500">
+              在「上次运行」页填写 query 与变量取值后运行；也可直接点此按钮使用当前调试参数。
+            </p>
+            {error ? <PanelAlert type="warning">{error}</PanelAlert> : null}
+          </PanelSection>
+
+          <PanelSection
             title="系统变量"
             aside={
               <button
