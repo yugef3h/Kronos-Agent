@@ -3,14 +3,14 @@
 新对话开场可复制：
 
 ```
-继续 Kronos workflow 测试运行 plan，从 Step 33 开始。
+继续 Kronos workflow 测试运行 plan，从 Step 35 开始。
 交接文档：docs/workflow-test-run-plan-handoff.md
 单步实现，每步结束让我来允许你的 pnpm cd。
 ```
 
 ---
 
-## 已完成（Step 1–32）
+## 已完成（Step 1–34）
 
 | Step | 内容 | 路径 |
 |------|------|------|
@@ -46,16 +46,18 @@
 | 30 | iteration 沙盒 | `executors/iterationNodeExecutor.ts` |
 | 31 | SSE 事件回放 | `workflowRunEvents.ts` + `GET …/events` |
 | 32 | cancel + 超时 | `workflowRunCancellation.ts` + runner `maxSteps`/`timeoutMs` |
+| 33 | PanelLastRun | `editor/base/panel-last-run.tsx`（状态/JSON/复制/耗时） |
+| 34 | useNodeDebugRun | `workflowNodeDebugApi.ts` + `hooks/use-node-debug-run.ts` |
 
 注册入口：`registerNodeDebugExecutors.ts`（单节点）、`registerNodeExecutors.ts`（整图）
 
 ---
 
-## 下一步（Step 33 起）
+## 下一步（Step 35 起）
 
 | Step | 轨 | 任务 |
 |------|-----|------|
-| 33–44 | S 前端 | PanelLastRun、useNodeDebugRun、各 panel |
+| 35–44 | S 前端 | 各 panel 接线「上次运行」+ 调试按钮 |
 | 45–54 | W 前端 | 测试运行、画布态 |
 | 55–58 | 合并 | 双轨合并 + E2E |
 
