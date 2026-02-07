@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../../../../components/form/variable-select'
@@ -12,20 +12,17 @@ import {
   PanelToken,
   usePanelTabs,
 } from '../base/panel-form'
-import {
-  requestKnowledgeRetrievalQuery,
-} from '../../../../lib/api'
+import PanelLastRun from '../base/panel-last-run'
+import { PanelLastRunKnowledgeDetails } from '../base/panel-last-run-knowledge'
+import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context'
+import { useNodeDebugRun } from '../hooks/use-node-debug-run'
+import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
-import {
-  ensureKnowledgeDatasetAuthToken,
-  useKnowledgeDatasets,
-} from '../panels/knowledge-retrieval-panel/dataset-store'
+import { useKnowledgeDatasets } from '../panels/knowledge-retrieval-panel/dataset-store'
 import { useKnowledgeRetrievalPanelConfig } from '../panels/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
-import type {
-  KnowledgeRetrievalDebugRun,
-  KnowledgeRetrievalNodeConfig,
-} from '../panels/knowledge-retrieval-panel/types'
+import type { KnowledgeRetrievalNodeConfig } from '../panels/knowledge-retrieval-panel/types'
 import type { PanelFieldControl } from '../base/panel-form'
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options'
 import {
@@ -81,9 +78,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
   const [debugQuery, setDebugQuery] = useState('')
   const [debugRunError, setDebugRunError] = useState('')
-  const [isDebugRunning, setIsDebugRunning] = useState(false)
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false)
-  const lastRun = nodeData._knowledgeLastRun ?? null
+  const appId = useWorkflowAppId()
+  const lastRun = resolveNodeLastRun(id, nodeData)
   const {
     config,
     issues,
@@ -163,7 +160,15 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     }
   }, [config, id, nodeData._datasets, nodeData.inputs, nodeData.outputs, selectedDatasets, setNodes])
 
-  const handleRunDebugQuery = async () => {
+  const { runDebug, isRunning: isDebugRunning, error: debugApiError, clearError } = useNodeDebugRun({
+    appId,
+    nodeId: id,
+    nodeKind: 'knowledge',
+    nodeInputs: config as unknown as Record<string, unknown>,
+    debugInputs: debugQuery.trim() ? { query: debugQuery.trim() } : undefined,
+  })
+
+  const handleRunDebugQuery = useCallback(() => {
     const nextQuery = debugQuery.trim()
     if (!nextQuery) {
       setDebugRunError('请输入调试查询内容。')
@@ -175,55 +180,22 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
       return
     }
 
-    setIsDebugRunning(true)
     setDebugRunError('')
+    clearError()
+    void runDebug()
+  }, [clearError, config.dataset_ids.length, debugQuery, runDebug])
 
-    try {
-      const authToken = await ensureKnowledgeDatasetAuthToken()
-      if (!authToken) {
-        throw new Error('知识库接口需要 JWT 鉴权')
-      }
+  useRegisterPanelNodeDebug({
+    runDebug: handleRunDebugQuery,
+    isRunning: isDebugRunning,
+    disabled: !config.dataset_ids.length,
+  })
 
-      const result = await requestKnowledgeRetrievalQuery({
-        authToken,
-        input: {
-          query: nextQuery,
-          dataset_ids: config.dataset_ids,
-          retrieval_mode: config.retrieval_mode,
-          single_retrieval_config: config.single_retrieval_config,
-          multiple_retrieval_config: config.multiple_retrieval_config,
-          metadata_filtering_mode: 'disabled',
-          metadata_filtering_conditions: [],
-        },
-      })
-
-      const nextRun: KnowledgeRetrievalDebugRun = {
-        requestedAt: Date.now(),
-        query: nextQuery,
-        items: result.items,
-        diagnostics: result.diagnostics,
-      }
-
-      setNodes((nodes) => nodes.map((node) => {
-        if (node.id !== id)
-          return node
-
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            _knowledgeLastRun: nextRun,
-          },
-        }
-      }))
+  useEffect(() => {
+    if (debugApiError) {
+      setDebugRunError(debugApiError)
     }
-    catch (error) {
-      setDebugRunError(error instanceof Error ? error.message : '知识检索调试失败。')
-    }
-    finally {
-      setIsDebugRunning(false)
-    }
-  }
+  }, [debugApiError])
 
   return (
     <div className="space-y-3">
@@ -262,7 +234,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
 
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] text-slate-400">
-                {lastRun ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.requestedAt)}` : '还没有调试记录'}
+                {lastRun?.finishedAt
+                  ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.finishedAt)}`
+                  : '还没有调试记录'}
               </p>
               <button
                 type="button"
@@ -280,49 +254,8 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
 
             {lastRun ? (
               <div className="space-y-2">
-                <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                  <p className="text-[12px] font-semibold text-slate-800">{lastRun.query}</p>
-                  <div className="mt-1 grid gap-1 text-[10px] text-slate-500 md:grid-cols-3">
-                    <span>知识库 {lastRun.diagnostics.dataset_count} 个</span>
-                    <span>扫描分块 {lastRun.diagnostics.total_chunk_count}</span>
-                    <span>参与排序 {lastRun.diagnostics.filtered_chunk_count}</span>
-                  </div>
-                </div>
-
-                {lastRun.items.length ? (
-                  <div className="space-y-2">
-                    {lastRun.items.map((item) => (
-                      <PanelCard
-                        key={item.chunk_id}
-                        className="space-y-1.5 border border-slate-200 bg-white p-2.5 shadow-none"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-[12px] font-semibold text-slate-800">
-                              {item.dataset_name} / {item.document_name}
-                            </p>
-                            <p className="text-[10px] text-slate-400">
-                              chunk #{item.chunk_index + 1} · {item.search_method}
-                            </p>
-                          </div>
-                          <PanelToken className="border-blue-100 text-blue-600">
-                            score {item.score.toFixed(3)}
-                          </PanelToken>
-                        </div>
-                        <p className="text-[11px] leading-5 text-slate-600">{item.text}</p>
-                        {item.matched_terms.length ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {item.matched_terms.map(term => (
-                              <PanelToken key={`${item.chunk_id}-${term}`}>{term}</PanelToken>
-                            ))}
-                          </div>
-                        ) : null}
-                      </PanelCard>
-                    ))}
-                  </div>
-                ) : (
-                  <PanelAlert type="info">本次检索没有命中结果。</PanelAlert>
-                )}
+                <PanelLastRunKnowledgeDetails lastRun={lastRun} />
+                <PanelLastRun lastRun={lastRun} />
               </div>
             ) : null}
           </div>
