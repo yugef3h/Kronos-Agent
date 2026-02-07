@@ -1,3 +1,7 @@
+jest.mock('../rag/knowledgeFacade.js', () => ({
+  runKnowledgeRetrievalQuery: jest.fn(),
+}))
+
 import { NodeRunStatus } from './types.js'
 import { registerBuiltInNodeExecutors } from './registerNodeExecutors.js'
 import { workflowRunStore } from './workflowRunStore.js'
@@ -74,7 +78,7 @@ describe('workflowDraftRunner llm chain', () => {
       inputs: { query: '什么是 RAG' },
     })
 
-    expect(result.nodeRuns.map((run) => run.nodeType)).toEqual(['start', 'llm'])
+    expect(result.nodeRuns.map((run) => run.nodeType)).toEqual(['start', 'llm', 'end'])
     expect(result.nodeRuns[1]?.status).toBe(NodeRunStatus.Succeeded)
     expect(result.nodeRuns[1]?.outputs?.text).toBe('mock llm answer')
   })

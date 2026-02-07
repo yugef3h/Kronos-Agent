@@ -1,3 +1,7 @@
+jest.mock('../rag/knowledgeFacade.js', () => ({
+  runKnowledgeRetrievalQuery: jest.fn(),
+}))
+
 import { WorkflowRunStatus } from './types.js'
 import { registerBuiltInNodeExecutors } from './registerNodeExecutors.js'
 import { workflowRunStore } from './workflowRunStore.js'
@@ -51,8 +55,9 @@ describe('workflowDraftRunner', () => {
     })
 
     expect(result.run.status).toBe(WorkflowRunStatus.Succeeded)
-    expect(result.nodeRuns).toHaveLength(1)
+    expect(result.nodeRuns).toHaveLength(2)
     expect(result.nodeRuns[0]?.nodeType).toBe('start')
     expect(result.nodeRuns[0]?.outputs?.query).toBe('hello')
+    expect(result.nodeRuns[1]?.nodeType).toBe('end')
   })
 })

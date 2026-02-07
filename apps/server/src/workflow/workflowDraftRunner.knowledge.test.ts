@@ -83,7 +83,7 @@ describe('workflowDraftRunner knowledge chain', () => {
       inputs: { query: '什么是 RAG' },
     })
 
-    expect(result.nodeRuns.map((run) => run.nodeType)).toEqual(['start', 'knowledge-retrieval'])
+    expect(result.nodeRuns.map((run) => run.nodeType)).toEqual(['start', 'knowledge-retrieval', 'end'])
     expect(result.nodeRuns[1]?.status).toBe(NodeRunStatus.Succeeded)
     expect(mockRunKnowledgeRetrievalQuery).toHaveBeenCalled()
   })
