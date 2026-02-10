@@ -30,6 +30,7 @@ import type {
   LoopVariable,
 } from '../panels/loop-panel/types';
 import InfoTooltip from '../base/info-tooltip';
+import { PanelLastRunContainerRuns } from '../base/panel-last-run-container-runs';
 
 const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {
   const serialized = serializeValueSelector(valueSelector);
@@ -340,12 +341,10 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
   return (
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
-        <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-          <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-          <p className="text-[11px] leading-5 text-slate-500">
-            运行工作流后，这里会展示循环次数、命中的 break 条件和每轮上下文变量快照。
-          </p>
-        </PanelCard>
+        <PanelLastRunContainerRuns
+          lastRun={nodeData._lastRun}
+          emptyLabel="运行工作流后，这里会展示循环次数、命中的 break 条件和每轮子节点运行摘要。"
+        />
       ) : null}
 
       {activeTab === 'settings' ? (

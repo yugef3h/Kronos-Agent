@@ -23,6 +23,7 @@ import type {
 } from '../panels/iteration-panel/types';
 import type { VariableOption } from '../panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
+import { PanelLastRunContainerRuns } from '../base/panel-last-run-container-runs';
 
 const ITERATION_ERROR_MODE_OPTIONS: Array<{ label: string; value: IterationErrorHandleMode }> = [
   { label: '终止', value: 'terminated' },
@@ -161,12 +162,10 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
   return (
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
-        <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
-          <p className="text-[12px] font-semibold text-slate-800">暂无最近一次运行记录</p>
-          <p className="text-[11px] leading-5 text-slate-500">
-            运行工作流后，这里会显示每轮迭代输入、并行度、异常处理结果和聚合后的输出摘要。
-          </p>
-        </PanelCard>
+        <PanelLastRunContainerRuns
+          lastRun={nodeData._lastRun}
+          emptyLabel="运行工作流后，这里会显示每轮迭代输入、并行度、异常处理结果和聚合后的输出摘要。"
+        />
       ) : null}
 
       {activeTab === 'settings' ? (
