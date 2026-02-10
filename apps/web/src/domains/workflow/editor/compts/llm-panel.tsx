@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import InfoTooltip from '../base/info-tooltip';
 import VariableSelect from '../../../../components/form/variable-select';
 import ExpandCollapseButton from '../base/expand-collapse-button';
@@ -18,7 +18,16 @@ import {
   PanelTextarea,
   PanelToggle,
   PanelToken,
+  usePanelTabs,
 } from '../base/panel-form';
+import PanelLastRun from '../base/panel-last-run';
+import { PanelLastRunLlmDetails } from '../base/panel-last-run-llm';
+import { PanelDebugContextField } from '../base/panel-debug-context-field';
+import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
+import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
+import { parsePanelDebugContextJson } from '../utils/panel-debug-context';
 import { COMPLETION_PARAM_DEFINITIONS } from '../panels/llm-panel/catalog';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
@@ -132,6 +141,8 @@ const CompletionPromptEditor = ({
 
 
 const LLMPanel = ({ id, data }: NodePanelProps) => {
+  const appId = useWorkflowAppId();
+  const { activeTab } = usePanelTabs();
   const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
   const nodes = useNodes<CanvasNodeData>();
   const edges = useEdges<Edge>();
@@ -198,6 +209,40 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     JSON.stringify(config.structuredOutput?.schema ?? null, null, 2),
   );
   const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [contextJson, setContextJson] = useState('{}');
+  const [contextParseError, setContextParseError] = useState<string | null>(null);
+
+  const parsedContext = useMemo(
+    () => parsePanelDebugContextJson(contextJson),
+    [contextJson],
+  );
+
+  const { runDebug, isRunning, error: debugError, clearError } = useNodeDebugRun({
+    appId,
+    nodeId: id,
+    nodeKind: 'llm',
+    nodeInputs: config as unknown as Record<string, unknown>,
+    contextVariables: parsedContext.ok ? parsedContext.value : undefined,
+  });
+
+  const handleRunDebug = useCallback(() => {
+    if (!parsedContext.ok) {
+      setContextParseError(parsedContext.message);
+      return;
+    }
+
+    setContextParseError(null);
+    clearError();
+    void runDebug();
+  }, [clearError, parsedContext, runDebug]);
+
+  useRegisterPanelNodeDebug({
+    runDebug: handleRunDebug,
+    isRunning,
+    disabled: !parsedContext.ok || issues.length > 0 || config.model.mode === 'completion',
+  });
+
+  const lastRun = resolveNodeLastRun(id, nodeData as CanvasNodeData);
 
   useEffect(() => {
     setSchemaText(JSON.stringify(config.structuredOutput?.schema ?? null, null, 2));
@@ -273,6 +318,36 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
 
   return (
     <div className="space-y-3 pb-2">
+      {activeTab === 'last-run' ? (
+        <div className="space-y-3">
+          <PanelDebugContextField
+            value={contextJson}
+            onChange={(value) => {
+              setContextJson(value);
+              setContextParseError(null);
+              clearError();
+            }}
+            parseError={contextParseError}
+            hint='Mock 变量会注入 LLM prompt 的 {{var}} 占位符，例如 {"sys.query": "你好"}。'
+          />
+          {debugError ? (
+            <PanelAlert type="warning">{debugError}</PanelAlert>
+          ) : null}
+          <button
+            type="button"
+            disabled={isRunning || !parsedContext.ok || config.model.mode === 'completion'}
+            onClick={handleRunDebug}
+            className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {isRunning ? '调试中…' : '运行调试'}
+          </button>
+          {lastRun ? <PanelLastRunLlmDetails lastRun={lastRun} /> : null}
+          <PanelLastRun lastRun={lastRun} emptyDescription="运行调试后展示模型输出与 token 用量。" />
+        </div>
+      ) : null}
+
+      {activeTab === 'settings' ? (
+      <>
       {issues.length ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
           <p className="text-sm font-semibold text-amber-900">当前配置存在待处理项</p>
@@ -563,6 +638,8 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
           </Field>
         ) : null}
       </PanelSection>
+      </>
+      ) : null}
     </div>
   );
 };
