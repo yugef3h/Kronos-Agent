@@ -3,14 +3,14 @@
 新对话开场可复制：
 
 ```
-继续 Kronos workflow 测试运行 plan，从 Step 37 开始。
+继续 Kronos workflow 测试运行 plan，从 Step 45 开始。
 交接文档：docs/workflow-test-run-plan-handoff.md
 单步实现，每步结束让我来允许你的 pnpm cd。
 ```
 
 ---
 
-## 已完成（Step 1–36）
+## 已完成（Step 1–44）
 
 | Step | 内容 | 路径 |
 |------|------|------|
@@ -46,21 +46,26 @@
 | 30 | iteration 沙盒 | `executors/iterationNodeExecutor.ts` |
 | 31 | SSE 事件回放 | `workflowRunEvents.ts` + `GET …/events` |
 | 32 | cancel + 超时 | `workflowRunCancellation.ts` + runner `maxSteps`/`timeoutMs` |
-| 33 | PanelLastRun | `editor/base/panel-last-run.tsx`（状态/JSON/复制/耗时） |
+| 33 | PanelLastRun | `editor/base/panel-last-run.tsx` |
 | 34 | useNodeDebugRun | `workflowNodeDebugApi.ts` + `hooks/use-node-debug-run.ts` |
-| 35 | start 上次运行 | `start-panel` + `PanelLastRun` + 调试输入 |
+| 35 | start 上次运行 | `start-panel` + 调试输入 |
 | 36 | start 调试按钮 | settings「调试此节点」 |
+| 37 | end 上次运行 | Mock 上下文 + `PanelLastRunEndDetails` |
+| 38 | if-else 上次运行 | 分支命中 + 条件求值 |
+| 39 | knowledge 迁移 | `_lastRun` + `resolveNodeLastRun` |
+| 40–41 | llm 调试/上次运行 | Mock 变量 + `PanelLastRunLlmDetails` |
+| 42–43 | loop/iteration 壳 | `PanelLastRunContainerRuns` accordion |
+| 44 | Panel 调试按钮 | 标题栏「调试」+ `PanelNodeDebugProvider` |
 
 注册入口：`registerNodeDebugExecutors.ts`（单节点）、`registerNodeExecutors.ts`（整图）
 
 ---
 
-## 下一步（Step 37 起）
+## 下一步（Step 45 起）
 
 | Step | 轨 | 任务 |
 |------|-----|------|
-| 37–44 | S 前端 | end / if-else / knowledge / llm 等 panel 接线 |
-| 45–54 | W 前端 | 测试运行、画布态 |
+| 45–54 | W 前端 | 测试运行、画布态、取消 |
 | 55–58 | 合并 | 双轨合并 + E2E |
 
 ---
