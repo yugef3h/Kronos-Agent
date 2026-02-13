@@ -35,6 +35,7 @@ import type {
 } from '../panels/start-panel/types';
 import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import {
   buildStartPanelDebugInputs,
   mergeStartPanelDebugFormValues,
@@ -373,6 +374,12 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   const handleRunDebug = useCallback(() => {
     void runDebug();
   }, [runDebug]);
+
+  useRegisterPanelNodeDebug({
+    runDebug: handleRunDebug,
+    isRunning,
+    disabled: !appId?.trim(),
+  });
 
   const draftVariableIssues = useMemo(() => {
     if (!draftVariable) return [];

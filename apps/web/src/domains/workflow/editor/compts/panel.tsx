@@ -6,6 +6,10 @@ import { PANEL_Z_INDEX } from '../layout-constants'
 import { BlockEnum } from '../types/common'
 import { resolvePanelBlockType } from '../utils/panel-resolver'
 import { PanelTabs, type PanelDefaultTab, PanelTabsProvider } from '../base/panel-form'
+import {
+  PanelNodeDebugProvider,
+  usePanelNodeDebugToolbar,
+} from '../base/panel-node-debug-context'
 
 type PanelProps = {
   selectedNode?: NodePanelProps
@@ -15,11 +19,31 @@ type PanelProps = {
 const TABBED_BLOCKS = new Set<BlockEnum>([
   BlockEnum.Start,
   BlockEnum.End,
+  BlockEnum.LLM,
   BlockEnum.IfElse,
   BlockEnum.Iteration,
   BlockEnum.Loop,
   BlockEnum.KnowledgeRetrieval,
 ])
+
+const PanelHeaderDebugButton = () => {
+  const { canShow, runDebug, isRunning, disabled } = usePanelNodeDebugToolbar()
+
+  if (!canShow) {
+    return null
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={disabled || isRunning}
+      onClick={runDebug}
+      className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:border-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isRunning ? '调试中…' : '调试'}
+    </button>
+  )
+}
 
 /**
  * Reference MDN standard implementation：https://developer.mozilla.org/zh-CN/docs/Web/API/ResizeObserverEntry/borderBoxSize
@@ -111,16 +135,19 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
           <div className="min-w-0">
             <p className="mt-1 truncate text-sm font-semibold text-slate-900">{panelTitle}</p>
           </div>
-          <button
-            type="button"
-            onClick={(event) => {
-              stopPanelEvent(event)
-              onClose()
-            }}
-            className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-          >
-            关闭
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {showTabs ? <PanelHeaderDebugButton /> : null}
+            <button
+              type="button"
+              onClick={(event) => {
+                stopPanelEvent(event)
+                onClose()
+              }}
+              className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            >
+              关闭
+            </button>
+          </div>
         </div>
         {showTabs ? (
           <div className="border-b border-slate-100 px-4 py-3">
@@ -128,9 +155,11 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
           </div>
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <PanelTabsProvider activeTab={activeTab} setActiveTab={handleTabChange}>
-            <NodePanel {...selectedNode} />
-          </PanelTabsProvider>
+          <PanelNodeDebugProvider>
+            <PanelTabsProvider activeTab={activeTab} setActiveTab={handleTabChange}>
+              <NodePanel {...selectedNode} />
+            </PanelTabsProvider>
+          </PanelNodeDebugProvider>
         </div>
       </div>
     </div>
