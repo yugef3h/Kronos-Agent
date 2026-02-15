@@ -32,8 +32,21 @@ export type StartWorkflowDraftRunInput = {
   }
 }
 
+export type WorkflowDraftNodeRunRecord = {
+  nodeId: string
+  nodeType: string
+  status: NodeRunStatus
+  startedAt: number
+  finishedAt: number
+  elapsedMs: number
+  iterationIndex?: number
+  outputs?: Record<string, unknown>
+  error?: RunError
+}
+
 export type StartWorkflowDraftRunResponse = {
   run: WorkflowRunSummary
+  nodeRuns: WorkflowDraftNodeRunRecord[]
 }
 
 export type GetWorkflowDraftRunResponse = {
