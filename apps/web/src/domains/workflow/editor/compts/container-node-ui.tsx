@@ -9,6 +9,8 @@ import {
   CONTAINER_NODE_HORIZONTAL_PADDING,
 } from '../panels/container-panel/canvas';
 import type { CanvasNodeData } from '../types/canvas';
+import type { NodeRunningStatus } from '../types/common';
+import NodeRunStatusIcon from './node-run-status-icon';
 import WorkflowNodeSummary from './workflow-node-summary';
 
 const IconTrigger = () => {
@@ -105,7 +107,11 @@ export const ContainerNodeHeader = ({
   kind,
   title,
   requiredIssueCount = 0,
-}: Pick<CanvasNodeData, 'kind' | 'title'> & { requiredIssueCount?: number }) => {
+  runStatus,
+}: Pick<CanvasNodeData, 'kind' | 'title'> & {
+  requiredIssueCount?: number
+  runStatus?: NodeRunningStatus
+}) => {
   return (
     <div className="relative z-10 flex items-center gap-3 px-1">
       <div
@@ -116,6 +122,7 @@ export const ContainerNodeHeader = ({
       <div className="min-w-0 flex-1 pt-0.5">
         <p className="truncate text-[16px] font-semibold tracking-[0.01em] text-slate-900">{title}</p>
       </div>
+      <NodeRunStatusIcon status={runStatus} />
       {requiredIssueCount > 0 ? (
         <span
           className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white shadow-[0_8px_18px_-12px_rgba(217,119,6,0.9)]"
@@ -151,9 +158,11 @@ const NestedNodeBadge = ({ kind }: { kind: CanvasNodeData['kind'] }) => {
 export const NestedPlainNodeCard = ({
   data,
   isSelected = false,
+  runStatus,
 }: {
   data: CanvasNodeData
   isSelected?: boolean
+  runStatus?: NodeRunningStatus
 }) => {
   return (
     <div className={`rounded-[14px] border bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)] ${isSelected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`}>
@@ -165,6 +174,7 @@ export const NestedPlainNodeCard = ({
           {/* <p className="text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">{data.subtitle}</p> */}
           <p className="mt-0.5 text-[15px] font-semibold leading-[1.15] text-slate-900">{data.title}</p>
         </div>
+        <NodeRunStatusIcon status={runStatus} />
       </div>
 
       <WorkflowNodeSummary data={data} compact />
@@ -175,9 +185,11 @@ export const NestedPlainNodeCard = ({
 export const NestedEndNodeCard = ({
   data,
   isSelected = false,
+  runStatus,
 }: {
   data: CanvasNodeData
   isSelected?: boolean
+  runStatus?: NodeRunningStatus
 }) => {
   return (
     <div className={`rounded-[14px] border bg-white px-2.5 py-2 shadow-[0_10px_24px_-24px_rgba(15,23,42,0.28)] ${isSelected ? 'border-components-option-card-option-selected-border' : 'border-amber-200/80 hover:border-blue-300'}`}>
@@ -185,9 +197,10 @@ export const NestedEndNodeCard = ({
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.9)]">
           <IconOutput />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold leading-[1.1] text-slate-900">{data.title}</p>
         </div>
+        <NodeRunStatusIcon status={runStatus} />
       </div>
     </div>
   );
