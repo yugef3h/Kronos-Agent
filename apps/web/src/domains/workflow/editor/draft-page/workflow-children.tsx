@@ -84,6 +84,9 @@ import {
   NestedEndNodeCard,
   NestedPlainNodeCard,
 } from '../compts/container-node-ui';
+import NodeRunStatusIcon from '../compts/node-run-status-icon';
+import WorkflowRunSummaryBar from '../compts/workflow-run-summary-bar';
+import WorkflowTestRunInputDialog from '../compts/workflow-test-run-input-dialog';
 import { ContainerStartNode } from '../compts/container-start-node';
 import WorkflowNodeSummary from '../compts/workflow-node-summary';
 import type { VariableOption } from '../panels/llm-panel/types';
@@ -111,6 +114,9 @@ import { normalizeEndNodeConfig, validateEndNodeConfig } from '../panels/end-pan
 import { normalizeStartNodeConfig, validateStartNodeConfig } from '../panels/start-panel/schema';
 import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../panels/loop-panel/schema';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
+import { getNodeRunBorderClass } from '../utils/get-node-run-border-class';
+import { validateRunnableDsl } from '../utils/validate-runnable-dsl';
+import { useWorkflowDraftRun } from '../hooks/use-workflow-draft-run';
 import {
   areKnowledgeDatasetsEqual,
   areStringArraysEqual,
@@ -453,6 +459,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     : { right: CONTAINER_START_HANDLE_RIGHT_OFFSET };
   const nodeSurfaceClass =
     isContainerStartNode || (isNestedNode && !isContainerNode) ? 'bg-transparent' : 'bg-white';
+  const runBorderClass = getNodeRunBorderClass(data._runStatus);
   const isNestedConditionNode = isNestedNode && data.kind === 'condition';
   const isNestedPlainNode =
     isNestedNode && !isContainerStartNode && !isContainerEndNode && data.kind !== 'condition';
@@ -484,7 +491,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               : isNestedNode
                 ? nestedNodeCardClass
                 : `${nestedNodeCardClass} ${data.selected ? 'border-components-option-card-option-selected-border' : 'border-slate-200 hover:border-blue-300'}`
-      }`}
+      } ${runBorderClass ?? ''}`}
       style={{
         width: nodeWidth,
         minWidth: nodeWidth,
@@ -574,13 +581,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           </>
         ) : isContainerEndNode ? (
           isNestedNode ? (
-            <NestedEndNodeCard data={data} isSelected={!!data.selected} />
+            <NestedEndNodeCard data={data} isSelected={!!data.selected} runStatus={data._runStatus} />
           ) : (
             <div>
               <ContainerNodeHeader
                 kind={data.kind}
                 title={data.title}
                 requiredIssueCount={data._requiredIssueCount}
+                runStatus={data._runStatus}
               />
               <p className="mt-1 text-[10px] leading-4 text-slate-500">
                 {data.kind === 'iteration-end'
@@ -599,13 +607,14 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               >
                 <IconCondition />
               </div>
-              <div className="min-w-0 pt-0.5">
+              <div className="min-w-0 flex-1 pt-0.5">
                 <p
                   className={`${isNestedConditionNode ? 'text-[13px]' : 'text-[16px]'} font-semibold tracking-[0.01em] text-slate-900`}
                 >
                   {data.title}
                 </p>
               </div>
+              <NodeRunStatusIcon status={data._runStatus} />
             </div>
 
             <div
@@ -739,16 +748,22 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
               kind={data.kind}
               title={data.title}
               requiredIssueCount={data._requiredIssueCount}
+              runStatus={data._runStatus}
             />
           </div>
         ) : isNestedPlainNode ? (
-          <NestedPlainNodeCard data={data} isSelected={!!data.selected} />
+          <NestedPlainNodeCard
+            data={data}
+            isSelected={!!data.selected}
+            runStatus={data._runStatus}
+          />
         ) : (
           <div>
             <ContainerNodeHeader
               kind={data.kind}
               title={data.title}
               requiredIssueCount={data._requiredIssueCount}
+              runStatus={data._runStatus}
             />
             <WorkflowNodeSummary data={data} />
           </div>
@@ -854,6 +869,36 @@ export const WorkflowChildren = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const [isTestRunDialogOpen, setIsTestRunDialogOpen] = useState(false);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  const getCanvasSnapshot = useCallback(
+    () => ({ nodes: nodesRef.current, edges: edgesRef.current }),
+    [],
+  );
+
+  const {
+    runSummary,
+    isRunning: isDraftRunRunning,
+    isDraftRunActive,
+    error: draftRunError,
+    executeDraftRun,
+    cancelDraftRun,
+  } = useWorkflowDraftRun({
+    appId,
+    getCanvas: getCanvasSnapshot,
+    setNodes,
+    setEdges,
+  });
   const captureDraftPreview = useCallback(
     () => captureWorkflowDraftPreview(reactFlowCaptureRef.current),
     [],
@@ -1052,6 +1097,10 @@ export const WorkflowChildren = () => {
     () => createWorkflowDslFromCanvas(nodes, edges as Edge[], currentApp?.name),
     [currentApp?.name, edges, nodes],
   );
+  const runnableValidation = useMemo(
+    () => validateRunnableDsl(workflowDslPreview),
+    [workflowDslPreview],
+  );
   const checklistGroups = useMemo<ChecklistGroup[]>(() => {
     const translateLLMIssue = (issue: ChecklistIssue) => {
       if (issue.path === 'promptTemplate') {
@@ -1130,6 +1179,28 @@ export const WorkflowChildren = () => {
     }, []);
   }, [nodes]);
   const checklistCount = checklistGroups.length;
+  const triggerNode = useMemo(
+    () => nodes.find((node) => node.data.kind === 'trigger'),
+    [nodes],
+  );
+  const startRunConfig = useMemo(
+    () => normalizeStartNodeConfig(triggerNode?.data.inputs),
+    [triggerNode],
+  );
+  const canTestRun = checklistCount === 0 && runnableValidation.runnable;
+  const handleTestRunClick = useCallback(() => {
+    if (!canTestRun) {
+      return;
+    }
+
+    setIsTestRunDialogOpen(true);
+  }, [canTestRun]);
+  const handleTestRunSubmit = useCallback(async (inputs: Record<string, unknown>) => {
+    const result = await executeDraftRun(workflowDslPreview, inputs);
+    if (result) {
+      setIsTestRunDialogOpen(false);
+    }
+  }, [executeDraftRun, workflowDslPreview]);
   const requiredIssueCountByNodeId = useMemo(() => {
     return checklistGroups.reduce<Record<string, number>>((acc, group) => {
       acc[group.nodeId] = group.issues.length;
@@ -1179,6 +1250,10 @@ export const WorkflowChildren = () => {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      if (isDraftRunActive) {
+        return;
+      }
+
       if (!connection.source || !connection.target || connection.source === connection.target) {
         return;
       }
@@ -1233,7 +1308,7 @@ export const WorkflowChildren = () => {
         );
       });
     },
-    [nodes, setEdges],
+    [isDraftRunActive, nodes, setEdges],
   );
 
   if (!appId) {
@@ -1256,7 +1331,16 @@ export const WorkflowChildren = () => {
             <div className="inline-flex items-center gap-0.5 rounded-[18px] bg-white/96 p-0.5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.36)] ring-1 ring-slate-950/5 backdrop-blur">
               <button
                 type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-[14px] bg-[linear-gradient(180deg,#ffffff_0%,#eef5ff_100%)] px-3 text-[13px] font-semibold text-blue-700 transition hover:text-blue-800"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[14px] bg-[linear-gradient(180deg,#ffffff_0%,#eef5ff_100%)] px-3 text-[13px] font-semibold text-blue-700 transition hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canTestRun || isDraftRunRunning}
+                title={
+                  !canTestRun
+                    ? checklistCount > 0
+                      ? '请先修复检查清单中的问题'
+                      : '工作流 DSL 尚不可运行'
+                    : undefined
+                }
+                onClick={handleTestRunClick}
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -1443,8 +1527,9 @@ export const WorkflowChildren = () => {
             minZoom={0.25}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
-            nodesDraggable
-            nodesConnectable
+            nodesDraggable={!isDraftRunActive}
+            nodesConnectable={!isDraftRunActive}
+            elementsSelectable={!isDraftRunActive}
             connectOnClick={false}
             nodesFocusable={false}
             edgesFocusable={false}
@@ -1462,8 +1547,23 @@ export const WorkflowChildren = () => {
             />
           </ReactFlow>
 
+          <WorkflowRunSummaryBar
+            run={runSummary}
+            isRunning={isDraftRunRunning}
+            error={draftRunError}
+            onStop={isDraftRunRunning ? cancelDraftRun : undefined}
+          />
+
           <Panel selectedNode={selectedNode} onClose={handlePanelClose} />
         </div>
+
+        <WorkflowTestRunInputDialog
+          open={isTestRunDialogOpen}
+          config={startRunConfig}
+          isRunning={isDraftRunRunning}
+          onOpenChange={setIsTestRunDialogOpen}
+          onRun={handleTestRunSubmit}
+        />
       </div>
     </section>
   );
