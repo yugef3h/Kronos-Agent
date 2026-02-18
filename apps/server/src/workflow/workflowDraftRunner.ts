@@ -15,21 +15,15 @@ import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from './workflowDsl.
 import { extractWorkflowDraftDslGraph } from './workflowDsl.js'
 import { appendWorkflowRunEvent } from './workflowRunEvents.js'
 import { isWorkflowRunCancelled, clearWorkflowRunCancellation } from './workflowRunCancellation.js'
+import {
+  toWorkflowDraftNodeRunRecord,
+  type WorkflowDraftNodeRunRecord,
+} from './nodeRunRecord.js'
+
+export type { WorkflowDraftNodeRunRecord } from './nodeRunRecord.js'
 
 const DEFAULT_MAX_STEPS = 128
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
-
-export type WorkflowDraftNodeRunRecord = {
-  nodeId: string
-  nodeType: string
-  status: NodeRunStatus
-  startedAt: number
-  finishedAt: number
-  elapsedMs: number
-  iterationIndex?: number
-  outputs?: Record<string, unknown>
-  error?: RunError
-}
 
 export type RunWorkflowDraftInput = {
   appId: string
@@ -132,20 +126,6 @@ const emitWorkflowFinished = (
     ...(error ? { error } : {}),
   })
 }
-
-const toNodeRunRecord = (
-  graphNode: ExecutionGraphNode,
-  result: Awaited<ReturnType<typeof executeWorkflowNode>>,
-): WorkflowDraftNodeRunRecord => ({
-  nodeId: result.nodeId,
-  nodeType: graphNode.type,
-  status: result.status,
-  startedAt: result.startedAt,
-  finishedAt: result.finishedAt,
-  elapsedMs: result.elapsedMs,
-  ...(result.outputs ? { outputs: result.outputs } : {}),
-  ...(result.error ? { error: result.error } : {}),
-})
 
 export const runWorkflowDraftGraph = async (
   input: {
@@ -251,7 +231,7 @@ export const runWorkflowDraftGraph = async (
       throw error
     }
 
-    const nodeRecord = toNodeRunRecord(graphNode, nodeResult)
+    const nodeRecord = toWorkflowDraftNodeRunRecord(graphNode.type, nodeResult)
     nodeRuns.push(nodeRecord)
     emitNodeFinished(runRecord.runId, nodeRecord)
     appendEmbeddedNodeRuns(nodeRuns, nodeResult.outputs)

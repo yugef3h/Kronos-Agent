@@ -85,6 +85,10 @@ export type {
   RunWorkflowDraftResult,
   WorkflowDraftNodeRunRecord,
 } from './workflowDraftRunner.js'
+export {
+  toWorkflowDraftNodeRunRecord,
+  workflowDraftNodeRunRecordFromDebug,
+} from './nodeRunRecord.js'
 export { extractWorkflowDraftDslGraph } from './workflowDsl.js'
 export type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from './workflowDsl.js'
 export {
