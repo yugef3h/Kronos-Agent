@@ -1,11 +1,9 @@
 import { apiUrl } from '../../../lib/api';
 import { isViteDev } from '../../../lib/viteEnv';
 import {
-  deleteWorkflowExampleApp,
   getWorkflowExampleAppsCache,
   getWorkflowExamplePreviewSrc,
-  isWorkflowExampleAppId,
-  saveWorkflowExampleApp,
+  isWorkflowReadOnlyExampleAppId,
 } from './workflowExampleClient';
 
 export type LegacyWorkflowNodeType =
@@ -397,7 +395,7 @@ export const getWorkflowDraftThumbnailSrc = (
   if (app.draftPreviewDataUrl) {
     return app.draftPreviewDataUrl;
   }
-  if (isWorkflowExampleAppId(app.id)) {
+  if (isWorkflowReadOnlyExampleAppId(app.id)) {
     return getWorkflowExamplePreviewSrc(app, options?.cacheBust);
   }
   if (app.draftPreviewBackendSynced) {
@@ -567,13 +565,6 @@ const mergeLocalAndExampleApps = (): WorkflowAppRecord[] => {
 const findExampleApp = (appId: string): WorkflowAppRecord | undefined =>
   getWorkflowExampleAppsCache().find((app) => app.id === appId);
 
-const persistWorkflowExampleRecord = (record: WorkflowAppRecord): void => {
-  const rest = { ...record };
-  delete rest.draftPreviewDataUrl;
-  delete rest.hasDraftPreview;
-  void saveWorkflowExampleApp(rest);
-};
-
 export const listWorkflowApps = (): WorkflowAppRecord[] => mergeLocalAndExampleApps();
 
 /** 已假发布且为 Chatbot（`dsl.app.mode === 'chat'`）的应用，供首页对话 RAG 应用下拉使用。 */
@@ -588,17 +579,7 @@ export const listPublishedChatbotWorkflowApps = (): WorkflowAppRecord[] => {
 export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolean): WorkflowAppRecord | undefined => {
   const example = findExampleApp(appId);
   if (example) {
-    const updatedApp: WorkflowAppRecord = {
-      ...example,
-      updatedAt: Date.now(),
-      mockPublished,
-    };
-    delete updatedApp.draftPreviewDataUrl;
-    persistWorkflowExampleRecord(updatedApp);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
-    }
-    return updatedApp;
+    return example;
   }
 
   const apps = readAppRecords();
@@ -648,15 +629,7 @@ export const updateWorkflowAppChatbotOrchestration = (
 ): WorkflowAppRecord | undefined => {
   const example = findExampleApp(appId);
   if (example) {
-    const base = example.chatbotOrchestration ?? createDefaultChatbotOrchestration();
-    const updatedApp: WorkflowAppRecord = {
-      ...example,
-      updatedAt: Date.now(),
-      chatbotOrchestration: recipe(base),
-    };
-    delete updatedApp.draftPreviewDataUrl;
-    persistWorkflowExampleRecord(updatedApp);
-    return updatedApp;
+    return example;
   }
 
   const apps = readAppRecords();
@@ -684,14 +657,7 @@ export const updateWorkflowAppChatbotOrchestration = (
 export const updateWorkflowAppDsl = (appId: string, dsl: WorkflowDSL): WorkflowAppRecord | undefined => {
   const example = findExampleApp(appId);
   if (example) {
-    const updatedApp: WorkflowAppRecord = {
-      ...example,
-      updatedAt: Date.now(),
-      dsl,
-    };
-    delete updatedApp.draftPreviewDataUrl;
-    persistWorkflowExampleRecord(updatedApp);
-    return updatedApp;
+    return example;
   }
 
   const apps = readAppRecords();
@@ -726,27 +692,7 @@ export const updateWorkflowAppMeta = (
 
   const example = findExampleApp(appId);
   if (example) {
-    const description = payload.description?.trim() ?? '';
-    const updatedApp: WorkflowAppRecord = {
-      ...example,
-      name,
-      description,
-      updatedAt: Date.now(),
-      dsl: {
-        ...example.dsl,
-        app: {
-          ...example.dsl.app,
-          name,
-          description,
-        },
-      },
-    };
-    delete updatedApp.draftPreviewDataUrl;
-    persistWorkflowExampleRecord(updatedApp);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
-    }
-    return updatedApp;
+    return example;
   }
 
   const apps = readAppRecords();
@@ -785,12 +731,8 @@ export const updateWorkflowAppMeta = (
 };
 
 export const deleteWorkflowApp = (appId: string): boolean => {
-  if (isWorkflowExampleAppId(appId)) {
-    void deleteWorkflowExampleApp(appId);
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
-    }
-    return true;
+  if (isWorkflowReadOnlyExampleAppId(appId)) {
+    return false;
   }
 
   const apps = readAppRecords();

@@ -10,6 +10,9 @@ export const getWorkflowExampleAppsCache = (): WorkflowAppRecord[] => exampleApp
 export const isWorkflowExampleAppId = (appId: string): boolean =>
   exampleAppsCache.some((app) => app.id === appId);
 
+/** 内置 workflow 示例：画布与 DSL 只读，仅可查看 / 测试运行 / 单节点调试 */
+export const isWorkflowReadOnlyExampleAppId = (appId: string): boolean => isWorkflowExampleAppId(appId);
+
 export const setWorkflowExampleAppsCache = (apps: WorkflowAppRecord[]): void => {
   exampleAppsCache = apps;
 };
@@ -28,12 +31,19 @@ export async function fetchWorkflowExampleApps(): Promise<WorkflowAppRecord[]> {
   return apps;
 }
 
-export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise<void> {
+export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise<boolean> {
   const response = await fetch(apiUrl(`/api/workflow/examples/${encodeURIComponent(record.id)}`), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ app: record }),
   });
+  if (response.status === 403 || response.status === 409) {
+    console.warn('[workflow:example] 服务端拒绝保存只读/破坏性示例', {
+      appId: record.id,
+      status: response.status,
+    });
+    return false;
+  }
   if (!response.ok) {
     throw new Error(`Failed to save workflow example (${response.status})`);
   }
@@ -48,6 +58,7 @@ export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(WORKFLOW_EXAMPLES_CHANGED_EVENT));
   }
+  return true;
 }
 
 export async function deleteWorkflowExampleApp(appId: string): Promise<void> {

@@ -28,6 +28,7 @@ Workflow 测试运行 plan 已全部完成（Step 1–58）。
 - 每步只 `git add` 本轮文件
 - 仓库根目录：`pnpm cd "feat|fix|test: 一句话"`
 - 不要提交误改的 `apps/server/data/workflow-examples/*.json`
+- 内置 `workflow-examples` 为**只读实例**（前端标注 + 服务端拒绝 PUT）；维护示例需 `WORKFLOW_EXAMPLES_WRITABLE=1`
 
 ---
 

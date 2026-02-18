@@ -13,6 +13,7 @@ import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../../sto
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { createWorkflowDslFromCanvas, hydrateCanvasNodesFromDsl } from '../utils/workflow-dsl';
+import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
 import { useDraftBackup, usePersistedDraft } from './use-persisted-draft';
 
 type RefreshDraftOptions = {
@@ -122,6 +123,7 @@ export const useWorkflowDraftPersistence = ({
     void,
     RefreshDraftOptions
   >({
+    shouldSkip: () => Boolean(appId && isWorkflowReadOnlyExampleAppId(appId)),
     debouncePersist: debouncedSyncWorkflowDraft,
     createSnapshot,
     createPersistPayload: (snapshot) => snapshot,

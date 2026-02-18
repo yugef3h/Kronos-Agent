@@ -29,6 +29,12 @@ import {
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
 import { getWorkflowAppById } from '../../app/workflowAppStore';
+import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
+import {
+  WORKFLOW_READONLY_EXAMPLE_LABEL,
+  useWorkflowReadOnly,
+  WorkflowReadOnlyProvider,
+} from '../context/workflow-read-only-context';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -241,6 +247,7 @@ const AppendConnectorTrigger = ({
 };
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
+  const { isReadOnly } = useWorkflowReadOnly();
   const [menuOpen, setMenuOpen] = useState(false);
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -254,7 +261,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const isContainerEndNode = isContainerEndKind(data.kind);
   const isContainerNode = data.kind === 'iteration' || data.kind === 'loop';
   const isNestedNode = Boolean(parentNodeId);
-  const canAppend = !['end', 'iteration-end', 'loop-end'].includes(data.kind);
+  const canAppend = !isReadOnly && !['end', 'iteration-end', 'loop-end'].includes(data.kind);
   const searchBoxScope = useMemo(
     () => resolveSearchBoxScope(getNodes(), currentNode),
     [currentNode, getNodes],
@@ -302,6 +309,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
   const appendNode = useCallback(
     (node: NodeItem, sourceHandle = 'out', sourceNodeId = id) => {
+      if (isReadOnly) {
+        return;
+      }
+
       const sourceNode = getNode(sourceNodeId);
       if (!sourceNode) {
         return;
@@ -377,17 +388,21 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
       setMenuOpen(false);
       setAppendSourceHandle('out');
     },
-    [getEdges, getNode, getNodes, id, searchBoxScope, setEdges, setNodes],
+    [getEdges, getNode, getNodes, id, isReadOnly, searchBoxScope, setEdges, setNodes],
   );
 
   const deleteNode = useCallback(() => {
+    if (isReadOnly) {
+      return;
+    }
+
     setMenuOpen(false);
     const currentNodes = getNodes();
     const removedNodeIds = [id, ...getDescendantNodeIds(currentNodes, id)];
 
     setNodes((currentNodes) => removeNodeById(currentNodes, id));
     setEdges((currentEdges) => removeConnectedEdges(currentEdges, removedNodeIds));
-  }, [getNodes, id, setEdges, setNodes]);
+  }, [getNodes, id, isReadOnly, setEdges, setNodes]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -770,7 +785,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         )}
       </div>
 
-      {!isContainerStartNode ? (
+      {!isReadOnly && !isContainerStartNode ? (
         <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
       ) : null}
 
@@ -899,6 +914,37 @@ export const WorkflowChildren = () => {
     setNodes,
     setEdges,
   });
+  const isReadOnlyExample = Boolean(appId && isWorkflowReadOnlyExampleAppId(appId));
+  const isCanvasLocked = isDraftRunActive || isReadOnlyExample;
+
+  const onNodesChangeGuarded = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      if (isReadOnlyExample) {
+        const allowed = changes.filter((change) => change.type === 'select');
+        if (allowed.length > 0) {
+          onNodesChange(allowed);
+        }
+        return;
+      }
+      onNodesChange(changes);
+    },
+    [isReadOnlyExample, onNodesChange],
+  );
+
+  const onEdgesChangeGuarded = useCallback(
+    (changes: Parameters<typeof onEdgesChange>[0]) => {
+      if (isReadOnlyExample) {
+        const allowed = changes.filter((change) => change.type === 'select');
+        if (allowed.length > 0) {
+          onEdgesChange(allowed);
+        }
+        return;
+      }
+      onEdgesChange(changes);
+    },
+    [isReadOnlyExample, onEdgesChange],
+  );
+
   const captureDraftPreview = useCallback(
     () => captureWorkflowDraftPreview(reactFlowCaptureRef.current),
     [],
@@ -1250,7 +1296,7 @@ export const WorkflowChildren = () => {
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (isDraftRunActive) {
+      if (isCanvasLocked) {
         return;
       }
 
@@ -1308,7 +1354,7 @@ export const WorkflowChildren = () => {
         );
       });
     },
-    [isDraftRunActive, nodes, setEdges],
+    [isCanvasLocked, nodes, setEdges],
   );
 
   if (!appId) {
@@ -1316,14 +1362,22 @@ export const WorkflowChildren = () => {
   }
 
   return (
+    <WorkflowReadOnlyProvider isReadOnly={isReadOnlyExample}>
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         {/* header 抽离 */}
         <div className="relative z-20 flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
           <div>
+            <div className="flex flex-wrap items-center gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
               Draft
             </p>
+            {isReadOnlyExample ? (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200/80">
+                {WORKFLOW_READONLY_EXAMPLE_LABEL}
+              </span>
+            ) : null}
+            </div>
             {/* 自动保存：画布 DSL 变更后防抖 {WORKFLOW_DRAFT_PERSIST_DEBOUNCE_MS}ms 写入 localStorage，并尝试更新列表缩略图（≥1 个节点） */}
             <EditingTitle />
           </div>
@@ -1513,8 +1567,8 @@ export const WorkflowChildren = () => {
             onInit={(instance) => {
               reactFlowInstanceRef.current = instance;
             }}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
+            onNodesChange={onNodesChangeGuarded}
+            onEdgesChange={onEdgesChangeGuarded}
             onConnect={onConnect}
             onNodeClick={handleNodeClick}
             onPaneClick={onPaneClick}
@@ -1527,9 +1581,9 @@ export const WorkflowChildren = () => {
             minZoom={0.25}
             multiSelectionKeyCode={null}
             deleteKeyCode={null}
-            nodesDraggable={!isDraftRunActive}
-            nodesConnectable={!isDraftRunActive}
-            elementsSelectable={!isDraftRunActive}
+            nodesDraggable={!isCanvasLocked}
+            nodesConnectable={!isCanvasLocked}
+            elementsSelectable
             connectOnClick={false}
             nodesFocusable={false}
             edgesFocusable={false}
@@ -1566,5 +1620,6 @@ export const WorkflowChildren = () => {
         />
       </div>
     </section>
+    </WorkflowReadOnlyProvider>
   );
 };

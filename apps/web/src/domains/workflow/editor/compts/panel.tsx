@@ -10,6 +10,7 @@ import {
   PanelNodeDebugProvider,
   usePanelNodeDebugToolbar,
 } from '../base/panel-node-debug-context'
+import { WORKFLOW_READONLY_EXAMPLE_LABEL, useWorkflowReadOnly } from '../context/workflow-read-only-context'
 
 type PanelProps = {
   selectedNode?: NodePanelProps
@@ -90,6 +91,7 @@ export const useResizeObserver = (
 }
 
 const Panel = ({ selectedNode, onClose }: PanelProps) => {
+  const { isReadOnly } = useWorkflowReadOnly()
   const [activeTab, setActiveTab] = useState<PanelDefaultTab>('settings')
 
   useEffect(() => {
@@ -155,9 +157,19 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
           </div>
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {isReadOnly && activeTab === 'settings' ? (
+            <p className="mb-3 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
+              {WORKFLOW_READONLY_EXAMPLE_LABEL}：节点配置不可修改。
+            </p>
+          ) : null}
           <PanelNodeDebugProvider>
             <PanelTabsProvider activeTab={activeTab} setActiveTab={handleTabChange}>
-              <NodePanel {...selectedNode} />
+              <fieldset
+                disabled={isReadOnly && activeTab === 'settings'}
+                className="min-w-0 border-0 p-0 disabled:opacity-60"
+              >
+                <NodePanel {...selectedNode} />
+              </fieldset>
             </PanelTabsProvider>
           </PanelNodeDebugProvider>
         </div>

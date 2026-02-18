@@ -14,8 +14,10 @@ import {
 } from '../../../domains/workflow/app/workflowAppStore';
 import {
   fetchWorkflowExampleApps,
+  isWorkflowReadOnlyExampleAppId,
   WORKFLOW_EXAMPLES_CHANGED_EVENT,
 } from '../../../domains/workflow/app/workflowExampleClient';
+import { WORKFLOW_READONLY_EXAMPLE_LABEL } from '../../../domains/workflow/editor/context/workflow-read-only-context';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -212,15 +214,21 @@ export const WorkflowPage = () => {
                   </div>
                 ) : null}
 
-                <WorkflowAppCardMenu
-                  className="absolute bottom-4 right-4 z-10"
-                  appName={app.name}
-                  onEdit={() => setEditingApp(app)}
-                  onDelete={() => {
-                    deleteWorkflowApp(app.id);
-                    setApps(listWorkflowApps());
-                  }}
-                />
+                {isWorkflowReadOnlyExampleAppId(app.id) ? (
+                  <span className="absolute bottom-4 right-4 z-10 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200/80">
+                    {WORKFLOW_READONLY_EXAMPLE_LABEL}
+                  </span>
+                ) : (
+                  <WorkflowAppCardMenu
+                    className="absolute bottom-4 right-4 z-10"
+                    appName={app.name}
+                    onEdit={() => setEditingApp(app)}
+                    onDelete={() => {
+                      deleteWorkflowApp(app.id);
+                      setApps(listWorkflowApps());
+                    }}
+                  />
+                )}
               </Link>
             );
             })}

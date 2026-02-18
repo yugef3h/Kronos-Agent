@@ -1,8 +1,10 @@
 import { type FormEvent, useEffect, useState } from 'react';
+import { isWorkflowReadOnlyExampleAppId } from './workflowExampleClient';
 import {
   updateWorkflowAppMeta,
   type WorkflowAppRecord,
 } from './workflowAppStore';
+import { WORKFLOW_READONLY_EXAMPLE_LABEL } from '../editor/context/workflow-read-only-context';
 
 export type WorkflowAppEditDialogProps = {
   app: WorkflowAppRecord | null;
@@ -30,7 +32,12 @@ export const WorkflowAppEditDialog = ({ app, onClose, onSaved }: WorkflowAppEdit
     return null;
   }
 
+  const isReadOnlyExample = isWorkflowReadOnlyExampleAppId(app.id);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isReadOnlyExample) {
+      return;
+    }
     event.preventDefault();
 
     if (isSubmitting) {
@@ -92,7 +99,12 @@ export const WorkflowAppEditDialog = ({ app, onClose, onSaved }: WorkflowAppEdit
           </button>
         </div>
 
+        {isReadOnlyExample ? (
+          <p className="mt-4 text-sm text-slate-600">{WORKFLOW_READONLY_EXAMPLE_LABEL}，不可修改应用信息。</p>
+        ) : null}
+
         <form onSubmit={handleSubmit} className="mt-4">
+          <fieldset disabled={isReadOnlyExample} className="border-0 p-0 disabled:opacity-60">
           <label className="block text-sm font-medium text-slate-700" htmlFor="workflow-app-edit-name">
             应用名称
           </label>
@@ -130,12 +142,13 @@ export const WorkflowAppEditDialog = ({ app, onClose, onSaved }: WorkflowAppEdit
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isReadOnlyExample}
               className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? '保存中...' : '保存'}
             </button>
           </div>
+          </fieldset>
         </form>
       </div>
     </div>
