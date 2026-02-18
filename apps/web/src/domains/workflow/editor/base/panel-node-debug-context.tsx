@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useState,
 } from 'react'
+import { useRegisterCanvasNodeDebug } from '../context/workflow-canvas-node-debug-registry'
 
 export type PanelNodeDebugRegistration = {
   runDebug: () => void | Promise<void>
@@ -36,10 +37,13 @@ export const PanelNodeDebugProvider = ({ children }: { children: React.ReactNode
 }
 
 export const useRegisterPanelNodeDebug = (
+  nodeId: string,
   registration: PanelNodeDebugRegistration | null,
 ): void => {
   const context = useContext(PanelNodeDebugContext)
   const setRegistration = context?.setRegistration
+
+  useRegisterCanvasNodeDebug(nodeId, registration)
 
   useEffect(() => {
     if (!setRegistration) {

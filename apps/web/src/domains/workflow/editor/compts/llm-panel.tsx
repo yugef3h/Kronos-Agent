@@ -236,7 +236,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     void runDebug();
   }, [clearError, parsedContext, runDebug]);
 
-  useRegisterPanelNodeDebug({
+  useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebug,
     isRunning,
     disabled: !parsedContext.ok || issues.length > 0 || config.model.mode === 'completion',

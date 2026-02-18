@@ -256,7 +256,7 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
     void runDebug();
   }, [clearError, parsedContext, runDebug]);
 
-  useRegisterPanelNodeDebug({
+  useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebug,
     isRunning,
     disabled: !parsedContext.ok,

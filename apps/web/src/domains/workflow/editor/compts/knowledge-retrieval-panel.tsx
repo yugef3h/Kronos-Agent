@@ -185,7 +185,7 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     void runDebug()
   }, [clearError, config.dataset_ids.length, debugQuery, runDebug])
 
-  useRegisterPanelNodeDebug({
+  useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebugQuery,
     isRunning: isDebugRunning,
     disabled: !config.dataset_ids.length,

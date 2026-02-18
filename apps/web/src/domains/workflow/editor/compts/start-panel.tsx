@@ -377,7 +377,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     void runDebug();
   }, [runDebug]);
 
-  useRegisterPanelNodeDebug({
+  useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebug,
     isRunning,
     disabled: !appId?.trim(),
