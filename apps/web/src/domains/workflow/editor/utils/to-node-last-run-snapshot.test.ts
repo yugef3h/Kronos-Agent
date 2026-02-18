@@ -1,5 +1,8 @@
 import { NodeRunningStatus } from '../types/common'
-import { toNodeLastRunSnapshot } from './to-node-last-run-snapshot'
+import {
+  toNodeLastRunSnapshot,
+  toNodeLastRunSnapshotFromDraftRun,
+} from './to-node-last-run-snapshot'
 
 describe('toNodeLastRunSnapshot', () => {
   it('maps debug API response to canvas snapshot', () => {
@@ -30,6 +33,28 @@ describe('toNodeLastRunSnapshot', () => {
       elapsedMs: 20,
       inputs: { query: 'hi' },
       outputs: { query: 'hi' },
+    })
+  })
+
+  it('maps draft run node record to the same snapshot shape', () => {
+    const snapshot = toNodeLastRunSnapshotFromDraftRun('run_draft', {
+      nodeId: 'llm-1',
+      nodeType: 'llm',
+      status: NodeRunningStatus.Succeeded,
+      startedAt: 1,
+      finishedAt: 2,
+      elapsedMs: 1,
+      outputs: { text: 'ok' },
+    })
+
+    expect(snapshot).toEqual({
+      runId: 'run_draft',
+      nodeId: 'llm-1',
+      status: NodeRunningStatus.Succeeded,
+      startedAt: 1,
+      finishedAt: 2,
+      elapsedMs: 1,
+      outputs: { text: 'ok' },
     })
   })
 })

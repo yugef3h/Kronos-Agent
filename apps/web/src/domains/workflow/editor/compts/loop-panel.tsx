@@ -31,6 +31,7 @@ import type {
 } from '../panels/loop-panel/types';
 import InfoTooltip from '../base/info-tooltip';
 import { PanelLastRunContainerRuns } from '../base/panel-last-run-container-runs';
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 
 const findVariableOption = (valueSelector: string[], options: VariableOption[]) => {
   const serialized = serializeValueSelector(valueSelector);
@@ -244,6 +245,7 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
   const nodes = useNodes<CanvasNodeData>();
   const edges = useEdges<Edge>();
   const nodeData = data as CanvasNodeData;
+  const lastRun = resolveNodeLastRun(id, nodeData);
   const { activeTab } = usePanelTabs();
 
   const variableOptions = useMemo(
@@ -342,7 +344,7 @@ const LoopPanel = ({ id, data }: NodePanelProps) => {
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
         <PanelLastRunContainerRuns
-          lastRun={nodeData._lastRun}
+          lastRun={lastRun}
           emptyLabel="运行工作流后，这里会展示循环次数、命中的 break 条件和每轮子节点运行摘要。"
         />
       ) : null}

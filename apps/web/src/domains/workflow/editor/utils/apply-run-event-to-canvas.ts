@@ -6,7 +6,7 @@ import type {
 import type { CanvasNodeData } from '../types/canvas'
 import type { CommonEdgeType, Edge } from '../types/common'
 import { NodeRunningStatus } from '../types/common'
-import { toNodeLastRunFromDraftRun } from './to-node-last-run-from-draft-run'
+import { toNodeLastRunSnapshotFromDraftRun } from './to-node-last-run-snapshot'
 
 const mapEventNodeStatus = (status?: string): NodeRunningStatus => {
   if (!status) {
@@ -205,7 +205,7 @@ export const applyNodeLastRunsFromDraftRun = (
       return node
     }
 
-    const lastRun = toNodeLastRunFromDraftRun(runId, record)
+    const lastRun = toNodeLastRunSnapshotFromDraftRun(runId, record)
     changed = true
 
     return {

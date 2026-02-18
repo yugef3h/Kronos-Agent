@@ -34,6 +34,7 @@ import type {
   StartVariableType,
 } from '../panels/start-panel/types';
 import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import {
@@ -253,6 +254,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const nodeData = data as CanvasNodeData;
+  const lastRun = resolveNodeLastRun(id, nodeData);
   const { activeTab } = usePanelTabs();
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
   const [debugValues, setDebugValues] = useState<StartPanelDebugFormValues>({ query: '' });
@@ -462,7 +464,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
             onRun={handleRunDebug}
           />
           <PanelLastRun
-            lastRun={nodeData._lastRun}
+            lastRun={lastRun}
             emptyDescription="填写上方调试输入并运行后，这里会显示入口变量实际取值、系统变量注入结果和校验摘要。"
           />
         </div>

@@ -24,6 +24,7 @@ import type {
 import type { VariableOption } from '../panels/llm-panel/types';
 import { buildWorkflowVariableOptions, serializeValueSelector } from '../utils/variable-options';
 import { PanelLastRunContainerRuns } from '../base/panel-last-run-container-runs';
+import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 
 const ITERATION_ERROR_MODE_OPTIONS: Array<{ label: string; value: IterationErrorHandleMode }> = [
   { label: '终止', value: 'terminated' },
@@ -41,6 +42,7 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
   const nodes = useNodes<CanvasNodeData>();
   const edges = useEdges<Edge>();
   const nodeData = data as CanvasNodeData;
+  const lastRun = resolveNodeLastRun(id, nodeData);
   const { activeTab } = usePanelTabs();
 
   const variableOptions = useMemo(
@@ -163,7 +165,7 @@ const IterationPanel = ({ id, data }: NodePanelProps) => {
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
         <PanelLastRunContainerRuns
-          lastRun={nodeData._lastRun}
+          lastRun={lastRun}
           emptyLabel="运行工作流后，这里会显示每轮迭代输入、并行度、异常处理结果和聚合后的输出摘要。"
         />
       ) : null}
