@@ -1,41 +1,25 @@
 # Workflow 测试运行 — Plan 交接包
 
-新对话开场可复制：
+新对话可复制：
 
 ```
-继续 Kronos workflow 测试运行 plan，从 Step 55 开始。
+Workflow 测试运行 plan 已全部完成（Step 1–58）。
 交接文档：docs/workflow-test-run-plan-handoff.md
-单步实现，每步结束让我来允许你的 pnpm cd。
 ```
 
 ---
 
-## 已完成（Step 1–54）
+## 已完成（Step 1–58）
 
 | Step | 内容 | 路径 |
 |------|------|------|
 | 1–32 | Server 整图运行、FSM、SSE、cancel | `apps/server/src/workflow/` |
-| 33–44 | Panel 单节点调试 + 上次运行 | `editor/compts/*-panel.tsx`、`panel-last-run*` |
-| 45 | `useWorkflowDraftRun` | `hooks/use-workflow-draft-run.ts` |
-| 46 | `applyRunEventToCanvas` | `utils/apply-run-event-to-canvas.ts` |
-| 47 | `NodeRunStatusIcon` | `compts/node-run-status-icon.tsx` |
-| 48 | 节点标题状态图标 | `container-node-ui.tsx` |
-| 49 | 运行中虚线边框 | `utils/get-node-run-border-class.ts` + `workflow-children.tsx` |
-| 50 | 测试运行输入弹窗 | `compts/workflow-test-run-input-dialog.tsx` |
-| 51 | 「测试运行」按钮接线 | `workflow-children.tsx` |
-| 52 | 整图结束写 `_lastRun` | `applyNodeLastRunsFromDraftRun` |
-| 53 | 运行摘要条 | `compts/workflow-run-summary-bar.tsx` |
-| 54 | 运行中锁定画布编辑 | `nodesDraggable` / `nodesConnectable` / `onConnect` |
-
-`workflowRunApi.ts`：`StartWorkflowDraftRunResponse` 含 `nodeRuns`。
-
----
-
-## 下一步（Step 55 起）
-
-| Step | 轨 | 任务 |
-|------|-----|------|
-| 55–58 | 合并 | 双轨合并 + E2E |
+| 33–44 | Panel 单节点调试 + 上次运行 | `editor/compts/*-panel.tsx` |
+| 45–54 | 画布测试运行 UI | `use-workflow-draft-run.ts`、`workflow-children.tsx` |
+| 55 | Server `nodeRunRecord` + debug/graph 对齐 | `nodeRunRecord.ts`、`executorBridge.merge.test.ts` |
+| 56 | Web 统一 `_lastRun` 快照 | `to-node-last-run-snapshot.ts`、`resolveNodeLastRun` |
+| 57 | Draft-run E2E | `workflowDraftRunRoutes.e2e.test.ts`（含 if-else） |
+| 58 | 画布合并 E2E | `workflow-draft-run-canvas-merge.test.ts` |
 
 ---
 
@@ -49,5 +33,5 @@
 
 ## 目标效果
 
-- 单节点：Panel「调试」+「上次运行」
-- 整图：「测试运行」→ 画布节点态/边高亮 + 摘要条 + 运行结束写 `_lastRun`
+- 单节点：Panel「调试」+「上次运行」（debug / 整图共用快照结构）
+- 整图：「测试运行」→ 事件回放 + `nodeRuns` → 画布态 + `_lastRun`
