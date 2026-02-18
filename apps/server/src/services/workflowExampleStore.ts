@@ -3,6 +3,16 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizeWorkflowAppId, workflowDraftPreviewFilePath } from './workflowDraftPreviewDiskStore.js';
 import { syncKnowledgeDatasetsForWorkflowExample } from './workflowExampleKnowledgeSync.js';
+import {
+  getWorkflowExampleGraphStats,
+  isWorkflowExampleDestructiveDowngrade,
+} from './workflowExampleSaveGuard.js';
+
+export type SaveWorkflowExampleResult =
+  | { ok: true }
+  | { ok: false; code: 'invalid_id' | 'readonly' | 'destructive_downgrade' };
+
+const workflowExamplesWritable = (): boolean => process.env.WORKFLOW_EXAMPLES_WRITABLE === '1';
 
 const resolveExamplesDir = (): string => {
   const cwd = process.cwd();
@@ -91,11 +101,29 @@ export async function getWorkflowExampleApp(appId: string): Promise<WorkflowExam
   }
 }
 
-export async function saveWorkflowExampleApp(record: WorkflowExampleAppRecord): Promise<boolean> {
+export async function saveWorkflowExampleApp(
+  record: WorkflowExampleAppRecord,
+): Promise<SaveWorkflowExampleResult> {
   const id = normalizeWorkflowAppId(record.id);
   if (!id) {
-    return false;
+    return { ok: false, code: 'invalid_id' };
   }
+
+  if (!workflowExamplesWritable()) {
+    console.warn(`[workflow:example] 拒绝写入只读示例 ${id}`);
+    return { ok: false, code: 'readonly' };
+  }
+
+  const existing = await getWorkflowExampleApp(id);
+  const incomingStats = getWorkflowExampleGraphStats(record.dsl);
+  const existingStats = existing ? getWorkflowExampleGraphStats(existing.dsl) : null;
+  if (isWorkflowExampleDestructiveDowngrade(existingStats, incomingStats)) {
+    console.warn(
+      `[workflow:example] 拒绝破坏性保存 ${id}: ${existingStats?.nodeCount ?? 0}n/${existingStats?.edgeCount ?? 0}e → ${incomingStats.nodeCount}n/${incomingStats.edgeCount}e`,
+    );
+    return { ok: false, code: 'destructive_downgrade' };
+  }
+
   await mkdir(EXAMPLES_DIR, { recursive: true });
   const payload: WorkflowExampleAppRecord = { ...record, id };
   delete (payload as WorkflowExampleAppRecord & { hasDraftPreview?: boolean }).hasDraftPreview;
@@ -105,10 +133,15 @@ export async function saveWorkflowExampleApp(record: WorkflowExampleAppRecord): 
   } catch (error) {
     console.warn(`[workflow:example] 同步关联知识库失败: ${id}`, error);
   }
-  return true;
+  return { ok: true };
 }
 
 export async function deleteWorkflowExampleApp(appId: string): Promise<boolean> {
+  if (!workflowExamplesWritable()) {
+    console.warn(`[workflow:example] 拒绝删除只读示例 ${appId}`);
+    return false;
+  }
+
   const target = exampleAppFilePath(appId);
   if (!target) {
     return false;
@@ -130,6 +163,11 @@ export async function deleteWorkflowExampleApp(appId: string): Promise<boolean> 
 }
 
 export async function saveWorkflowExamplePreviewJpeg(appId: string, buffer: Buffer): Promise<boolean> {
+  if (!workflowExamplesWritable()) {
+    console.warn(`[workflow:example] 拒绝写入只读示例预览 ${appId}`);
+    return false;
+  }
+
   const target = workflowExamplePreviewFilePath(appId);
   if (!target) {
     return false;

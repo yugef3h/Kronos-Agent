@@ -697,8 +697,22 @@ chatRoutes.put('/workflow/examples/:appId', async (request: Request, response: R
     return;
   }
 
-  const ok = await saveWorkflowExampleApp(body as WorkflowExampleAppRecord);
-  if (!ok) {
+  const result = await saveWorkflowExampleApp(body as WorkflowExampleAppRecord);
+  if (!result.ok) {
+    if (result.code === 'readonly') {
+      response.status(403).json({
+        error: 'workflow_example_readonly',
+        message: 'Bundled workflow examples are read-only',
+      });
+      return;
+    }
+    if (result.code === 'destructive_downgrade') {
+      response.status(409).json({
+        error: 'workflow_example_destructive_downgrade',
+        message: 'Refusing to overwrite bundled example with an empty start-only graph',
+      });
+      return;
+    }
     response.status(500).json({ error: 'Failed to save example app' });
     return;
   }
