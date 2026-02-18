@@ -1,10 +1,8 @@
 import {
-  WORKFLOW_DRAFT_RUN_NOT_IMPLEMENTED_CODE,
   WorkflowRunApiError,
   buildWorkflowDraftRunBasePath,
   buildWorkflowDraftRunPath,
   getWorkflowDraftRunEventsUrl,
-  isWorkflowDraftRunNotImplementedError,
   parseWorkflowRunApiError,
 } from './workflowRunApi'
 
@@ -22,19 +20,31 @@ describe('workflowRunApi', () => {
   it('parses json api errors', async () => {
     const response = new Response(
       JSON.stringify({
-        error: 'Workflow draft run is not implemented yet',
-        code: WORKFLOW_DRAFT_RUN_NOT_IMPLEMENTED_CODE,
+        error: 'Invalid draft run request body',
+        code: 'draft_run_request_invalid',
       }),
       {
-        status: 501,
+        status: 400,
         headers: { 'Content-Type': 'application/json' },
       },
     )
 
     const error = await parseWorkflowRunApiError(response, 'fallback')
     expect(error).toBeInstanceOf(WorkflowRunApiError)
-    expect(error.status).toBe(501)
-    expect(error.code).toBe(WORKFLOW_DRAFT_RUN_NOT_IMPLEMENTED_CODE)
-    expect(isWorkflowDraftRunNotImplementedError(error)).toBe(true)
+    expect(error.status).toBe(400)
+    expect(error.code).toBe('draft_run_request_invalid')
+    expect(error.message).toBe('Invalid draft run request body')
+  })
+
+  it('falls back when response body is not json', async () => {
+    const response = new Response('not json', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    })
+
+    const error = await parseWorkflowRunApiError(response, 'Server error')
+    expect(error.message).toBe('Server error')
+    expect(error.status).toBe(500)
+    expect(error.code).toBeUndefined()
   })
 })

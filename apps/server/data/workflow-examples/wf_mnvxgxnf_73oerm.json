@@ -3,7 +3,7 @@
   "name": "AI 应用智能客服助手",
   "description": "解答AI相关问题，包括RAG、提示词工程、ReAct、多 Agent 等知识。",
   "createdAt": 1776008272731,
-  "updatedAt": 1779249459282,
+  "updatedAt": 1779253102114,
   "dsl": {
     "app": {
       "description": "",
@@ -81,53 +81,7 @@
         }
       },
       "graph": {
-        "edges": [
-          {
-            "id": "trigger-1-out-knowledge-mnwtl2rb-y8cjm-in",
-            "source": "trigger-1",
-            "target": "knowledge-mnwtl2rb-y8cjm",
-            "sourceHandle": "source",
-            "targetHandle": "target",
-            "type": "custom",
-            "zIndex": 0,
-            "data": {
-              "_waitingRun": true,
-              "sourceType": "start",
-              "targetType": "knowledge-retrieval",
-              "_connectedNodeIsSelected": true
-            }
-          },
-          {
-            "id": "knowledge-mnwtl2rb-y8cjm-out-llm-mnwtnb7k-5x10z-in",
-            "source": "knowledge-mnwtl2rb-y8cjm",
-            "target": "llm-mnwtnb7k-5x10z",
-            "sourceHandle": "source",
-            "targetHandle": "target",
-            "type": "custom",
-            "zIndex": 0,
-            "data": {
-              "_waitingRun": true,
-              "sourceType": "knowledge-retrieval",
-              "targetType": "llm",
-              "_connectedNodeIsSelected": false
-            }
-          },
-          {
-            "id": "llm-mnwtnb7k-5x10z-out-end-mnwtx6uk-lzx0l-in",
-            "source": "llm-mnwtnb7k-5x10z",
-            "target": "end-mnwtx6uk-lzx0l",
-            "sourceHandle": "source",
-            "targetHandle": "target",
-            "type": "custom",
-            "zIndex": 0,
-            "data": {
-              "_waitingRun": true,
-              "sourceType": "llm",
-              "targetType": "end",
-              "_connectedNodeIsSelected": false
-            }
-          }
-        ],
+        "edges": [],
         "nodes": [
           {
             "id": "trigger-1",
@@ -142,175 +96,14 @@
             },
             "width": 242,
             "height": 109,
-            "selected": true,
+            "selected": false,
             "sourcePosition": "right",
             "targetPosition": "left",
             "data": {
-              "selected": true,
+              "selected": false,
               "title": "用户输入",
               "type": "start",
-              "variables": [
-                {
-                  "id": "start-var-mnwtm98g-2gdh8u",
-                  "variable": "llmName",
-                  "label": "模型名",
-                  "type": "text-input",
-                  "required": true,
-                  "options": [],
-                  "placeholder": "",
-                  "hint": ""
-                },
-                {
-                  "id": "start-var-mp1c5iez-5kkk9c",
-                  "variable": "temp",
-                  "label": "温度",
-                  "type": "text-input",
-                  "required": true,
-                  "options": [],
-                  "placeholder": "",
-                  "hint": ""
-                }
-              ]
-            }
-          },
-          {
-            "id": "knowledge-mnwtl2rb-y8cjm",
-            "type": "custom",
-            "position": {
-              "x": 380,
-              "y": 282
-            },
-            "positionAbsolute": {
-              "x": 380,
-              "y": 282
-            },
-            "width": 242,
-            "height": 90,
-            "selected": false,
-            "sourcePosition": "right",
-            "targetPosition": "left",
-            "data": {
-              "selected": false,
-              "title": "知识检索",
-              "type": "knowledge-retrieval",
-              "query_variable_selector": [
-                "sys",
-                "query"
-              ],
-              "query_attachment_selector": [],
-              "dataset_ids": [
-                "ai工程师转型技能表-2026",
-                "agent面试题库",
-                "ai机遇分析",
-                "rag面试题库",
-                "llm模型对比"
-              ],
-              "retrieval_mode": "multiple",
-              "multiple_retrieval_config": {
-                "top_k": 5,
-                "score_threshold": null,
-                "reranking_enable": false,
-                "reranking_model": "default-rerank"
-              }
-            }
-          },
-          {
-            "id": "llm-mnwtnb7k-5x10z",
-            "type": "custom",
-            "position": {
-              "x": 681,
-              "y": 280
-            },
-            "positionAbsolute": {
-              "x": 681,
-              "y": 280
-            },
-            "width": 242,
-            "height": 88,
-            "selected": false,
-            "sourcePosition": "right",
-            "targetPosition": "left",
-            "data": {
-              "selected": false,
-              "title": "LLM",
-              "type": "llm",
-              "model": {
-                "provider": "virtual",
-                "name": "zhiling",
-                "mode": "chat",
-                "completion_params": {
-                  "temperature": 0.8,
-                  "topP": 1,
-                  "topK": 1,
-                  "maxTokens": 1024
-                }
-              },
-              "prompt_template": [
-                {
-                  "id": "mnwtnb7k-olkgey",
-                  "role": "system",
-                  "text": "这个模型怎么样？"
-                }
-              ],
-              "memory": {
-                "window": {
-                  "enabled": false,
-                  "size": 50
-                },
-                "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}"
-              },
-              "context": {
-                "enabled": true,
-                "variable_selector": [
-                  "knowledge-mnwtl2rb-y8cjm",
-                  "result"
-                ]
-              },
-              "vision": {
-                "enabled": true,
-                "configs": {
-                  "detail": "low",
-                  "variable_selector": [
-                    "sys",
-                    "files"
-                  ]
-                }
-              },
-              "structured_output_enabled": false,
-              "reasoning_format": "tagged"
-            }
-          },
-          {
-            "id": "end-mnwtx6uk-lzx0l",
-            "type": "custom",
-            "position": {
-              "x": 980,
-              "y": 282
-            },
-            "positionAbsolute": {
-              "x": 980,
-              "y": 282
-            },
-            "width": 242,
-            "height": 88,
-            "selected": false,
-            "sourcePosition": "right",
-            "targetPosition": "left",
-            "data": {
-              "selected": false,
-              "title": "输出",
-              "type": "end",
-              "outputs": [
-                {
-                  "variable": "result",
-                  "value_selector": [
-                    "llm-mnwtnb7k-5x10z",
-                    "text"
-                  ],
-                  "value": "",
-                  "value_type": "string"
-                }
-              ]
+              "variables": []
             }
           }
         ],

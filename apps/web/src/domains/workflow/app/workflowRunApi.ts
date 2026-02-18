@@ -7,8 +7,6 @@ import type {
   WorkflowRunSummary,
 } from '../editor/types/run'
 
-export const WORKFLOW_DRAFT_RUN_NOT_IMPLEMENTED_CODE = 'draft_run_not_implemented'
-
 export type WorkflowRunEventType =
   | 'node_started'
   | 'node_finished'
@@ -171,7 +169,7 @@ export type SubscribeWorkflowDraftRunEventsHandlers = {
   onError?: (error: Error) => void
 }
 
-/** SSE subscription helper — server may still return 501 until execution lands. */
+/** Subscribe to draft-run SSE replay (`GET …/draft-runs/:runId/events`). */
 export const subscribeWorkflowDraftRunEvents = (
   appId: string,
   runId: string,
@@ -197,9 +195,5 @@ export const subscribeWorkflowDraftRunEvents = (
     source.close()
   }
 }
-
-export const isWorkflowDraftRunNotImplementedError = (error: unknown): boolean =>
-  error instanceof WorkflowRunApiError
-  && error.code === WORKFLOW_DRAFT_RUN_NOT_IMPLEMENTED_CODE
 
 export type { WorkflowRunStatus }

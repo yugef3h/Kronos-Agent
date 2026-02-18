@@ -10,21 +10,10 @@ import {
 } from '../workflow/workflowRunEvents.js'
 import { cancelWorkflowRunRecord } from '../workflow/workflowRunCancellation.js'
 import { parseStartWorkflowDraftRunBody } from './workflowDraftRunRequest.js'
+import { normalizeWorkflowRunId } from './workflowRunId.js'
 import '../workflow/registerNodeExecutors.js'
 
-export const DRAFT_RUN_NOT_IMPLEMENTED = {
-  error: 'Workflow draft run is not implemented yet',
-  code: 'draft_run_not_implemented',
-} as const
-
-export const normalizeWorkflowRunId = (runId: string): string | null => {
-  const normalized = runId.trim()
-  return /^run_[a-zA-Z0-9_-]{1,120}$/.test(normalized) ? normalized : null
-}
-
-export const respondDraftRunNotImplemented = (response: Response): void => {
-  response.status(501).json(DRAFT_RUN_NOT_IMPLEMENTED)
-}
+export { normalizeWorkflowRunId } from './workflowRunId.js'
 
 const resolveAppId = (request: Request, response: Response): string | null => {
   const appId = normalizeWorkflowAppId(String(request.params.appId || ''))
