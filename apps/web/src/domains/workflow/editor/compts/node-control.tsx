@@ -7,8 +7,6 @@ type NodeControlProps = Pick<Node, 'id'> & {
   canRun?: boolean;
   isRunning?: boolean;
   runDisabled?: boolean;
-  /** 只读示例等：运行钮常显，不依赖 hover */
-  alwaysVisible?: boolean;
   showDelete?: boolean;
   onRun?: (id: string) => void;
   onDelete: (id: string) => void;
@@ -20,17 +18,10 @@ const NodeControl: FC<NodeControlProps> = ({
   canRun = false,
   isRunning = false,
   runDisabled = false,
-  alwaysVisible = false,
   showDelete = true,
   onRun,
   onDelete,
 }) => {
-  const visibilityClass = alwaysVisible
-    ? 'pointer-events-auto visible opacity-100'
-    : isActive
-      ? 'pointer-events-auto visible opacity-100'
-      : 'pointer-events-none invisible opacity-0 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100';
-
   const runTitle = !canRun
     ? '该节点类型暂不支持单节点运行'
     : runDisabled
@@ -41,7 +32,7 @@ const NodeControl: FC<NodeControlProps> = ({
 
   return (
     <div
-      className={`absolute right-0 top-0 z-30 -translate-y-full pb-2 transition ${visibilityClass}`}
+      className={`absolute right-0 top-0 z-30 -translate-y-full pb-2 transition ${isActive ? 'pointer-events-auto visible opacity-100' : 'pointer-events-none invisible opacity-0 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100'}`}
     >
       <div className="flex items-center gap-1 rounded-lg bg-white px-1 py-1 shadow-md backdrop-blur-[5px]">
         <button

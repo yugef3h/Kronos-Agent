@@ -820,7 +820,6 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
           canRun={canQuickRunNode}
           isRunning={isNodeDebugRunning || data._runStatus === NodeRunningStatus.Running}
           runDisabled={isDraftRunActiveOnCanvas || !appId?.trim()}
-          alwaysVisible={isReadOnly && canQuickRunNode}
           showDelete={!isReadOnly}
           onRun={handleRunNode}
           onDelete={deleteNode}
