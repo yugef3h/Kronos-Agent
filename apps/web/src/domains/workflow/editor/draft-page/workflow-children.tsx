@@ -31,10 +31,17 @@ import { useSearchParams } from 'react-router-dom';
 import { getWorkflowAppById } from '../../app/workflowAppStore';
 import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
 import {
+  useWorkflowCanvasInteraction,
+  WorkflowCanvasInteractionProvider,
+} from '../context/workflow-canvas-interaction-context';
+import { WorkflowCanvasNodeDebugRegistryProvider } from '../context/workflow-canvas-node-debug-registry';
+import {
   WORKFLOW_READONLY_EXAMPLE_LABEL,
   useWorkflowReadOnly,
   WorkflowReadOnlyProvider,
 } from '../context/workflow-read-only-context';
+import { useCanvasNodeQuickRun } from '../hooks/use-canvas-node-quick-run';
+import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -123,6 +130,7 @@ import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import { getNodeRunBorderClass } from '../utils/get-node-run-border-class';
 import { validateRunnableDsl } from '../utils/validate-runnable-dsl';
 import { useWorkflowDraftRun } from '../hooks/use-workflow-draft-run';
+import { NodeRunningStatus } from '../types/common';
 import {
   areKnowledgeDatasetsEqual,
   areStringArraysEqual,
@@ -248,6 +256,15 @@ const AppendConnectorTrigger = ({
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const { isReadOnly } = useWorkflowReadOnly();
+  const { isDraftRunActive: isDraftRunActiveOnCanvas } = useWorkflowCanvasInteraction();
+  const appId = useWorkflowAppId();
+  const {
+    run: runNodeDebug,
+    isRunning: isNodeDebugRunning,
+    canRun: canQuickRunNode,
+    error: nodeDebugError,
+    clearError: clearNodeDebugError,
+  } = useCanvasNodeQuickRun({ appId, nodeId: id, data });
   const [menuOpen, setMenuOpen] = useState(false);
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -390,6 +407,17 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     },
     [getEdges, getNode, getNodes, id, isReadOnly, searchBoxScope, setEdges, setNodes],
   );
+
+  const handleRunNode = useCallback(() => {
+    clearNodeDebugError();
+    void runNodeDebug();
+  }, [clearNodeDebugError, runNodeDebug]);
+
+  useEffect(() => {
+    if (nodeDebugError) {
+      console.warn('[workflow:node-run]', { nodeId: id, error: nodeDebugError });
+    }
+  }, [id, nodeDebugError]);
 
   const deleteNode = useCallback(() => {
     if (isReadOnly) {
@@ -785,8 +813,18 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
         )}
       </div>
 
-      {!isReadOnly && !isContainerStartNode ? (
-        <NodeControl id={id} isActive={!!data.selected} onDelete={deleteNode} />
+      {!isContainerStartNode && (canQuickRunNode || !isReadOnly) ? (
+        <NodeControl
+          id={id}
+          isActive={!!data.selected}
+          canRun={canQuickRunNode}
+          isRunning={isNodeDebugRunning || data._runStatus === NodeRunningStatus.Running}
+          runDisabled={isDraftRunActiveOnCanvas || !appId?.trim()}
+          alwaysVisible={isReadOnly && canQuickRunNode}
+          showDelete={!isReadOnly}
+          onRun={handleRunNode}
+          onDelete={deleteNode}
+        />
       ) : null}
 
       {canAppend && data.kind !== 'condition' && !isContainerStartNode ? (
@@ -1363,6 +1401,8 @@ export const WorkflowChildren = () => {
 
   return (
     <WorkflowReadOnlyProvider isReadOnly={isReadOnlyExample}>
+    <WorkflowCanvasNodeDebugRegistryProvider>
+    <WorkflowCanvasInteractionProvider isCanvasLocked={isCanvasLocked} isDraftRunActive={isDraftRunActive}>
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         {/* header 抽离 */}
@@ -1620,6 +1660,8 @@ export const WorkflowChildren = () => {
         />
       </div>
     </section>
+    </WorkflowCanvasInteractionProvider>
+    </WorkflowCanvasNodeDebugRegistryProvider>
     </WorkflowReadOnlyProvider>
   );
 };
