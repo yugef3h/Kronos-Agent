@@ -10,6 +10,7 @@ import {
   PanelNodeDebugProvider,
   usePanelNodeDebugToolbar,
 } from '../base/panel-node-debug-context'
+import { useWorkflowCanvasInteraction } from '../context/workflow-canvas-interaction-context'
 import { WORKFLOW_READONLY_EXAMPLE_LABEL, useWorkflowReadOnly } from '../context/workflow-read-only-context'
 
 type PanelProps = {
@@ -92,11 +93,21 @@ export const useResizeObserver = (
 
 const Panel = ({ selectedNode, onClose }: PanelProps) => {
   const { isReadOnly } = useWorkflowReadOnly()
+  const { panelFocus, clearPanelFocus } = useWorkflowCanvasInteraction()
   const [activeTab, setActiveTab] = useState<PanelDefaultTab>('settings')
 
   useEffect(() => {
     setActiveTab('settings')
   }, [selectedNode?.id])
+
+  useEffect(() => {
+    if (!selectedNode || !panelFocus || panelFocus.nodeId !== selectedNode.id) {
+      return
+    }
+
+    setActiveTab(panelFocus.tab)
+    clearPanelFocus()
+  }, [clearPanelFocus, panelFocus, selectedNode])
 
   const blockType = useMemo(() => {
     return resolvePanelBlockType(selectedNode?.type, selectedNode?.data)

@@ -256,7 +256,11 @@ const AppendConnectorTrigger = ({
 
 const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const { isReadOnly } = useWorkflowReadOnly();
-  const { isDraftRunActive: isDraftRunActiveOnCanvas } = useWorkflowCanvasInteraction();
+  const {
+    isDraftRunActive: isDraftRunActiveOnCanvas,
+    selectNodeById: selectNodeByIdOnCanvas,
+    focusPanelTabForNode,
+  } = useWorkflowCanvasInteraction();
   const appId = useWorkflowAppId();
   const {
     run: runNodeDebug,
@@ -410,8 +414,10 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
   const handleRunNode = useCallback(() => {
     clearNodeDebugError();
+    selectNodeByIdOnCanvas(id);
+    focusPanelTabForNode(id, 'last-run');
     void runNodeDebug();
-  }, [clearNodeDebugError, runNodeDebug]);
+  }, [clearNodeDebugError, focusPanelTabForNode, id, runNodeDebug, selectNodeByIdOnCanvas]);
 
   useEffect(() => {
     if (nodeDebugError) {
@@ -1401,7 +1407,11 @@ export const WorkflowChildren = () => {
   return (
     <WorkflowReadOnlyProvider isReadOnly={isReadOnlyExample}>
     <WorkflowCanvasNodeDebugRegistryProvider>
-    <WorkflowCanvasInteractionProvider isCanvasLocked={isCanvasLocked} isDraftRunActive={isDraftRunActive}>
+    <WorkflowCanvasInteractionProvider
+      isCanvasLocked={isCanvasLocked}
+      isDraftRunActive={isDraftRunActive}
+      selectNodeById={selectNodeById}
+    >
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         {/* header 抽离 */}
