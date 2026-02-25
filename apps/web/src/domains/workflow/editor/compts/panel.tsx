@@ -101,12 +101,6 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
   }, [selectedNode?.id])
 
   useEffect(() => {
-    if (nodeRunBlocker && nodeRunBlocker.nodeId !== selectedNode?.id) {
-      clearNodeRunBlocker()
-    }
-  }, [clearNodeRunBlocker, nodeRunBlocker, selectedNode?.id])
-
-  useEffect(() => {
     if (!selectedNode || !panelFocus || panelFocus.nodeId !== selectedNode.id) {
       return
     }
@@ -114,6 +108,12 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
     setActiveTab(panelFocus.tab)
     clearPanelFocus()
   }, [clearPanelFocus, panelFocus, selectedNode])
+
+  useEffect(() => {
+    if (nodeRunBlocker && nodeRunBlocker.nodeId !== selectedNode?.id) {
+      clearNodeRunBlocker()
+    }
+  }, [clearNodeRunBlocker, nodeRunBlocker, selectedNode?.id])
 
   const blockType = useMemo(() => {
     return resolvePanelBlockType(selectedNode?.type, selectedNode?.data)

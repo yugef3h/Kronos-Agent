@@ -24,6 +24,7 @@ type WorkflowCanvasInteractionContextValue = {
   selectNodeById: (nodeId?: string) => void
   panelFocus: WorkflowPanelFocus | null
   focusPanelTabForNode: (nodeId: string, tab?: PanelDefaultTab) => void
+  openNodePanel: (nodeId: string, tab?: PanelDefaultTab) => void
   clearPanelFocus: () => void
   nodeRunBlocker: WorkflowNodeRunBlocker | null
   setNodeRunBlocker: (nodeId: string, messages: string[]) => void
@@ -50,6 +51,14 @@ export const WorkflowCanvasInteractionProvider = ({
     setPanelFocus({ nodeId, tab })
   }, [])
 
+  const openNodePanel = useCallback(
+    (nodeId: string, tab: PanelDefaultTab = 'settings') => {
+      selectNodeById(nodeId)
+      setPanelFocus({ nodeId, tab })
+    },
+    [selectNodeById],
+  )
+
   const clearPanelFocus = useCallback(() => {
     setPanelFocus(null)
   }, [])
@@ -69,6 +78,7 @@ export const WorkflowCanvasInteractionProvider = ({
       selectNodeById,
       panelFocus,
       focusPanelTabForNode,
+      openNodePanel,
       clearPanelFocus,
       nodeRunBlocker,
       setNodeRunBlocker,
@@ -78,6 +88,7 @@ export const WorkflowCanvasInteractionProvider = ({
       clearNodeRunBlocker,
       clearPanelFocus,
       focusPanelTabForNode,
+      openNodePanel,
       isCanvasLocked,
       isDraftRunActive,
       nodeRunBlocker,

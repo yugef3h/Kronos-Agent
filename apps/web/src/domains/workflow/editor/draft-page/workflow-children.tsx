@@ -259,7 +259,7 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const { isReadOnly } = useWorkflowReadOnly();
   const {
     isDraftRunActive: isDraftRunActiveOnCanvas,
-    selectNodeById: selectNodeByIdOnCanvas,
+    openNodePanel,
     focusPanelTabForNode,
     setNodeRunBlocker,
     clearNodeRunBlocker,
@@ -417,12 +417,11 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
 
   const handleRunNode = useCallback(() => {
     clearNodeDebugError();
-    selectNodeByIdOnCanvas(id);
+    openNodePanel(id, 'settings');
 
     const validation = validateCanvasNodeQuickRun(appId, data);
     if (!validation.ok) {
       setNodeRunBlocker(id, validation.messages);
-      focusPanelTabForNode(id, 'settings');
       return;
     }
 
@@ -436,8 +435,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     data,
     focusPanelTabForNode,
     id,
+    openNodePanel,
     runNodeDebug,
-    selectNodeByIdOnCanvas,
     setNodeRunBlocker,
   ]);
 
