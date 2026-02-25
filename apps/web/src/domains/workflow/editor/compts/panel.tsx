@@ -93,12 +93,18 @@ export const useResizeObserver = (
 
 const Panel = ({ selectedNode, onClose }: PanelProps) => {
   const { isReadOnly } = useWorkflowReadOnly()
-  const { panelFocus, clearPanelFocus } = useWorkflowCanvasInteraction()
+  const { panelFocus, clearPanelFocus, nodeRunBlocker, clearNodeRunBlocker } = useWorkflowCanvasInteraction()
   const [activeTab, setActiveTab] = useState<PanelDefaultTab>('settings')
 
   useEffect(() => {
     setActiveTab('settings')
   }, [selectedNode?.id])
+
+  useEffect(() => {
+    if (nodeRunBlocker && nodeRunBlocker.nodeId !== selectedNode?.id) {
+      clearNodeRunBlocker()
+    }
+  }, [clearNodeRunBlocker, nodeRunBlocker, selectedNode?.id])
 
   useEffect(() => {
     if (!selectedNode || !panelFocus || panelFocus.nodeId !== selectedNode.id) {
@@ -168,6 +174,16 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
           </div>
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {selectedNode && nodeRunBlocker?.nodeId === selectedNode.id ? (
+            <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+              <p className="text-[11px] font-semibold text-rose-800">无法运行，请先完善：</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-5 text-rose-700">
+                {nodeRunBlocker.messages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {isReadOnly && activeTab === 'settings' ? (
             <p className="mb-3 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
               {WORKFLOW_READONLY_EXAMPLE_LABEL}：节点配置不可修改。

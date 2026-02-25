@@ -13,6 +13,11 @@ export type WorkflowPanelFocus = {
   tab: PanelDefaultTab
 }
 
+export type WorkflowNodeRunBlocker = {
+  nodeId: string
+  messages: string[]
+}
+
 type WorkflowCanvasInteractionContextValue = {
   isCanvasLocked: boolean
   isDraftRunActive: boolean
@@ -20,6 +25,9 @@ type WorkflowCanvasInteractionContextValue = {
   panelFocus: WorkflowPanelFocus | null
   focusPanelTabForNode: (nodeId: string, tab?: PanelDefaultTab) => void
   clearPanelFocus: () => void
+  nodeRunBlocker: WorkflowNodeRunBlocker | null
+  setNodeRunBlocker: (nodeId: string, messages: string[]) => void
+  clearNodeRunBlocker: () => void
 }
 
 const WorkflowCanvasInteractionContext = createContext<WorkflowCanvasInteractionContextValue | null>(null)
@@ -36,6 +44,7 @@ export const WorkflowCanvasInteractionProvider = ({
   children: ReactNode
 }) => {
   const [panelFocus, setPanelFocus] = useState<WorkflowPanelFocus | null>(null)
+  const [nodeRunBlocker, setNodeRunBlockerState] = useState<WorkflowNodeRunBlocker | null>(null)
 
   const focusPanelTabForNode = useCallback((nodeId: string, tab: PanelDefaultTab = 'last-run') => {
     setPanelFocus({ nodeId, tab })
@@ -43,6 +52,14 @@ export const WorkflowCanvasInteractionProvider = ({
 
   const clearPanelFocus = useCallback(() => {
     setPanelFocus(null)
+  }, [])
+
+  const setNodeRunBlocker = useCallback((nodeId: string, messages: string[]) => {
+    setNodeRunBlockerState({ nodeId, messages })
+  }, [])
+
+  const clearNodeRunBlocker = useCallback(() => {
+    setNodeRunBlockerState(null)
   }, [])
 
   const value = useMemo(
@@ -53,8 +70,21 @@ export const WorkflowCanvasInteractionProvider = ({
       panelFocus,
       focusPanelTabForNode,
       clearPanelFocus,
+      nodeRunBlocker,
+      setNodeRunBlocker,
+      clearNodeRunBlocker,
     }),
-    [clearPanelFocus, focusPanelTabForNode, isCanvasLocked, isDraftRunActive, panelFocus, selectNodeById],
+    [
+      clearNodeRunBlocker,
+      clearPanelFocus,
+      focusPanelTabForNode,
+      isCanvasLocked,
+      isDraftRunActive,
+      nodeRunBlocker,
+      panelFocus,
+      selectNodeById,
+      setNodeRunBlocker,
+    ],
   )
 
   return (

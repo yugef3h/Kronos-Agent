@@ -41,6 +41,7 @@ import {
   WorkflowReadOnlyProvider,
 } from '../context/workflow-read-only-context';
 import { useCanvasNodeQuickRun } from '../hooks/use-canvas-node-quick-run';
+import { validateCanvasNodeQuickRun } from '../utils/validate-canvas-node-quick-run';
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import {
   CUSTOM_EDGE,
@@ -260,6 +261,8 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
     isDraftRunActive: isDraftRunActiveOnCanvas,
     selectNodeById: selectNodeByIdOnCanvas,
     focusPanelTabForNode,
+    setNodeRunBlocker,
+    clearNodeRunBlocker,
   } = useWorkflowCanvasInteraction();
   const appId = useWorkflowAppId();
   const {
@@ -415,9 +418,28 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const handleRunNode = useCallback(() => {
     clearNodeDebugError();
     selectNodeByIdOnCanvas(id);
+
+    const validation = validateCanvasNodeQuickRun(appId, data);
+    if (!validation.ok) {
+      setNodeRunBlocker(id, validation.messages);
+      focusPanelTabForNode(id, 'settings');
+      return;
+    }
+
+    clearNodeRunBlocker();
     focusPanelTabForNode(id, 'last-run');
     void runNodeDebug();
-  }, [clearNodeDebugError, focusPanelTabForNode, id, runNodeDebug, selectNodeByIdOnCanvas]);
+  }, [
+    appId,
+    clearNodeDebugError,
+    clearNodeRunBlocker,
+    data,
+    focusPanelTabForNode,
+    id,
+    runNodeDebug,
+    selectNodeByIdOnCanvas,
+    setNodeRunBlocker,
+  ]);
 
   useEffect(() => {
     if (nodeDebugError) {
