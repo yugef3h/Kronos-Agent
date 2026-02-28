@@ -1,4 +1,6 @@
+import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { apiUrl } from '../../../lib/api'
+import { buildWorkflowAuthHeaders, ensureWorkflowAuthToken } from './workflowAuth'
 import type { WorkflowDSL } from './workflowAppStore'
 import type {
   NodeRunStatus,
@@ -118,7 +120,8 @@ const requestJson = async <T>(
   },
   fallback: string,
 ): Promise<T> => {
-  const response = await fetch(apiUrl(path), init)
+  const headers = await buildWorkflowAuthHeaders(init.headers)
+  const response = await fetch(apiUrl(path), { ...init, headers })
 
   if (!response.ok) {
     throw await parseWorkflowRunApiError(response, fallback)
@@ -175,25 +178,71 @@ export const subscribeWorkflowDraftRunEvents = (
   runId: string,
   handlers: SubscribeWorkflowDraftRunEventsHandlers,
 ): (() => void) => {
-  const source = new EventSource(getWorkflowDraftRunEventsUrl(appId, runId))
+  const abortController = new AbortController()
+  let closed = false
 
-  source.onmessage = (message) => {
-    try {
-      const event = JSON.parse(message.data) as WorkflowRunEvent
-      handlers.onEvent?.(event)
-    } catch (error) {
-      handlers.onError?.(error instanceof Error ? error : new Error('Invalid workflow run event payload'))
+  const close = () => {
+    if (closed) {
+      return
     }
+
+    closed = true
+    abortController.abort()
   }
 
-  source.onerror = () => {
-    handlers.onError?.(new WorkflowRunApiError('Workflow run event stream failed', 0))
-    source.close()
-  }
+  void (async () => {
+    try {
+      const token = await ensureWorkflowAuthToken()
+      if (!token) {
+        handlers.onError?.(new WorkflowRunApiError('无法获取鉴权 token，请刷新页面后重试。', 401))
+        return
+      }
 
-  return () => {
-    source.close()
-  }
+      await fetchEventSource(getWorkflowDraftRunEventsUrl(appId, runId), {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        signal: abortController.signal,
+        onmessage(message) {
+          if (!message.data) {
+            return
+          }
+
+          try {
+            const event = JSON.parse(message.data) as WorkflowRunEvent
+            handlers.onEvent?.(event)
+
+            if (event.type === 'workflow_finished') {
+              close()
+            }
+          } catch (error) {
+            handlers.onError?.(
+              error instanceof Error ? error : new Error('Invalid workflow run event payload'),
+            )
+            close()
+          }
+        },
+        onerror(error) {
+          if (!closed) {
+            handlers.onError?.(
+              error instanceof Error
+                ? error
+                : new WorkflowRunApiError('Workflow run event stream failed', 0),
+            )
+          }
+          close()
+          throw error
+        },
+      })
+    } catch (error) {
+      if (!closed) {
+        handlers.onError?.(
+          error instanceof Error ? error : new WorkflowRunApiError('Workflow run event stream failed', 0),
+        )
+      }
+    }
+  })()
+
+  return close
 }
 
 export type { WorkflowRunStatus }

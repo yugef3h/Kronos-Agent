@@ -1,6 +1,7 @@
 import { apiUrl } from '../../../lib/api'
 import type { NodeRunningStatus } from '../editor/types/common'
 import type { RunError, WorkflowRunSummary } from '../editor/types/run'
+import { buildWorkflowAuthHeaders } from './workflowAuth'
 import { parseWorkflowRunApiError } from './workflowRunApi'
 
 export const WORKFLOW_NODE_DEBUG_PATH = '/api/workflow/debug/node'
@@ -78,9 +79,10 @@ export class WorkflowNodeDebugApiError extends Error {
 export const debugWorkflowNode = async (
   request: NodeDebugRequest,
 ): Promise<DebugWorkflowNodeResponse> => {
+  const headers = await buildWorkflowAuthHeaders()
   const response = await fetch(apiUrl(WORKFLOW_NODE_DEBUG_PATH), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(request),
   })
 
