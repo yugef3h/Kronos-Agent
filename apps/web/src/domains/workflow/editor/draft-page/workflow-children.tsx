@@ -100,7 +100,8 @@ import {
 } from '../compts/container-node-ui';
 import NodeRunStatusIcon from '../compts/node-run-status-icon';
 import WorkflowRunSummaryBar from '../compts/workflow-run-summary-bar';
-import WorkflowTestRunInputDialog from '../compts/workflow-test-run-input-dialog';
+import { WorkflowDraftTestRunProvider } from '../context/workflow-draft-test-run-context';
+import { WorkflowTestRunButton } from './workflow-test-run-button';
 import { ContainerStartNode } from '../compts/container-start-node';
 import WorkflowNodeSummary from '../compts/workflow-node-summary';
 import type { VariableOption } from '../panels/llm-panel/types';
@@ -950,8 +951,6 @@ export const WorkflowChildren = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
-  const [isTestRunDialogOpen, setIsTestRunDialogOpen] = useState(false);
-
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -1293,24 +1292,6 @@ export const WorkflowChildren = () => {
     () => nodes.find((node) => node.data.kind === 'trigger'),
     [nodes],
   );
-  const startRunConfig = useMemo(
-    () => normalizeStartNodeConfig(triggerNode?.data.inputs),
-    [triggerNode],
-  );
-  const canTestRun = checklistCount === 0 && runnableValidation.runnable;
-  const handleTestRunClick = useCallback(() => {
-    if (!canTestRun) {
-      return;
-    }
-
-    setIsTestRunDialogOpen(true);
-  }, [canTestRun]);
-  const handleTestRunSubmit = useCallback(async (inputs: Record<string, unknown>) => {
-    const result = await executeDraftRun(workflowDslPreview, inputs);
-    if (result) {
-      setIsTestRunDialogOpen(false);
-    }
-  }, [executeDraftRun, workflowDslPreview]);
   const requiredIssueCountByNodeId = useMemo(() => {
     return checklistGroups.reduce<Record<string, number>>((acc, group) => {
       acc[group.nodeId] = group.issues.length;
@@ -1433,6 +1414,7 @@ export const WorkflowChildren = () => {
       isDraftRunActive={isDraftRunActive}
       selectNodeById={selectNodeById}
     >
+    <WorkflowDraftTestRunProvider>
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
         {/* header 抽离 */}
@@ -1453,31 +1435,16 @@ export const WorkflowChildren = () => {
           </div>
           <div className="right-operator flex items-center">
             <div className="inline-flex items-center gap-0.5 rounded-[18px] bg-white/96 p-0.5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.36)] ring-1 ring-slate-950/5 backdrop-blur">
-              <button
-                type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-[14px] bg-[linear-gradient(180deg,#ffffff_0%,#eef5ff_100%)] px-3 text-[13px] font-semibold text-blue-700 transition hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canTestRun || isDraftRunRunning}
-                title={
-                  !canTestRun
-                    ? checklistCount > 0
-                      ? '请先修复检查清单中的问题'
-                      : '工作流 DSL 尚不可运行'
-                    : undefined
-                }
-                onClick={handleTestRunClick}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  fill="currentColor"
-                  className="remixicon size-4"
-                >
-                  <path d="M8 18.3915V5.60846L18.2264 12L8 18.3915ZM6 3.80421V20.1957C6 20.9812 6.86395 21.46 7.53 21.0437L20.6432 12.848C21.2699 12.4563 21.2699 11.5436 20.6432 11.152L7.53 2.95621C6.86395 2.53993 6 3.01878 6 3.80421Z"></path>
-                </svg>
-                <span>测试运行</span>
-              </button>
+              <WorkflowTestRunButton
+                checklistGroups={checklistGroups}
+                runnableValidation={runnableValidation}
+                workflowDslPreview={workflowDslPreview}
+                triggerNodeId={triggerNode?.id}
+                selectedNodeId={selectedNode?.id}
+                isDraftRunRunning={isDraftRunRunning}
+                reactFlowInstanceRef={reactFlowInstanceRef}
+                executeDraftRun={executeDraftRun}
+              />
 
               <div className="h-5 w-px bg-slate-200" />
 
@@ -1681,15 +1648,9 @@ export const WorkflowChildren = () => {
           <Panel selectedNode={selectedNode} onClose={handlePanelClose} />
         </div>
 
-        <WorkflowTestRunInputDialog
-          open={isTestRunDialogOpen}
-          config={startRunConfig}
-          isRunning={isDraftRunRunning}
-          onOpenChange={setIsTestRunDialogOpen}
-          onRun={handleTestRunSubmit}
-        />
       </div>
     </section>
+    </WorkflowDraftTestRunProvider>
     </WorkflowCanvasInteractionProvider>
     </WorkflowCanvasNodeDebugRegistryProvider>
     </WorkflowReadOnlyProvider>
