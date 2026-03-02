@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useReactFlow } from 'reactflow';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import PanelAlert from '../base/panel-alert';
 import PanelLastRun from '../base/panel-last-run';
+import { PanelLastRunStartDetails } from '../base/panel-last-run-start';
 import { Dialog, DialogContent, DialogTitle } from '../base/dialog';
 import {
   PanelCard,
@@ -35,6 +36,7 @@ import type {
 } from '../panels/start-panel/types';
 import { rewriteNodesVariableReferences } from '../utils/workflow-variable-references';
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
+import type { NodeLastRunSnapshot } from '../types/run';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import {
@@ -292,7 +294,10 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const nodeData = data as CanvasNodeData;
-  const lastRun = resolveNodeLastRun(id, nodeData);
+  const lastRunSectionRef = useRef<HTMLDivElement>(null);
+  const [localLastRun, setLocalLastRun] = useState<NodeLastRunSnapshot | null>(null);
+  const canvasLastRun = resolveNodeLastRun(id, nodeData);
+  const lastRun = canvasLastRun ?? localLastRun;
   const { activeTab, setActiveTab } = usePanelTabs();
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
   const [debugValues, setDebugValues] = useState<StartPanelDebugFormValues>({ query: '' });
@@ -385,6 +390,12 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     setDebugValues((previous) => mergeStartPanelDebugFormValues(config, previous));
   }, [config]);
 
+  useEffect(() => {
+    if (nodeData._lastRun) {
+      setLocalLastRun(null);
+    }
+  }, [nodeData._lastRun]);
+
   const debugInputs = useMemo(
     () => buildStartPanelDebugInputs(config, debugValues),
     [config, debugValues],
@@ -429,7 +440,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     }));
   }, [clearError]);
 
-  const handleRunDebug = useCallback(() => {
+  const handleRunDebug = useCallback(async () => {
     const validationIssues = validateStartPanelDebugFormValues(config, debugValues);
     if (validationIssues.length > 0) {
       setDebugConfigIssueMessages(getStartPanelDebugConfigIssueMessages(validationIssues));
@@ -440,7 +451,17 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
 
     setDebugConfigIssueMessages([]);
     setDebugFieldErrors({});
-    void runDebug();
+    setActiveTab('last-run');
+
+    const snapshot = await runDebug();
+    if (!snapshot) {
+      return;
+    }
+
+    setLocalLastRun(snapshot);
+    requestAnimationFrame(() => {
+      lastRunSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }, [config, debugValues, runDebug, setActiveTab]);
 
   useRegisterPanelNodeDebug(id, {
@@ -526,6 +547,15 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
               填写下方调试输入后，再次点击顶部「测试运行」执行整图。
             </p>
           ) : null}
+          <div ref={lastRunSectionRef} className="space-y-3">
+            <PanelSection title="运行结果">
+              {lastRun ? <PanelLastRunStartDetails lastRun={lastRun} /> : null}
+              <PanelLastRun
+                lastRun={lastRun}
+                emptyDescription="在下方填写调试输入并点击「运行调试」后，这里会展示输入、输出与耗时。"
+              />
+            </PanelSection>
+          </div>
           <StartPanelDebugInputs
             config={config}
             values={debugValues}
@@ -534,11 +564,9 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
             configIssueMessages={debugConfigIssueMessages}
             fieldErrors={debugFieldErrors}
             onChange={handleDebugValueChange}
-            onRun={handleRunDebug}
-          />
-          <PanelLastRun
-            lastRun={lastRun}
-            emptyDescription="填写上方调试输入并运行后，这里会显示入口变量实际取值、系统变量注入结果和校验摘要。"
+            onRun={() => {
+              void handleRunDebug();
+            }}
           />
         </div>
       ) : null}
