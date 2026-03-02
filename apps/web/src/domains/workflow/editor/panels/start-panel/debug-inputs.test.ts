@@ -1,4 +1,8 @@
-import { buildStartPanelDebugInputs } from './debug-inputs'
+import {
+  buildStartPanelDebugInputs,
+  mapStartPanelDebugIssuesToFieldErrors,
+  validateStartPanelDebugFormValues,
+} from './debug-inputs'
 
 describe('buildStartPanelDebugInputs', () => {
   it('maps query and custom variables', () => {
@@ -64,5 +68,39 @@ describe('buildStartPanelDebugInputs', () => {
 
     expect(inputs.count).toBe(3)
     expect(inputs.enabled).toBe(true)
+  })
+})
+
+describe('validateStartPanelDebugFormValues', () => {
+  const config = {
+    variables: [
+      {
+        id: '1',
+        variable: 'topic',
+        label: '主题',
+        type: 'text-input' as const,
+        required: true,
+        options: [],
+        placeholder: '',
+        hint: '',
+      },
+    ],
+  }
+
+  it('requires query and required variables', () => {
+    const issues = validateStartPanelDebugFormValues(config, { query: '', topic: '' })
+    const fieldErrors = mapStartPanelDebugIssuesToFieldErrors(issues)
+
+    expect(fieldErrors.query).toContain('query')
+    expect(fieldErrors.topic).toContain('必填')
+  })
+
+  it('passes when required fields are filled', () => {
+    const issues = validateStartPanelDebugFormValues(config, {
+      query: 'hello',
+      topic: 'RAG',
+    })
+
+    expect(issues).toEqual([])
   })
 })

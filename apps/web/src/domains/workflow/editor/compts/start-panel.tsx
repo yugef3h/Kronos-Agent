@@ -43,7 +43,10 @@ import {
 } from '../context/workflow-draft-test-run-context';
 import {
   buildStartPanelDebugInputs,
+  getStartPanelDebugConfigIssueMessages,
+  mapStartPanelDebugIssuesToFieldErrors,
   mergeStartPanelDebugFormValues,
+  validateStartPanelDebugFormValues,
   type StartPanelDebugFormValues,
 } from '../panels/start-panel/debug-inputs';
 
@@ -207,6 +210,8 @@ const StartPanelDebugInputs = ({
   values,
   isRunning,
   error,
+  configIssueMessages,
+  fieldErrors,
   onChange,
   onRun,
 }: {
@@ -214,16 +219,33 @@ const StartPanelDebugInputs = ({
   values: StartPanelDebugFormValues;
   isRunning: boolean;
   error: string | null;
+  configIssueMessages: string[];
+  fieldErrors: Record<string, string>;
   onChange: (key: string, value: string) => void;
   onRun: () => void;
 }) => (
   <PanelSection title="调试输入">
-    <Field title="用户问题 (query)" compact>
+    {configIssueMessages.length > 0 ? (
+      <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+        <p className="text-[11px] font-semibold text-rose-800">节点配置有误，请先在「设置」中修复：</p>
+        <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-5 text-rose-700">
+          {configIssueMessages.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      </div>
+    ) : null}
+    <Field title="用户问题 (query)" compact required>
       <PanelInput
         value={values.query ?? ''}
         placeholder="例如：帮我总结这份文档"
+        aria-invalid={Boolean(fieldErrors.query)}
+        className={fieldErrors.query ? 'border-rose-300 focus:border-rose-400' : undefined}
         onChange={(event) => onChange('query', event.target.value)}
       />
+      {fieldErrors.query ? (
+        <p className="mt-1 text-[10px] leading-4 text-rose-600">{fieldErrors.query}</p>
+      ) : null}
     </Field>
     {config.variables.map((variable) => {
       const key = variable.variable.trim();
@@ -231,13 +253,25 @@ const StartPanelDebugInputs = ({
         return null;
       }
 
+      const fieldError = fieldErrors[key];
+
       return (
-        <Field key={variable.id} title={`${variable.label || key} (${key})`} compact>
+        <Field
+          key={variable.id}
+          title={`${variable.label || key} (${key})`}
+          compact
+          required={variable.required}
+        >
           <PanelInput
             value={values[key] ?? ''}
             placeholder={variable.required ? '必填' : '可选'}
+            aria-invalid={Boolean(fieldError)}
+            className={fieldError ? 'border-rose-300 focus:border-rose-400' : undefined}
             onChange={(event) => onChange(key, event.target.value)}
           />
+          {fieldError ? (
+            <p className="mt-1 text-[10px] leading-4 text-rose-600">{fieldError}</p>
+          ) : null}
         </Field>
       );
     })}
@@ -259,9 +293,11 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   const appId = searchParams.get('appId');
   const nodeData = data as CanvasNodeData;
   const lastRun = resolveNodeLastRun(id, nodeData);
-  const { activeTab } = usePanelTabs();
+  const { activeTab, setActiveTab } = usePanelTabs();
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
   const [debugValues, setDebugValues] = useState<StartPanelDebugFormValues>({ query: '' });
+  const [debugFieldErrors, setDebugFieldErrors] = useState<Record<string, string>>({});
+  const [debugConfigIssueMessages, setDebugConfigIssueMessages] = useState<string[]>([]);
   const [draggingVariableId, setDraggingVariableId] = useState<string | null>(null);
   const [dropTargetVariableId, setDropTargetVariableId] = useState<string | null>(null);
   const [editingVariableId, setEditingVariableId] = useState<string | null>(null);
@@ -378,6 +414,15 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
 
   const handleDebugValueChange = useCallback((key: string, value: string) => {
     clearError();
+    setDebugFieldErrors((previous) => {
+      if (!previous[key]) {
+        return previous;
+      }
+
+      const next = { ...previous };
+      delete next[key];
+      return next;
+    });
     setDebugValues((previous) => ({
       ...previous,
       [key]: value,
@@ -385,8 +430,18 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   }, [clearError]);
 
   const handleRunDebug = useCallback(() => {
+    const validationIssues = validateStartPanelDebugFormValues(config, debugValues);
+    if (validationIssues.length > 0) {
+      setDebugConfigIssueMessages(getStartPanelDebugConfigIssueMessages(validationIssues));
+      setDebugFieldErrors(mapStartPanelDebugIssuesToFieldErrors(validationIssues));
+      setActiveTab('last-run');
+      return;
+    }
+
+    setDebugConfigIssueMessages([]);
+    setDebugFieldErrors({});
     void runDebug();
-  }, [runDebug]);
+  }, [config, debugValues, runDebug, setActiveTab]);
 
   useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebug,
@@ -476,6 +531,8 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
             values={debugValues}
             isRunning={isRunning}
             error={error}
+            configIssueMessages={debugConfigIssueMessages}
+            fieldErrors={debugFieldErrors}
             onChange={handleDebugValueChange}
             onRun={handleRunDebug}
           />
