@@ -95,25 +95,26 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
   const { isReadOnly } = useWorkflowReadOnly()
   const { panelFocus, clearPanelFocus, nodeRunBlocker, clearNodeRunBlocker } = useWorkflowCanvasInteraction()
   const [activeTab, setActiveTab] = useState<PanelDefaultTab>('settings')
+  const selectedNodeId = selectedNode?.id
 
   useEffect(() => {
     setActiveTab('settings')
-  }, [selectedNode?.id])
+  }, [selectedNodeId])
 
   useEffect(() => {
-    if (!selectedNode || !panelFocus || panelFocus.nodeId !== selectedNode.id) {
+    if (!selectedNodeId || !panelFocus || panelFocus.nodeId !== selectedNodeId) {
       return
     }
 
     setActiveTab(panelFocus.tab)
     clearPanelFocus()
-  }, [clearPanelFocus, panelFocus, selectedNode])
+  }, [clearPanelFocus, panelFocus, selectedNodeId])
 
   useEffect(() => {
-    if (nodeRunBlocker && nodeRunBlocker.nodeId !== selectedNode?.id) {
+    if (nodeRunBlocker && nodeRunBlocker.nodeId !== selectedNodeId) {
       clearNodeRunBlocker()
     }
-  }, [clearNodeRunBlocker, nodeRunBlocker, selectedNode?.id])
+  }, [clearNodeRunBlocker, nodeRunBlocker, selectedNodeId])
 
   const blockType = useMemo(() => {
     return resolvePanelBlockType(selectedNode?.type, selectedNode?.data)

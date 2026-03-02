@@ -34,6 +34,15 @@ export const WorkflowCanvasNodeDebugRegistryProvider = ({ children }: { children
         return next
       }
 
+      const previous = current[nodeId]
+      if (
+        previous
+        && previous.isRunning === registration.isRunning
+        && previous.disabled === registration.disabled
+      ) {
+        return current
+      }
+
       return { ...current, [nodeId]: registration }
     })
   }, [])
@@ -73,7 +82,20 @@ export const useRegisterCanvasNodeDebug = (
   registrationRef.current = registration
 
   useEffect(() => {
-    register(nodeId, registrationRef.current)
+    const current = registrationRef.current
+    if (!current) {
+      register(nodeId, null)
+      return () => register(nodeId, null)
+    }
+
+    register(nodeId, {
+      runDebug: () => {
+        void registrationRef.current?.runDebug()
+      },
+      isRunning: current.isRunning,
+      disabled: current.disabled,
+    })
+
     return () => register(nodeId, null)
-  }, [nodeId, register, registration])
+  }, [nodeId, register, registration?.disabled, registration?.isRunning])
 }

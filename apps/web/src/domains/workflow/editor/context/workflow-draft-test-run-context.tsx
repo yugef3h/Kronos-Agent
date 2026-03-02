@@ -70,9 +70,11 @@ export const useWorkflowDraftTestRun = (): WorkflowDraftTestRunContextValue => {
 
 export const useRegisterWorkflowDraftTestRunInputs = (getter: DraftTestRunInputsGetter) => {
   const { registerDraftRunInputs } = useWorkflowDraftTestRun()
+  const getterRef = useRef(getter)
+  getterRef.current = getter
 
   useEffect(() => {
-    registerDraftRunInputs(getter)
+    registerDraftRunInputs(() => getterRef.current())
     return () => registerDraftRunInputs(null)
-  }, [getter, registerDraftRunInputs])
+  }, [registerDraftRunInputs])
 }

@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useRegisterCanvasNodeDebug } from '../context/workflow-canvas-node-debug-registry'
@@ -42,6 +43,8 @@ export const useRegisterPanelNodeDebug = (
 ): void => {
   const context = useContext(PanelNodeDebugContext)
   const setRegistration = context?.setRegistration
+  const registrationRef = useRef(registration)
+  registrationRef.current = registration
 
   useRegisterCanvasNodeDebug(nodeId, registration)
 
@@ -50,9 +53,30 @@ export const useRegisterPanelNodeDebug = (
       return undefined
     }
 
-    setRegistration(registration)
+    const syncRegistration = () => {
+      const current = registrationRef.current
+      if (!current) {
+        setRegistration(null)
+        return
+      }
+
+      setRegistration({
+        runDebug: () => {
+          void registrationRef.current?.runDebug()
+        },
+        isRunning: current.isRunning,
+        disabled: current.disabled,
+      })
+    }
+
+    syncRegistration()
     return () => setRegistration(null)
-  }, [registration, setRegistration])
+  }, [
+    nodeId,
+    registration?.disabled,
+    registration?.isRunning,
+    setRegistration,
+  ])
 }
 
 export const usePanelNodeDebugToolbar = (): {
