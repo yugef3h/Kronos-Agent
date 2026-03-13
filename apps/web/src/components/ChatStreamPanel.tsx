@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { apiUrl, requestDevToken } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
@@ -14,6 +14,7 @@ export const ChatStreamPanel = () => {
   // 防止旧请求回调与新请求并发写入，导致消息重复拼接。
   const activeRequestIdRef = useRef(0);
   const activeControllerRef = useRef<AbortController | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => prompt.trim().length > 0 && !isStreaming, [prompt, isStreaming]);
 
@@ -37,6 +38,15 @@ export const ChatStreamPanel = () => {
       void generateDevToken();
     }
   }, [authToken, generateDevToken]);
+
+  useEffect(() => {
+    const messageListElement = messageListRef.current;
+    if (!messageListElement) {
+      return;
+    }
+
+    messageListElement.scrollTop = messageListElement.scrollHeight;
+  }, [messages]);
 
   const sendPrompt = async () => {
     if (!canSend) return;
@@ -156,7 +166,7 @@ export const ChatStreamPanel = () => {
       <h2 className="font-display text-lg text-ink">SSE Chat Stream</h2>
       <p className="mt-1 text-sm text-slate-600">模拟 LangChain 输出流，后续可接真实 Agent 链路。</p>
 
-      <div className="mt-4 max-h-72 space-y-3 overflow-auto rounded-xl border border-slate-200 p-3">
+      <div ref={messageListRef} className="mt-4 max-h-72 space-y-3 overflow-auto rounded-xl border border-slate-200 p-3">
         {messages.length === 0 && <p className="text-sm text-slate-500">Start a prompt to see token streaming.</p>}
         {messages.map((message, index) => (
           <article
