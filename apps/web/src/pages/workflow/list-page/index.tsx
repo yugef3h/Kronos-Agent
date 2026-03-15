@@ -18,6 +18,7 @@ import {
   WORKFLOW_EXAMPLES_CHANGED_EVENT,
 } from '../../../domains/workflow/app/workflowExampleClient';
 import { WORKFLOW_READONLY_EXAMPLE_LABEL } from '../../../domains/workflow/editor/context/workflow-read-only-context';
+import { WorkflowPublishedCheckBadge } from '../../../domains/workflow/editor/compts/workflow-mock-publish-button';
 
 const formatTimestamp = (timestamp: number): string => {
   return new Date(timestamp).toLocaleString('zh-CN', {
@@ -146,8 +147,7 @@ export const WorkflowPage = () => {
 
             {apps.map((app) => {
               const thumbSrc = getWorkflowDraftThumbnailSrc(app, { cacheBust: previewCacheBust });
-              const isPublished =
-                app.dsl.app.mode === 'chat' && Boolean(app.mockPublished);
+              const isPublished = Boolean(app.mockPublished);
               const descTrimmed = app.description?.trim() ?? '';
               const descriptionText =
                 descTrimmed.length === 0
@@ -175,27 +175,7 @@ export const WorkflowPage = () => {
                       更新时间 {formatTimestamp(app.updatedAt)}
                     </p>
                   </div>
-                  {isPublished ? (
-                    <span
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100"
-                      title="已发布（本地）"
-                      role="img"
-                      aria-label="已发布"
-                    >
-                      <svg
-                        viewBox="0 0 12 12"
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                      >
-                        <path d="M2.5 6.2 5.1 8.7 9.5 3.3" />
-                      </svg>
-                    </span>
-                  ) : null}
+                  {isPublished ? <WorkflowPublishedCheckBadge /> : null}
                 </div>
 
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">

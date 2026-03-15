@@ -4,6 +4,7 @@ import {
   getWorkflowExampleAppsCache,
   getWorkflowExamplePreviewSrc,
   isWorkflowReadOnlyExampleAppId,
+  setWorkflowExampleAppsCache,
 } from './workflowExampleClient';
 
 export type LegacyWorkflowNodeType =
@@ -261,7 +262,7 @@ export type WorkflowAppRecord = {
   createdAt: number;
   updatedAt: number;
   /**
-   * 本地「假发布」：为 true 时可在首页对话里作为已发布的 Chatbot 应用选用（无真实云端发布）。
+   * 本地「假发布」：无真实云端发布；Chatbot 可在首页对话选用，Workflow 在列表展示已发布标识。
    */
   mockPublished?: boolean;
   publishedAt?: number;
@@ -282,6 +283,14 @@ export const WORKFLOW_APPS_STORAGE_KEY = 'kronos_workflow_apps_v1';
 
 /** 与 app.id 一一对应：`{prefix}{appId}` */
 export const WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX = 'kronos_workflow_draft_preview_v1:';
+
+/** 内置示例假发布状态（仅本地，不写服务端示例 JSON） */
+export const WORKFLOW_EXAMPLE_MOCK_PUBLISH_STORAGE_KEY = 'kronos_workflow_example_mock_publish_v1';
+
+type ExampleMockPublishEntry = {
+  mockPublished: boolean;
+  publishedAt?: number;
+};
 
 const workflowDraftPreviewKey = (appId: string): string =>
   `${WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX}${appId}`;
@@ -558,12 +567,69 @@ export const sortWorkflowAppsByCreatedAt = (apps: WorkflowAppRecord[]): Workflow
 const mergeLocalAndExampleApps = (): WorkflowAppRecord[] => {
   const local = readAppRecords();
   const localIds = new Set(local.map((app) => app.id));
-  const examples = getWorkflowExampleAppsCache().filter((app) => !localIds.has(app.id));
+  const examples = getWorkflowExampleAppsCache()
+    .filter((app) => !localIds.has(app.id))
+    .map(withExampleMockPublishOverlay);
   return sortWorkflowAppsByCreatedAt([...examples, ...local]);
 };
 
 const findExampleApp = (appId: string): WorkflowAppRecord | undefined =>
   getWorkflowExampleAppsCache().find((app) => app.id === appId);
+
+const readExampleMockPublishMap = (): Record<string, ExampleMockPublishEntry> => {
+  if (!canUseLocalStorage()) {
+    return {};
+  }
+
+  try {
+    const raw = window.localStorage.getItem(WORKFLOW_EXAMPLE_MOCK_PUBLISH_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') {
+      return {};
+    }
+
+    return parsed as Record<string, ExampleMockPublishEntry>;
+  } catch {
+    return {};
+  }
+};
+
+const writeExampleMockPublishMap = (map: Record<string, ExampleMockPublishEntry>): void => {
+  if (!canUseLocalStorage()) {
+    return;
+  }
+
+  try {
+    if (Object.keys(map).length === 0) {
+      window.localStorage.removeItem(WORKFLOW_EXAMPLE_MOCK_PUBLISH_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(WORKFLOW_EXAMPLE_MOCK_PUBLISH_STORAGE_KEY, JSON.stringify(map));
+    }
+  } catch (err) {
+    console.warn('[workflow:mock-publish] 示例假发布状态写入失败', err);
+  }
+};
+
+const withExampleMockPublishOverlay = (app: WorkflowAppRecord): WorkflowAppRecord => {
+  if (!isWorkflowReadOnlyExampleAppId(app.id)) {
+    return app;
+  }
+
+  const entry = readExampleMockPublishMap()[app.id];
+  if (!entry?.mockPublished) {
+    return { ...app, mockPublished: false, publishedAt: undefined };
+  }
+
+  return {
+    ...app,
+    mockPublished: true,
+    publishedAt: entry.publishedAt,
+  };
+};
 
 export const listWorkflowApps = (): WorkflowAppRecord[] => mergeLocalAndExampleApps();
 
@@ -579,7 +645,36 @@ export const listPublishedChatbotWorkflowApps = (): WorkflowAppRecord[] => {
 export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolean): WorkflowAppRecord | undefined => {
   const example = findExampleApp(appId);
   if (example) {
-    return example;
+    const publishedAt = mockPublished ? Date.now() : undefined;
+    const map = readExampleMockPublishMap();
+    if (mockPublished) {
+      map[appId] = { mockPublished: true, publishedAt };
+    } else {
+      delete map[appId];
+    }
+    writeExampleMockPublishMap(map);
+
+    const updatedApp: WorkflowAppRecord = {
+      ...example,
+      mockPublished,
+      ...(mockPublished ? { publishedAt } : { publishedAt: undefined }),
+    };
+
+    const cache = getWorkflowExampleAppsCache();
+    const cacheIndex = cache.findIndex((app) => app.id === appId);
+    if (cacheIndex >= 0) {
+      setWorkflowExampleAppsCache([
+        ...cache.slice(0, cacheIndex),
+        updatedApp,
+        ...cache.slice(cacheIndex + 1),
+      ]);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kronos:workflow-apps-changed'));
+    }
+
+    return withExampleMockPublishOverlay(updatedApp);
   }
 
   const apps = readAppRecords();
@@ -593,6 +688,9 @@ export const setWorkflowAppMockPublished = (appId: string, mockPublished: boolea
     ...prev,
     updatedAt: Date.now(),
     mockPublished,
+    ...(mockPublished
+      ? { publishedAt: Date.now() }
+      : { publishedAt: undefined }),
   };
   delete updatedApp.draftPreviewDataUrl;
 
@@ -612,7 +710,8 @@ export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined =>
   if (local) {
     return local;
   }
-  return findExampleApp(id);
+  const example = findExampleApp(id);
+  return example ? withExampleMockPublishOverlay(example) : undefined;
 };
 
 export const getWorkflowAppEditorPath = (app: WorkflowAppRecord): string => {

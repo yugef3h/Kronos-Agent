@@ -101,6 +101,7 @@ import {
 import NodeRunStatusIcon from '../compts/node-run-status-icon';
 import WorkflowRunSummaryBar from '../compts/workflow-run-summary-bar';
 import { WorkflowDraftTestRunProvider } from '../context/workflow-draft-test-run-context';
+import { WorkflowMockPublishButton } from '../compts/workflow-mock-publish-button';
 import { WorkflowTestRunButton } from './workflow-test-run-button';
 import { ContainerStartNode } from '../compts/container-start-node';
 import WorkflowNodeSummary from '../compts/workflow-node-summary';
@@ -1433,8 +1434,8 @@ export const WorkflowChildren = () => {
             {/* 自动保存：画布 DSL 变更后防抖 {WORKFLOW_DRAFT_PERSIST_DEBOUNCE_MS}ms 写入 localStorage，并尝试更新列表缩略图（≥1 个节点） */}
             <EditingTitle />
           </div>
-          <div className="right-operator flex items-center">
-            <div className="inline-flex items-center gap-0.5 rounded-[18px] bg-white/96 p-0.5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.36)] ring-1 ring-slate-950/5 backdrop-blur">
+          <div className="right-operator flex min-w-0 shrink-0 items-center">
+            <div className="inline-flex max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-[18px] bg-white/96 p-0.5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.36)] ring-1 ring-slate-950/5 backdrop-blur">
               <WorkflowTestRunButton
                 checklistGroups={checklistGroups}
                 runnableValidation={runnableValidation}
@@ -1446,7 +1447,10 @@ export const WorkflowChildren = () => {
                 executeDraftRun={executeDraftRun}
               />
 
-              <div className="h-5 w-px bg-slate-200" />
+              <div className="h-5 w-px shrink-0 bg-slate-200" />
+              <WorkflowMockPublishButton appId={appId} compact />
+
+              <div className="h-5 w-px shrink-0 bg-slate-200" />
 
               <div ref={checklistPopoverRef} className="relative">
                 <button
