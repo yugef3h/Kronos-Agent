@@ -10,6 +10,7 @@ import {
   PanelNodeDebugProvider,
   usePanelNodeDebugToolbar,
 } from '../base/panel-node-debug-context'
+import { PanelRunDebugButton } from '../base/panel-run-debug-button'
 import { useWorkflowCanvasInteraction } from '../context/workflow-canvas-interaction-context'
 import { WORKFLOW_READONLY_EXAMPLE_LABEL, useWorkflowReadOnly } from '../context/workflow-read-only-context'
 
@@ -36,14 +37,15 @@ const PanelHeaderDebugButton = () => {
   }
 
   return (
-    <button
-      type="button"
-      disabled={disabled || isRunning}
+    <PanelRunDebugButton
+      isRunning={isRunning}
+      disabled={disabled}
       onClick={runDebug}
+      runningLabel="调试中…"
       className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 transition hover:border-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {isRunning ? '调试中…' : '调试'}
-    </button>
+      调试
+    </PanelRunDebugButton>
   )
 }
 

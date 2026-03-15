@@ -39,6 +39,7 @@ import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 import type { NodeLastRunSnapshot } from '../types/run';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
+import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import {
   useRegisterWorkflowDraftTestRunInputs,
   useWorkflowDraftTestRun,
@@ -278,14 +279,11 @@ const StartPanelDebugInputs = ({
       );
     })}
     {error ? <PanelAlert type="warning">{error}</PanelAlert> : null}
-    <button
-      type="button"
-      disabled={isRunning}
+    <PanelRunDebugButton
+      isRunning={isRunning}
       onClick={onRun}
       className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-    >
-      {isRunning ? '调试中…' : '运行调试'}
-    </button>
+    />
   </PanelSection>
 );
 
@@ -576,14 +574,14 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
           <PanelSection
             title="单节点调试"
             aside={
-              <button
-                type="button"
-                disabled={isRunning}
+              <PanelRunDebugButton
+                isRunning={isRunning}
                 onClick={handleRunDebug}
+                runningLabel="调试中…"
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isRunning ? '调试中…' : '调试此节点'}
-              </button>
+                调试此节点
+              </PanelRunDebugButton>
             }
           >
             <p className="text-[11px] leading-5 text-slate-500">

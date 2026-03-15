@@ -18,6 +18,7 @@ import { useEndPanelConfig } from '../panels/end-panel/use-end-panel-config'
 import { buildEndNodeOutputs, buildEndOutputTypes } from '../panels/end-panel/schema'
 import { buildWorkflowVariableOptions } from '../utils/variable-options'
 import { useNodeDebugRun } from '../hooks/use-node-debug-run'
+import { PanelRunDebugButton } from '../base/panel-run-debug-button'
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
 import { parsePanelDebugContextJson } from '../utils/panel-debug-context'
@@ -145,14 +146,12 @@ const EndPanel = ({ id, data }: NodePanelProps) => {
             parseError={contextParseError}
           />
           {error ? <PanelAlert type="warning">{error}</PanelAlert> : null}
-          <button
-            type="button"
-            disabled={isRunning || !parsedContext.ok}
+          <PanelRunDebugButton
+            isRunning={isRunning}
+            disabled={!parsedContext.ok}
             onClick={handleRunDebug}
             className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {isRunning ? '调试中…' : '运行调试'}
-          </button>
+          />
           {lastRun ? <PanelLastRunEndDetails lastRun={lastRun} /> : null}
           <PanelLastRun
             lastRun={lastRun}

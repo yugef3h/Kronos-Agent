@@ -25,6 +25,7 @@ import { PanelLastRunLlmDetails } from '../base/panel-last-run-llm';
 import { PanelDebugContextField } from '../base/panel-debug-context-field';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 import { parsePanelDebugContextJson } from '../utils/panel-debug-context';
@@ -333,14 +334,12 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
           {debugError ? (
             <PanelAlert type="warning">{debugError}</PanelAlert>
           ) : null}
-          <button
-            type="button"
-            disabled={isRunning || !parsedContext.ok || config.model.mode === 'completion'}
+          <PanelRunDebugButton
+            isRunning={isRunning}
+            disabled={!parsedContext.ok || config.model.mode === 'completion'}
             onClick={handleRunDebug}
             className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          >
-            {isRunning ? '调试中…' : '运行调试'}
-          </button>
+          />
           {lastRun ? <PanelLastRunLlmDetails lastRun={lastRun} /> : null}
           <PanelLastRun lastRun={lastRun} emptyDescription="运行调试后展示模型输出与 token 用量。" />
         </div>

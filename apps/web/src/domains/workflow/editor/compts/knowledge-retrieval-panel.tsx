@@ -16,6 +16,7 @@ import PanelLastRun from '../base/panel-last-run'
 import { PanelLastRunKnowledgeDetails } from '../base/panel-last-run-knowledge'
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context'
 import { useNodeDebugRun } from '../hooks/use-node-debug-run'
+import { PanelRunDebugButton } from '../base/panel-run-debug-button'
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
 import type { Edge } from '../types/common'
@@ -238,14 +239,15 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                   ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.finishedAt)}`
                   : '还没有调试记录'}
               </p>
-              <button
-                type="button"
+              <PanelRunDebugButton
+                isRunning={isDebugRunning}
+                disabled={isDatasetLoading}
                 onClick={() => void handleRunDebugQuery()}
-                disabled={isDebugRunning || isDatasetLoading}
+                runningLabel="检索中…"
                 className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isDebugRunning ? '检索中...' : '运行检索'}
-              </button>
+                运行检索
+              </PanelRunDebugButton>
             </div>
 
             {debugRunError ? (
