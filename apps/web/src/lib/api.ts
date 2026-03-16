@@ -45,6 +45,7 @@ export type RecentSessionResponse = {
 export type TakeoutInstruction = '识别外卖意图' | '协议同意回复' | '商品选择完成';
 
 export type TakeoutSimulationPayload = {
+	prompt?: string;
 	address?: string;
 	discount?: number;
 };
@@ -53,6 +54,42 @@ export type TakeoutSimulationResponse = {
 	reply: string;
 	source: 'scenario';
 	traceId: string;
+	intent?: 'takeout_order' | 'takeout_recommend' | 'non_takeout';
+	confidence?: number;
+	slots?: {
+		dishType: string | null;
+		addressHint: string | null;
+		budgetRange: string | null;
+		timeConstraint: string | null;
+		tastePreference: string[];
+	};
+	missingSlots?: Array<'dishType' | 'addressHint' | 'budgetRange' | 'timeConstraint'>;
+	nextAction?: 'start_takeout_flow' | 'ask_for_slot' | 'fallback_to_chat';
+};
+
+export type TakeoutIntentAnalysisResponse = {
+	intent: 'takeout_order' | 'takeout_recommend' | 'non_takeout';
+	confidence: number;
+	slots: {
+		dishType: string | null;
+		addressHint: string | null;
+		budgetRange: string | null;
+		timeConstraint: string | null;
+		tastePreference: string[];
+	};
+	missingSlots: Array<'dishType' | 'addressHint' | 'budgetRange' | 'timeConstraint'>;
+	nextAction: 'start_takeout_flow' | 'ask_for_slot' | 'fallback_to_chat';
+};
+
+export type TakeoutOrchestrationResponse = {
+	action: 'chat' | 'ask_slot' | 'tool_call';
+	assistantReply: string;
+	toolCall?: {
+		name: 'takeout';
+		params: {
+			food: string;
+		};
+	};
 };
 
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
@@ -122,4 +159,52 @@ export const requestTakeoutSimulation = async (params: {
 	}
 
 	return (await response.json()) as TakeoutSimulationResponse;
+};
+
+export const requestTakeoutIntentAnalysis = async (params: {
+	authToken: string;
+	prompt: string;
+	history?: string[];
+}): Promise<TakeoutIntentAnalysisResponse> => {
+	const response = await fetch(apiUrl('/api/takeout/intent-analyze'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			prompt: params.prompt,
+			history: params.history || [],
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request takeout intent analysis');
+	}
+
+	return (await response.json()) as TakeoutIntentAnalysisResponse;
+};
+
+export const requestTakeoutOrchestration = async (params: {
+	authToken: string;
+	prompt: string;
+	history?: string[];
+}): Promise<TakeoutOrchestrationResponse> => {
+	const response = await fetch(apiUrl('/api/takeout/orchestrate'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			prompt: params.prompt,
+			history: params.history || [],
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request takeout orchestration');
+	}
+
+	return (await response.json()) as TakeoutOrchestrationResponse;
 };

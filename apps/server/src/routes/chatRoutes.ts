@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { streamChat } from '../services/streamService.js';
+import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
+import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 
@@ -22,9 +24,20 @@ const tokenEmbeddingSchema = z.object({
 const takeoutSimulationSchema = z.object({
   instruction: z.enum(['识别外卖意图', '协议同意回复', '商品选择完成']),
   payload: z.object({
+    prompt: z.string().min(1).optional(),
     address: z.string().min(1).optional(),
     discount: z.number().finite().optional(),
   }).optional(),
+});
+
+const takeoutIntentSchema = z.object({
+  prompt: z.string().min(1),
+  history: z.array(z.string()).max(12).optional(),
+});
+
+const takeoutOrchestrationSchema = z.object({
+  prompt: z.string().min(1),
+  history: z.array(z.string()).max(12).optional(),
 });
 
 export const chatRoutes = Router();
@@ -106,6 +119,10 @@ chatRoutes.post('/takeout/simulate', (request: Request, response: Response) => {
     return;
   }
 
+  const intentAnalysis = analyzeTakeoutIntent({
+    prompt: parsed.data.payload?.prompt || '帮我点外卖',
+  });
+
   const reply = simulateTakeoutReply({
     instruction: parsed.data.instruction,
     payload: parsed.data.payload,
@@ -115,5 +132,42 @@ chatRoutes.post('/takeout/simulate', (request: Request, response: Response) => {
     reply,
     source: 'scenario',
     traceId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    intent: intentAnalysis.intent,
+    confidence: intentAnalysis.confidence,
+    slots: intentAnalysis.slots,
+    missingSlots: intentAnalysis.missingSlots,
+    nextAction: intentAnalysis.nextAction,
   });
+});
+
+chatRoutes.post('/takeout/intent-analyze', (request: Request, response: Response) => {
+  const parsed = takeoutIntentSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const result = analyzeTakeoutIntent({
+    prompt: parsed.data.prompt,
+    history: parsed.data.history,
+  });
+
+  response.json(result);
+});
+
+chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Response) => {
+  const parsed = takeoutOrchestrationSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const result = await orchestrateTakeoutPrompt({
+    prompt: parsed.data.prompt,
+    history: parsed.data.history,
+  });
+
+  response.json(result);
 });

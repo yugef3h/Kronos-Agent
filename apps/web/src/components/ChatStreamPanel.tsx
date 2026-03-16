@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-import { apiUrl, requestDevToken, requestRecentSessions, requestSessionSnapshot } from '../lib/api';
+import {
+  apiUrl,
+  requestDevToken,
+  requestRecentSessions,
+  requestSessionSnapshot,
+  requestTakeoutOrchestration,
+} from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
 import {
@@ -120,6 +126,7 @@ export const ChatStreamPanel = () => {
   const [messages, setMessages] = useState<LocalChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isOrchestrating, setIsOrchestrating] = useState(false);
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -400,11 +407,52 @@ export const ChatStreamPanel = () => {
 
     const userPrompt = prompt.trim();
 
-    // 外卖能力单独走独立组件流程，不进入通用SSE主链路。
-    if (isTakeoutIntentPrompt(userPrompt)) {
-      setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
-      setPrompt('');
-      setLatestUserQuestion(userPrompt);
+    // 先乐观渲染用户消息，避免等待编排接口返回后才显示。
+    setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
+    setPrompt('');
+    setLatestUserQuestion(userPrompt);
+
+    const tryHandleTakeout = async (): Promise<boolean> => {
+      if (!authToken) {
+        return isTakeoutIntentPrompt(userPrompt);
+      }
+
+      try {
+        setIsOrchestrating(true);
+        const orchestrated = await requestTakeoutOrchestration({
+          authToken,
+          prompt: userPrompt,
+          history: messages.slice(-6).map((message) => message.content),
+        });
+
+        if (orchestrated.action === 'chat' || orchestrated.action === 'ask_slot') {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: orchestrated.assistantReply, isIncomplete: false },
+          ]);
+          return true;
+        }
+
+        if (orchestrated.action === 'tool_call' && orchestrated.toolCall?.name === 'takeout') {
+          void startTakeoutConversation();
+          return true;
+        }
+
+        return false;
+      } catch {
+        return false;
+      } finally {
+        setIsOrchestrating(false);
+      }
+    };
+
+    // 外卖能力优先走后端编排：可返回聊天、补参提问或隐藏工具调用。
+    if (await tryHandleTakeout()) {
+      return;
+    }
+
+    // 无鉴权时保留本地关键词兜底，确保体验可用。
+    if (!authToken && isTakeoutIntentPrompt(userPrompt)) {
       void startTakeoutConversation();
       return;
     }
@@ -431,9 +479,7 @@ export const ChatStreamPanel = () => {
     let isRequestComplete = false;
 
     clearTimelineEvents();
-    setPrompt('');
-    setLatestUserQuestion(userPrompt);
-    setMessages((prev) => [...prev, { role: 'user', content: userPrompt }, { role: 'assistant', content: '' }]);
+    setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
     setIsStreaming(true);
 
     try {
@@ -665,6 +711,16 @@ export const ChatStreamPanel = () => {
                 </article>
               </div>
             ))}
+            {isOrchestrating && (
+              <div className="flex justify-start">
+                <article className="max-w-[80%] rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm md:text-[15px]">
+                  <span className="inline-flex items-center gap-2 text-slate-500">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-500" />
+                    正在搜索
+                  </span>
+                </article>
+              </div>
+            )}
           </div>
 
           {/* 用户向上滚动时显示「回到底部」按钮，点击后平滑滚动到最新消息 */}
