@@ -3,7 +3,8 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "baseUrl": "./src",
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node", "jest"]
   },
   "include": ["src", "vite.config.ts", "tailwind.config.ts"]
 }
