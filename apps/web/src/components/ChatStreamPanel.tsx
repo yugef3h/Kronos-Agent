@@ -19,8 +19,11 @@ import {
   useTakeoutTool,
   type TakeoutChatMessage,
 } from '../features/agent-tools/takeout';
+import taobao_icon from '../assets/taobao.png';
 
 const MAX_CONTEXT_TOKENS = 8192;
+const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
+const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
 
 type TokenizerModule = {
   encode: (text: string) => Iterable<number>;
@@ -146,6 +149,7 @@ export const ChatStreamPanel = () => {
   const activeRequestIdRef = useRef(0);
   const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
+  const takeoutQuickReplyTimerRef = useRef<number | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
@@ -376,6 +380,9 @@ export const ChatStreamPanel = () => {
   useEffect(() => {
     return () => {
       activeControllerRef.current?.abort();
+      if (takeoutQuickReplyTimerRef.current !== null) {
+        window.clearTimeout(takeoutQuickReplyTimerRef.current);
+      }
     };
   }, []);
 
@@ -602,7 +609,41 @@ export const ChatStreamPanel = () => {
 
   const handleQuickActionClick = (action: PromptQuickAction['key']) => {
     if (action === 'takeout') {
-      setPrompt((prev) => getTakeoutQuickActionPrompt(prev));
+      if (isStreaming || isOrchestrating || takeoutQuickReplyTimerRef.current !== null) {
+        return;
+      }
+
+      const takeoutPrompt = getTakeoutQuickActionPrompt(prompt);
+      let placeholderIndex = -1;
+      setMessages((prev) => {
+        placeholderIndex = prev.length + 1;
+        return [
+          ...prev,
+          { role: 'user', content: takeoutPrompt, isIncomplete: false },
+          { role: 'assistant', content: '', isIncomplete: false },
+        ];
+      });
+      setPrompt('');
+      setLatestUserQuestion(takeoutPrompt);
+
+      takeoutQuickReplyTimerRef.current = window.setTimeout(() => {
+        setMessages((prev) => {
+          const targetMessage = prev[placeholderIndex];
+          if (!targetMessage || targetMessage.role !== 'assistant' || targetMessage.content) {
+            return prev;
+          }
+
+          const draft = [...prev];
+          draft[placeholderIndex] = {
+            ...targetMessage,
+            content: TAKEOUT_QUICK_ACTION_REPLY,
+            isIncomplete: false,
+          };
+          return draft;
+        });
+
+        takeoutQuickReplyTimerRef.current = null;
+      }, TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS);
       return;
     }
 
@@ -760,9 +801,7 @@ export const ChatStreamPanel = () => {
                     onClick={() => handleQuickActionClick(action.key)}
                     title={action.key === 'takeout' ? '打开外卖模拟流程' : `${action.label}功能即将上线`}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
-                      action.key === 'takeout'
-                        ? 'border-amber-300 bg-[#ffd100] font-semibold text-slate-950 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-amber-400 hover:bg-[#ffda33]'
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
+                        'border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
                     }`}
                   >
                     {action.key === 'file' && (
@@ -789,12 +828,9 @@ export const ChatStreamPanel = () => {
                       </svg>
                     )}
                     {action.key === 'takeout' && (
-                      <span
-                        aria-hidden
-                        className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-slate-950 px-1 text-[10px] font-bold leading-none tracking-tight text-[#ffd100]"
-                      >
-                        美
-                      </span>
+                      <div className="h-6 w-6 overflow-hidden">
+                        <img src={taobao_icon} alt="淘宝头像" className="h-full w-full object-cover" />
+                      </div>
                     )}
                     <span>{action.label}</span>
                   </button>
