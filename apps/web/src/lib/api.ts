@@ -1,4 +1,12 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+const readViteApiBaseUrl = (): string | undefined => {
+	try {
+		return Function('return import.meta?.env?.VITE_API_BASE_URL')() as string | undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+const API_BASE_URL = readViteApiBaseUrl() || 'http://localhost:3001';
 
 export const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
@@ -32,6 +40,19 @@ export type RecentDialogueItem = {
 
 export type RecentSessionResponse = {
 	items: RecentDialogueItem[];
+};
+
+export type TakeoutInstruction = '识别外卖意图' | '协议同意回复' | '商品选择完成';
+
+export type TakeoutSimulationPayload = {
+	address?: string;
+	discount?: number;
+};
+
+export type TakeoutSimulationResponse = {
+	reply: string;
+	source: 'scenario';
+	traceId: string;
 };
 
 export const requestDevToken = async (): Promise<DevTokenResponse> => {
@@ -77,4 +98,28 @@ export const requestRecentSessions = async (params: {
 	}
 
 	return (await response.json()) as RecentSessionResponse;
+};
+
+export const requestTakeoutSimulation = async (params: {
+	authToken: string;
+	instruction: TakeoutInstruction;
+	payload?: TakeoutSimulationPayload;
+}): Promise<TakeoutSimulationResponse> => {
+	const response = await fetch(apiUrl('/api/takeout/simulate'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			instruction: params.instruction,
+			payload: params.payload || {},
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request takeout simulation');
+	}
+
+	return (await response.json()) as TakeoutSimulationResponse;
 };

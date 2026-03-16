@@ -1,3 +1,9 @@
+import {
+  requestTakeoutSimulation,
+  type TakeoutInstruction,
+  type TakeoutSimulationPayload,
+} from '../../../../lib/api';
+
 export type DoubaoInstruction = '识别外卖意图' | '协议同意回复' | '商品选择完成';
 
 export type DoubaoMockPayload = {
@@ -5,15 +11,10 @@ export type DoubaoMockPayload = {
   discount?: number;
 };
 
-// 模拟豆包接口调用：仅根据交互指令返回固定话术，不做真实网络请求。
-export const callDoubaoAPI = async (
+const getLocalMockReply = (
   instruction: DoubaoInstruction,
   payload: DoubaoMockPayload = {},
-): Promise<string> => {
-  await new Promise((resolve) => {
-    window.setTimeout(resolve, 280);
-  });
-
+): string => {
   if (instruction === '识别外卖意图') {
     return '我将通过淘宝闪购为你直接下单订餐。在此之前，只需完成 Kronos 与淘宝闪购的账号绑定授权。完成后，我可以根据你的口味偏好，智能推荐餐品并协助完成下单，成为你长期可靠的外卖点单助手，让订餐变得更省心、更便捷。';
   }
@@ -30,3 +31,33 @@ export const callDoubaoAPI = async (
 
   return '已收到你的指令。';
 };
+
+// 优先调用后端仿真 API（JWT 鉴权），失败后自动降级本地 mock，保证流程可用。
+export const callDoubaoAPI = async (
+  instruction: DoubaoInstruction,
+  payload: DoubaoMockPayload = {},
+  authToken = '',
+): Promise<string> => {
+  if (!authToken.trim()) {
+    await new Promise((resolve) => {
+      globalThis.setTimeout(resolve, 280);
+    });
+    return getLocalMockReply(instruction, payload);
+  }
+
+  try {
+    const response = await requestTakeoutSimulation({
+      authToken,
+      instruction: instruction as TakeoutInstruction,
+      payload: payload as TakeoutSimulationPayload,
+    });
+    return response.reply;
+  } catch {
+    await new Promise((resolve) => {
+      globalThis.setTimeout(resolve, 280);
+    });
+    return getLocalMockReply(instruction, payload);
+  }
+};
+
+export { getLocalMockReply };

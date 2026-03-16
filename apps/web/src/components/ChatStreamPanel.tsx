@@ -164,7 +164,7 @@ export const ChatStreamPanel = () => {
     openTakeoutPaymentModal,
     closeTakeoutPaymentModal,
     handleTakeoutPaymentPasswordChange,
-  } = useTakeoutTool({ messages, setMessages });
+  } = useTakeoutTool({ messages, setMessages, authToken });
 
   const scrollToBottom = useCallback(() => {
     const el = messageListRef.current;

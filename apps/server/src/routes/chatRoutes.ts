@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
 import { streamChat } from '../services/streamService.js';
+import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 
 const chatSchema = z.object({
@@ -16,6 +17,14 @@ const tokenEmbeddingSchema = z.object({
   projectionMethod: z.enum(['random', 'pca', 'umap']).default('pca'),
   secondaryTokenizer: z.enum(['cl100k_base', 'p50k_base']).optional(),
   secondaryEmbeddingModel: z.string().min(1).optional(),
+});
+
+const takeoutSimulationSchema = z.object({
+  instruction: z.enum(['识别外卖意图', '协议同意回复', '商品选择完成']),
+  payload: z.object({
+    address: z.string().min(1).optional(),
+    discount: z.number().finite().optional(),
+  }).optional(),
 });
 
 export const chatRoutes = Router();
@@ -87,4 +96,24 @@ chatRoutes.post('/token-embedding/analyze', async (request: Request, response: R
     const reason = error instanceof Error ? error.message : 'unknown error';
     response.status(500).json({ error: `Token/Embedding analysis failed: ${reason}` });
   }
+});
+
+chatRoutes.post('/takeout/simulate', (request: Request, response: Response) => {
+  const parsed = takeoutSimulationSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const reply = simulateTakeoutReply({
+    instruction: parsed.data.instruction,
+    payload: parsed.data.payload,
+  });
+
+  response.json({
+    reply,
+    source: 'scenario',
+    traceId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  });
 });
