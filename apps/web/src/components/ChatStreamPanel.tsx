@@ -3,6 +3,16 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { apiUrl, requestDevToken, requestRecentSessions, requestSessionSnapshot } from '../lib/api';
 import { usePlaygroundStore } from '../store/playgroundStore';
 import type { ChatMessage, StreamChunk, TimelineEvent } from '../types/chat';
+import {
+  MOCK_ADDRESS,
+  TakeoutMessageCard,
+  TakeoutToolModals,
+  getTakeoutQuickActionPrompt,
+  isTakeoutIntentPrompt,
+  isTakeoutWideCardMessage,
+  useTakeoutTool,
+  type TakeoutChatMessage,
+} from '../features/agent-tools/takeout';
 
 const MAX_CONTEXT_TOKENS = 8192;
 
@@ -53,9 +63,7 @@ type PromptQuickAction = {
   label: string;
 };
 
-type LocalChatMessage = ChatMessage & {
-  isIncomplete?: boolean;
-};
+type LocalChatMessage = TakeoutChatMessage;
 
 const markLastAssistantMessageIncomplete = (
   chatMessages: LocalChatMessage[],
@@ -134,6 +142,29 @@ export const ChatStreamPanel = () => {
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const historyPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const {
+    flowState: takeoutFlowState,
+    modalState: takeoutModalState,
+    isTakeoutAgreementChecked,
+    setIsTakeoutAgreementChecked,
+    foodsScrollerRef: takeoutFoodsScrollerRef,
+    paymentInputRef: takeoutPaymentInputRef,
+    showTakeoutScrollHint,
+    startTakeoutConversation,
+    openTakeoutAuthorizationModal,
+    closeTakeoutAuthorizationModal,
+    handleTakeoutAgreement,
+    handleTakeoutCancel,
+    handleTakeoutSelectFood,
+    handleTakeoutSelectSnack,
+    closeTakeoutComboModal,
+    handleTakeoutSelectCombo,
+    handleTakeoutConfirmSelection,
+    openTakeoutPaymentModal,
+    closeTakeoutPaymentModal,
+    handleTakeoutPaymentPasswordChange,
+  } = useTakeoutTool({ messages, setMessages });
 
   const scrollToBottom = useCallback(() => {
     const el = messageListRef.current;
@@ -341,8 +372,42 @@ export const ChatStreamPanel = () => {
     };
   }, []);
 
+  const renderMessageContent = useCallback((message: LocalChatMessage) => {
+    const suffix = message.isIncomplete ? '...' : '';
+    const content = message.content || '';
+
+    if (!content) {
+      return '...';
+    }
+
+    if (message.role !== 'assistant' || !content.includes(MOCK_ADDRESS)) {
+      return `${content}${suffix}`;
+    }
+
+    const [prefix, ...rest] = content.split(MOCK_ADDRESS);
+    return (
+      <>
+        {prefix}
+        <span className="text-blue-500">{MOCK_ADDRESS}</span>
+        {rest.join(MOCK_ADDRESS)}
+        {suffix}
+      </>
+    );
+  }, []);
+
   const sendPrompt = async () => {
     if (!canSend) return;
+
+    const userPrompt = prompt.trim();
+
+    // 外卖能力单独走独立组件流程，不进入通用SSE主链路。
+    if (isTakeoutIntentPrompt(userPrompt)) {
+      setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
+      setPrompt('');
+      setLatestUserQuestion(userPrompt);
+      void startTakeoutConversation();
+      return;
+    }
 
     if (!authToken) {
       setMessages((prev) => [...prev, { role: 'assistant', content: '发送前需要先准备 JWT。' }]);
@@ -364,7 +429,6 @@ export const ChatStreamPanel = () => {
     // 某些传输层在重连时会重放事件，按 eventId 去重可避免重复渲染。
     let lastSeenEventId = 0;
     let isRequestComplete = false;
-    const userPrompt = prompt.trim();
 
     clearTimelineEvents();
     setPrompt('');
@@ -490,6 +554,27 @@ export const ChatStreamPanel = () => {
     }
   };
 
+  const handleQuickActionClick = (action: PromptQuickAction['key']) => {
+    if (action === 'takeout') {
+      setPrompt((prev) => getTakeoutQuickActionPrompt(prev));
+      return;
+    }
+
+    if (action === 'file') {
+      setPrompt((prev) => `${prev}${prev ? ' ' : ''}/file `);
+      return;
+    }
+
+    if (action === 'image') {
+      setPrompt((prev) => `${prev}${prev ? ' ' : ''}/image `);
+      return;
+    }
+
+    if (action === 'translate') {
+      setPrompt((prev) => `${prev}${prev ? ' ' : ''}/translate `);
+    }
+  };
+
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_16px_48px_-24px_rgba(14,116,144,0.45)] backdrop-blur md:p-5">
       <div aria-hidden className="pointer-events-none absolute -top-16 -right-10 h-40 w-40 rounded-full bg-cyan-100/70 blur-2xl" />
@@ -551,10 +636,23 @@ export const ChatStreamPanel = () => {
                   className={`max-w-[80%] rounded-2xl border px-3.5 py-2.5 text-sm shadow-sm md:text-[15px] ${
                     message.role === 'user'
                       ? 'border-cyan-200/90 bg-cyan-50/95 text-ink'
-                      : 'border-slate-200/90 bg-white text-slate-700'
+                      : isTakeoutWideCardMessage(message)
+                        ? 'border-transparent bg-transparent px-0 py-0 text-slate-700 shadow-none'
+                        : 'border-slate-200/90 bg-white text-slate-700'
                   }`}
                 >
-                  {!message.content && message.role === 'assistant' && !message.isIncomplete ? (
+                  {message.flowType === 'takeout' && message.takeoutMessageType ? (
+                    <TakeoutMessageCard
+                      message={message}
+                      flowState={takeoutFlowState}
+                      showTakeoutScrollHint={showTakeoutScrollHint}
+                      foodsScrollerRef={takeoutFoodsScrollerRef}
+                      onCancel={handleTakeoutCancel}
+                      onOpenAuthorizationModal={openTakeoutAuthorizationModal}
+                      onSelectFood={handleTakeoutSelectFood}
+                      onOpenPaymentModal={openTakeoutPaymentModal}
+                    />
+                  ) : !message.content && message.role === 'assistant' && !message.isIncomplete ? (
                     <span className="inline-flex items-center gap-1 text-slate-500">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
@@ -562,7 +660,7 @@ export const ChatStreamPanel = () => {
                       正在生成内容
                     </span>
                   ) : (
-                    `${message.content || ''}${message.isIncomplete ? '...' : ''}` || '...'
+                    renderMessageContent(message)
                   )}
                 </article>
               </div>
@@ -603,7 +701,8 @@ export const ChatStreamPanel = () => {
                   <button
                     key={action.key}
                     type="button"
-                    title={`${action.label}功能即将上线`}
+                    onClick={() => handleQuickActionClick(action.key)}
+                    title={action.key === 'takeout' ? '打开外卖模拟流程' : `${action.label}功能即将上线`}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
                       action.key === 'takeout'
                         ? 'border-amber-300 bg-[#ffd100] font-semibold text-slate-950 shadow-[0_8px_18px_-12px_rgba(15,23,42,0.55)] hover:-translate-y-0.5 hover:border-amber-400 hover:bg-[#ffda33]'
@@ -687,6 +786,22 @@ export const ChatStreamPanel = () => {
         {/* {tokenMessage && <p className="text-xs text-slate-600">{tokenMessage}</p>} */}
       </div>
       </div>
+
+      <TakeoutToolModals
+        flowState={takeoutFlowState}
+        modalState={takeoutModalState}
+        isAgreementChecked={isTakeoutAgreementChecked}
+        onAgreementCheckedChange={setIsTakeoutAgreementChecked}
+        onConfirmAgreement={handleTakeoutAgreement}
+        onCloseAuthorization={closeTakeoutAuthorizationModal}
+        onCloseCombo={closeTakeoutComboModal}
+        onSelectSnack={handleTakeoutSelectSnack}
+        onSelectCombo={handleTakeoutSelectCombo}
+        onConfirmSelection={handleTakeoutConfirmSelection}
+        paymentInputRef={takeoutPaymentInputRef}
+        onClosePayment={closeTakeoutPaymentModal}
+        onPaymentPasswordChange={handleTakeoutPaymentPasswordChange}
+      />
     </section>
   );
 };
