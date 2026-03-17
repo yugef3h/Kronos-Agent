@@ -15,7 +15,6 @@ type TakeoutToolModalsProps = {
   onConfirmAgreement: (flowId: number) => void | Promise<void>;
   onCloseAuthorization: () => void;
   onCloseCombo: () => void;
-  onSelectSnack: (flowId: number, snackId: string) => void;
   onSelectCombo: (flowId: number, combo: NonNullable<TakeoutFlowState['selectedCombo']>) => void;
   onConfirmSelection: (flowId: number) => void | Promise<void>;
   paymentInputRef: TakeoutPaymentInputRef;
@@ -31,7 +30,6 @@ export const TakeoutToolModals = ({
   onConfirmAgreement,
   onCloseAuthorization,
   onCloseCombo,
-  onSelectSnack,
   onSelectCombo,
   onConfirmSelection,
   paymentInputRef,
@@ -56,7 +54,6 @@ export const TakeoutToolModals = ({
           flowId={modalState.comboFlowId}
           flowState={flowState}
           onClose={onCloseCombo}
-          onSelectSnack={onSelectSnack}
           onSelectCombo={onSelectCombo}
           onConfirm={onConfirmSelection}
         />

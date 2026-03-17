@@ -183,7 +183,6 @@ export const ChatStreamPanel = () => {
     handleTakeoutAgreement,
     handleTakeoutCancel,
     handleTakeoutSelectFood,
-    handleTakeoutSelectSnack,
     closeTakeoutComboModal,
     handleTakeoutSelectCombo,
     handleTakeoutConfirmSelection,
@@ -1183,7 +1182,6 @@ export const ChatStreamPanel = () => {
         onConfirmAgreement={handleTakeoutAgreement}
         onCloseAuthorization={closeTakeoutAuthorizationModal}
         onCloseCombo={closeTakeoutComboModal}
-        onSelectSnack={handleTakeoutSelectSnack}
         onSelectCombo={handleTakeoutSelectCombo}
         onConfirmSelection={handleTakeoutConfirmSelection}
         paymentInputRef={takeoutPaymentInputRef}

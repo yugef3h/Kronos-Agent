@@ -5,7 +5,6 @@ import {
   createInitialTakeoutFlowState,
   getTakeoutPaymentSummary,
   getTakeoutQuickActionPrompt,
-  getSelectedTakeoutSnackName,
   isTakeoutIntentPrompt,
   isTakeoutWideCardMessage,
 } from './helpers';
@@ -45,12 +44,10 @@ describe('takeout helpers', () => {
       ...createInitialTakeoutFlowState(1),
       selectedFood: MOCK_FOODS[0],
       selectedCombo: MOCK_FOODS[0].combos[1],
-      selectedSnackId: 'snack-popcorn',
     };
 
-    expect(getSelectedTakeoutSnackName(flowState.selectedSnackId)).toBe('鸡米花');
-    expect(buildTakeoutComboSummary(flowState)).toContain('鸡米花');
-    expect(buildTakeoutOrderPrompt(flowState)).toBe('Kronos，帮我下单 招牌牛肉面 + 牛肉面 + 冰红茶 + 鸡米花');
+    expect(buildTakeoutComboSummary(flowState)).toContain('牛肉面 + 冰红茶');
+    expect(buildTakeoutOrderPrompt(flowState)).toBe('Kronos，帮我下单 招牌牛肉面 + 牛肉面 + 冰红茶');
   });
 
   it('computes payment totals from the selected items and discount', () => {

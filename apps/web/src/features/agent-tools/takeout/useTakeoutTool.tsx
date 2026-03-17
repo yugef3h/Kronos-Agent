@@ -40,7 +40,6 @@ type UseTakeoutToolResult = {
   handleTakeoutAgreement: (flowId: number) => Promise<void>;
   handleTakeoutCancel: (flowId: number) => void;
   handleTakeoutSelectFood: (flowId: number, food: TakeoutFood) => void;
-  handleTakeoutSelectSnack: (flowId: number, snackId: string) => void;
   closeTakeoutComboModal: () => void;
   handleTakeoutSelectCombo: (flowId: number, combo: TakeoutCombo) => void;
   handleTakeoutConfirmSelection: (flowId: number) => Promise<void>;
@@ -359,17 +358,6 @@ export const useTakeoutTool = ({
     setModalState((prev) => ({ ...prev, comboFlowId: flowId }));
   }, [flowState.flowId]);
 
-  const handleTakeoutSelectSnack = useCallback((flowId: number, snackId: string) => {
-    if (flowId !== flowState.flowId) {
-      return;
-    }
-
-    setFlowState((prev) => ({
-      ...prev,
-      selectedSnackId: snackId,
-    }));
-  }, [flowState.flowId]);
-
   const closeTakeoutComboModal = useCallback(() => {
     setModalState((prev) => ({ ...prev, comboFlowId: null }));
   }, []);
@@ -478,7 +466,6 @@ export const useTakeoutTool = ({
     handleTakeoutAgreement,
     handleTakeoutCancel,
     handleTakeoutSelectFood,
-    handleTakeoutSelectSnack,
     closeTakeoutComboModal,
     handleTakeoutSelectCombo,
     handleTakeoutConfirmSelection,

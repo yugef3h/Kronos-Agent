@@ -47,7 +47,10 @@ export const getSelectedTakeoutSnackName = (
 export const buildTakeoutComboSummary = (
   flowState: Pick<TakeoutFlowState, 'selectedFood' | 'selectedCombo' | 'selectedSnackId'>,
 ): string => {
-  return `${flowState.selectedFood?.productTip || ''} / ${flowState.selectedCombo?.name || ''} / ${getSelectedTakeoutSnackName(flowState.selectedSnackId)}`;
+  return [
+    flowState.selectedFood?.productTip || '',
+    flowState.selectedCombo?.name || '标准规格',
+  ].filter(Boolean).join(' / ');
 };
 
 export const buildTakeoutOrderPrompt = (
@@ -55,8 +58,7 @@ export const buildTakeoutOrderPrompt = (
 ): string => {
   const selectedFoodName = flowState.selectedFood?.productName || '套餐';
   const selectedComboName = flowState.selectedCombo?.name || '';
-  const selectedSnackName = getSelectedTakeoutSnackName(flowState.selectedSnackId, '');
-  const orderSummaryParts = [selectedFoodName, selectedComboName, selectedSnackName].filter(Boolean);
+  const orderSummaryParts = [selectedFoodName, selectedComboName].filter(Boolean);
 
   return `Kronos，帮我下单 ${orderSummaryParts.join(' + ')}`;
 };
