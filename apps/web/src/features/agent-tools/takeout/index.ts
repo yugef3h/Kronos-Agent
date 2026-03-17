@@ -1,5 +1,5 @@
 export { MOCK_ADDRESS, MOCK_DELIVERY, MOCK_DISCOUNT, MOCK_FOODS } from './data/mockData';
-export type { TakeoutCombo, TakeoutFood } from './data/mockData';
+export type { TakeoutCombo, TakeoutDelivery, TakeoutFood } from './data/mockData';
 export {
   buildTakeoutComboSummary,
   buildTakeoutOrderPrompt,

@@ -234,6 +234,18 @@ export const ChatStreamPanel = () => {
     [timelineEvents],
   );
 
+  const isTakeoutLoading = useMemo(() => {
+    return isOrchestrating || takeoutFlowState.isCallingApi;
+  }, [isOrchestrating, takeoutFlowState.isCallingApi]);
+
+  const takeoutLoadingLabel = useMemo(() => {
+    if (!takeoutFlowState.flowId) {
+      return '正在搜索附近可配送商品';
+    }
+
+    return takeoutFlowState.isFoodListVisible ? '正在更新外卖流程' : '正在搜索附近可配送商品';
+  }, [takeoutFlowState.flowId, takeoutFlowState.isFoodListVisible]);
+
   const latestMessageSignature = useMemo(() => {
     const lastMessage = messages[messages.length - 1];
     return [
@@ -601,7 +613,7 @@ export const ChatStreamPanel = () => {
             setIsAwaitingTakeoutFollowup(false);
           }
 
-          void startTakeoutConversation(userPrompt);
+          await startTakeoutConversation(userPrompt);
           scheduleMemoryMetricsRefresh();
           return true;
         }
@@ -621,7 +633,7 @@ export const ChatStreamPanel = () => {
 
     // 无鉴权时保留本地关键词兜底，确保体验可用。
     if (!authToken && !isAwaitingTakeoutFollowup && isTakeoutIntentPrompt(userPrompt)) {
-      void startTakeoutConversation();
+      await startTakeoutConversation();
       return;
     }
 
@@ -995,12 +1007,12 @@ export const ChatStreamPanel = () => {
                 </article>
               </div>
             ))}
-            {isOrchestrating && (
+            {isTakeoutLoading && (
               <div className="flex justify-start">
                 <article className="max-w-[80%] rounded-2xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm md:text-[15px]">
                   <span className="inline-flex items-center gap-2 text-slate-500">
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-cyan-500" />
-                    正在搜索
+                    {takeoutLoadingLabel}
                   </span>
                 </article>
               </div>

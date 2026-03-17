@@ -1,4 +1,4 @@
-import { MOCK_FOODS } from './data/mockData';
+import { MOCK_ADDRESS, MOCK_DELIVERY, MOCK_DISCOUNT, MOCK_FOODS } from './data/mockData';
 import {
   buildTakeoutComboSummary,
   buildTakeoutOrderPrompt,
@@ -14,12 +14,17 @@ describe('takeout helpers', () => {
   it('creates an empty flow state with a custom flow id', () => {
     expect(createInitialTakeoutFlowState(42)).toEqual({
       flowId: 42,
+      requestPrompt: '帮我点外卖',
+      foods: [],
       selectedFood: null,
       selectedCombo: null,
       selectedSnackId: null,
       isFoodListVisible: false,
       isCheckoutVisible: false,
       isCallingApi: false,
+      address: MOCK_ADDRESS,
+      discount: MOCK_DISCOUNT,
+      delivery: MOCK_DELIVERY,
       paymentPassword: '',
     });
   });
@@ -52,11 +57,11 @@ describe('takeout helpers', () => {
     const paymentSummary = getTakeoutPaymentSummary({
       selectedFood: MOCK_FOODS[1],
       selectedCombo: MOCK_FOODS[1].combos[0],
-    }, 12.8);
+    }, MOCK_DISCOUNT);
 
     expect(paymentSummary.rawPrice).toBe(40);
-    expect(paymentSummary.finalPrice).toBe(27.2);
-    expect(paymentSummary.savedPrice).toBe(12.8);
+    expect(paymentSummary.finalPrice).toBe(33.6);
+    expect(paymentSummary.savedPrice).toBe(6.4);
   });
 
   it('recognizes wide card messages that need special chat bubble layout', () => {

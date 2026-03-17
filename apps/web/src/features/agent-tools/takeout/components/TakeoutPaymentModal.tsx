@@ -1,7 +1,6 @@
 import alipay_icon from '../../../../assets/alipay.png';
 import kronos_icon from '../../../../assets/kronos.png';
 import taobao_icon from '../../../../assets/taobao.png';
-import { MOCK_DISCOUNT } from '../data/mockData';
 import { formatTakeoutPrice, getTakeoutPaymentSummary } from '../helpers';
 import type { TakeoutFlowState, TakeoutPaymentInputRef } from '../types';
 
@@ -20,7 +19,7 @@ export const TakeoutPaymentModal = ({
   onClose,
   onPaymentPasswordChange,
 }: TakeoutPaymentModalProps) => {
-  const paymentSummary = getTakeoutPaymentSummary(flowState, MOCK_DISCOUNT);
+  const paymentSummary = getTakeoutPaymentSummary(flowState, flowState.discount);
 
   return (
     <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">

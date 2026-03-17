@@ -92,6 +92,38 @@ export type TakeoutOrchestrationResponse = {
 	};
 };
 
+export type TakeoutCatalogComboResponse = {
+	id: string;
+	name: string;
+	extraPrice: number;
+};
+
+export type TakeoutCatalogFoodResponse = {
+	id: string;
+	shopName: string;
+	shopScore: number;
+	distance: string;
+	productName: string;
+	productTip: string;
+	productImage: string;
+	priceTip: string;
+	name: string;
+	price: number;
+	deliveryTime: string;
+	combos: TakeoutCatalogComboResponse[];
+};
+
+export type TakeoutCatalogResponse = {
+	source: 'model' | 'fallback';
+	address: string;
+	discount: number;
+	delivery: {
+		eta: string;
+		courier: string;
+	};
+	foods: TakeoutCatalogFoodResponse[];
+};
+
 export type ImageRecognitionResponse = {
 	reply: string;
 	model: string;
@@ -219,6 +251,30 @@ export const requestTakeoutOrchestration = async (params: {
 	}
 
 	return (await response.json()) as TakeoutOrchestrationResponse;
+};
+
+export const requestTakeoutCatalog = async (params: {
+	authToken: string;
+	prompt: string;
+	address?: string;
+}): Promise<TakeoutCatalogResponse> => {
+	const response = await fetch(apiUrl('/api/takeout/catalog'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify({
+			prompt: params.prompt,
+			address: params.address,
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error('Failed to request takeout catalog');
+	}
+
+	return (await response.json()) as TakeoutCatalogResponse;
 };
 
 export const requestImageRecognition = async (params: {

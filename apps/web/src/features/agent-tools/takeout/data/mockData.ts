@@ -4,6 +4,11 @@ export type TakeoutCombo = {
   extraPrice: number;
 };
 
+export type TakeoutDelivery = {
+  eta: string;
+  courier: string;
+};
+
 export type TakeoutFood = {
   id: string;
   shopName: string;
@@ -21,7 +26,7 @@ export type TakeoutFood = {
 
 export const MOCK_ADDRESS = '上海市浦东新区张江高科技园区博云路2号';
 
-export const MOCK_DISCOUNT = 12.8;
+export const MOCK_DISCOUNT = 6.4;
 
 export const MOCK_FOODS: TakeoutFood[] = [
   {
@@ -79,7 +84,7 @@ export const MOCK_FOODS: TakeoutFood[] = [
   },
 ];
 
-export const MOCK_DELIVERY = {
+export const MOCK_DELIVERY: TakeoutDelivery = {
   eta: '预计25分钟送达',
   courier: '配送员：李师傅 139xxxx5678',
 };

@@ -1,4 +1,4 @@
-import { MOCK_DISCOUNT } from './data/mockData';
+import { MOCK_ADDRESS, MOCK_DELIVERY, MOCK_DISCOUNT } from './data/mockData';
 import type { TakeoutChatMessage, TakeoutFlowState, TakeoutSnackOption } from './types';
 
 export const TAKEOUT_SNACK_OPTIONS: TakeoutSnackOption[] = [
@@ -11,12 +11,17 @@ const TAKEOUT_TRIGGER_REGEX = /(点外卖|帮我点|订购|吃|外卖|牛肉面|
 
 export const createInitialTakeoutFlowState = (flowId = 0): TakeoutFlowState => ({
   flowId,
+  requestPrompt: '帮我点外卖',
+  foods: [],
   selectedFood: null,
   selectedCombo: null,
   selectedSnackId: null,
   isFoodListVisible: false,
   isCheckoutVisible: false,
   isCallingApi: false,
+  address: MOCK_ADDRESS,
+  discount: MOCK_DISCOUNT,
+  delivery: MOCK_DELIVERY,
   paymentPassword: '',
 });
 
@@ -63,14 +68,15 @@ export const getTakeoutPaymentSummary = (
   const selectedFoodPrice = flowState.selectedFood?.price || 32;
   const selectedComboPrice = flowState.selectedCombo?.extraPrice || 0;
   const rawPrice = selectedFoodPrice + selectedComboPrice + 6;
-  const finalPrice = Math.max(0, rawPrice - discount);
+  const finalPrice = Number(Math.max(0, rawPrice - discount).toFixed(1));
+  const savedPrice = Number(Math.max(0, rawPrice - finalPrice).toFixed(1));
 
   return {
     selectedFoodPrice,
     selectedComboPrice,
     rawPrice,
     finalPrice,
-    savedPrice: Math.max(0, rawPrice - finalPrice),
+    savedPrice,
   };
 };
 

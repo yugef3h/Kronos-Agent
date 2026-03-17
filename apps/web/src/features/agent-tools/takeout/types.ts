@@ -1,6 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import type { ChatMessage } from '../../../types/chat';
-import type { TakeoutCombo, TakeoutFood } from './data/mockData';
+import type { TakeoutCombo, TakeoutDelivery, TakeoutFood } from './data/mockData';
 
 export type TakeoutMessageType = 'protocol-card' | 'foods-card' | 'checkout-card';
 
@@ -13,12 +13,17 @@ export type TakeoutChatMessage = ChatMessage & {
 
 export type TakeoutFlowState = {
   flowId: number;
+  requestPrompt: string;
+  foods: TakeoutFood[];
   selectedFood: TakeoutFood | null;
   selectedCombo: TakeoutCombo | null;
   selectedSnackId: string | null;
   isFoodListVisible: boolean;
   isCheckoutVisible: boolean;
   isCallingApi: boolean;
+  address: string;
+  discount: number;
+  delivery: TakeoutDelivery;
   paymentPassword: string;
 };
 

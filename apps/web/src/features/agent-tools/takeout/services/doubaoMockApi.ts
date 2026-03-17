@@ -11,6 +11,8 @@ export type DoubaoMockPayload = {
   discount?: number;
 };
 
+const DEFAULT_DISCOUNT = 6.4;
+
 const getLocalMockReply = (
   instruction: DoubaoInstruction,
   payload: DoubaoMockPayload = {},
@@ -25,7 +27,7 @@ const getLocalMockReply = (
   }
 
   if (instruction === '商品选择完成') {
-    const discount = payload.discount ?? 12.8;
+    const discount = payload.discount ?? DEFAULT_DISCOUNT;
     return `好的，已为你选好商品，并使用了最大优惠，已省${discount.toFixed(1)}元。`;
   }
 

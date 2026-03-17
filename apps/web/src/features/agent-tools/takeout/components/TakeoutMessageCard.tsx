@@ -78,12 +78,13 @@ export const TakeoutMessageCard = ({
 
   if (effectiveMessageType === 'foods-card') {
     const currentFood = flowState.selectedFood;
+    const foods = flowState.foods.length > 0 ? flowState.foods : MOCK_FOODS;
 
     return (
       <div className="space-y-3">
         <div className="relative">
           <div ref={foodsScrollerRef} className="soft-scrollbar flex gap-3 overflow-x-auto pr-8">
-            {MOCK_FOODS.map((food) => {
+            {foods.map((food) => {
               const isSelected = currentFood?.id === food.id;
 
               return (
@@ -162,8 +163,10 @@ export const TakeoutMessageCard = ({
     );
   }
 
-  const paymentSummary = getTakeoutPaymentSummary(flowState, MOCK_DISCOUNT);
+  const paymentSummary = getTakeoutPaymentSummary(flowState, flowState.discount || MOCK_DISCOUNT);
   const comboSummary = buildTakeoutComboSummary(flowState);
+  const delivery = flowState.delivery || MOCK_DELIVERY;
+  const address = flowState.address || MOCK_ADDRESS;
 
   return (
     <div className="space-y-1.5">
@@ -198,11 +201,11 @@ export const TakeoutMessageCard = ({
           <div className="mt-2.5 space-y-1.5 pt-2.5 text-[12px]">
             <div className="flex items-center justify-between text-slate-500">
               <span>立即送出</span>
-              <span>{MOCK_DELIVERY.eta}</span>
+              <span>{delivery.eta}</span>
             </div>
             <div className="flex items-center justify-between text-slate-500">
               <span>配送至</span>
-              <span className="line-clamp-1 max-w-[68%] text-right">{MOCK_ADDRESS}</span>
+              <span className="line-clamp-1 max-w-[68%] text-right">{address}</span>
             </div>
             <div className="flex items-center justify-between text-slate-500">
               <span>备注</span>
@@ -213,7 +216,7 @@ export const TakeoutMessageCard = ({
           <div className="mt-2.5 pt-2.5">
             <p className="text-right text-xs text-slate-400">配送费 ¥6.0</p>
             <p className="mt-1 text-right text-[14px]">
-              <span className="mr-2 text-[#f3683d]">已优惠 ¥{formatTakeoutPrice(MOCK_DISCOUNT)}</span>
+              <span className="mr-2 text-[#f3683d]">已优惠 ¥{formatTakeoutPrice(flowState.discount || MOCK_DISCOUNT)}</span>
               <span className="font-semibold text-slate-900">小计 ¥{formatTakeoutPrice(paymentSummary.finalPrice)}</span>
             </p>
           </div>

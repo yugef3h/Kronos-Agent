@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
+import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
@@ -40,6 +41,11 @@ const takeoutOrchestrationSchema = z.object({
   prompt: z.string().min(1),
   history: z.array(z.string()).max(12).optional(),
   sessionId: z.string().min(1).optional(),
+});
+
+const takeoutCatalogSchema = z.object({
+  prompt: z.string().min(1),
+  address: z.string().min(1).optional(),
 });
 
 const imageAnalyzeSchema = z.object({
@@ -194,6 +200,22 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
       ],
     });
   }
+
+  response.json(result);
+});
+
+chatRoutes.post('/takeout/catalog', async (request: Request, response: Response) => {
+  const parsed = takeoutCatalogSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    response.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const result = await generateTakeoutCatalog({
+    prompt: parsed.data.prompt,
+    address: parsed.data.address,
+  });
 
   response.json(result);
 });

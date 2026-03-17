@@ -6,7 +6,7 @@ export type TakeoutSimulationPayload = {
 };
 
 const DEFAULT_ADDRESS = '上海市浦东新区张江高科技园区博云路2号';
-const DEFAULT_DISCOUNT = 12.8;
+const DEFAULT_DISCOUNT = 6.4;
 
 export const simulateTakeoutReply = (params: {
   instruction: TakeoutInstruction;
