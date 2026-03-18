@@ -35,7 +35,7 @@ export const handleWorkflowNodeDebugNodePost = async (
       return
     }
 
-    const runRecord = workflowRunStore.saveNodeDebugRun({
+    const runRecord = await workflowRunStore.saveNodeDebugRun({
       appId,
       request: parsedRequest.request,
       result,

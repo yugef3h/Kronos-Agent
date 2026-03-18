@@ -66,8 +66,8 @@ const createLoopGraph = (): WorkflowDraftDslGraph => {
 }
 
 describe('workflowDraftRunner loop sandbox', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
   })
 

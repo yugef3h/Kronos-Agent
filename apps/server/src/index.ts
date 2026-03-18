@@ -81,4 +81,5 @@ const PORT = env.PORT;
 app.listen(PORT, () => {
   console.warn(`kronos server running on http://localhost:${PORT}`);
   console.warn(`RAG engine mode: ${getRagEngineMode()}`);
+  console.warn(`Workflow run store: ${env.WORKFLOW_RUN_STORE}`);
 });

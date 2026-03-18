@@ -34,8 +34,8 @@ const createStartEndGraph = (): WorkflowDraftDslGraph => {
 }
 
 describe('workflowDraftRunner', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
   })
 

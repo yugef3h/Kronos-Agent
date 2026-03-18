@@ -47,7 +47,7 @@ export const invokeWorkflowNodeDebugNodePost = async (
 export const postWorkflowNodeDebugStart = async (
   body: unknown,
 ): Promise<WorkflowNodeDebugHttpResponse> => {
-  workflowRunStore.clear()
+  await workflowRunStore.clear()
   registerNodeDebugExecutor('start', executeStartNodeDebug)
   return invokeWorkflowNodeDebugNodePost(body)
 }

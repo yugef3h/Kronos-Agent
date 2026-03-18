@@ -67,8 +67,8 @@ const createIterationGraph = (): WorkflowDraftDslGraph => {
 }
 
 describe('workflowDraftRunner iteration sandbox', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
   })
 

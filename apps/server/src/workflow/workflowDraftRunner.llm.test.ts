@@ -58,8 +58,8 @@ const createStartLlmEndGraph = (): WorkflowDraftDslGraph => {
 }
 
 describe('workflowDraftRunner llm chain', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
   })
 

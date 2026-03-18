@@ -59,8 +59,8 @@ const createMockResponse = () => {
 }
 
 describe('workflowDraftRunRoutes events and cancel', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
   })
 
   it('streams workflow run events after execution', async () => {
@@ -89,7 +89,7 @@ describe('workflowDraftRunRoutes events and cancel', () => {
     expect(events.some((event) => event.type === 'workflow_finished')).toBe(true)
 
     const sse = createMockResponse()
-    handleWorkflowDraftRunEventsGet({
+    await handleWorkflowDraftRunEventsGet({
       params: { appId: 'wf_test', runId: startBody.run.runId },
     }, sse.response)
 
@@ -97,14 +97,14 @@ describe('workflowDraftRunRoutes events and cancel', () => {
     expect(sse.getChunks()).toContain('workflow_finished')
   })
 
-  it('cancels a running workflow draft run record', () => {
-    const created = workflowRunStore.create({
+  it('cancels a running workflow draft run record', async () => {
+    const created = await workflowRunStore.create({
       appId: 'wf_test',
       status: WorkflowRunStatus.Running,
     })
 
     const { response, getBody } = createMockResponse()
-    handleCancelWorkflowDraftRunPost({
+    await handleCancelWorkflowDraftRunPost({
       params: { appId: 'wf_test', runId: created.runId },
     }, response)
 

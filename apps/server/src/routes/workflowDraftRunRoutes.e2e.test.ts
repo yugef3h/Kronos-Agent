@@ -41,8 +41,8 @@ const createMockResponse = () => {
 }
 
 describe('POST /workflow/apps/:appId/draft-runs', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
   })
 
   it('runs start to llm to end chain', async () => {

@@ -77,10 +77,10 @@ export const handleStartWorkflowDraftRunPost = async (
   })
 }
 
-export const handleGetWorkflowDraftRunGet = (
+export const handleGetWorkflowDraftRunGet = async (
   request: Pick<Request, 'params'>,
   response: Response,
-): void => {
+): Promise<void> => {
   const appId = normalizeWorkflowAppId(String(request.params.appId || ''))
   const runId = normalizeWorkflowRunId(String(request.params.runId || ''))
 
@@ -94,7 +94,7 @@ export const handleGetWorkflowDraftRunGet = (
     return
   }
 
-  const record = workflowRunStore.get(runId)
+  const record = await workflowRunStore.get(runId)
   if (!record || record.appId !== appId) {
     response.status(404).json({ error: 'Workflow draft run not found' })
     return
@@ -103,10 +103,10 @@ export const handleGetWorkflowDraftRunGet = (
   response.json({ run: toWorkflowRunSummary(record) })
 }
 
-export const handleWorkflowDraftRunEventsGet = (
+export const handleWorkflowDraftRunEventsGet = async (
   request: Pick<Request, 'params'>,
   response: Response,
-): void => {
+): Promise<void> => {
   const appId = normalizeWorkflowAppId(String(request.params.appId || ''))
   const runId = normalizeWorkflowRunId(String(request.params.runId || ''))
 
@@ -120,7 +120,7 @@ export const handleWorkflowDraftRunEventsGet = (
     return
   }
 
-  const record = workflowRunStore.get(runId)
+  const record = await workflowRunStore.get(runId)
   if (!record || record.appId !== appId) {
     response.status(404).json({ error: 'Workflow draft run not found' })
     return
@@ -137,10 +137,10 @@ export const handleWorkflowDraftRunEventsGet = (
   response.end()
 }
 
-export const handleCancelWorkflowDraftRunPost = (
+export const handleCancelWorkflowDraftRunPost = async (
   request: Pick<Request, 'params'>,
   response: Response,
-): void => {
+): Promise<void> => {
   const appId = normalizeWorkflowAppId(String(request.params.appId || ''))
   const runId = normalizeWorkflowRunId(String(request.params.runId || ''))
 
@@ -154,13 +154,13 @@ export const handleCancelWorkflowDraftRunPost = (
     return
   }
 
-  const record = workflowRunStore.get(runId)
+  const record = await workflowRunStore.get(runId)
   if (!record || record.appId !== appId) {
     response.status(404).json({ error: 'Workflow draft run not found' })
     return
   }
 
-  const updated = cancelWorkflowRunRecord(runId) ?? record
+  const updated = (await cancelWorkflowRunRecord(runId)) ?? record
   response.json({ run: toWorkflowRunSummary(updated) })
 }
 
@@ -170,7 +170,7 @@ workflowDraftRunRoutes.post('/workflow/apps/:appId/draft-runs', async (request, 
   await handleStartWorkflowDraftRunPost(request, response)
 })
 
-workflowDraftRunRoutes.get('/workflow/apps/:appId/draft-runs/:runId', (request, response) => {
+workflowDraftRunRoutes.get('/workflow/apps/:appId/draft-runs/:runId', async (request, response) => {
   if (!resolveAppId(request, response)) {
     return
   }
@@ -179,13 +179,13 @@ workflowDraftRunRoutes.get('/workflow/apps/:appId/draft-runs/:runId', (request, 
     return
   }
 
-  handleGetWorkflowDraftRunGet(request, response)
+  await handleGetWorkflowDraftRunGet(request, response)
 })
 
-workflowDraftRunRoutes.get('/workflow/apps/:appId/draft-runs/:runId/events', (request, response) => {
-  handleWorkflowDraftRunEventsGet(request, response)
+workflowDraftRunRoutes.get('/workflow/apps/:appId/draft-runs/:runId/events', async (request, response) => {
+  await handleWorkflowDraftRunEventsGet(request, response)
 })
 
-workflowDraftRunRoutes.post('/workflow/apps/:appId/draft-runs/:runId/cancel', (request, response) => {
-  handleCancelWorkflowDraftRunPost(request, response)
+workflowDraftRunRoutes.post('/workflow/apps/:appId/draft-runs/:runId/cancel', async (request, response) => {
+  await handleCancelWorkflowDraftRunPost(request, response)
 })

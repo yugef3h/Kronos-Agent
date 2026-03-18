@@ -11,7 +11,7 @@ jest.mock('../rag/knowledgeFacade.js', () => ({
 }))
 
 const postWorkflowNodeDebugKnowledge = async (body: unknown) => {
-  workflowRunStore.clear()
+  await workflowRunStore.clear()
   registerNodeDebugExecutor('knowledge-retrieval', executeKnowledgeRetrievalNodeDebug)
   return invokeWorkflowNodeDebugNodePost(body)
 }

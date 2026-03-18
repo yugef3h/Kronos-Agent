@@ -15,10 +15,10 @@ export const clearWorkflowRunCancellation = (runId: string): void => {
   cancelledRunIds.delete(runId)
 }
 
-export const cancelWorkflowRunRecord = (runId: string) => {
+export const cancelWorkflowRunRecord = async (runId: string) => {
   requestWorkflowRunCancellation(runId)
 
-  const current = workflowRunStore.get(runId)
+  const current = await workflowRunStore.get(runId)
   if (!current || isTerminalWorkflowRunStatus(current.status)) {
     return current
   }

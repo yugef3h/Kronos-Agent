@@ -1,10 +1,25 @@
+import { getRedisClient } from '../infra/redisClient.js'
 import { WorkflowRunStore } from './memoryWorkflowRunStore.js'
+import { toAsyncWorkflowRunStore } from './memoryWorkflowRunStoreAsync.js'
+import { RedisWorkflowRunStore } from './redisWorkflowRunStore.js'
+import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 
-let singleton: WorkflowRunStore | undefined
+let singleton: WorkflowRunStoreBackend | undefined
 
-export const createWorkflowRunStore = (): WorkflowRunStore => new WorkflowRunStore()
+const resolveWorkflowRunStoreMode = (): 'memory' | 'redis' => {
+  const raw = (process.env.WORKFLOW_RUN_STORE ?? 'memory').trim().toLowerCase()
+  return raw === 'redis' ? 'redis' : 'memory'
+}
 
-export const getWorkflowRunStore = (): WorkflowRunStore => {
+export const createWorkflowRunStore = (): WorkflowRunStoreBackend => {
+  if (resolveWorkflowRunStoreMode() === 'redis') {
+    return new RedisWorkflowRunStore(getRedisClient())
+  }
+
+  return toAsyncWorkflowRunStore(new WorkflowRunStore())
+}
+
+export const getWorkflowRunStore = (): WorkflowRunStoreBackend => {
   if (!singleton) {
     singleton = createWorkflowRunStore()
   }

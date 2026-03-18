@@ -37,8 +37,8 @@ const createStartKnowledgeEndGraph = (): WorkflowDraftDslGraph => {
 }
 
 describe('workflowDraftRunner knowledge chain', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
     mockRunKnowledgeRetrievalQuery.mockReset()
   })

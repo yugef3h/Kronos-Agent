@@ -52,7 +52,7 @@ describe('POST /workflow/debug/node (start)', () => {
     })
 
     const runId = (body as { run: { runId: string } }).run.runId
-    expect(workflowRunStore.get(runId)?.nodeDebug?.outputs?.topic).toBe('RAG')
+    expect((await workflowRunStore.get(runId))?.nodeDebug?.outputs?.topic).toBe('RAG')
   })
 
   it('returns 400 when required start inputs are missing', async () => {

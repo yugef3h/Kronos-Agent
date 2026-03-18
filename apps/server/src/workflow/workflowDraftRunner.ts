@@ -139,13 +139,13 @@ export const runWorkflowDraftGraph = async (
 ): Promise<RunWorkflowDraftResult> => {
   const startedAt = Date.now()
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const runRecord = workflowRunStore.create({
+  const runRecord = await workflowRunStore.create({
     appId: input.appId,
     kind: 'draft',
     status: WorkflowRunStatus.Running,
   })
   clearWorkflowRunCancellation(runRecord.runId)
-  workflowRunStore.update(runRecord.runId, { startedAt, touchTtl: false })
+  await workflowRunStore.update(runRecord.runId, { startedAt, touchTtl: false })
 
   const shouldCancel = (): boolean => isWorkflowRunCancelled(runRecord.runId)
   const isTimedOut = (): boolean => Date.now() - startedAt > timeoutMs
@@ -271,12 +271,12 @@ export const runWorkflowDraftGraph = async (
 
   const finishedAt = Date.now()
 
-  const updated = workflowRunStore.update(runRecord.runId, {
+  const updated = (await workflowRunStore.update(runRecord.runId, {
     status: workflowStatus,
     startedAt,
     finishedAt,
     ...(workflowError ? { error: workflowError } : { error: null }),
-  }) ?? runRecord
+  })) ?? runRecord
 
   transitionWorkflowRun(WorkflowRunStatus.Running, workflowStatus)
   emitWorkflowFinished(runRecord.runId, workflowStatus, workflowError)

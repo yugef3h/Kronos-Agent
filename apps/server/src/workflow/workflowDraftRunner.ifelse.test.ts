@@ -60,8 +60,8 @@ jest.mock('./debug/llmNodeDebugExecutor.js', () => ({
 }))
 
 describe('workflowDraftRunner if-else branch', () => {
-  beforeEach(() => {
-    workflowRunStore.clear()
+  beforeEach(async () => {
+    await workflowRunStore.clear()
     registerBuiltInNodeExecutors()
   })
 
