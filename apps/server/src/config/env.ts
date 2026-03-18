@@ -38,6 +38,18 @@ const envSchema = z.object({
   ATTENTION_PY_TIMEOUT_MS: z.coerce.number().int().positive().default(1200),
   /** `self`（默认）| `langchain` — 大小写不敏感 */
   RAG_ENGINE_MODE: z.string().optional(),
+  /** `memory`（默认，本地）| `redis` — 多实例 Workflow Run */
+  WORKFLOW_RUN_STORE: z.enum(['memory', 'redis']).default('memory'),
+  /** `WORKFLOW_RUN_STORE=redis` 时必填 */
+  REDIS_URL: z.string().url().optional(),
+}).superRefine((value, ctx) => {
+  if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL is required when WORKFLOW_RUN_STORE=redis',
+    });
+  }
 });
 
 export const env = envSchema.parse(process.env);
