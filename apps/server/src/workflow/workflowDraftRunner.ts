@@ -87,8 +87,8 @@ const appendEmbeddedNodeRuns = (
   }
 }
 
-const emitNodeStarted = (runId: string, nodeId: string, iterationIndex?: number): void => {
-  appendWorkflowRunEvent({
+const emitNodeStarted = async (runId: string, nodeId: string, iterationIndex?: number): Promise<void> => {
+  await appendWorkflowRunEvent({
     type: 'node_started',
     runId,
     timestamp: Date.now(),
@@ -98,11 +98,11 @@ const emitNodeStarted = (runId: string, nodeId: string, iterationIndex?: number)
   })
 }
 
-const emitNodeFinished = (
+const emitNodeFinished = async (
   runId: string,
   record: WorkflowDraftNodeRunRecord,
-): void => {
-  appendWorkflowRunEvent({
+): Promise<void> => {
+  await appendWorkflowRunEvent({
     type: 'node_finished',
     runId,
     timestamp: Date.now(),
@@ -113,12 +113,12 @@ const emitNodeFinished = (
   })
 }
 
-const emitWorkflowFinished = (
+const emitWorkflowFinished = async (
   runId: string,
   status: WorkflowRunStatus,
   error?: RunError,
-): void => {
-  appendWorkflowRunEvent({
+): Promise<void> => {
+  await appendWorkflowRunEvent({
     type: 'workflow_finished',
     runId,
     timestamp: Date.now(),
@@ -202,7 +202,7 @@ export const runWorkflowDraftGraph = async (
       continue
     }
 
-    emitNodeStarted(runRecord.runId, nodeId)
+    await emitNodeStarted(runRecord.runId, nodeId)
 
     const dslNode = input.graph.nodeById.get(nodeId)
     const payload = toWorkflowNodePayload(graphNode, dslNode, input.inputs)
@@ -233,7 +233,7 @@ export const runWorkflowDraftGraph = async (
 
     const nodeRecord = toWorkflowDraftNodeRunRecord(graphNode.type, nodeResult)
     nodeRuns.push(nodeRecord)
-    emitNodeFinished(runRecord.runId, nodeRecord)
+    await emitNodeFinished(runRecord.runId, nodeRecord)
     appendEmbeddedNodeRuns(nodeRuns, nodeResult.outputs)
 
     if (nodeResult.status === NodeRunStatus.Failed || nodeResult.status === NodeRunStatus.Exception) {
@@ -279,7 +279,7 @@ export const runWorkflowDraftGraph = async (
   })) ?? runRecord
 
   transitionWorkflowRun(WorkflowRunStatus.Running, workflowStatus)
-  emitWorkflowFinished(runRecord.runId, workflowStatus, workflowError)
+  await emitWorkflowFinished(runRecord.runId, workflowStatus, workflowError)
   clearWorkflowRunCancellation(runRecord.runId)
 
   return {

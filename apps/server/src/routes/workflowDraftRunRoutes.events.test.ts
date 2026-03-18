@@ -85,7 +85,7 @@ describe('workflowDraftRunRoutes events and cancel', () => {
     }, start.response)
 
     const startBody = start.getBody() as { run: { runId: string } }
-    const events = listWorkflowRunEvents(startBody.run.runId)
+    const events = await listWorkflowRunEvents(startBody.run.runId)
     expect(events.some((event) => event.type === 'workflow_finished')).toBe(true)
 
     const sse = createMockResponse()

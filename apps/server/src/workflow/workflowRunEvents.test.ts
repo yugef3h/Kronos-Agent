@@ -7,26 +7,26 @@ import {
 } from './workflowRunEvents.js'
 
 describe('workflowRunEvents', () => {
-  beforeEach(() => {
-    clearWorkflowRunEvents('run_test')
+  beforeEach(async () => {
+    await clearWorkflowRunEvents('run_test')
   })
 
-  it('stores and formats sse workflow events', () => {
-    appendWorkflowRunEvent({
+  it('stores and formats sse workflow events', async () => {
+    await appendWorkflowRunEvent({
       type: 'node_started',
       runId: 'run_test',
       timestamp: 1,
       nodeId: 'llm-1',
       status: NodeRunStatus.Running,
     })
-    appendWorkflowRunEvent({
+    await appendWorkflowRunEvent({
       type: 'workflow_finished',
       runId: 'run_test',
       timestamp: 2,
       status: WorkflowRunStatus.Succeeded,
     })
 
-    const events = listWorkflowRunEvents('run_test')
+    const events = await listWorkflowRunEvents('run_test')
     expect(events).toHaveLength(2)
     expect(formatWorkflowRunEventSse(events[0]!)).toContain('"node_started"')
   })

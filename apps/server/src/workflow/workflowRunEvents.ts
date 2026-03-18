@@ -1,34 +1,22 @@
-import type { NodeRunStatus, RunError, WorkflowRunStatus } from './types.js'
+export type {
+  WorkflowRunEvent,
+  WorkflowRunEventType,
+} from './workflowRunEventTypes.js'
+export { formatWorkflowRunEventSse } from './workflowRunEventTypes.js'
+export type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
+export { createWorkflowRunEventsStore, getWorkflowRunEventsStore } from './createWorkflowRunEventsStore.js'
+import { getWorkflowRunEventsStore } from './createWorkflowRunEventsStore.js'
+import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
 
-export type WorkflowRunEventType =
-  | 'node_started'
-  | 'node_finished'
-  | 'workflow_finished'
+const store = () => getWorkflowRunEventsStore()
 
-export type WorkflowRunEvent = {
-  type: WorkflowRunEventType
-  runId: string
-  timestamp: number
-  nodeId?: string
-  status?: NodeRunStatus | WorkflowRunStatus
-  iterationIndex?: number
-  error?: RunError
+export const appendWorkflowRunEvent = async (event: WorkflowRunEvent): Promise<void> => {
+  await store().append(event)
 }
 
-const eventsByRunId = new Map<string, WorkflowRunEvent[]>()
+export const listWorkflowRunEvents = async (runId: string): Promise<WorkflowRunEvent[]> =>
+  store().list(runId)
 
-export const appendWorkflowRunEvent = (event: WorkflowRunEvent): void => {
-  const events = eventsByRunId.get(event.runId) ?? []
-  events.push(event)
-  eventsByRunId.set(event.runId, events)
+export const clearWorkflowRunEvents = async (runId: string): Promise<void> => {
+  await store().clear(runId)
 }
-
-export const listWorkflowRunEvents = (runId: string): WorkflowRunEvent[] =>
-  [...(eventsByRunId.get(runId) ?? [])]
-
-export const clearWorkflowRunEvents = (runId: string): void => {
-  eventsByRunId.delete(runId)
-}
-
-export const formatWorkflowRunEventSse = (event: WorkflowRunEvent): string =>
-  `data: ${JSON.stringify(event)}\n\n`

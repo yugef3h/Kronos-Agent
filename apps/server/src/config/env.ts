@@ -42,12 +42,22 @@ const envSchema = z.object({
   WORKFLOW_RUN_STORE: z.enum(['memory', 'redis']).default('memory'),
   /** `WORKFLOW_RUN_STORE=redis` 时必填 */
   REDIS_URL: z.string().url().optional(),
+  /** `memory`（默认）| `redis` — 多实例 Workflow SSE 事件 */
+  WORKFLOW_RUN_EVENTS_STORE: z.enum(['memory', 'redis']).default('memory'),
 }).superRefine((value, ctx) => {
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['REDIS_URL'],
       message: 'REDIS_URL is required when WORKFLOW_RUN_STORE=redis',
+    });
+  }
+
+  if (value.WORKFLOW_RUN_EVENTS_STORE === 'redis' && !value.REDIS_URL?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL is required when WORKFLOW_RUN_EVENTS_STORE=redis',
     });
   }
 });

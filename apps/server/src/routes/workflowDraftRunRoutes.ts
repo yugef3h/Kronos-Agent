@@ -130,7 +130,7 @@ export const handleWorkflowDraftRunEventsGet = async (
   response.setHeader('Cache-Control', 'no-cache')
   response.setHeader('Connection', 'keep-alive')
 
-  for (const event of listWorkflowRunEvents(runId)) {
+  for (const event of await listWorkflowRunEvents(runId)) {
     response.write(formatWorkflowRunEventSse(event))
   }
 
