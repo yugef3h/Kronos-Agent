@@ -95,7 +95,7 @@ export const WorkflowMockPublishButton = ({
           : 'bg-blue-600 hover:bg-sky-700'
       } ${className}`}
     >
-      {mockPublished ? '已发布（本地）' : '发布'}
+      {mockPublished ? '已发布' : '发布'}
     </button>
   )
 }
@@ -103,7 +103,7 @@ export const WorkflowMockPublishButton = ({
 export const WorkflowPublishedCheckBadge = () => (
   <span
     className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100"
-    title="已发布（本地）"
+    title="已发布"
     role="img"
     aria-label="已发布"
   >
