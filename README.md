@@ -6,44 +6,6 @@ Playground、知识库、Workflow 编辑器共用 JWT 与模型接入；**「记
 
 ---
 
-## 记忆与状态分层（本项目摘要）
-
-类似 IDE / Agent 产品里的多层上下文，本仓库**没有单一「记忆服务」**，而是按 **寿命 × 载体** 分工。下表按「从短到长」排列，便于对照代码。
-
-| 寿命 | 记什么 | 载体 / 模块 | 典型用途 |
-| --- | --- | --- | --- |
-| **请求内** | 当次 SSE 流、timeline 事件、编排中的临时变量 | `playgroundStore` 流式字段；`workflowRunStore` 单次 run；React Flow `nodes[].data` | 流式 UI、画布运行高亮、`_lastRun` |
-| **页签 / 进程** | 当前对话列表、未落库的输入、画布未保存的交互态 | Zustand（`playgroundStore`、`workflowDraftStore`）；React Flow 内存图 | 刷新前编辑体验；`backupDraft` 防误关 |
-| **浏览器 session** | 当前 Playground 会话 id、首页选中的假发布 Chatbot | `sessionStorage`：`kronos_session_id`、`kronos_playground_published_chatbot_app_id` | 同页签刷新续聊；关页签后新会话 |
-| **浏览器持久** | 自建 Workflow DSL、缩略图、示例假发布、知识库列表刷新戳 | `localStorage`（见下表） | 离线草稿、列表预览、只读示例的发布标记 |
-| **服务端热数据** | 对话全文、滚动摘要、运行记录索引 | 内存 `Map`：`sessionStore`、`workflowRunStore`（run 默认 TTL 30min） | 多轮对话与调试 API |
-| **服务端冷数据** | 会话落盘、知识 Chunk、编排示例、缩略图文件 | `apps/server/data/` 下 `sessions/`、`knowledge-datasets/`、`workflow-examples/`、`workflow-draft-previews/` 等 | 重启恢复、RAG 检索、内置示例 |
-
-```mermaid
-flowchart LR
-  subgraph short["短：页内 / 请求"]
-    UI[Zustand + React Flow]
-    RUN[workflowRunStore]
-  end
-
-  subgraph browser["中：浏览器"]
-    SS[sessionStorage]
-    LS[localStorage]
-  end
-
-  subgraph server["长：服务端"]
-    HOT[sessionStore 内存]
-    COLD[data/ 磁盘]
-    RAG[知识库 Chunk]
-  end
-
-  UI --> HOT
-  SS --> HOT
-  LS --> UI
-  HOT --> COLD
-  RAG --> RUN
-  LS --> RUN
-```
 
 ### 对话上下文如何拼装（Playground）
 
@@ -73,7 +35,7 @@ flowchart LR
 
 ---
 
-## Workflow 编排与调试（近期）
+## Workflow 编排与调试
 
 路由：`/workflow` 列表 → `/workflow/draft?appId=` 画布 → `/workflow/config?appId=` Chatbot 配置。
 
@@ -107,7 +69,7 @@ flowchart LR
 
 ## 知识库与 RAG
 
-面向产品的能力如下；**自研检索与 LangChain 检索视为同一产品能力**：由服务端 `RAG_ENGINE_MODE` 切换实现路径，**同一套 REST 契约与工作流配置页**，前端 `/rag` 与编排侧无分支 UI。实现细节与和 Dify 能力逐项对照见 [`docs/RAG_Prod_capability.md`](docs/RAG_Prod_capability.md)。
+面向产品的能力如下；**自研检索与 LangChain 检索视为同一产品能力**：由服务端 `RAG_ENGINE_MODE` 切换实现路径，**同一套 REST 契约与工作流配置页**，前端 `/rag` 与编排侧无分支 UI。
 
 | 能力 | 说明 |
 | --- | --- |
@@ -118,7 +80,7 @@ flowchart LR
 | **健康度与快照** | `GET …/health`、数据集快照 API。 |
 | **对比与评测** | compare / evaluate API（前端 `features/rag/api`）。 |
 
-### 产品界面（`static/`）
+### 产品界面
 
 | 场景 | 截图 |
 | --- | --- |
@@ -136,8 +98,6 @@ flowchart LR
 
 ![Playground：选择 RAG 应用](./static/截屏2026-03-18%2023.57.39.png)
 
-![节点调试：上次运行输入输出](./static/截屏2026-03-18%2001.27.13.png)
-
 ---
 
 ## Playground 对话
@@ -147,12 +107,6 @@ flowchart LR
 - 路由与优先级见 [`PLAYGROUND_QUERY_ROUTING.md`](apps/web/src/features/chat-stream/components/PLAYGROUND_QUERY_ROUTING.md)。
 
 ---
-
-## 技术栈
-
-- 前端: React 18 + TypeScript + Vite 5 + TailwindCSS + Zustand + React Query + React Flow（工作流画布）
-- 后端: Express + TypeScript + SSE；可选 Python 副本（`apps/server_py`）
-- 共享域层: `@kronos/core`
 
 ## 目录结构
 
@@ -164,8 +118,7 @@ apps/
 packages/
   core/               # 共享领域层
 
-docs/                 # RAG 能力对照、workflow 交接说明等
-Draft.md              # 项目策略与面试叙事草稿
+
 DEBRIED_ISSUES.md     # 问题复盘记录
 ```
 
@@ -178,15 +131,6 @@ pnpm dev
 
 复制 `apps/.env.example` 为 `apps/.env`，填写 JWT 与豆包模型参数。
 
-| 服务 | 地址 |
-| --- | --- |
-| 前端 | http://localhost:5173 |
-| 健康检查 | http://localhost:3001/healthz |
-
-常用命令：`pnpm dev:web` · `pnpm dev:server` · `pnpm build` · `pnpm lint` · `pnpm test`
-
-根目录增量提交：`pnpm cd "feat|fix|docs|test: 一句话"`（内含 lint + 带日期的 commit）。
-
 ## MVP 对应能力
 
 | 域 | 能力 |
@@ -195,7 +139,6 @@ pnpm dev
 | **知识库** | 数据集 CRUD、检索、工作流知识节点、Chatbot RAG 拼接 |
 | **编排** | Workflow 列表/草稿/Chatbot 配置、DSL 自动保存、缩略图、内置示例、假发布 |
 | **运行** | 单节点调试 API、整图 draft-run SSE、画布运行态与「上次运行」 |
-| **原理向** | Sampling Inspector、Attention Heatmap 占位、Token/Embedding 分析 |
 
 ## 安全与模型接入
 
@@ -203,23 +146,11 @@ pnpm dev
 - LangChain.js 经 OpenAI 兼容接口接豆包；未配置时 mock stream 便于 UI 调试。
 - Token/Embedding：`POST /api/token-embedding/analyze`；识图：`POST /api/image/analyze`。
 
-## 下一步规划
-
-1. Workflow：ReAct / 工具调用轨迹在画布或 Panel 的可视化（接 LangGraph / SSE 已有链路）。
-2. `packages/core` 统一前后端事件协议，便于同构调试。
-3. RAG：检索对比 / 批量评测的独立产品 UI（API 已有）。
-4. 真发布与云端同步（当前假发布仅本地）；示例 DSL 与运行记录的可选持久化策略。
-
 ## Apache 2.0 合规声明模板（已启用）
 
 本项目采用 Apache License 2.0：
 
 - `LICENSE` · `NOTICE` · 源码文件 `SPDX-License-Identifier: Apache-2.0`
-- 新增依赖后更新 `THIRD_PARTY_NOTICES.md`；引入外部代码保留原版权与许可证。
-
-### server api LLM 接入说明
-
-Responses API 更适配复杂业务：内置大文件、工具调用、对话状态与多步推理，降低长对话与 Agent 场景的接入成本（相对仅 Chat Completions 需自建编排时）。
 
 ### 维护建议
 

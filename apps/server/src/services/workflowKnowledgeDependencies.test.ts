@@ -25,6 +25,6 @@ describe('workflowKnowledgeDependencies', () => {
   it('finds example apps referencing dataset', async () => {
     const usages = await findWorkflowExampleAppsUsingDataset(DATASET_ID);
     expect(usages.length).toBe(2);
-    expect(usages.map((u) => u.appName).sort()).toEqual(['RAG 聊天机器人', '客服自动化流程']);
+    expect(usages.map((u) => u.appName).sort()).toEqual(['AI 应用智能客服助手', 'RAG 聊天机器人']);
   });
 });
