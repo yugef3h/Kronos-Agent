@@ -1,5 +1,5 @@
 import { NodeRunStatus, WorkflowRunStatus } from './types.js'
-import { WorkflowRunStore } from './workflowRunStore.js'
+import { WorkflowRunStore } from './memoryWorkflowRunStore.js'
 
 describe('WorkflowRunStore', () => {
   it('creates and reads a run record', () => {
