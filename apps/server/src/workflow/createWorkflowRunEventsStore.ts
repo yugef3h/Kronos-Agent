@@ -1,4 +1,6 @@
+import { getRedisClient } from '../infra/redisClient.js'
 import { MemoryWorkflowRunEvents } from './memoryWorkflowRunEvents.js'
+import { RedisWorkflowRunEvents } from './redisWorkflowRunEvents.js'
 import type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
 
 let singleton: WorkflowRunEventsBackend | undefined
@@ -10,9 +12,7 @@ const resolveWorkflowRunEventsStoreMode = (): 'memory' | 'redis' => {
 
 export const createWorkflowRunEventsStore = (): WorkflowRunEventsBackend => {
   if (resolveWorkflowRunEventsStoreMode() === 'redis') {
-    throw new Error(
-      'WORKFLOW_RUN_EVENTS_STORE=redis is not wired yet. Use memory for local dev.',
-    )
+    return new RedisWorkflowRunEvents(getRedisClient())
   }
 
   return new MemoryWorkflowRunEvents()
