@@ -22,7 +22,6 @@ import {
   type TakeoutChatMessage,
 } from '../features/agent-tools/takeout';
 import {
-  buildFileAnalyzeUserMessage,
   FILE_INPUT_ACCEPT,
   prepareFileForAnalyze,
   type FileSelectionResult,
@@ -37,6 +36,7 @@ const MAX_CONTEXT_TOKENS = 8192;
 const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
 const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
 const IMAGE_DEFAULT_PROMPT = '解释图片';
+const FILE_DEFAULT_PROMPT = '请解读这个文件';
 
 type TokenizerModule = {
   encode: (text: string) => Iterable<number>;
@@ -90,6 +90,15 @@ type LocalChatMessage = TakeoutChatMessage & {
   imageName?: string;
   fileName?: string;
   fileExtension?: string;
+  fileSize?: number;
+};
+
+const formatUploadSize = (size: number): string => {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return `${(size / 1024).toFixed(1)} KB`;
 };
 
 const markLastAssistantMessageIncomplete = (
@@ -132,7 +141,6 @@ export const ChatStreamPanel = () => {
   const promptQuickActions: PromptQuickAction[] = [
     { key: 'image', label: '图像' },
     { key: 'file', label: '文件' },
-    // { key: 'translate', label: '翻译' },
     { key: 'takeout', label: '外卖' },
   ];
   const {
@@ -596,18 +604,21 @@ export const ChatStreamPanel = () => {
         return;
       }
 
-      const filePrompt = userPrompt || '请解读这个文件';
+      const filePrompt = userPrompt || FILE_DEFAULT_PROMPT;
 
       setMessages((prev) => [
         ...prev,
         {
           role: 'user',
-          content: buildFileAnalyzeUserMessage({
-            fileName: pendingFile.fileName,
-            prompt: filePrompt,
-          }),
+          content: '',
           fileName: pendingFile.fileName,
           fileExtension: pendingFile.extension,
+          fileSize: pendingFile.size,
+          isIncomplete: false,
+        },
+        {
+          role: 'user',
+          content: filePrompt,
           isIncomplete: false,
         },
         { role: 'assistant', content: '', isIncomplete: false },
@@ -871,6 +882,21 @@ export const ChatStreamPanel = () => {
     });
   };
 
+  const handleExplainFileClick = () => {
+    if (!pendingFile) {
+      return;
+    }
+
+    if (prompt.trim().length > 0) {
+      return;
+    }
+
+    setPrompt(FILE_DEFAULT_PROMPT);
+    requestAnimationFrame(() => {
+      void sendPrompt();
+    });
+  };
+
   const handlePromptKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) {
       return;
@@ -990,6 +1016,7 @@ export const ChatStreamPanel = () => {
 
     try {
       const preparedImage = await prepareImageForAnalyze(selectedFile);
+      setPendingFile(null);
       setPendingImage(preparedImage);
       requestAnimationFrame(() => {
         promptTextareaRef.current?.focus();
@@ -1090,7 +1117,7 @@ export const ChatStreamPanel = () => {
                 <article
                   className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${
                     message.role === 'user'
-                      ? message.imagePreviewUrl
+                      ? message.imagePreviewUrl || (message.fileName && message.fileExtension)
                         ? 'border-transparent bg-transparent px-0 py-0 text-ink shadow-none'
                         : 'border-cyan-200/90 bg-cyan-50/95 px-3.5 py-2.5 text-ink'
                       : isTakeoutWideCardMessage(message)
@@ -1115,6 +1142,24 @@ export const ChatStreamPanel = () => {
                       alt={message.imageName || '用户上传图片'}
                       className="max-h-64 w-auto max-w-full rounded-xl object-contain"
                     />
+                  ) : message.fileName && message.fileExtension ? (
+                    <div className="w-[18rem] max-w-full rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.4)]">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 shadow-inner shadow-cyan-200/70">
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                            <path d="M14 3v5h5" />
+                          </svg>
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">{message.fileName}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                            {message.fileExtension}
+                            {typeof message.fileSize === 'number' ? ` | ${formatUploadSize(message.fileSize)}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   ) : !message.content && message.role === 'assistant' && !message.isIncomplete ? (
                     <span className="inline-flex items-center gap-1 text-slate-500">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
@@ -1173,19 +1218,23 @@ export const ChatStreamPanel = () => {
             />
 
             {pendingFile && (
-              <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-100 text-cyan-700">
-                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <div className="mb-2 rounded-lg pt-1 text-xs text-cyan-800">
+                <div className="group relative inline-block max-w-full">
+                  <div className="w-[18rem] max-w-full rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.4)]">
+                    <div className="flex items-start gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 shadow-inner shadow-cyan-200/70">
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
                           <path d="M14 3v5h5" />
                         </svg>
                       </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-800">{pendingFile.fileName}</p>
-                        <p className="text-[11px] text-slate-500">{pendingFile.extension.toUpperCase()} | {(pendingFile.size / 1024).toFixed(1)} KB</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-slate-800">{pendingFile.fileName}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-slate-500">
+                          {pendingFile.extension}
+                          {' | '}
+                          {formatUploadSize(pendingFile.size)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1193,12 +1242,22 @@ export const ChatStreamPanel = () => {
                     type="button"
                     onClick={() => setPendingFile(null)}
                     aria-label="移除文件"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-slate-700"
+                    className="absolute right-[-8px] top-[-8px] inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/90 text-white opacity-0 shadow-sm transition hover:bg-black focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                       <path d="M5 5l10 10" />
                       <path d="M15 5L5 15" />
                     </svg>
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExplainFileClick}
+                    disabled={isStreaming || isOrchestrating || isAnalyzingImage || prompt.trim().length > 0}
+                    className="rounded-[6px] bg-[#f4f5f5] px-3 py-1 text-xs text-black transition hover:bg-[#e0e0e0] disabled:cursor-not-allowed"
+                  >
+                    {'解读文件 ->'}
                   </button>
                 </div>
               </div>
@@ -1258,7 +1317,7 @@ export const ChatStreamPanel = () => {
                     key={action.key}
                     type="button"
                     onClick={() => handleQuickActionClick(action.key)}
-                    title={action.key === 'takeout' ? '打开外卖模拟流程' : action.key === 'image' ? '上传图片进行识别' : `${action.label}功能即将上线`}
+                    title={action.key === 'takeout' ? '打开外卖模拟流程' : action.key === 'image' ? '上传图片进行识别' : action.key === 'file' ? '上传文件进行解读' : `${action.label}功能即将上线`}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition ${
                         'border-slate-200 bg-slate-50 text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
                     }`}
