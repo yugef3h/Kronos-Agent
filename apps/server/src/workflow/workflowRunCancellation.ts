@@ -1,22 +1,23 @@
 import { WorkflowRunStatus } from './types.js'
 import { workflowRunStore } from './workflowRunStore.js'
 import { isTerminalWorkflowRunStatus } from './types.js'
+import { getWorkflowRunCancellationStore } from './createWorkflowRunCancellationStore.js'
 
-const cancelledRunIds = new Set<string>()
+const store = () => getWorkflowRunCancellationStore()
 
-export const requestWorkflowRunCancellation = (runId: string): void => {
-  cancelledRunIds.add(runId)
+export const requestWorkflowRunCancellation = async (runId: string): Promise<void> => {
+  await store().markCancelled(runId)
 }
 
-export const isWorkflowRunCancelled = (runId: string): boolean =>
-  cancelledRunIds.has(runId)
+export const isWorkflowRunCancelled = async (runId: string): Promise<boolean> =>
+  store().isCancelled(runId)
 
-export const clearWorkflowRunCancellation = (runId: string): void => {
-  cancelledRunIds.delete(runId)
+export const clearWorkflowRunCancellation = async (runId: string): Promise<void> => {
+  await store().clear(runId)
 }
 
 export const cancelWorkflowRunRecord = async (runId: string) => {
-  requestWorkflowRunCancellation(runId)
+  await requestWorkflowRunCancellation(runId)
 
   const current = await workflowRunStore.get(runId)
   if (!current || isTerminalWorkflowRunStatus(current.status)) {
