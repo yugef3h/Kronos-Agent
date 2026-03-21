@@ -3,8 +3,10 @@ import type { Node } from 'reactflow'
 import type { WorkflowDSL } from '../../app/workflowAppStore'
 import {
   cancelWorkflowDraftRun,
+  isDeferredWorkflowDraftRun,
   startWorkflowDraftRun,
   subscribeWorkflowDraftRunEvents,
+  waitForWorkflowDraftRunCompletion,
   type WorkflowRunEvent,
 } from '../../app/workflowRunApi'
 import type { CanvasNodeData } from '../types/canvas'
@@ -132,6 +134,23 @@ export const useWorkflowDraftRun = ({
       activeRunIdRef.current = run.runId
       setRunSummary(run)
 
+      if (isDeferredWorkflowDraftRun(run, nodeRuns)) {
+        const finishedRun = await waitForWorkflowDraftRunCompletion({
+          appId: trimmedAppId,
+          runId: run.runId,
+          applyEvent,
+          onRunUpdate: setRunSummary,
+          signal: abortController.signal,
+        })
+
+        if (abortController.signal.aborted) {
+          return null
+        }
+
+        setRunSummary(finishedRun)
+        return { run: finishedRun, nodeRuns: [] }
+      }
+
       await replayWorkflowRunEvents(trimmedAppId, run.runId, applyEvent)
 
       if (abortController.signal.aborted) {
@@ -194,6 +213,8 @@ export const useWorkflowDraftRun = ({
 
   const isDraftRunActive = isRunning
     || runSummary?.status === WorkflowRunStatus.Running
+    || runSummary?.status === WorkflowRunStatus.Queued
+    || runSummary?.status === WorkflowRunStatus.Waiting
 
   return {
     runSummary,

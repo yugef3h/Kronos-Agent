@@ -2,12 +2,18 @@ import { fetchEventSource } from '@microsoft/fetch-event-source'
 import { apiUrl } from '../../../lib/api'
 import { buildWorkflowAuthHeaders, ensureWorkflowAuthToken } from './workflowAuth'
 import type { WorkflowDSL } from './workflowAppStore'
-import type {
-  NodeRunStatus,
-  RunError,
-  WorkflowRunStatus,
-  WorkflowRunSummary,
+import {
+  isTerminalWorkflowRunStatus,
+  type NodeRunStatus,
+  type RunError,
+  type WorkflowRunStatus,
+  type WorkflowRunSummary,
 } from '../editor/types/run'
+import {
+  WORKFLOW_DRAFT_RUN_MAX_WAIT_MS,
+  WORKFLOW_DRAFT_RUN_POLL_INTERVAL_MS,
+  sleep,
+} from './workflowDraftRunDeferred'
 
 export type WorkflowRunEventType =
   | 'node_started'
@@ -245,4 +251,76 @@ export const subscribeWorkflowDraftRunEvents = (
   return close
 }
 
+export type WaitForWorkflowDraftRunCompletionOptions = {
+  appId: string
+  runId: string
+  applyEvent?: (event: WorkflowRunEvent) => void
+  onRunUpdate?: (run: WorkflowRunSummary) => void
+  signal?: AbortSignal
+  pollIntervalMs?: number
+  maxWaitMs?: number
+}
+
+/** 队列/异步 run：SSE 推送节点事件，GET 轮询直至终态。 */
+export const waitForWorkflowDraftRunCompletion = async (
+  options: WaitForWorkflowDraftRunCompletionOptions,
+): Promise<WorkflowRunSummary> => {
+  const pollIntervalMs = options.pollIntervalMs ?? WORKFLOW_DRAFT_RUN_POLL_INTERVAL_MS
+  const maxWaitMs = options.maxWaitMs ?? WORKFLOW_DRAFT_RUN_MAX_WAIT_MS
+  const startedAt = Date.now()
+
+  let streamEnded = false
+  const unsubscribe = subscribeWorkflowDraftRunEvents(options.appId, options.runId, {
+    onEvent: (event) => {
+      options.applyEvent?.(event)
+      if (event.type === 'workflow_finished') {
+        streamEnded = true
+      }
+    },
+    onError: () => {
+      streamEnded = true
+    },
+  })
+
+  try {
+    let latestRun: WorkflowRunSummary | null = null
+
+    while (!options.signal?.aborted) {
+      if (Date.now() - startedAt > maxWaitMs) {
+        throw new WorkflowRunApiError('测试运行等待超时', 0)
+      }
+
+      const { run } = await getWorkflowDraftRun(options.appId, options.runId)
+      latestRun = run
+      options.onRunUpdate?.(run)
+
+      if (isTerminalWorkflowRunStatus(run.status)) {
+        return run
+      }
+
+      if (streamEnded) {
+        const { run: refreshed } = await getWorkflowDraftRun(options.appId, options.runId)
+        latestRun = refreshed
+        options.onRunUpdate?.(refreshed)
+        if (isTerminalWorkflowRunStatus(refreshed.status)) {
+          return refreshed
+        }
+      }
+
+      await sleep(pollIntervalMs, options.signal)
+    }
+
+    if (latestRun) {
+      return latestRun
+    }
+
+    throw options.signal?.reason instanceof Error
+      ? options.signal.reason
+      : new DOMException('Aborted', 'AbortError')
+  } finally {
+    unsubscribe()
+  }
+}
+
+export { isDeferredWorkflowDraftRun } from './workflowDraftRunDeferred'
 export type { WorkflowRunStatus }
