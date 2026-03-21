@@ -7,6 +7,7 @@ import {
   type WorkflowRunRecord,
 } from './types.js'
 import { nodeRunStatusToWorkflowRunStatus } from './workflowRunSummary.js'
+import { buildUpdatedWorkflowRunRecord } from './workflowRunRecordPatch.js'
 
 export const DEFAULT_WORKFLOW_RUN_TTL_MS = 30 * 60 * 1000
 
@@ -59,23 +60,7 @@ export class WorkflowRunStore {
       return undefined
     }
 
-    const now = Date.now()
-    const next: WorkflowRunRecord = {
-      ...current,
-      status: patch.status ?? current.status,
-      startedAt: patch.startedAt ?? current.startedAt,
-      finishedAt: patch.finishedAt ?? current.finishedAt,
-      updatedAt: now,
-      expiresAt: patch.touchTtl === false
-        ? current.expiresAt
-        : now + (patch.ttlMs ?? DEFAULT_WORKFLOW_RUN_TTL_MS),
-    }
-
-    if (patch.error === null) {
-      delete next.error
-    } else if (patch.error !== undefined) {
-      next.error = patch.error
-    }
+    const next = buildUpdatedWorkflowRunRecord(current, patch)
 
     this.runs.set(runId, next)
     return { ...next }

@@ -9,6 +9,7 @@ import {
 } from './types.js'
 import { nodeRunStatusToWorkflowRunStatus } from './workflowRunSummary.js'
 import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
+import { buildUpdatedWorkflowRunRecord } from './workflowRunRecordPatch.js'
 import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 
 const RUN_KEY_PREFIX = 'kronos:wf:run:'
@@ -78,23 +79,7 @@ export class RedisWorkflowRunStore implements WorkflowRunStoreBackend {
       return undefined
     }
 
-    const now = Date.now()
-    const next: WorkflowRunRecord = {
-      ...current,
-      status: patch.status ?? current.status,
-      startedAt: patch.startedAt ?? current.startedAt,
-      finishedAt: patch.finishedAt ?? current.finishedAt,
-      updatedAt: now,
-      expiresAt: patch.touchTtl === false
-        ? current.expiresAt
-        : now + (patch.ttlMs ?? DEFAULT_WORKFLOW_RUN_TTL_MS),
-    }
-
-    if (patch.error === null) {
-      delete next.error
-    } else if (patch.error !== undefined) {
-      next.error = patch.error
-    }
+    const next = buildUpdatedWorkflowRunRecord(current, patch)
 
     await this.writeRecord(next)
     return { ...next }
