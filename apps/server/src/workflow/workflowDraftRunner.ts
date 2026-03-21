@@ -16,6 +16,11 @@ import { extractWorkflowDraftDslGraph } from './workflowDsl.js'
 import { appendWorkflowRunEvent } from './workflowRunEvents.js'
 import { isWorkflowRunCancelled, clearWorkflowRunCancellation } from './workflowRunCancellation.js'
 import {
+  enqueueWorkflowDraftRun,
+  isWorkflowQueueEnabled,
+} from './workflowDraftQueue.js'
+import type { WorkflowDraftQueueJobData } from './workflowDraftQueueTypes.js'
+import {
   toWorkflowDraftNodeRunRecord,
   type WorkflowDraftNodeRunRecord,
 } from './nodeRunRecord.js'
@@ -135,17 +140,34 @@ export const runWorkflowDraftGraph = async (
     inputs?: Record<string, unknown>
     maxSteps?: number
     timeoutMs?: number
+    runId?: string
   },
 ): Promise<RunWorkflowDraftResult> => {
   const startedAt = Date.now()
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const runRecord = await workflowRunStore.create({
-    appId: input.appId,
-    kind: 'draft',
-    status: WorkflowRunStatus.Running,
-  })
+
+  let runRecord
+  if (input.runId) {
+    const existing = await workflowRunStore.get(input.runId)
+    if (!existing || existing.appId !== input.appId) {
+      throw new Error(`Workflow draft run not found: ${input.runId}`)
+    }
+
+    runRecord = (await workflowRunStore.update(input.runId, {
+      status: WorkflowRunStatus.Running,
+      startedAt,
+      touchTtl: false,
+    })) ?? existing
+  } else {
+    runRecord = await workflowRunStore.create({
+      appId: input.appId,
+      kind: 'draft',
+      status: WorkflowRunStatus.Running,
+    })
+    await workflowRunStore.update(runRecord.runId, { startedAt, touchTtl: false })
+  }
+
   clearWorkflowRunCancellation(runRecord.runId)
-  await workflowRunStore.update(runRecord.runId, { startedAt, touchTtl: false })
 
   const shouldCancel = (): boolean => isWorkflowRunCancelled(runRecord.runId)
   const isTimedOut = (): boolean => Date.now() - startedAt > timeoutMs
@@ -294,6 +316,30 @@ export const runWorkflowDraftGraph = async (
   }
 }
 
+export const runWorkflowDraftGraphJob = async (
+  data: WorkflowDraftQueueJobData,
+): Promise<void> => {
+  const graph = extractWorkflowDraftDslGraph(data.dsl)
+  if (!graph) {
+    throw new Error('Invalid workflow DSL payload in queue job')
+  }
+
+  const built = buildExecutionGraph(graph)
+  if (built.ok === false) {
+    throw new Error('Failed to build execution graph in queue job')
+  }
+
+  await runWorkflowDraftGraph({
+    appId: data.appId,
+    graph,
+    executionGraph: built.graph,
+    inputs: data.inputs,
+    maxSteps: data.maxSteps,
+    timeoutMs: data.timeoutMs,
+    runId: data.runId,
+  })
+}
+
 export const runWorkflowDraft = async (
   input: RunWorkflowDraftInput,
 ): Promise<RunWorkflowDraftResponse> => {
@@ -314,6 +360,31 @@ export const runWorkflowDraft = async (
         message: issue.message,
         details: issue,
       })),
+    }
+  }
+
+  if (isWorkflowQueueEnabled()) {
+    const runRecord = await workflowRunStore.create({
+      appId: input.appId,
+      kind: 'draft',
+      status: WorkflowRunStatus.Queued,
+    })
+
+    await enqueueWorkflowDraftRun({
+      runId: runRecord.runId,
+      appId: input.appId,
+      dsl: input.dsl,
+      inputs: input.inputs,
+      maxSteps: input.maxSteps,
+      timeoutMs: input.timeoutMs,
+    })
+
+    return {
+      ok: true,
+      result: {
+        run: toWorkflowRunSummary(runRecord),
+        nodeRuns: [],
+      },
     }
   }
 

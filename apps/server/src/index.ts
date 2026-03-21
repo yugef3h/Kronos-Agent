@@ -6,6 +6,7 @@ import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExample
 import { initSessionStore } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { getRagEngineMode } from './rag/engine.js';
+import { startWorkflowDraftWorker } from './workflow/workflowDraftQueue.js';
 import { chatRoutes } from './routes/chatRoutes.js';
 import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
 
@@ -83,4 +84,9 @@ app.listen(PORT, () => {
   console.warn(`RAG engine mode: ${getRagEngineMode()}`);
   console.warn(`Workflow run store: ${env.WORKFLOW_RUN_STORE}`);
   console.warn(`Workflow run events: ${env.WORKFLOW_RUN_EVENTS_STORE}`);
+  console.warn(`Workflow draft queue: ${env.WORKFLOW_QUEUE_ENABLED ? 'enabled' : 'disabled'}`);
 });
+
+if (env.WORKFLOW_QUEUE_ENABLED) {
+  startWorkflowDraftWorker();
+}
