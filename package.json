@@ -15,7 +15,7 @@
     "format:check": "prettier --check ."
   },
   "keywords": [],
-  "author": "",
+  "author": "yugef3h",
   "license": "Apache-2.0",
   "description": "LLM Insight Playground with LangChain-ready architecture",
   "dependencies": {

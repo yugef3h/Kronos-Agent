@@ -1,6 +1,6 @@
 # Copilot 项目规则（等效 Cursor .cursor/rules）
 ## 项目上下文
-- 技术栈：React 18 + TypeScript + Vite + Go 后端
+- 技术栈：React 18 + TypeScript + Vite
 - 构建工具：Vite 5.x，目标 ES2020
 - 代码规范：遵循 Airbnb React/TS 规范，使用 Prettier + ESLint
 - 安全要求：禁止硬编码密钥，API 必须带 JWT 验证，客户端不存敏感信息
