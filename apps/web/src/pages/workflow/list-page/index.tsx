@@ -105,7 +105,7 @@ export const WorkflowPage = () => {
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left font-medium text-slate-400"
                   disabled
                 >
-                  <span className="text-base leading-none">↗</span>
+                  <span className="text-base leading-none">⭳</span>
                   <span>从应用模板创建（即将上线）</span>
                 </button>
                 <button
