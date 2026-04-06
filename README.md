@@ -4,6 +4,8 @@
 
 当前版本已完成第一轮架构重构：从单体 demo 升级为可扩展的 monorepo，适合逐步接入 LangChain 的 Chain / Agent / Memory / Tool。
 
+参考 Dify
+
 ## 技术栈
 
 - 前端: React 18 + TypeScript + Vite 5 + TailwindCSS + Zustand + React Query
