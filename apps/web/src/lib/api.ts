@@ -10,13 +10,65 @@ const API_BASE_URL = readViteApiBaseUrl() || 'http://localhost:3001';
 
 export const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
+type ApiErrorPayload = {
+	error?:
+		| string
+		| {
+			code?: unknown;
+			message?: unknown;
+			formErrors?: unknown;
+			fieldErrors?: unknown;
+		};
+};
+
+const extractStructuredApiErrorMessage = (payload: ApiErrorPayload) => {
+	if (typeof payload.error === 'string' && payload.error.trim()) {
+		return payload.error.trim();
+	}
+
+	if (!payload.error || typeof payload.error !== 'object') {
+		return '';
+	}
+
+	if (typeof payload.error.message === 'string' && payload.error.message.trim()) {
+		return payload.error.message.trim();
+	}
+
+	if (Array.isArray(payload.error.formErrors)) {
+		const formMessage = payload.error.formErrors.find(
+			(item): item is string => typeof item === 'string' && Boolean(item.trim()),
+		);
+		if (formMessage) {
+			return formMessage.trim();
+		}
+	}
+
+	if (payload.error.fieldErrors && typeof payload.error.fieldErrors === 'object') {
+		for (const value of Object.values(payload.error.fieldErrors)) {
+			if (!Array.isArray(value)) {
+				continue;
+			}
+
+			const fieldMessage = value.find(
+				(item): item is string => typeof item === 'string' && Boolean(item.trim()),
+			);
+			if (fieldMessage) {
+				return fieldMessage.trim();
+			}
+		}
+	}
+
+	return '';
+};
+
 const readApiErrorMessage = async (response: Response, fallback: string) => {
 	try {
 		const contentType = response.headers.get('content-type') || '';
 		if (contentType.includes('application/json')) {
-			const payload = await response.json() as { error?: unknown };
-			if (typeof payload.error === 'string' && payload.error.trim()) {
-				return payload.error.trim();
+			const payload = await response.json() as ApiErrorPayload;
+			const message = extractStructuredApiErrorMessage(payload);
+			if (message) {
+				return message;
 			}
 		}
 

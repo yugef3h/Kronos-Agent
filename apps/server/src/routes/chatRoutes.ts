@@ -110,7 +110,7 @@ const knowledgeDocumentImportSchema = z.object({
   maxTokens: z.coerce.number().int().min(100).max(4000).default(500),
   chunkOverlap: z.coerce.number().int().min(0).max(1000).default(80),
   separator: z.string().min(1).max(24).default('\\n\\n'),
-  segmentMaxLength: z.coerce.number().int().min(200).max(12000).default(1024),
+  segmentMaxLength: z.coerce.number().int().min(100).max(12000).default(1024),
   overlapLength: z.coerce.number().int().min(0).max(4000).default(50),
   preprocessingRules: z.object({
     normalizeWhitespace: z.boolean().default(true),
@@ -192,6 +192,23 @@ const indexingEstimateSchema = z.object({
 
 export const chatRoutes = Router();
 
+const sendValidationError = (response: Response, error: z.ZodError) => {
+  const flattened = error.flatten();
+  const firstFieldError = Object.values(flattened.fieldErrors)
+    .flat()
+    .find((message): message is string => typeof message === 'string' && Boolean(message.trim()));
+  const firstFormError = flattened.formErrors.find((message) => Boolean(message.trim()));
+
+  response.status(400).json({
+    error: {
+      code: 'VALIDATION_ERROR',
+      message: firstFieldError || firstFormError || 'Request validation failed',
+      formErrors: flattened.formErrors,
+      fieldErrors: flattened.fieldErrors,
+    },
+  });
+};
+
 const persistSessionMessagesSafely = (params: {
   sessionId: string;
   messages: Array<{
@@ -210,7 +227,7 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
   const parsed = chatSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -265,7 +282,7 @@ chatRoutes.post('/workflow/knowledge-datasets', async (request: Request, respons
   const parsed = knowledgeDatasetInputSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -282,7 +299,7 @@ chatRoutes.put('/workflow/knowledge-datasets/:datasetId', async (request: Reques
   const parsed = knowledgeDatasetInputSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -363,7 +380,7 @@ chatRoutes.post('/workflow/knowledge-datasets/:datasetId/documents/import', asyn
   const parsed = knowledgeDocumentImportSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -389,7 +406,7 @@ chatRoutes.post('/workflow/knowledge-datasets/preview-chunks', async (request: R
   const parsed = knowledgeDocumentPreviewSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -406,7 +423,7 @@ chatRoutes.post('/datasets/indexing-estimate', async (request: Request, response
   const parsed = indexingEstimateSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -467,7 +484,7 @@ chatRoutes.post('/token-embedding/analyze', async (request: Request, response: R
   const parsed = tokenEmbeddingSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -492,7 +509,7 @@ chatRoutes.post('/takeout/simulate', (request: Request, response: Response) => {
   const parsed = takeoutSimulationSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -521,7 +538,7 @@ chatRoutes.post('/takeout/intent-analyze', (request: Request, response: Response
   const parsed = takeoutIntentSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -537,7 +554,7 @@ chatRoutes.post('/takeout/orchestrate', async (request: Request, response: Respo
   const parsed = takeoutOrchestrationSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -563,7 +580,7 @@ chatRoutes.post('/takeout/catalog', async (request: Request, response: Response)
   const parsed = takeoutCatalogSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -579,7 +596,7 @@ chatRoutes.post('/image/analyze', async (request: Request, response: Response) =
   const parsed = imageAnalyzeSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -616,7 +633,7 @@ chatRoutes.post('/file/analyze', async (request: Request, response: Response) =>
   const parsed = fileAnalyzeSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
@@ -650,7 +667,7 @@ chatRoutes.post('/session/append', async (request: Request, response: Response) 
   const parsed = sessionAppendSchema.safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({ error: parsed.error.flatten() });
+    sendValidationError(response, parsed.error);
     return;
   }
 
