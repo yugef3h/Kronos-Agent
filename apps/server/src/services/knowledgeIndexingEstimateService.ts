@@ -16,6 +16,8 @@ type IndexingEstimateSegmentationRule = {
   separator: string;
   max_tokens: number;
   chunk_overlap?: number;
+  segment_max_length?: number;
+  overlap_length?: number;
 };
 
 type IndexingEstimateFileInput = {
@@ -181,6 +183,8 @@ export const runKnowledgeIndexingEstimate = async (
       maxTokens: segmentation.max_tokens,
       chunkOverlap: segmentation.chunk_overlap,
       separator: segmentation.separator,
+      segmentMaxLength: segmentation.segment_max_length,
+      overlapLength: segmentation.overlap_length,
       preprocessingRules,
     });
 
@@ -197,6 +201,8 @@ export const runKnowledgeIndexingEstimate = async (
           separator: subchunkSegmentation.separator,
           maxTokens: subchunkSegmentation.max_tokens,
           chunkOverlap: subchunkSegmentation.chunk_overlap,
+          segmentMaxLength: subchunkSegmentation.segment_max_length,
+          overlapLength: subchunkSegmentation.overlap_length,
         });
 
         const leafSummary = buildLeafChunkSummary(childChunks);

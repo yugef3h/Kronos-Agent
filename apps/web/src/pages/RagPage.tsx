@@ -556,12 +556,16 @@ export const RagPage = () => {
                 separator: importForm.separator,
                 max_tokens: Math.max(100, Math.ceil(segmentMaxLength / 4)),
                 chunk_overlap: Math.max(0, Math.ceil(overlapLength / 4)),
+                segment_max_length: segmentMaxLength,
+                overlap_length: overlapLength,
               },
               parent_mode: 'paragraph',
               subchunk_segmentation: {
                 separator: '\\n',
                 max_tokens: Math.max(50, Math.ceil(segmentMaxLength / 8)),
                 chunk_overlap: Math.max(0, Math.ceil(overlapLength / 8)),
+                segment_max_length: Math.max(50, Math.ceil(segmentMaxLength / 2)),
+                overlap_length: Math.max(0, Math.ceil(overlapLength / 2)),
               },
             },
           },
@@ -738,6 +742,7 @@ export const RagPage = () => {
       const files = pendingImport.files;
       let targetDatasetId = pendingImport.datasetId?.trim() || '';
       let targetDatasetName = datasets.find((item) => item.id === targetDatasetId)?.name || '';
+      let createdDatasetId = '';
 
       if (!targetDatasetId) {
         const nextDatasetName = importForm.datasetName.trim();
@@ -748,6 +753,7 @@ export const RagPage = () => {
           doc_metadata: [],
         });
         targetDatasetId = created.id;
+        createdDatasetId = created.id;
         targetDatasetName = created.name;
       }
 
@@ -789,12 +795,21 @@ export const RagPage = () => {
         }
       }
 
-      await refresh();
-      await refreshDatasetDocuments(targetDatasetId);
-
       if (!importedCount) {
+        if (createdDatasetId) {
+          try {
+            await deleteDataset(createdDatasetId);
+          } catch {
+            // noop: keep the original import error as the primary failure signal
+          }
+        }
+
+        await refresh();
         throw new Error(failedFiles[0] || '没有文件导入成功');
       }
+
+      await refresh();
+      await refreshDatasetDocuments(targetDatasetId);
 
       const summary = `已导入 ${importedCount} 个文件 “${targetDatasetName || '知识库'}”`;
       setSuccessMessage(failedFiles.length ? `${summary}，${failedFiles.length} 个文件失败。` : `${summary}。`);

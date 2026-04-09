@@ -746,12 +746,16 @@ export const requestDatasetIndexingEstimate = async (params: {
 					separator: string;
 					max_tokens: number;
 					chunk_overlap?: number;
+						segment_max_length?: number;
+						overlap_length?: number;
 				};
 				parent_mode: 'full-doc' | 'paragraph';
 				subchunk_segmentation: {
 					separator: string;
 					max_tokens: number;
 					chunk_overlap?: number;
+						segment_max_length?: number;
+						overlap_length?: number;
 				};
 			};
 		};

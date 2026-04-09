@@ -135,6 +135,54 @@ describe('knowledgeIndexingEstimateService', () => {
     expect(result.total_segments).toBeGreaterThanOrEqual(result.preview.length);
   });
 
+  it('honors exact character segmentation settings for preview counts', async () => {
+    const dataset = await createKnowledgeDataset({
+      name: 'Exact Segment Dataset',
+      description: 'exact segment test',
+      is_multimodal: false,
+      doc_metadata: [],
+    });
+
+    const repeatedText = `${'A'.repeat(100)}\n\n${'B'.repeat(100)}\n\n${'C'.repeat(100)}`;
+    const result = await runKnowledgeIndexingEstimate({
+      dataset_id: dataset.id,
+      doc_form: 'text_model',
+      doc_language: 'Chinese Simplified',
+      process_rule: {
+        mode: 'custom',
+        rules: {
+          pre_processing_rules: [],
+          segmentation: {
+            separator: '\n\n',
+            max_tokens: 100,
+            chunk_overlap: 0,
+            segment_max_length: 100,
+            overlap_length: 0,
+          },
+          parent_mode: 'paragraph',
+          subchunk_segmentation: {
+            separator: '\n',
+            max_tokens: 50,
+            chunk_overlap: 0,
+          },
+        },
+      },
+      info_list: {
+        data_source_type: 'upload_file',
+        file_info_list: {
+          files: [{
+            file_name: 'exact.txt',
+            file_data_url: toDataUrl('text/plain', repeatedText),
+            mime_type: 'text/plain',
+          }],
+        },
+      },
+    });
+
+    expect(result.total_segments).toBe(3);
+    expect(result.preview.length).toBe(3);
+  });
+
   it('rejects file-id mode before temp upload storage exists', async () => {
     const dataset = await createKnowledgeDataset({
       name: 'Unsupported Mode Dataset',

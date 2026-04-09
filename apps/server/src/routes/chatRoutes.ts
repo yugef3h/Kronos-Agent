@@ -137,6 +137,8 @@ const indexingEstimateSegmentationSchema = z.object({
   separator: z.string().min(1).max(24).default('\n\n'),
   max_tokens: z.coerce.number().int().min(100).max(4000).default(500),
   chunk_overlap: z.coerce.number().int().min(0).max(1000).default(80).optional(),
+  segment_max_length: z.coerce.number().int().min(100).max(12000).optional(),
+  overlap_length: z.coerce.number().int().min(0).max(4000).optional(),
 });
 
 const indexingEstimateSchema = z.object({
@@ -156,6 +158,8 @@ const indexingEstimateSchema = z.object({
         separator: z.string().min(1).max(24).default('\n'),
         max_tokens: z.coerce.number().int().min(50).max(2000).default(200),
         chunk_overlap: z.coerce.number().int().min(0).max(500).default(30).optional(),
+        segment_max_length: z.coerce.number().int().min(50).max(6000).optional(),
+        overlap_length: z.coerce.number().int().min(0).max(2000).optional(),
       }).default({
         separator: '\n',
         max_tokens: 200,
