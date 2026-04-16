@@ -230,10 +230,26 @@ const buildFailedResult = (
   }
 }
 
+const filterDebugConfigIssues = (
+  issues: KnowledgeValidationIssue[],
+  request: NodeDebugRequest,
+): KnowledgeValidationIssue[] => {
+  const hasExplicitQuery = typeof request.inputs?.query === 'string' && request.inputs.query.trim().length > 0
+
+  if (!hasExplicitQuery) {
+    return issues
+  }
+
+  return issues.filter((issue) => issue.path !== 'query_variable_selector')
+}
+
 export const executeKnowledgeRetrievalNodeDebug: NodeDebugExecutor = async (request) => {
   const startedAt = Date.now()
   const config = normalizeKnowledgeRetrievalNodeConfig(request.node.inputs ?? request.node.data)
-  const configIssues = validateKnowledgeRetrievalNodeConfig(config)
+  const configIssues = filterDebugConfigIssues(
+    validateKnowledgeRetrievalNodeConfig(config),
+    request,
+  )
 
   if (configIssues.length > 0) {
     return buildFailedResult(request, startedAt, {

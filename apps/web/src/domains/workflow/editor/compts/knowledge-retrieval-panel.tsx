@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEdges, useNodes, useReactFlow } from 'reactflow'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../../../../components/form/variable-select'
@@ -21,6 +21,7 @@ import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
 import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
+import type { NodeLastRunSnapshot } from '../types/run'
 import { useKnowledgeDatasets } from '../panels/knowledge-retrieval-panel/dataset-store'
 import { useKnowledgeRetrievalPanelConfig } from '../panels/knowledge-retrieval-panel/use-knowledge-retrieval-panel-config'
 import type { KnowledgeRetrievalNodeConfig } from '../panels/knowledge-retrieval-panel/types'
@@ -79,9 +80,13 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
   const [debugQuery, setDebugQuery] = useState('')
   const [debugRunError, setDebugRunError] = useState('')
+  const [isDebugPending, setIsDebugPending] = useState(false)
+  const [localLastRun, setLocalLastRun] = useState<NodeLastRunSnapshot | null>(null)
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false)
+  const lastRunSectionRef = useRef<HTMLDivElement>(null)
   const appId = useWorkflowAppId()
-  const lastRun = resolveNodeLastRun(id, nodeData)
+  const canvasLastRun = resolveNodeLastRun(id, nodeData)
+  const lastRun = localLastRun ?? canvasLastRun
   const {
     config,
     issues,
@@ -169,7 +174,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
     debugInputs: debugQuery.trim() ? { query: debugQuery.trim() } : undefined,
   })
 
-  const handleRunDebugQuery = useCallback(() => {
+  const isDebugBusy = isDebugRunning || isDebugPending
+
+  const handleRunDebugQuery = useCallback(async () => {
     const nextQuery = debugQuery.trim()
     if (!nextQuery) {
       setDebugRunError('请输入调试查询内容。')
@@ -181,15 +188,38 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
       return
     }
 
+    if (!appId?.trim()) {
+      setDebugRunError('缺少工作流 appId，无法调试。')
+      return
+    }
+
     setDebugRunError('')
     clearError()
-    void runDebug()
-  }, [clearError, config.dataset_ids.length, debugQuery, runDebug])
+    setIsDebugPending(true)
+    try {
+      const snapshot = await runDebug()
+      if (snapshot) {
+        setLocalLastRun(snapshot)
+        requestAnimationFrame(() => {
+          lastRunSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+      }
+    }
+    finally {
+      setIsDebugPending(false)
+    }
+  }, [appId, clearError, config.dataset_ids.length, debugQuery, runDebug])
+
+  useEffect(() => {
+    if (nodeData._lastRun) {
+      setLocalLastRun(null)
+    }
+  }, [nodeData._lastRun])
 
   useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebugQuery,
-    isRunning: isDebugRunning,
-    disabled: !config.dataset_ids.length,
+    isRunning: isDebugBusy,
+    disabled: !config.dataset_ids.length || isDebugBusy,
   })
 
   useEffect(() => {
@@ -228,10 +258,19 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                 value={debugQuery}
                 rows={3}
                 placeholder="输入一段查询文本，验证当前知识库配置是否能召回结果。"
-                onChange={event => setDebugQuery(event.target.value)}
+                onChange={(event) => {
+                  setDebugQuery(event.target.value)
+                  if (debugRunError) {
+                    setDebugRunError('')
+                  }
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
             </Field>
+
+            {debugRunError ? (
+              <PanelAlert type="warning">{debugRunError}</PanelAlert>
+            ) : null}
 
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] text-slate-400">
@@ -240,8 +279,8 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                   : '还没有调试记录'}
               </p>
               <PanelRunDebugButton
-                isRunning={isDebugRunning}
-                disabled={isDatasetLoading}
+                isRunning={isDebugBusy}
+                disabled={isDebugBusy}
                 onClick={() => void handleRunDebugQuery()}
                 runningLabel="检索中…"
                 className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -250,16 +289,14 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
               </PanelRunDebugButton>
             </div>
 
-            {debugRunError ? (
-              <PanelAlert type="warning">{debugRunError}</PanelAlert>
-            ) : null}
-
-            {lastRun ? (
-              <div className="space-y-2">
-                <PanelLastRunKnowledgeDetails lastRun={lastRun} />
-                <PanelLastRun lastRun={lastRun} />
-              </div>
-            ) : null}
+            <div ref={lastRunSectionRef} className="space-y-2 border-t border-slate-200 pt-3">
+              <p className="text-[12px] font-semibold text-slate-800">运行结果</p>
+              {lastRun ? <PanelLastRunKnowledgeDetails lastRun={lastRun} /> : null}
+              <PanelLastRun
+                lastRun={lastRun}
+                emptyDescription="运行检索后，这里会展示本次查询的输入、召回分块与耗时。"
+              />
+            </div>
           </div>
         </PanelCard>
       ) : null}

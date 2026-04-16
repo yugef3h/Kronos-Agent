@@ -40,6 +40,35 @@ describe('knowledgeRetrievalNodeDebugExecutor', () => {
     expect(query).toBe('什么是 RAG')
   })
 
+  it('allows explicit debug query without query_variable_selector', async () => {
+    mockRunKnowledgeRetrievalQuery.mockResolvedValue({
+      query: 'test',
+      items: [],
+      diagnostics: {
+        retrieval_mode: 'multiWay',
+        dataset_count: 1,
+        total_chunk_count: 0,
+        filtered_chunk_count: 0,
+      },
+    })
+
+    const result = await executeKnowledgeRetrievalNodeDebug({
+      node: {
+        id: 'knowledge-1',
+        type: 'knowledge-retrieval',
+        inputs: {
+          dataset_ids: ['ds-1'],
+          query_variable_selector: [],
+          retrieval_mode: 'multiWay',
+        },
+      },
+      inputs: { query: 'test' },
+    })
+
+    expect(result.status).toBe(NodeRunStatus.Succeeded)
+    expect(mockRunKnowledgeRetrievalQuery).toHaveBeenCalled()
+  })
+
   it('executes knowledge retrieval query via facade', async () => {
     mockRunKnowledgeRetrievalQuery.mockResolvedValue({
       query: '什么是 RAG',

@@ -14,6 +14,8 @@ type KnowledgeItem = {
 
 type KnowledgeOutputs = {
   items?: KnowledgeItem[]
+  result?: KnowledgeItem[]
+  documents?: KnowledgeItem[]
   diagnostics?: {
     dataset_count: number
     total_chunk_count: number
@@ -21,9 +23,31 @@ type KnowledgeOutputs = {
   }
 }
 
+export const resolveKnowledgeLastRunItems = (
+  outputs: KnowledgeOutputs | undefined,
+): KnowledgeItem[] => {
+  if (!outputs) {
+    return []
+  }
+
+  if (Array.isArray(outputs.items) && outputs.items.length > 0) {
+    return outputs.items
+  }
+
+  if (Array.isArray(outputs.result) && outputs.result.length > 0) {
+    return outputs.result
+  }
+
+  if (Array.isArray(outputs.documents) && outputs.documents.length > 0) {
+    return outputs.documents
+  }
+
+  return outputs.items ?? outputs.result ?? outputs.documents ?? []
+}
+
 export const PanelLastRunKnowledgeDetails = ({ lastRun }: { lastRun: NodeLastRunSnapshot }) => {
   const outputs = lastRun.outputs as KnowledgeOutputs | undefined
-  const items = outputs?.items ?? []
+  const items = resolveKnowledgeLastRunItems(outputs)
   const diagnostics = outputs?.diagnostics
 
   if (!items.length && !diagnostics) {
