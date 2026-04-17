@@ -229,9 +229,9 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   }, [debugApiError])
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       {activeTab === 'last-run' ? (
-        <PanelCard className="space-y-3 bg-slate-50/70 p-3">
+        <PanelCard className="min-w-0 space-y-3 overflow-hidden bg-slate-50/70 p-3">
           <div className="space-y-1">
             <p className="text-[12px] font-semibold text-slate-800">手动检索调试</p>
             <p className="text-[11px] leading-5 text-slate-500">
@@ -239,8 +239,8 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
             </p>
           </div>
 
-          <div className="grid gap-2">
-            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-500">
+          <div className="grid min-w-0 gap-2">
+            <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[11px] break-words text-slate-500">
               <p>查询变量：{config.query_variable_selector.length ? serializeValueSelector(config.query_variable_selector) : '未设置'}</p>
               <p>Top K：{topKValue}</p>
             </div>
@@ -272,8 +272,8 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
               <PanelAlert type="warning">{debugRunError}</PanelAlert>
             ) : null}
 
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] text-slate-400">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <p className="min-w-0 flex-1 text-[10px] text-slate-400">
                 {lastRun?.finishedAt
                   ? `最近一次调试：${formatDatasetUpdatedAt(lastRun.finishedAt)}`
                   : '还没有调试记录'}
@@ -283,13 +283,13 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
                 disabled={isDebugBusy}
                 onClick={() => void handleRunDebugQuery()}
                 runningLabel="检索中…"
-                className="rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="shrink-0 rounded-lg border border-blue-300 bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 运行检索
               </PanelRunDebugButton>
             </div>
 
-            <div ref={lastRunSectionRef} className="space-y-2 border-t border-slate-200 pt-3">
+            <div ref={lastRunSectionRef} className="min-w-0 space-y-2 border-t border-slate-200 pt-3">
               <p className="text-[12px] font-semibold text-slate-800">运行结果</p>
               {lastRun ? <PanelLastRunKnowledgeDetails lastRun={lastRun} /> : null}
               <PanelLastRun

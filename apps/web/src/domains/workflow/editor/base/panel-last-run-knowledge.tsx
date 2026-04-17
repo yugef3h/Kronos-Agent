@@ -55,32 +55,32 @@ export const PanelLastRunKnowledgeDetails = ({ lastRun }: { lastRun: NodeLastRun
   }
 
   return (
-    <PanelCard className="space-y-2 bg-slate-50/70 p-3">
+    <PanelCard className="min-w-0 space-y-2 overflow-hidden bg-slate-50/70 p-3">
       {diagnostics ? (
-        <div className="grid gap-1 text-[10px] text-slate-500 md:grid-cols-3">
-          <span>知识库 {diagnostics.dataset_count} 个</span>
-          <span>扫描分块 {diagnostics.total_chunk_count}</span>
-          <span>参与排序 {diagnostics.filtered_chunk_count}</span>
+        <div className="grid min-w-0 gap-1 text-[10px] text-slate-500 md:grid-cols-3">
+          <span className="min-w-0">知识库 {diagnostics.dataset_count} 个</span>
+          <span className="min-w-0">扫描分块 {diagnostics.total_chunk_count}</span>
+          <span className="min-w-0">参与排序 {diagnostics.filtered_chunk_count}</span>
         </div>
       ) : null}
       {items.length ? (
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           {items.map((item) => (
             <PanelCard
               key={item.chunk_id}
-              className="space-y-1.5 border border-slate-200 bg-white p-2.5 shadow-none"
+              className="min-w-0 space-y-1.5 overflow-hidden border border-slate-200 bg-white p-2.5 shadow-none"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="truncate text-[12px] font-semibold text-slate-800">
+              <div className="flex min-w-0 items-start justify-between gap-2">
+                <p className="min-w-0 flex-1 break-words text-[12px] font-semibold leading-5 text-slate-800">
                   {item.dataset_name}
                   {' / '}
                   {item.document_name}
                 </p>
-                <PanelToken className="border-blue-100 text-blue-600">
+                <PanelToken className="shrink-0 border-blue-100 text-blue-600">
                   score {item.score.toFixed(3)}
                 </PanelToken>
               </div>
-              <p className="text-[11px] leading-5 text-slate-600">{item.text}</p>
+              <p className="break-words text-[11px] leading-5 text-slate-600">{item.text}</p>
             </PanelCard>
           ))}
         </div>

@@ -34,20 +34,20 @@ const JsonBlock = ({
   }, [text])
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
         <button
           type="button"
           onClick={() => {
             void handleCopy()
           }}
-          className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          className="shrink-0 rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
         >
           {copied ? '已复制' : '复制'}
         </button>
       </div>
-      <pre className="max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] leading-5 text-slate-800">
+      <pre className="max-h-48 max-w-full overflow-x-auto overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] leading-5 text-slate-800">
         {text}
       </pre>
     </div>
@@ -61,9 +61,9 @@ export const PanelLastRun = ({
 }: PanelLastRunProps) => {
   if (!lastRun) {
     return (
-      <PanelCard className="space-y-1.5 bg-slate-50/70 p-3">
+      <PanelCard className="min-w-0 space-y-1.5 overflow-hidden bg-slate-50/70 p-3">
         <p className="text-[12px] font-semibold text-slate-800">{emptyTitle}</p>
-        <p className="text-[11px] leading-5 text-slate-500">{emptyDescription}</p>
+        <p className="break-words text-[11px] leading-5 text-slate-500">{emptyDescription}</p>
       </PanelCard>
     )
   }
@@ -71,8 +71,8 @@ export const PanelLastRun = ({
   const meta = buildPanelLastRunMeta(lastRun)
 
   return (
-    <div className="space-y-3">
-      <PanelCard className="space-y-2 bg-slate-50/70 p-3">
+    <div className="min-w-0 space-y-3">
+      <PanelCard className="min-w-0 space-y-2 overflow-hidden bg-slate-50/70 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.statusClassName}`}
