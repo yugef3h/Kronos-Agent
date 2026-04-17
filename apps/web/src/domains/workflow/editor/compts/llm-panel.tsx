@@ -15,7 +15,6 @@ import {
   PanelInput,
   PanelOutputVarRow,
   PanelSection,
-  PanelTextarea,
   PanelToggle,
   PanelToken,
   usePanelTabs,
@@ -23,6 +22,7 @@ import {
 import PanelLastRun from '../base/panel-last-run';
 import { PanelLastRunLlmDetails } from '../base/panel-last-run-llm';
 import { PanelDebugContextField } from '../base/panel-debug-context-field';
+import { WorkflowPromptEditor } from '../base/workflow-prompt-editor';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
@@ -40,6 +40,7 @@ import type {
   CompletionPromptItem,
   LLMNodeConfig,
   StructuredOutputConfig,
+  VariableOption,
 } from '../panels/llm-panel/types';
 import type { PanelFieldControl } from '../base/panel-form';
 
@@ -83,12 +84,14 @@ const PromptMessageEditor = ({
   item,
   index,
   canDelete,
+  variableOptions,
   onChange,
   onDelete,
 }: {
   item: ChatPromptItem;
   index: number;
   canDelete: boolean;
+  variableOptions: VariableOption[];
   onChange: (index: number, patch: Partial<ChatPromptItem>) => void;
   onDelete: (index: number) => void;
 }) => {
@@ -111,11 +114,11 @@ const PromptMessageEditor = ({
           删除
         </button>
       </div>
-      <PanelTextarea
-        className="min-h-[72px] px-2 py-1.5 text-[12px] leading-5"
+      <WorkflowPromptEditor
         value={item.text}
-        placeholder="在这里写你的提示词，输入 '/' 插入提示内容块"
-        onChange={(event) => onChange(index, { text: event.target.value })}
+        variableOptions={variableOptions}
+        onChange={(text) => onChange(index, { text })}
+        placeholder="在这里写提示词；输入 { 或 / 插入上游变量，如 {{#sys.query#}}。"
       />
     </PanelCard>
   );
@@ -123,18 +126,20 @@ const PromptMessageEditor = ({
 
 const CompletionPromptEditor = ({
   prompt,
+  variableOptions,
   onChange,
 }: {
   prompt: CompletionPromptItem;
+  variableOptions: VariableOption[];
   onChange: (patch: Partial<CompletionPromptItem>) => void;
 }) => {
   return (
-    <PanelCard className="p-2">
-      <PanelTextarea
-        className="min-h-[72px] px-2 py-1.5 text-[12px] leading-5"
+    <PanelCard className="min-w-0 p-2">
+      <WorkflowPromptEditor
         value={prompt.text}
-        placeholder="输入 Completion Prompt"
-        onChange={(event) => onChange({ text: event.target.value })}
+        variableOptions={variableOptions}
+        onChange={(text) => onChange({ text })}
+        placeholder="输入 Completion Prompt；输入 { 或 / 插入上游变量。"
       />
     </PanelCard>
   );
@@ -329,7 +334,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
               clearError();
             }}
             parseError={contextParseError}
-            hint='Mock 变量会注入 LLM prompt 的 {{var}} 占位符，例如 {"sys.query": "你好"}。'
+            hint='Mock 变量会注入提示词中的 {{#path#}} 占位符，例如 {"sys": {"query": "你好"}} 或 {"sys.query": "你好"}。'
           />
           {debugError ? (
             <PanelAlert type="warning">{debugError}</PanelAlert>
@@ -441,15 +446,19 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
 
       {config.model.name ? (
         <PanelSection title="Prompt" required>
+          <p className="mb-2 text-[10px] leading-4 text-slate-500">
+            输入 {'{'} 或 / 打开上游变量补全，插入格式为 {'{{#节点.字段#}}'}（与调试 Mock 上下文路径一致）。
+          </p>
           {isChatModel ? (
             <>
-              <div className="space-y-2.5">
+              <div className="min-w-0 space-y-2.5">
                 {(config.promptTemplate as ChatPromptItem[]).map((item, index, items) => (
                   <PromptMessageEditor
                     key={item.id}
                     item={item}
                     index={index}
                     canDelete={items.length > 1}
+                    variableOptions={availableVariables}
                     onChange={handlePromptItemChange}
                     onDelete={handleRemovePromptMessage}
                   />
@@ -460,6 +469,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
           ) : (
             <CompletionPromptEditor
               prompt={config.promptTemplate as CompletionPromptItem}
+              variableOptions={availableVariables}
               onChange={handleCompletionPromptChange}
             />
           )}
@@ -508,11 +518,13 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
             </PanelCard>
             <PanelFieldRenderer field={memoryWindowField} />
             <Field title="User Query Prompt" compact>
-              <div className="space-y-1">
-                <PanelTextarea
-                  className="min-h-[76px] text-[12px] leading-5"
+              <div className="min-w-0 space-y-1">
+                <WorkflowPromptEditor
                   value={config.memory.queryPromptTemplate}
-                  onChange={(event) => handleMemoryQueryChange(event.target.value)}
+                  variableOptions={availableVariables}
+                  onChange={handleMemoryQueryChange}
+                  rows={3}
+                  placeholder="输入 { 或 / 插入变量；需包含 {{#sys.query#}}。"
                 />
                 <p className="text-[10px] leading-4 text-slate-500">
                   Chat 模式下必须包含 {'{{#sys.query#}}'}。
