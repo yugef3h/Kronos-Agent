@@ -21,6 +21,19 @@ describe('CanvasNodeData runtime fields', () => {
     expect(data._lastRun?.outputs?.text).toBe('ok')
   })
 
+  it('accepts _panelDebugDraft for last-run form persistence', () => {
+    const data: CanvasNodeData = {
+      kind: 'llm',
+      title: 'LLM',
+      subtitle: '模型',
+      _panelDebugDraft: {
+        'sys.query': 'hello',
+      },
+    }
+
+    expect(data._panelDebugDraft?.['sys.query']).toBe('hello')
+  })
+
   it('still allows legacy _knowledgeLastRun', () => {
     const data: CanvasNodeData = {
       kind: 'knowledge',

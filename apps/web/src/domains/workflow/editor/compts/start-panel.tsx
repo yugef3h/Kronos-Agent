@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useReactFlow } from 'reactflow';
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import PanelAlert from '../base/panel-alert';
@@ -16,7 +16,6 @@ import {
   PanelToggle,
   usePanelTabs,
 } from '../base/panel-form';
-import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import {
   buildStartNodeOutputs,
@@ -38,6 +37,10 @@ import { rewriteNodesVariableReferences } from '../utils/workflow-variable-refer
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
 import type { NodeLastRunSnapshot } from '../types/run';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import {
+  PANEL_DEBUG_START_VALUES_DEFAULT,
+  useNodePanelDebugDraft,
+} from '../hooks/use-node-panel-debug-draft';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import {
@@ -288,7 +291,7 @@ const StartPanelDebugInputs = ({
 );
 
 const StartPanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const { setNodes } = useWorkflowCanvasNodes();
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const nodeData = data as CanvasNodeData;
@@ -298,7 +301,11 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
   const lastRun = canvasLastRun ?? localLastRun;
   const { activeTab, setActiveTab } = usePanelTabs();
   const [isOutputVarsExpanded, setIsOutputVarsExpanded] = useState(false);
-  const [debugValues, setDebugValues] = useState<StartPanelDebugFormValues>({ query: '' });
+  const [debugValues, setDebugValues] = useNodePanelDebugDraft(
+    id,
+    nodeData._panelDebugDraft,
+    PANEL_DEBUG_START_VALUES_DEFAULT,
+  );
   const [debugFieldErrors, setDebugFieldErrors] = useState<Record<string, string>>({});
   const [debugConfigIssueMessages, setDebugConfigIssueMessages] = useState<string[]>([]);
   const [draggingVariableId, setDraggingVariableId] = useState<string | null>(null);
@@ -386,7 +393,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
 
   useEffect(() => {
     setDebugValues((previous) => mergeStartPanelDebugFormValues(config, previous));
-  }, [config]);
+  }, [config, setDebugValues]);
 
   useEffect(() => {
     if (nodeData._lastRun) {
@@ -436,7 +443,7 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
       ...previous,
       [key]: value,
     }));
-  }, [clearError]);
+  }, [clearError, setDebugValues]);
 
   const handleRunDebug = useCallback(async () => {
     const validationIssues = validateStartPanelDebugFormValues(config, debugValues);

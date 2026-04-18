@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useEdges, useNodes, useReactFlow, useUpdateNodeInternals } from 'reactflow';
+import { useUpdateNodeInternals } from 'reactflow';
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import VariableSelect from '../../../../components/form/variable-select';
 import {
@@ -10,7 +11,6 @@ import {
   PanelSelect,
   usePanelTabs,
 } from '../base/panel-form';
-import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import type { VariableOption } from '../panels/llm-panel/types';
 import {
@@ -29,6 +29,10 @@ import { PanelDebugContextField } from '../base/panel-debug-context-field';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import PanelAlert from '../base/panel-alert';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import {
+  PANEL_DEBUG_CONTEXT_JSON_DEFAULT,
+  useNodePanelDebugDraft,
+} from '../hooks/use-node-panel-debug-draft';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
@@ -186,9 +190,7 @@ const ConditionEditor = ({
 };
 
 const IfElsePanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes, setEdges } = useReactFlow<CanvasNodeData, Edge>();
-  const nodes = useNodes<CanvasNodeData>();
-  const edges = useEdges<Edge>();
+  const { setNodes, setEdges, nodes, edges } = useWorkflowCanvasNodes();
   const updateNodeInternals = useUpdateNodeInternals();
   const nodeData = data as CanvasNodeData;
   const variableOptions = useMemo(
@@ -203,7 +205,16 @@ const IfElsePanel = ({ id, data }: NodePanelProps) => {
   const appId = useWorkflowAppId();
   const { activeTab } = usePanelTabs();
   const [pendingAutoOpenConditionId, setPendingAutoOpenConditionId] = useState<string | null>(null);
-  const [contextJson, setContextJson] = useState('{}');
+  const [contextDraft, setContextDraft] = useNodePanelDebugDraft(
+    id,
+    nodeData._panelDebugDraft,
+    PANEL_DEBUG_CONTEXT_JSON_DEFAULT,
+  );
+  const contextJson = contextDraft.contextJson;
+  const setContextJson = useCallback(
+    (value: string) => setContextDraft({ contextJson: value }),
+    [setContextDraft],
+  );
   const [contextParseError, setContextParseError] = useState<string | null>(null);
   const {
     config,

@@ -34,6 +34,8 @@ export type CanvasNodeData = {
   _runStatus?: NodeRunningStatus
   /** Latest completed debug or full-run snapshot for the「上次运行」panel tab. */
   _lastRun?: NodeLastRunSnapshot
+  /** Editor-only draft inputs for the「上次运行」tab (not exported to DSL). */
+  _panelDebugDraft?: Record<string, unknown>
   _children?: ContainerChildSummary[]
   _targetBranches?: IfElseBranch[]
   _connectedSourceHandleIds?: string[]

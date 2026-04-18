@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useEdges, useNodes, useReactFlow } from 'reactflow'
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import VariableSelect from '../../../../components/form/variable-select'
 import Field from '../base/field'
@@ -16,10 +16,13 @@ import PanelLastRun from '../base/panel-last-run'
 import { PanelLastRunKnowledgeDetails } from '../base/panel-last-run-knowledge'
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context'
 import { useNodeDebugRun } from '../hooks/use-node-debug-run'
+import {
+  PANEL_DEBUG_QUERY_DEFAULT,
+  useNodePanelDebugDraft,
+} from '../hooks/use-node-panel-debug-draft'
 import { PanelRunDebugButton } from '../base/panel-run-debug-button'
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
-import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import type { NodeLastRunSnapshot } from '../types/run'
 import { useKnowledgeDatasets } from '../panels/knowledge-retrieval-panel/dataset-store'
@@ -58,9 +61,7 @@ const TopKControl = ({
 }
 
 const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
-  const nodes = useNodes<CanvasNodeData>()
-  const edges = useEdges<Edge>()
+  const { setNodes, nodes, edges } = useWorkflowCanvasNodes()
   const nodeData = data as CanvasNodeData
   const availableVariables = useMemo(() => {
     const nodeSnapshots = nodes.map(node => ({ id: node.id, data: node.data, parentId: node.parentId }))
@@ -78,7 +79,16 @@ const KnowledgeRetrievalPanel = ({ id, data }: NodePanelProps) => {
   )
   const { activeTab } = usePanelTabs()
   const [isDatasetPickerOpen, setIsDatasetPickerOpen] = useState(false)
-  const [debugQuery, setDebugQuery] = useState('')
+  const [debugQueryDraft, setDebugQueryDraft] = useNodePanelDebugDraft<{ query: string }>(
+    id,
+    nodeData._panelDebugDraft,
+    PANEL_DEBUG_QUERY_DEFAULT,
+  )
+  const debugQuery = debugQueryDraft.query
+  const setDebugQuery = useCallback(
+    (value: string) => setDebugQueryDraft((previous) => ({ ...previous, query: value })),
+    [setDebugQueryDraft],
+  )
   const [debugRunError, setDebugRunError] = useState('')
   const [isDebugPending, setIsDebugPending] = useState(false)
   const [localLastRun, setLocalLastRun] = useState<NodeLastRunSnapshot | null>(null)

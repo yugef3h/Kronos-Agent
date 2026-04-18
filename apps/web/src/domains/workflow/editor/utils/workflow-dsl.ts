@@ -40,6 +40,7 @@ import {
   buildStartOutputTypes,
   normalizeStartNodeConfig,
 } from '../panels/start-panel/schema'
+import { readEditorStateFromDslNodeData } from './workflow-node-editor-state'
 
 type AnyWorkflowDSL = WorkflowDSL | LegacyWorkflowDSL
 
@@ -805,20 +806,21 @@ export const createInitialTriggerNode = (): Node<CanvasNodeData> => ({
 export const buildCanvasNodeData = (
   partial: Partial<CanvasNodeData> & Pick<CanvasNodeData, 'kind' | 'title' | 'subtitle'> & { nodeId?: string },
 ): CanvasNodeData => {
-  const defaultInputs = partial.inputs ?? getDefaultInputs(partial.kind, partial.nodeId)
+  const { _panelDebugDraft, _lastRun, ...restPartial } = partial
+  const defaultInputs = restPartial.inputs ?? getDefaultInputs(restPartial.kind, restPartial.nodeId)
   let nextInputs = defaultInputs
-  let nextOutputs = partial.outputs ?? getDefaultOutputs(partial.kind, defaultInputs)
+  let nextOutputs = restPartial.outputs ?? getDefaultOutputs(restPartial.kind, defaultInputs)
 
-  if (partial.kind === 'trigger') {
+  if (restPartial.kind === 'trigger') {
     const normalizedStartConfig = normalizeStartNodeConfig(defaultInputs)
     nextInputs = {
       ...normalizedStartConfig,
       _outputTypes: buildStartOutputTypes(normalizedStartConfig),
     } as Record<string, unknown>
-    nextOutputs = partial.outputs ?? buildStartNodeOutputs(normalizedStartConfig)
+    nextOutputs = restPartial.outputs ?? buildStartNodeOutputs(normalizedStartConfig)
   }
 
-  if (partial.kind === 'llm') {
+  if (restPartial.kind === 'llm') {
     const normalizedLlmConfig = normalizeLLMNodeConfig(defaultInputs)
     nextInputs = {
       ...normalizedLlmConfig,
@@ -827,44 +829,46 @@ export const buildCanvasNodeData = (
     nextOutputs = buildLLMNodeOutputs(normalizedLlmConfig)
   }
 
-  if (partial.kind === 'end') {
-    const normalizedEndConfig = normalizeEndNodeConfig(defaultInputs, partial.outputs)
+  if (restPartial.kind === 'end') {
+    const normalizedEndConfig = normalizeEndNodeConfig(defaultInputs, restPartial.outputs)
     nextInputs = {
       ...normalizedEndConfig,
-      _outputTypes: buildEndOutputTypesFromConfig(defaultInputs, partial.outputs),
+      _outputTypes: buildEndOutputTypesFromConfig(defaultInputs, restPartial.outputs),
     } as Record<string, unknown>
     nextOutputs = buildEndNodeOutputs(normalizedEndConfig)
   }
 
   return {
-    kind: partial.kind,
-    title: partial.title,
-    subtitle: partial.subtitle,
-    selected: partial.selected ?? false,
+    kind: restPartial.kind,
+    title: restPartial.title,
+    subtitle: restPartial.subtitle,
+    selected: restPartial.selected ?? false,
     inputs: nextInputs,
     outputs: nextOutputs,
-    _targetBranches: partial.kind === 'condition'
+    ...(_panelDebugDraft ? { _panelDebugDraft } : {}),
+    ...(_lastRun ? { _lastRun } : {}),
+    _targetBranches: restPartial.kind === 'condition'
       ? buildIfElseTargetBranches(
           normalizeIfElseNodeConfig(defaultInputs).cases,
         )
       : undefined,
-    _datasets: partial.kind === 'knowledge'
+    _datasets: restPartial.kind === 'knowledge'
       ? getKnowledgeDatasetsByIds(
           Array.isArray((defaultInputs as Record<string, unknown> | undefined)?.dataset_ids)
             ? ((defaultInputs as Record<string, unknown>).dataset_ids as string[])
             : [],
         )
       : undefined,
-    _children: partial.kind === 'iteration'
+    _children: restPartial.kind === 'iteration'
       ? buildIterationChildren(
-          normalizeIterationNodeConfig(defaultInputs, partial.nodeId).start_node_id,
+          normalizeIterationNodeConfig(defaultInputs, restPartial.nodeId).start_node_id,
         )
-      : partial.kind === 'loop'
+      : restPartial.kind === 'loop'
         ? buildLoopChildren(
-            normalizeLoopNodeConfig(defaultInputs, partial.nodeId).start_node_id,
+            normalizeLoopNodeConfig(defaultInputs, restPartial.nodeId).start_node_id,
           )
         : undefined,
-    _connectedSourceHandleIds: partial._connectedSourceHandleIds ?? [],
+    _connectedSourceHandleIds: restPartial._connectedSourceHandleIds ?? [],
   }
 }
 
@@ -893,6 +897,9 @@ export const hydrateCanvasNodesFromDsl = (dsl: AnyWorkflowDSL): Node<CanvasNodeD
     const subtitle = isLegacyNode
       ? (typeof node.data.subtitle === 'string' ? node.data.subtitle : getNodeSubtitleFallback(kind))
       : getNodeSubtitleFallback(kind)
+    const legacyEditorDraft = readEditorStateFromDslNodeData(
+      node.data as Record<string, unknown>,
+    )?.panelDebugDraft
 
     return [{
       id: node.id,
@@ -910,6 +917,7 @@ export const hydrateCanvasNodesFromDsl = (dsl: AnyWorkflowDSL): Node<CanvasNodeD
         selected: false,
         inputs,
         outputs,
+        ...(legacyEditorDraft ? { _panelDebugDraft: legacyEditorDraft } : {}),
       }),
     }]
   })
@@ -993,7 +1001,6 @@ export const createWorkflowDslFromCanvas = (
       })),
       nodes: nodes.map((node) => {
         const dimensions = getDifyNodeDimensions(node.data.kind)
-
         return {
           id: node.id,
           type: 'custom',

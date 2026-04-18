@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { useEdges, useNodes, useReactFlow } from 'reactflow';
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import VariableSelect from '../../../../components/form/variable-select';
 import Field from '../base/field';
@@ -13,7 +13,6 @@ import {
   PanelToggle,
   usePanelTabs,
 } from '../base/panel-form';
-import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { getIterationOutputTypeLabel } from '../panels/iteration-panel/schema';
 import { useIterationPanelConfig } from '../panels/iteration-panel/use-iteration-panel-config';
@@ -38,9 +37,7 @@ const findVariableOption = (valueSelector: string[], options: VariableOption[]) 
 };
 
 const IterationPanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
-  const nodes = useNodes<CanvasNodeData>();
-  const edges = useEdges<Edge>();
+  const { setNodes, nodes, edges } = useWorkflowCanvasNodes();
   const nodeData = data as CanvasNodeData;
   const lastRun = resolveNodeLastRun(id, nodeData);
   const { activeTab } = usePanelTabs();

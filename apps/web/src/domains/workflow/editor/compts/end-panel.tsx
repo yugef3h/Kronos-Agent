@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useEdges, useNodes, useReactFlow } from 'reactflow'
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context'
 import type { PanelProps as NodePanelProps } from './custom-node'
 import PanelAlert from '../base/panel-alert'
 import VariableSelect from '../../../../components/form/variable-select'
@@ -12,25 +12,35 @@ import PanelLastRun from '../base/panel-last-run'
 import { PanelLastRunEndDetails } from '../base/panel-last-run-end'
 import { PanelDebugContextField } from '../base/panel-debug-context-field'
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context'
-import type { Edge } from '../types/common'
 import type { CanvasNodeData } from '../types/canvas'
 import { useEndPanelConfig } from '../panels/end-panel/use-end-panel-config'
 import { buildEndNodeOutputs, buildEndOutputTypes } from '../panels/end-panel/schema'
 import { buildWorkflowVariableOptions } from '../utils/variable-options'
 import { useNodeDebugRun } from '../hooks/use-node-debug-run'
+import {
+  PANEL_DEBUG_CONTEXT_JSON_DEFAULT,
+  useNodePanelDebugDraft,
+} from '../hooks/use-node-panel-debug-draft'
 import { PanelRunDebugButton } from '../base/panel-run-debug-button'
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id'
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run'
 import { parsePanelDebugContextJson } from '../utils/panel-debug-context'
 
 const EndPanel = ({ id, data }: NodePanelProps) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
-  const nodes = useNodes<CanvasNodeData>()
-  const edges = useEdges<Edge>()
+  const { setNodes, nodes, edges } = useWorkflowCanvasNodes()
   const appId = useWorkflowAppId()
   const nodeData = data as CanvasNodeData
   const { activeTab } = usePanelTabs()
-  const [contextJson, setContextJson] = useState('{}')
+  const [contextDraft, setContextDraft] = useNodePanelDebugDraft(
+    id,
+    nodeData._panelDebugDraft,
+    PANEL_DEBUG_CONTEXT_JSON_DEFAULT,
+  )
+  const contextJson = contextDraft.contextJson
+  const setContextJson = useCallback(
+    (value: string) => setContextDraft({ contextJson: value }),
+    [setContextDraft],
+  )
   const [contextParseError, setContextParseError] = useState<string | null>(null)
 
   const variableOptions = useMemo(

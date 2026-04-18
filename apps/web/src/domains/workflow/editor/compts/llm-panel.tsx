@@ -5,7 +5,7 @@ import ExpandCollapseButton from '../base/expand-collapse-button';
 import PanelAlert from '../base/panel-alert';
 import AddItemButton from '../base/add-item-button';
 import JSONSchemaInput from '../base/json-schema-input';
-import { useEdges, useNodes, useReactFlow } from 'reactflow';
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context';
 import type { PanelProps as NodePanelProps } from './custom-node';
 import Field from '../base/field';
 import {
@@ -33,6 +33,10 @@ import { WorkflowVariableInsertTrigger } from '../base/workflow-variable-insert-
 import { PANEL_Z_INDEX } from '../layout-constants';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
+import {
+  PANEL_DEBUG_LLM_VALUES_DEFAULT,
+  useNodePanelDebugDraft,
+} from '../hooks/use-node-panel-debug-draft';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
@@ -42,7 +46,6 @@ import {
   extractWorkflowPromptVariablePaths,
 } from '../utils/extract-workflow-prompt-variable-paths';
 import { COMPLETION_PARAM_DEFINITIONS } from '../panels/llm-panel/catalog';
-import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { useLLMPanelConfig } from '../panels/llm-panel/use-llm-panel-config';
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
@@ -208,9 +211,7 @@ const CompletionPromptEditor = ({
 const LLMPanel = ({ id, data }: NodePanelProps) => {
   const appId = useWorkflowAppId();
   const { activeTab } = usePanelTabs();
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>();
-  const nodes = useNodes<CanvasNodeData>();
-  const edges = useEdges<Edge>();
+  const { setNodes, nodes, edges } = useWorkflowCanvasNodes();
   const nodeData = data as CanvasNodeData;
   const availableVariables = buildWorkflowVariableOptions(
     id,
@@ -274,7 +275,11 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     JSON.stringify(config.structuredOutput?.schema ?? null, null, 2),
   );
   const [schemaError, setSchemaError] = useState<string | null>(null);
-  const [debugValues, setDebugValues] = useState<Record<string, string>>({});
+  const [debugValues, setDebugValues] = useNodePanelDebugDraft<Record<string, string>>(
+    id,
+    nodeData._panelDebugDraft,
+    PANEL_DEBUG_LLM_VALUES_DEFAULT,
+  );
   const [debugInputError, setDebugInputError] = useState<string | null>(null);
 
   const debugVariablePaths = useMemo(
@@ -307,7 +312,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     }));
     setDebugInputError(null);
     clearError();
-  }, [clearError]);
+  }, [clearError, setDebugValues]);
 
   const handleRunDebug = useCallback(() => {
     const missingRequired = debugVariableFields

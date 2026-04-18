@@ -34,6 +34,13 @@ import {
   useWorkflowCanvasInteraction,
   WorkflowCanvasInteractionProvider,
 } from '../context/workflow-canvas-interaction-context';
+import { WorkflowCanvasNodesProvider } from '../context/workflow-canvas-nodes-context';
+import {
+  collectEditorStateFromCanvasNodes,
+  mergePersistedEditorStateIntoNodes,
+  readPersistedWorkflowEditorState,
+  writePersistedWorkflowEditorState,
+} from '../utils/workflow-node-editor-state';
 import { WorkflowCanvasNodeDebugRegistryProvider } from '../context/workflow-canvas-node-debug-registry';
 import {
   WORKFLOW_READONLY_EXAMPLE_LABEL,
@@ -981,10 +988,31 @@ export const WorkflowChildren = () => {
   const isReadOnlyExample = Boolean(appId && isWorkflowReadOnlyExampleAppId(appId));
   const isCanvasLocked = isDraftRunActive || isReadOnlyExample;
 
+  const patchNodeData = useCallback(
+    (nodeId: string, patch: Partial<CanvasNodeData>) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  ...patch,
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes],
+  );
+
   const onNodesChangeGuarded = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
       if (isReadOnlyExample) {
-        const allowed = changes.filter((change) => change.type === 'select');
+        const allowed = changes.filter((change) =>
+          change.type === 'select' || change.type === 'dimensions',
+        );
         if (allowed.length > 0) {
           onNodesChange(allowed);
         }
@@ -1072,9 +1100,33 @@ export const WorkflowChildren = () => {
       return;
     }
 
-    setNodes(hydrateCanvasNodesFromDsl(app.dsl));
+    const hydratedNodes = hydrateCanvasNodesFromDsl(app.dsl);
+    const persistedEditorState = appId ? readPersistedWorkflowEditorState(appId) : null;
+
+    setNodes(mergePersistedEditorStateIntoNodes(hydratedNodes, persistedEditorState));
     setEdges((app.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge));
   }, [appId, setEdges, setNodes]);
+
+  useEffect(() => {
+    if (!appId) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      const previous = readPersistedWorkflowEditorState(appId)
+      const collected = collectEditorStateFromCanvasNodes(nodesRef.current)
+      writePersistedWorkflowEditorState(appId, {
+        nodes: {
+          ...(previous?.nodes ?? {}),
+          ...collected.nodes,
+        },
+      })
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [appId, nodes]);
 
   useEffect(() => {
     setNodes((currentNodes) => {
@@ -1415,6 +1467,13 @@ export const WorkflowChildren = () => {
       isDraftRunActive={isDraftRunActive}
       selectNodeById={selectNodeById}
     >
+    <WorkflowCanvasNodesProvider
+      nodes={nodes}
+      edges={edges as Edge[]}
+      setNodes={setNodes}
+      setEdges={setEdges}
+      patchNodeData={patchNodeData}
+    >
     <WorkflowDraftTestRunProvider>
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.25)]">
@@ -1655,6 +1714,7 @@ export const WorkflowChildren = () => {
       </div>
     </section>
     </WorkflowDraftTestRunProvider>
+    </WorkflowCanvasNodesProvider>
     </WorkflowCanvasInteractionProvider>
     </WorkflowCanvasNodeDebugRegistryProvider>
     </WorkflowReadOnlyProvider>

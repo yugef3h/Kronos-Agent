@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react'
-import { useReactFlow } from 'reactflow'
+import { useWorkflowCanvasNodes } from '../context/workflow-canvas-nodes-context'
 import {
   debugWorkflowNode,
   type NodeDebugRequest,
 } from '../../app/workflowNodeDebugApi'
-import type { CanvasNodeData, WorkflowCanvasNodeKind } from '../types/canvas'
+import type { WorkflowCanvasNodeKind } from '../types/canvas'
 import { NodeRunningStatus } from '../types/common'
-import type { Edge } from '../types/common'
 import { isTerminalNodeRunStatus } from '../types/run'
 import { resolveNodeDebugBlockKind } from '../utils/node-debug-kind'
 import { toNodeLastRunSnapshot } from '../utils/to-node-last-run-snapshot'
@@ -56,7 +55,7 @@ export const useNodeDebugRun = ({
   debugInputs,
   contextVariables,
 }: UseNodeDebugRunOptions) => {
-  const { setNodes } = useReactFlow<CanvasNodeData, Edge>()
+  const { setNodes } = useWorkflowCanvasNodes()
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
