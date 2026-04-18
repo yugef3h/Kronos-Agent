@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InfoTooltip from '../base/info-tooltip';
 import VariableSelect from '../../../../components/form/variable-select';
 import ExpandCollapseButton from '../base/expand-collapse-button';
@@ -21,14 +21,26 @@ import {
 } from '../base/panel-form';
 import PanelLastRun from '../base/panel-last-run';
 import { PanelLastRunLlmDetails } from '../base/panel-last-run-llm';
-import { PanelDebugContextField } from '../base/panel-debug-context-field';
-import { WorkflowPromptEditor } from '../base/workflow-prompt-editor';
+import {
+  buildLlmDebugVariableFields,
+  PanelLlmDebugInputs,
+} from '../base/panel-llm-debug-inputs';
+import {
+  WorkflowPromptEditor,
+  type WorkflowPromptEditorHandle,
+} from '../base/workflow-prompt-editor';
+import { WorkflowVariableInsertTrigger } from '../base/workflow-variable-insert-trigger';
+import { PANEL_Z_INDEX } from '../layout-constants';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { useNodeDebugRun } from '../hooks/use-node-debug-run';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
 import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import { resolveNodeLastRun } from '../utils/resolve-node-last-run';
-import { parsePanelDebugContextJson } from '../utils/panel-debug-context';
+import { buildPanelDebugContextFromLlmFields } from '../utils/build-panel-debug-context';
+import {
+  collectLlmPanelPromptTexts,
+  extractWorkflowPromptVariablePaths,
+} from '../utils/extract-workflow-prompt-variable-paths';
 import { COMPLETION_PARAM_DEFINITIONS } from '../panels/llm-panel/catalog';
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
@@ -95,16 +107,22 @@ const PromptMessageEditor = ({
   onChange: (index: number, patch: Partial<ChatPromptItem>) => void;
   onDelete: (index: number) => void;
 }) => {
+  const editorRef = useRef<WorkflowPromptEditorHandle>(null);
+
   return (
     <PanelCard className="p-2">
       <div className="mb-1.5 flex items-center gap-2">
         <PanelChoiceGroup
-          className="w-[220px]"
+          className="w-[190px]"
           size="sm"
           value={item.role}
           options={PROMPT_ROLE_OPTIONS}
           onChange={(value) => onChange(index, { role: value })}
         />
+        {/* <WorkflowVariableInsertTrigger
+          options={variableOptions}
+          onInsert={(selector) => editorRef.current?.insertVariable(selector)}
+        /> */}
         <button
           type="button"
           disabled={!canDelete}
@@ -115,12 +133,44 @@ const PromptMessageEditor = ({
         </button>
       </div>
       <WorkflowPromptEditor
+        ref={editorRef}
         value={item.text}
         variableOptions={variableOptions}
         onChange={(text) => onChange(index, { text })}
         placeholder="在这里写提示词；输入 { 或 / 插入上游变量，如 {{#sys.query#}}。"
       />
     </PanelCard>
+  );
+};
+
+const MemoryQueryPromptEditor = ({
+  value,
+  variableOptions,
+  onChange,
+}: {
+  value: string;
+  variableOptions: VariableOption[];
+  onChange: (text: string) => void;
+}) => {
+  const editorRef = useRef<WorkflowPromptEditorHandle>(null);
+
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex justify-end">
+        <WorkflowVariableInsertTrigger
+          options={variableOptions}
+          onInsert={(selector) => editorRef.current?.insertVariable(selector)}
+        />
+      </div>
+      <WorkflowPromptEditor
+        ref={editorRef}
+        value={value}
+        variableOptions={variableOptions}
+        onChange={onChange}
+        rows={3}
+        placeholder="输入 { 或 / 插入变量；需包含 {{#sys.query#}}。"
+      />
+    </div>
   );
 };
 
@@ -133,9 +183,18 @@ const CompletionPromptEditor = ({
   variableOptions: VariableOption[];
   onChange: (patch: Partial<CompletionPromptItem>) => void;
 }) => {
+  const editorRef = useRef<WorkflowPromptEditorHandle>(null);
+
   return (
-    <PanelCard className="min-w-0 p-2">
+    <PanelCard className="min-w-0 space-y-2 p-2">
+      <div className="flex justify-end">
+        <WorkflowVariableInsertTrigger
+          options={variableOptions}
+          onInsert={(selector) => editorRef.current?.insertVariable(selector)}
+        />
+      </div>
       <WorkflowPromptEditor
+        ref={editorRef}
         value={prompt.text}
         variableOptions={variableOptions}
         onChange={(text) => onChange({ text })}
@@ -215,12 +274,22 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     JSON.stringify(config.structuredOutput?.schema ?? null, null, 2),
   );
   const [schemaError, setSchemaError] = useState<string | null>(null);
-  const [contextJson, setContextJson] = useState('{}');
-  const [contextParseError, setContextParseError] = useState<string | null>(null);
+  const [debugValues, setDebugValues] = useState<Record<string, string>>({});
+  const [debugInputError, setDebugInputError] = useState<string | null>(null);
 
-  const parsedContext = useMemo(
-    () => parsePanelDebugContextJson(contextJson),
-    [contextJson],
+  const debugVariablePaths = useMemo(
+    () => extractWorkflowPromptVariablePaths(collectLlmPanelPromptTexts(config)),
+    [config],
+  );
+
+  const debugVariableFields = useMemo(
+    () => buildLlmDebugVariableFields(debugVariablePaths, availableVariables),
+    [availableVariables, debugVariablePaths],
+  );
+
+  const contextVariables = useMemo(
+    () => buildPanelDebugContextFromLlmFields(debugVariableFields, debugValues),
+    [debugVariableFields, debugValues],
   );
 
   const { runDebug, isRunning, error: debugError, clearError } = useNodeDebugRun({
@@ -228,24 +297,37 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     nodeId: id,
     nodeKind: 'llm',
     nodeInputs: config as unknown as Record<string, unknown>,
-    contextVariables: parsedContext.ok ? parsedContext.value : undefined,
+    contextVariables,
   });
 
+  const handleDebugValueChange = useCallback((path: string, value: string) => {
+    setDebugValues((previous) => ({
+      ...previous,
+      [path]: value,
+    }));
+    setDebugInputError(null);
+    clearError();
+  }, [clearError]);
+
   const handleRunDebug = useCallback(() => {
-    if (!parsedContext.ok) {
-      setContextParseError(parsedContext.message);
+    const missingRequired = debugVariableFields
+      .filter((field) => field.required)
+      .filter((field) => !(debugValues[field.path] ?? '').trim())
+
+    if (missingRequired.length > 0) {
+      setDebugInputError(`请填写：${missingRequired.map((field) => field.label).join('、')}`);
       return;
     }
 
-    setContextParseError(null);
+    setDebugInputError(null);
     clearError();
     void runDebug();
-  }, [clearError, parsedContext, runDebug]);
+  }, [clearError, debugValues, debugVariableFields, runDebug]);
 
   useRegisterPanelNodeDebug(id, {
     runDebug: handleRunDebug,
     isRunning,
-    disabled: !parsedContext.ok || issues.length > 0 || config.model.mode === 'completion',
+    disabled: issues.length > 0 || config.model.mode === 'completion',
   });
 
   const lastRun = resolveNodeLastRun(id, nodeData as CanvasNodeData);
@@ -326,22 +408,21 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
     <div className="space-y-3 pb-2">
       {activeTab === 'last-run' ? (
         <div className="space-y-3">
-          <PanelDebugContextField
-            value={contextJson}
-            onChange={(value) => {
-              setContextJson(value);
-              setContextParseError(null);
-              clearError();
-            }}
-            parseError={contextParseError}
-            hint='Mock 变量会注入提示词中的 {{#path#}} 占位符，例如 {"sys": {"query": "你好"}} 或 {"sys.query": "你好"}。'
+          <PanelLlmDebugInputs
+            fields={debugVariableFields}
+            values={debugValues}
+            variableOptions={availableVariables}
+            onChange={handleDebugValueChange}
           />
+          {debugInputError ? (
+            <PanelAlert type="warning">{debugInputError}</PanelAlert>
+          ) : null}
           {debugError ? (
             <PanelAlert type="warning">{debugError}</PanelAlert>
           ) : null}
           <PanelRunDebugButton
             isRunning={isRunning}
-            disabled={!parsedContext.ok || config.model.mode === 'completion'}
+            disabled={config.model.mode === 'completion'}
             onClick={handleRunDebug}
             className="w-full rounded-lg bg-slate-900 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           />
@@ -436,6 +517,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
           options={availableVariables}
           onChange={handleContextVariableChange}
           placeholder="设置变量值"
+          menuZIndex={PANEL_Z_INDEX + 40}
         />
         {config.context.enabled && !promptHasContextBlock ? (
           <PanelAlert type="warning">
@@ -446,9 +528,10 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
 
       {config.model.name ? (
         <PanelSection title="Prompt" required>
-          <p className="mb-2 text-[10px] leading-4 text-slate-500">
-            输入 {'{'} 或 / 打开上游变量补全，插入格式为 {'{{#节点.字段#}}'}（与调试 Mock 上下文路径一致）。
-          </p>
+          <div className="relative min-w-0">
+            <p className="mb-2 text-[10px] leading-4 text-slate-500">
+              输入 {'{'} 或 / 打开变量补全（与编排页提示词编辑器相同交互），插入 {'{{#sys.query#}}'} 等上游变量。
+            </p>
           {isChatModel ? (
             <>
               <div className="min-w-0 space-y-2.5">
@@ -473,6 +556,7 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
               onChange={handleCompletionPromptChange}
             />
           )}
+          </div>
         </PanelSection>
       ) : null}
 
@@ -518,18 +602,14 @@ const LLMPanel = ({ id, data }: NodePanelProps) => {
             </PanelCard>
             <PanelFieldRenderer field={memoryWindowField} />
             <Field title="User Query Prompt" compact>
-              <div className="min-w-0 space-y-1">
-                <WorkflowPromptEditor
-                  value={config.memory.queryPromptTemplate}
-                  variableOptions={availableVariables}
-                  onChange={handleMemoryQueryChange}
-                  rows={3}
-                  placeholder="输入 { 或 / 插入变量；需包含 {{#sys.query#}}。"
-                />
-                <p className="text-[10px] leading-4 text-slate-500">
-                  Chat 模式下必须包含 {'{{#sys.query#}}'}。
-                </p>
-              </div>
+              <MemoryQueryPromptEditor
+                value={config.memory.queryPromptTemplate}
+                variableOptions={availableVariables}
+                onChange={handleMemoryQueryChange}
+              />
+              <p className="mt-1 text-[10px] leading-4 text-slate-500">
+                Chat 模式下必须包含 {'{{#sys.query#}}'}。
+              </p>
             </Field>
             {isCompletionModel ? (
               <div className="grid grid-cols-2 gap-3">

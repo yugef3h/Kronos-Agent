@@ -153,6 +153,8 @@ const VariableSelect: React.FC<{
   onClear?: () => void;
   /** 下拉列表单项 class，如 `py-2 min-h-9` 调高行高 */
   optionClassName?: string;
+  /** 侧栏 Panel 内需高于 PANEL_Z_INDEX，默认 80 */
+  menuZIndex?: number;
 }> = ({
   value,
   options,
@@ -166,6 +168,7 @@ const VariableSelect: React.FC<{
   showClear = false,
   onClear,
   optionClassName,
+  menuZIndex = 80,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -274,7 +277,7 @@ const VariableSelect: React.FC<{
           top: r.bottom + gap,
           width,
           maxHeight: maxH,
-          zIndex: 80,
+          zIndex: menuZIndex,
         });
       } else {
         setFloatingStyle({
@@ -283,7 +286,7 @@ const VariableSelect: React.FC<{
           bottom: vh - r.top + gap,
           width,
           maxHeight: maxH,
-          zIndex: 80,
+          zIndex: menuZIndex,
         });
       }
     };
@@ -308,7 +311,7 @@ const VariableSelect: React.FC<{
       window.removeEventListener('scroll', updateFloating, true);
       window.removeEventListener('resize', updateFloating);
     };
-  }, [isOpen, disabled, groupedOptions.length, searchText]);
+  }, [isOpen, disabled, groupedOptions.length, menuZIndex, searchText]);
 
   const showClearControl = Boolean(showClear && onClear && !disabled);
 

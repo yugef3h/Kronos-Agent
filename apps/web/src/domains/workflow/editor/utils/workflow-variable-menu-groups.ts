@@ -104,11 +104,17 @@ export const buildWorkflowVariableMenuGroups = (
     const displayLabel = resolveOptionDisplayLabel(option)
     const typeLabel = resolveTypeLabel(option)
     const groupMeta = resolveGroupMeta(option)
-    const searchableText =
-      `${groupMeta.title} ${displayLabel} ${typeLabel} ${option.label} ${path}`.toLowerCase()
-
-    if (normalizedFilter && !searchableText.includes(normalizedFilter)) {
-      return
+    if (normalizedFilter) {
+      const pathLower = path.toLowerCase()
+      const labelLower = displayLabel.toLowerCase()
+      const titleLower = groupMeta.title.toLowerCase()
+      const matches = pathLower.startsWith(normalizedFilter)
+        || labelLower.startsWith(normalizedFilter)
+        || titleLower.includes(normalizedFilter)
+        || `${option.label}`.toLowerCase().includes(normalizedFilter)
+      if (!matches) {
+        return
+      }
     }
 
     const groupedOption = {
