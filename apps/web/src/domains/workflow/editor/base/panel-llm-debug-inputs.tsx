@@ -8,7 +8,7 @@ import {
 } from './workflow-prompt-editor'
 import { WorkflowVariableInsertTrigger } from './workflow-variable-insert-trigger'
 import type { VariableOption } from '../panels/llm-panel/types'
-import type { LlmDebugVariableField } from '../utils/llm-debug-context'
+import { LLM_DEBUG_HIDDEN_PATHS, type LlmDebugVariableField } from '../utils/llm-debug-context'
 import { serializeValueSelector } from '../utils/variable-options'
 
 export type { LlmDebugVariableField } from '../utils/llm-debug-context'
@@ -23,15 +23,8 @@ const resolveFieldMeta = (
 
   if (path === 'sys.query') {
     return {
-      label: '用户问题 (sys.query)',
+      label: '用户问题',
       kind: 'query',
-    }
-  }
-
-  if (path === 'sys.files') {
-    return {
-      label: '附件 (sys.files)',
-      kind: 'json',
     }
   }
 
@@ -52,7 +45,7 @@ export const buildLlmDebugVariableFields = (
   paths: string[],
   variableOptions: VariableOption[],
 ): LlmDebugVariableField[] =>
-  paths.map((path) => {
+  paths.filter((path) => !LLM_DEBUG_HIDDEN_PATHS.has(path)).map((path) => {
     const meta = resolveFieldMeta(path, variableOptions)
     return {
       path,
