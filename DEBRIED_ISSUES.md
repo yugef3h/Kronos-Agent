@@ -1,3 +1,27 @@
+## 2026-04-18 Workflow 上次运行调试输入 + Example 只读画布开 Panel 节点消失
+
+- 现象：
+  1. 节点 Panel「上次运行」里填的调试项关闭侧栏后丢失。
+  2. 将调试草稿写入 DSL `data.editor` 后，刷新页面部分节点缺失；点「测试运行」后画布节点全部消失。
+  3. 仅 **Example（只读实例）** 应用：点开任意节点 Panel 后，画布节点立即消失。
+  4. 修复输入无法打字：`WorkflowPromptEditor` 150ms 防抖与父级 `value` 回写冲突，输入被 `setDraft(value)` 清空。
+- 根因：
+  1. 调试表单原用组件内 `useState`，Panel 卸载即丢；曾把 `_panelDebugDraft` / `_lastRun` 序列进 DSL `editor`，触发草稿 JSON 膨胀与 autosave 异常，`hydrateCanvasNodesFromDsl` 丢节点。
+  2. Example 画布 `onNodesChangeGuarded` 几乎只放行 `select`，React Flow **内部 store** 与父级 `useNodesState` 脱节；Panel 挂载时 `useEffect` 调用 `useReactFlow().setNodes`，回调里读到残缺/空的内部 `nodes` 再写回，清空画布。自建应用放行更多 change，不易复现。
+  3. `useNodePanelDebugDraft` 曾仅从 props 派生 `value`，与编辑器防抖不同步。
+- 修复：
+  1. **调试草稿**：不再写入 DSL；改存 `localStorage` 键 `kronos_workflow_editor_state_v1_{appId}`；画布内存字段 `_panelDebugDraft` 仍用 `patchNodeData` 更新。DSL 仅 **读取** 遗留 `editor.panelDebugDraft` 做迁移，不导出 `editor`。
+  2. **统一画布写入口**：`WorkflowCanvasNodesProvider` 暴露父级 `nodes/edges/setNodes/setEdges/patchNodeData`；各 Panel 与 `useNodeDebugRun` 不再使用 `useReactFlow().setNodes`。
+  3. **Example 只读**：`onNodesChangeGuarded` 额外放行 `dimensions`，减轻 store 不同步。
+  4. **输入**：`useNodePanelDebugDraft` 用本地 state 即时更新，并异步写画布 + localStorage；仅在切换 `nodeId` 时从 stored 恢复。
+- 涉及文件：
+  - `apps/web/src/domains/workflow/editor/context/workflow-canvas-nodes-context.tsx`
+  - `apps/web/src/domains/workflow/editor/hooks/use-node-panel-debug-draft.ts`
+  - `apps/web/src/domains/workflow/editor/utils/workflow-node-editor-state.ts`
+  - `apps/web/src/domains/workflow/editor/draft-page/workflow-children.tsx`
+  - `apps/web/src/domains/workflow/editor/compts/*-panel.tsx`、`hooks/use-node-debug-run.ts`
+  - `apps/web/src/domains/workflow/editor/utils/workflow-dsl.ts`（移除 `editor` 导出，保留 legacy 读取）
+
 ## 2025-05-16 Playground 已选 RAG/Chatbot 应用但对话未走「与 Bot 聊天」链路
 
 - 现象：首页 Playground 从下拉框选中已假发布的 Chatbot 应用后发送问题，回复不像编排页「与 Bot 聊天」那样带知识库检索与系统提示拼接，表现为 RAG 未生效。
