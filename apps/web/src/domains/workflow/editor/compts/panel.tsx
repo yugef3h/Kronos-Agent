@@ -11,6 +11,7 @@ import {
   usePanelNodeDebugToolbar,
 } from '../base/panel-node-debug-context'
 import { PanelRunDebugButton } from '../base/panel-run-debug-button'
+import PanelAlert from '../../../../components/form/panel-alert'
 import { useWorkflowCanvasInteraction } from '../context/workflow-canvas-interaction-context'
 import { WORKFLOW_READONLY_EXAMPLE_LABEL, useWorkflowReadOnly } from '../context/workflow-read-only-context'
 
@@ -178,14 +179,12 @@ const Panel = ({ selectedNode, onClose }: PanelProps) => {
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {selectedNode && nodeRunBlocker?.nodeId === selectedNode.id ? (
-            <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
-              <p className="text-[11px] font-semibold text-rose-800">无法运行，请先完善：</p>
-              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px] leading-5 text-rose-700">
-                {nodeRunBlocker.messages.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            </div>
+            <PanelAlert
+              type="error"
+              title="无法运行，请先完善："
+              messages={nodeRunBlocker.messages}
+              className="mb-3"
+            />
           ) : null}
           {isReadOnly && activeTab === 'settings' ? (
             <p className="mb-3 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-900">
