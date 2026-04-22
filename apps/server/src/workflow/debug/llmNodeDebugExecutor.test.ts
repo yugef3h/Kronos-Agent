@@ -2,6 +2,7 @@ import { NodeRunStatus } from '../types.js'
 import {
   executeLlmNodeDebug,
   interpolateWorkflowPrompt,
+  normalizeLLMNodeConfig,
   validateLLMNodeConfig,
 } from './llmNodeDebugExecutor.js'
 
@@ -16,6 +17,23 @@ describe('llmNodeDebugExecutor', () => {
     )
 
     expect(rendered).toBe('请回答：什么是 RAG，上下文：AI')
+  })
+
+  it('normalizes draft DSL snake_case prompt_template', () => {
+    const config = normalizeLLMNodeConfig({
+      model: {
+        provider: 'virtual',
+        name: 'zhiling',
+        mode: 'chat',
+        completion_params: { temperature: 0.7, top_p: 1, top_k: 1, max_tokens: 1024 },
+      },
+      prompt_template: [{ id: 'p1', role: 'user', text: '请回答：{{#sys.query#}}' }],
+      context: { enabled: false, variable_selector: [] },
+      structured_output_enabled: false,
+    })
+
+    expect(validateLLMNodeConfig(config)).toEqual([])
+    expect((config.promptTemplate as Array<{ text: string }>)[0]?.text).toBe('请回答：{{#sys.query#}}')
   })
 
   it('fails when prompt is empty', async () => {

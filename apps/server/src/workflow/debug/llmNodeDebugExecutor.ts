@@ -93,12 +93,19 @@ export const normalizeLLMNodeConfig = (value: unknown): LLMNodeConfig => {
 
   const modelRecord = isRecord(value.model) ? value.model : {}
   const mode = modelRecord.mode === 'completion' ? 'completion' : 'chat'
-  const completionParamsRecord = isRecord(modelRecord.completionParams) ? modelRecord.completionParams : {}
+  const completionParamsRecord = isRecord(modelRecord.completionParams)
+    ? modelRecord.completionParams
+    : isRecord(modelRecord.completion_params)
+      ? modelRecord.completion_params
+      : {}
 
-  const promptTemplate = Array.isArray(value.promptTemplate)
-    ? value.promptTemplate.map(normalizeChatPromptItem).filter(Boolean) as ChatPromptItem[]
-    : isRecord(value.promptTemplate)
-      ? { text: typeof value.promptTemplate.text === 'string' ? value.promptTemplate.text : '' }
+  // Draft DSL uses snake_case (`prompt_template`); panel debug uses camelCase.
+  const rawPromptTemplate = value.promptTemplate ?? value.prompt_template
+
+  const promptTemplate = Array.isArray(rawPromptTemplate)
+    ? rawPromptTemplate.map(normalizeChatPromptItem).filter(Boolean) as ChatPromptItem[]
+    : isRecord(rawPromptTemplate)
+      ? { text: typeof rawPromptTemplate.text === 'string' ? rawPromptTemplate.text : '' }
       : defaults.promptTemplate
 
   return {
@@ -131,13 +138,23 @@ export const normalizeLLMNodeConfig = (value: unknown): LLMNodeConfig => {
           enabled: value.context.enabled === true,
           variableSelector: Array.isArray(value.context.variableSelector)
             ? value.context.variableSelector.filter((part): part is string => typeof part === 'string')
-            : [],
+            : Array.isArray(value.context.variable_selector)
+              ? value.context.variable_selector.filter((part): part is string => typeof part === 'string')
+              : [],
         }
       : defaults.context,
-    memory: isRecord(value.memory) && typeof value.memory.queryPromptTemplate === 'string'
-      ? { queryPromptTemplate: value.memory.queryPromptTemplate }
+    memory: isRecord(value.memory) && (
+      typeof value.memory.queryPromptTemplate === 'string'
+      || typeof value.memory.query_prompt_template === 'string'
+    )
+      ? {
+          queryPromptTemplate: typeof value.memory.queryPromptTemplate === 'string'
+            ? value.memory.queryPromptTemplate
+            : String(value.memory.query_prompt_template),
+        }
       : undefined,
-    structuredOutputEnabled: value.structuredOutputEnabled === true,
+    structuredOutputEnabled: value.structuredOutputEnabled === true
+      || value.structured_output_enabled === true,
   }
 }
 
