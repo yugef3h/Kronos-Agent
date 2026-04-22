@@ -1,11 +1,10 @@
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { Node } from 'reactflow'
 import type { WorkflowDSL } from '../../app/workflowAppStore'
 import {
   cancelWorkflowDraftRun,
   isDeferredWorkflowDraftRun,
   startWorkflowDraftRun,
-  subscribeWorkflowDraftRunEvents,
   waitForWorkflowDraftRunCompletion,
   type WorkflowDraftNodeRunRecord,
   type WorkflowRunEvent,
@@ -20,6 +19,12 @@ import {
   applyWorkflowRunEventToCanvas,
   clearWorkflowRunCanvasState,
 } from '../utils/apply-run-event-to-canvas'
+import {
+  applyWorkflowRunEventsWithStagger,
+  buildWorkflowRunEventsFromNodeRuns,
+  createStaggeredWorkflowRunEventApplicator,
+  replayWorkflowDraftRunEvents,
+} from '../utils/replay-workflow-draft-run-events'
 
 type CanvasSnapshot = {
   nodes: Array<Node<CanvasNodeData>>
@@ -47,42 +52,6 @@ export type UseWorkflowDraftRunOptions = {
   setEdges: Dispatch<SetStateAction<Edge[]>>
   ui?: WorkflowDraftRunUiCallbacks
 }
-
-const replayWorkflowRunEvents = (
-  appId: string,
-  runId: string,
-  applyEvent: (event: WorkflowRunEvent) => void,
-): Promise<void> => new Promise((resolve) => {
-  let settled = false
-  const finish = () => {
-    if (settled) {
-      return
-    }
-
-    settled = true
-    resolve()
-  }
-
-  const unsubscribe = subscribeWorkflowDraftRunEvents(appId, runId, {
-    onEvent: (event) => {
-      applyEvent(event)
-
-      if (event.type === 'workflow_finished') {
-        unsubscribe()
-        finish()
-      }
-    },
-    onError: () => {
-      unsubscribe()
-      finish()
-    },
-  })
-
-  globalThis.setTimeout(() => {
-    unsubscribe()
-    finish()
-  }, 4_000)
-})
 
 const mapEventNodeStatus = (status?: string): NodeRunningStatus => {
   if (!status) {
@@ -139,6 +108,11 @@ export const useWorkflowDraftRun = ({
     }
   }, [applyCanvas, ui])
 
+  const applyRunEvent = useMemo(
+    () => createStaggeredWorkflowRunEventApplicator(applyEvent),
+    [applyEvent],
+  )
+
   const executeDraftRun = useCallback(async (
     dsl: WorkflowDSL,
     inputs?: Record<string, unknown>,
@@ -181,7 +155,7 @@ export const useWorkflowDraftRun = ({
         const finishedRun = await waitForWorkflowDraftRunCompletion({
           appId: trimmedAppId,
           runId: run.runId,
-          applyEvent,
+          applyEvent: applyRunEvent,
           onRunUpdate: setRunSummary,
           signal: abortController.signal,
         })
@@ -195,7 +169,24 @@ export const useWorkflowDraftRun = ({
         return { run: finishedRun, nodeRuns: [] }
       }
 
-      await replayWorkflowRunEvents(trimmedAppId, run.runId, applyEvent)
+      const replay = await replayWorkflowDraftRunEvents(
+        trimmedAppId,
+        run.runId,
+        applyEvent,
+        abortController.signal,
+      )
+
+      if (
+        !replay.hasNodeLifecycleEvents
+        && nodeRuns.length > 0
+        && !abortController.signal.aborted
+      ) {
+        await applyWorkflowRunEventsWithStagger(
+          buildWorkflowRunEventsFromNodeRuns(run.runId, nodeRuns),
+          applyEvent,
+          abortController.signal,
+        )
+      }
 
       if (abortController.signal.aborted) {
         return null
@@ -234,7 +225,7 @@ export const useWorkflowDraftRun = ({
 
       setIsRunning(false)
     }
-  }, [appId, applyCanvas, applyEvent, ui])
+  }, [appId, applyCanvas, applyEvent, applyRunEvent, ui])
 
   const cancelDraftRun = useCallback(async () => {
     abortRef.current?.abort()
