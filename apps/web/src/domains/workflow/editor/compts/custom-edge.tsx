@@ -67,6 +67,15 @@ const CustomEdge = ({
     }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
+  const isErrorEdge = useMemo(
+    () =>
+      _sourceRunningStatus === NodeRunningStatus.Failed
+      || _sourceRunningStatus === NodeRunningStatus.Exception
+      || _targetRunningStatus === NodeRunningStatus.Failed
+      || _targetRunningStatus === NodeRunningStatus.Exception,
+    [_sourceRunningStatus, _targetRunningStatus],
+  )
+
   const stroke = useMemo(() => {
     if (selected)
       return getEdgeColor(NodeRunningStatus.Running)
@@ -79,6 +88,10 @@ const CustomEdge = ({
 
     return getEdgeColor()
   }, [_connectedNodeIsHovering, linearGradientId, selected, sourceHandleId])
+
+  const strokeWidth = isErrorEdge
+    ? WORKFLOW_EDGE_STROKE_WIDTH + 0.5
+    : WORKFLOW_EDGE_STROKE_WIDTH
 
   return (
     <>
@@ -102,7 +115,7 @@ const CustomEdge = ({
         path={edgePath}
         style={{
           stroke,
-          strokeWidth: WORKFLOW_EDGE_STROKE_WIDTH,
+          strokeWidth,
           opacity: _waitingRun ? 0.7 : 1,
         }}
       />

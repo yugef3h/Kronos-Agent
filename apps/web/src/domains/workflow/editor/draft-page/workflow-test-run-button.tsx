@@ -1,8 +1,10 @@
 import { useCallback, type RefObject } from 'react'
-import type { ReactFlowInstance } from 'reactflow'
+import type { Node, ReactFlowInstance } from 'reactflow'
 import type { WorkflowDSL } from '../../app/workflowAppStore'
+import type { CanvasNodeData } from '../types/canvas'
 import { useWorkflowCanvasInteraction } from '../context/workflow-canvas-interaction-context'
-import { useWorkflowDraftTestRun } from '../context/workflow-draft-test-run-context'
+import { focusWorkflowNodeOnCanvas } from '../utils/focus-workflow-node-on-canvas'
+import { resolveStartDraftTestRun } from '../utils/resolve-start-draft-test-run'
 import type { ValidateRunnableDslResult } from '../utils/validate-runnable-dsl'
 
 type ChecklistGroup = {
@@ -12,43 +14,27 @@ type ChecklistGroup = {
 }
 
 type WorkflowTestRunButtonProps = {
+  appId?: string | null
   checklistGroups: ChecklistGroup[]
   runnableValidation: ValidateRunnableDslResult
   workflowDslPreview: WorkflowDSL
-  triggerNodeId?: string
-  selectedNodeId?: string
+  triggerNode?: Node<CanvasNodeData>
   isDraftRunRunning: boolean
   reactFlowInstanceRef: RefObject<ReactFlowInstance | null>
   executeDraftRun: (dsl: WorkflowDSL, inputs?: Record<string, unknown>) => Promise<unknown>
 }
 
-const focusNodeOnCanvas = (
-  reactFlowInstanceRef: RefObject<ReactFlowInstance | null>,
-  nodeId: string,
-) => {
-  requestAnimationFrame(() => {
-    const instance = reactFlowInstanceRef.current
-    const targetNode = instance?.getNode(nodeId)
-    if (!instance || !targetNode) {
-      return
-    }
-
-    instance.fitView({ nodes: [targetNode], padding: 0.35, duration: 350, maxZoom: 1 })
-  })
-}
-
 export const WorkflowTestRunButton = ({
+  appId,
   checklistGroups,
   runnableValidation,
   workflowDslPreview,
-  triggerNodeId,
-  selectedNodeId,
+  triggerNode,
   isDraftRunRunning,
   reactFlowInstanceRef,
   executeDraftRun,
 }: WorkflowTestRunButtonProps) => {
   const { openNodePanel, setNodeRunBlocker, clearNodeRunBlocker } = useWorkflowCanvasInteraction()
-  const { isPending, armPendingRun, disarmPendingRun, getDraftRunInputs } = useWorkflowDraftTestRun()
 
   const handleTestRunClick = useCallback(() => {
     if (isDraftRunRunning) {
@@ -56,18 +42,16 @@ export const WorkflowTestRunButton = ({
     }
 
     if (checklistGroups.length > 0) {
-      disarmPendingRun()
       const firstGroup = checklistGroups[0]
       setNodeRunBlocker(firstGroup.nodeId, firstGroup.issues.map((issue) => issue.message))
       openNodePanel(firstGroup.nodeId, 'settings')
-      focusNodeOnCanvas(reactFlowInstanceRef, firstGroup.nodeId)
+      focusWorkflowNodeOnCanvas(reactFlowInstanceRef, firstGroup.nodeId)
       return
     }
 
     if (!runnableValidation.runnable) {
-      disarmPendingRun()
       const targetNodeId =
-        runnableValidation.issues.find((issue) => issue.nodeId)?.nodeId ?? triggerNodeId
+        runnableValidation.issues.find((issue) => issue.nodeId)?.nodeId ?? triggerNode?.id
       if (!targetNodeId) {
         return
       }
@@ -77,41 +61,37 @@ export const WorkflowTestRunButton = ({
         runnableValidation.issues.map((issue) => issue.message),
       )
       openNodePanel(targetNodeId, 'settings')
-      focusNodeOnCanvas(reactFlowInstanceRef, targetNodeId)
+      focusWorkflowNodeOnCanvas(reactFlowInstanceRef, targetNodeId)
       return
     }
 
+    const triggerNodeId = triggerNode?.id
     if (!triggerNodeId) {
       return
     }
 
-    if (isPending && selectedNodeId === triggerNodeId) {
-      disarmPendingRun()
-      clearNodeRunBlocker()
-      void executeDraftRun(workflowDslPreview, getDraftRunInputs())
+    const draftRun = resolveStartDraftTestRun({ appId, triggerNode })
+
+    if (!draftRun.ready) {
+      setNodeRunBlocker(triggerNodeId, draftRun.issues)
+      openNodePanel(triggerNodeId, 'last-run')
+      focusWorkflowNodeOnCanvas(reactFlowInstanceRef, triggerNodeId)
       return
     }
 
-    disarmPendingRun()
     clearNodeRunBlocker()
-    armPendingRun()
-    openNodePanel(triggerNodeId, 'last-run')
-    focusNodeOnCanvas(reactFlowInstanceRef, triggerNodeId)
+    void executeDraftRun(workflowDslPreview, draftRun.inputs)
   }, [
-    armPendingRun,
+    appId,
     checklistGroups,
     clearNodeRunBlocker,
-    disarmPendingRun,
     executeDraftRun,
-    getDraftRunInputs,
     isDraftRunRunning,
-    isPending,
     openNodePanel,
     reactFlowInstanceRef,
     runnableValidation,
-    selectedNodeId,
     setNodeRunBlocker,
-    triggerNodeId,
+    triggerNode,
     workflowDslPreview,
   ])
 
@@ -127,9 +107,7 @@ export const WorkflowTestRunButton = ({
           ? '存在待修复项，点击打开对应节点 Panel'
           : !runnableValidation.runnable
             ? '工作流结构不完整，点击打开对应节点 Panel'
-            : isPending && selectedNodeId === triggerNodeId
-              ? '再次点击开始整图测试运行'
-              : '打开开始节点填写测试输入'
+            : '测试运行整图工作流'
       }
       onClick={handleTestRunClick}
     >

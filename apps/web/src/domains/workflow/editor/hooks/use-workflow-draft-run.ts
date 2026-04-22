@@ -7,10 +7,12 @@ import {
   startWorkflowDraftRun,
   subscribeWorkflowDraftRunEvents,
   waitForWorkflowDraftRunCompletion,
+  type WorkflowDraftNodeRunRecord,
   type WorkflowRunEvent,
 } from '../../app/workflowRunApi'
 import type { CanvasNodeData } from '../types/canvas'
 import type { Edge } from '../types/common'
+import { NodeRunningStatus } from '../types/common'
 import { WorkflowRunStatus, type WorkflowRunSummary } from '../types/run'
 import {
   applyNodeLastRunsFromDraftRun,
@@ -24,11 +26,26 @@ type CanvasSnapshot = {
   edges: Edge[]
 }
 
+export type WorkflowDraftRunUiCallbacks = {
+  /** 节点开始执行：跟随锁定该节点 */
+  onNodeStarted?: (nodeId: string) => void
+  /** 节点执行结束（失败时由 hook 内再触发 onFocusNode） */
+  onNodeFinished?: (nodeId: string, status: NodeRunningStatus) => void
+  /** 打开对应节点 Panel（上次运行 tab）并视口居中 */
+  onFocusNode?: (nodeId: string) => void
+  /** 整图运行结束：聚焦失败节点或 End 输出节点 */
+  onWorkflowFinished?: (
+    run: WorkflowRunSummary,
+    nodeRuns: WorkflowDraftNodeRunRecord[],
+  ) => void
+}
+
 export type UseWorkflowDraftRunOptions = {
   appId?: string | null
   getCanvas: () => CanvasSnapshot
   setNodes: Dispatch<SetStateAction<Array<Node<CanvasNodeData>>>>
   setEdges: Dispatch<SetStateAction<Edge[]>>
+  ui?: WorkflowDraftRunUiCallbacks
 }
 
 const replayWorkflowRunEvents = (
@@ -67,11 +84,20 @@ const replayWorkflowRunEvents = (
   }, 4_000)
 })
 
+const mapEventNodeStatus = (status?: string): NodeRunningStatus => {
+  if (!status) {
+    return NodeRunningStatus.Succeeded
+  }
+
+  return status as NodeRunningStatus
+}
+
 export const useWorkflowDraftRun = ({
   appId,
   getCanvas,
   setNodes,
   setEdges,
+  ui,
 }: UseWorkflowDraftRunOptions) => {
   const [runSummary, setRunSummary] = useState<WorkflowRunSummary | null>(null)
   const [isRunning, setIsRunning] = useState(false)
@@ -94,7 +120,24 @@ export const useWorkflowDraftRun = ({
 
   const applyEvent = useCallback((event: WorkflowRunEvent) => {
     applyCanvas((snapshot) => applyWorkflowRunEventToCanvas(snapshot.nodes, snapshot.edges, event))
-  }, [applyCanvas])
+
+    if (event.type === 'node_started' && event.nodeId) {
+      ui?.onNodeStarted?.(event.nodeId)
+      ui?.onFocusNode?.(event.nodeId)
+      return
+    }
+
+    if (event.type === 'node_finished' && event.nodeId) {
+      const status = mapEventNodeStatus(event.status)
+      ui?.onNodeFinished?.(event.nodeId, status)
+      if (
+        status === NodeRunningStatus.Failed
+        || status === NodeRunningStatus.Exception
+      ) {
+        ui?.onFocusNode?.(event.nodeId)
+      }
+    }
+  }, [applyCanvas, ui])
 
   const executeDraftRun = useCallback(async (
     dsl: WorkflowDSL,
@@ -148,6 +191,7 @@ export const useWorkflowDraftRun = ({
         }
 
         setRunSummary(finishedRun)
+        ui?.onWorkflowFinished?.(finishedRun, [])
         return { run: finishedRun, nodeRuns: [] }
       }
 
@@ -171,6 +215,7 @@ export const useWorkflowDraftRun = ({
       })
 
       setRunSummary(run)
+      ui?.onWorkflowFinished?.(run, nodeRuns)
       return { run, nodeRuns }
     } catch (caught) {
       if (!abortController.signal.aborted) {
@@ -189,7 +234,7 @@ export const useWorkflowDraftRun = ({
 
       setIsRunning(false)
     }
-  }, [appId, applyCanvas, applyEvent])
+  }, [appId, applyCanvas, applyEvent, ui])
 
   const cancelDraftRun = useCallback(async () => {
     abortRef.current?.abort()

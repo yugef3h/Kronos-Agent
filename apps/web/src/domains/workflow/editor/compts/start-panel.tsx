@@ -43,10 +43,7 @@ import {
 } from '../hooks/use-node-panel-debug-draft';
 import { useRegisterPanelNodeDebug } from '../base/panel-node-debug-context';
 import { PanelRunDebugButton } from '../base/panel-run-debug-button';
-import {
-  useRegisterWorkflowDraftTestRunInputs,
-  useWorkflowDraftTestRun,
-} from '../context/workflow-draft-test-run-context';
+import { useRegisterWorkflowDraftTestRunInputs } from '../context/workflow-draft-test-run-context';
 import {
   buildStartPanelDebugInputs,
   getStartPanelDebugConfigIssueMessages,
@@ -406,7 +403,6 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     [config, debugValues],
   );
 
-  const { isPending: isDraftTestRunPending } = useWorkflowDraftTestRun();
   const getDraftRunInputs = useCallback(
     () => buildStartPanelDebugInputs(config, debugValues),
     [config, debugValues],
@@ -547,11 +543,6 @@ const StartPanel = ({ id, data }: NodePanelProps) => {
     <div className="space-y-3">
       {activeTab === 'last-run' ? (
         <div className="space-y-3">
-          {isDraftTestRunPending ? (
-            <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] leading-5 text-blue-800">
-              填写下方调试输入后，再次点击顶部「测试运行」执行整图。
-            </p>
-          ) : null}
           <div ref={lastRunSectionRef} className="space-y-3">
             <PanelSection title="运行结果">
               {lastRun ? <PanelLastRunStartDetails lastRun={lastRun} /> : null}

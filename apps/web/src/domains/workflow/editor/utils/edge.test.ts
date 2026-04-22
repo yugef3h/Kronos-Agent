@@ -11,6 +11,6 @@ describe('getEdgeColor', () => {
   })
 
   it('returns failure color token for fail branches', () => {
-    expect(getEdgeColor(NodeRunningStatus.Running, true)).toBe('var(--color-workflow-link-line-failure-handle, #f59e0b)')
+    expect(getEdgeColor(NodeRunningStatus.Exception)).toBe('var(--color-workflow-link-line-error-handle, #dc2626)')
   })
 })

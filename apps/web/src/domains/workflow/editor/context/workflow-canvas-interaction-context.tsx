@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -17,6 +18,8 @@ export type WorkflowNodeRunBlocker = {
   nodeId: string
   messages: string[]
 }
+
+export type OpenNodePanelHandler = (nodeId: string, tab?: PanelDefaultTab) => void
 
 type WorkflowCanvasInteractionContextValue = {
   isCanvasLocked: boolean
@@ -37,11 +40,14 @@ export const WorkflowCanvasInteractionProvider = ({
   isCanvasLocked,
   isDraftRunActive,
   selectNodeById,
+  registerOpenNodePanel,
   children,
 }: {
   isCanvasLocked: boolean
   isDraftRunActive: boolean
   selectNodeById: (nodeId?: string) => void
+  /** 供 Provider 外层注册 openNodePanel（测试运行跟随聚焦） */
+  registerOpenNodePanel?: (handler: OpenNodePanelHandler | null) => void
   children: ReactNode
 }) => {
   const [panelFocus, setPanelFocus] = useState<WorkflowPanelFocus | null>(null)
@@ -58,6 +64,13 @@ export const WorkflowCanvasInteractionProvider = ({
     },
     [selectNodeById],
   )
+
+  useEffect(() => {
+    registerOpenNodePanel?.(openNodePanel)
+    return () => {
+      registerOpenNodePanel?.(null)
+    }
+  }, [openNodePanel, registerOpenNodePanel])
 
   const clearPanelFocus = useCallback(() => {
     setPanelFocus(null)

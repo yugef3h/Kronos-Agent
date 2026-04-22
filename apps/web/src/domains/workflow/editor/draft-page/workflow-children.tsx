@@ -31,9 +31,12 @@ import { useSearchParams } from 'react-router-dom';
 import { getWorkflowAppById } from '../../app/workflowAppStore';
 import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
 import {
+  type OpenNodePanelHandler,
   useWorkflowCanvasInteraction,
   WorkflowCanvasInteractionProvider,
 } from '../context/workflow-canvas-interaction-context';
+import { focusWorkflowNodeOnCanvas } from '../utils/focus-workflow-node-on-canvas';
+import { resolveDraftRunFocusNodeId } from '../utils/resolve-draft-run-focus-node';
 import { WorkflowCanvasNodesProvider } from '../context/workflow-canvas-nodes-context';
 import {
   collectEditorStateFromCanvasNodes,
@@ -139,7 +142,9 @@ import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../panels/loop-
 import { buildWorkflowVariableOptions } from '../utils/variable-options';
 import { getNodeRunBorderClass } from '../utils/get-node-run-border-class';
 import { validateRunnableDsl } from '../utils/validate-runnable-dsl';
+import type { WorkflowDraftNodeRunRecord } from '../../app/workflowRunApi';
 import { useWorkflowDraftRun } from '../hooks/use-workflow-draft-run';
+import type { WorkflowRunSummary } from '../types/run';
 import { NodeRunningStatus } from '../types/common';
 import {
   areKnowledgeDatasetsEqual,
@@ -972,6 +977,60 @@ export const WorkflowChildren = () => {
     [],
   );
 
+  const { handleNodeClick: handleNodeClickBase, handlePaneClick, handlePanelClose } =
+    useNodesInteractions<CanvasNodeData>({
+      setNodes,
+      setEdges,
+    });
+
+  const selectNodeById = useCallback(
+    (nodeId?: string) => {
+      setNodes((currentNodes) => applyNodeSelection(currentNodes, nodeId));
+      setEdges((currentEdges) => applyConnectedEdgeSelection(currentEdges, nodeId));
+    },
+    [setEdges, setNodes],
+  );
+
+  const openNodePanelRef = useRef<OpenNodePanelHandler | null>(null);
+  const registerOpenNodePanel = useCallback((handler: OpenNodePanelHandler | null) => {
+    openNodePanelRef.current = handler;
+  }, []);
+
+  const focusDraftRunNode = useCallback(
+    (nodeId: string) => {
+      selectNodeById(nodeId);
+      openNodePanelRef.current?.(nodeId, 'last-run');
+      focusWorkflowNodeOnCanvas(reactFlowInstanceRef, nodeId);
+    },
+    [selectNodeById],
+  );
+
+  const draftRunUi = useMemo(
+    () => ({
+      onNodeStarted: focusDraftRunNode,
+      onFocusNode: focusDraftRunNode,
+      onWorkflowFinished: (run: WorkflowRunSummary, nodeRuns: WorkflowDraftNodeRunRecord[]) => {
+        const focusNodeId = resolveDraftRunFocusNodeId(nodesRef.current, { nodeRuns, run });
+        if (focusNodeId) {
+          focusDraftRunNode(focusNodeId);
+        }
+      },
+    }),
+    [focusDraftRunNode],
+  );
+
+  const handleNodeClick = useCallback<NodeMouseHandler>(
+    (event, node) => {
+      if (node.data.kind === 'iteration-end' || node.data.kind === 'loop-end') {
+        handlePanelClose();
+        return;
+      }
+
+      handleNodeClickBase(event, node);
+    },
+    [handleNodeClickBase, handlePanelClose],
+  );
+
   const {
     runSummary,
     isRunning: isDraftRunRunning,
@@ -984,6 +1043,7 @@ export const WorkflowChildren = () => {
     getCanvas: getCanvasSnapshot,
     setNodes,
     setEdges,
+    ui: draftRunUi,
   });
   const isReadOnlyExample = Boolean(appId && isWorkflowReadOnlyExampleAppId(appId));
   const isCanvasLocked = isDraftRunActive || isReadOnlyExample;
@@ -1051,30 +1111,6 @@ export const WorkflowChildren = () => {
     captureDraftPreview,
   });
   const updateNodeInternals = useUpdateNodeInternals();
-  const { handleNodeClick: handleNodeClickBase, handlePaneClick, handlePanelClose } =
-    useNodesInteractions<CanvasNodeData>({
-      setNodes,
-      setEdges,
-    });
-  const selectNodeById = useCallback(
-    (nodeId?: string) => {
-      setNodes((currentNodes) => applyNodeSelection(currentNodes, nodeId));
-      setEdges((currentEdges) => applyConnectedEdgeSelection(currentEdges, nodeId));
-    },
-    [setEdges, setNodes],
-  );
-
-  const handleNodeClick = useCallback<NodeMouseHandler>(
-    (event, node) => {
-      if (node.data.kind === 'iteration-end' || node.data.kind === 'loop-end') {
-        handlePanelClose();
-        return;
-      }
-
-      handleNodeClickBase(event, node);
-    },
-    [handleNodeClickBase, handlePanelClose],
-  );
 
   const onPaneClick = useCallback(() => {
     const selectedNode = nodes.find((node) => node.data.selected);
@@ -1466,6 +1502,7 @@ export const WorkflowChildren = () => {
       isCanvasLocked={isCanvasLocked}
       isDraftRunActive={isDraftRunActive}
       selectNodeById={selectNodeById}
+      registerOpenNodePanel={registerOpenNodePanel}
     >
     <WorkflowCanvasNodesProvider
       nodes={nodes}
@@ -1496,11 +1533,11 @@ export const WorkflowChildren = () => {
           <div className="right-operator flex min-w-0 shrink-0 items-center">
             <div className="inline-flex max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-[18px] bg-white/96 p-0.5 shadow-[0_16px_32px_-28px_rgba(15,23,42,0.36)] ring-1 ring-slate-950/5 backdrop-blur">
               <WorkflowTestRunButton
+                appId={appId}
                 checklistGroups={checklistGroups}
                 runnableValidation={runnableValidation}
                 workflowDslPreview={workflowDslPreview}
-                triggerNodeId={triggerNode?.id}
-                selectedNodeId={selectedNode?.id}
+                triggerNode={triggerNode}
                 isDraftRunRunning={isDraftRunRunning}
                 reactFlowInstanceRef={reactFlowInstanceRef}
                 executeDraftRun={executeDraftRun}
