@@ -4,6 +4,7 @@ import { PanelCard } from './panel-form'
 import type { NodeLastRunSnapshot } from '../types/run'
 import {
   buildPanelLastRunMeta,
+  stripEndDebugMetaFromOutputs,
   stringifyPanelLastRunPayload,
 } from './panel-last-run-utils'
 
@@ -11,6 +12,9 @@ export type PanelLastRunProps = {
   lastRun?: NodeLastRunSnapshot | null
   emptyTitle?: string
   emptyDescription?: string
+  showInputs?: boolean
+  /** 输出 JSON 中隐藏 End 调试用的 `_debug` 字段 */
+  stripOutputDebugMeta?: boolean
 }
 
 const JsonBlock = ({
@@ -58,6 +62,8 @@ export const PanelLastRun = ({
   lastRun,
   emptyTitle = '暂无最近一次运行记录',
   emptyDescription = '单节点调试或工作流运行后，这里会展示该节点的输入、输出与耗时。',
+  showInputs = true,
+  stripOutputDebugMeta = false,
 }: PanelLastRunProps) => {
   if (!lastRun) {
     return (
@@ -69,6 +75,9 @@ export const PanelLastRun = ({
   }
 
   const meta = buildPanelLastRunMeta(lastRun)
+  const outputPayload = stripOutputDebugMeta
+    ? stripEndDebugMetaFromOutputs(lastRun.outputs)
+    : lastRun.outputs
 
   return (
     <div className="min-w-0 space-y-3">
@@ -107,8 +116,8 @@ export const PanelLastRun = ({
         </PanelAlert>
       ) : null}
 
-      <JsonBlock title="输入" payload={lastRun.inputs} />
-      <JsonBlock title="输出" payload={lastRun.outputs} />
+      {showInputs ? <JsonBlock title="输入" payload={lastRun.inputs} /> : null}
+      <JsonBlock title="输出" payload={outputPayload} />
     </div>
   )
 }

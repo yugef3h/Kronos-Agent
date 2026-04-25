@@ -71,6 +71,20 @@ export const nodeRunStatusBadgeClassName = (status: NodeRunningStatus): string =
   }
 }
 
+/** End 节点输出里的 `_debug` 已在 PanelLastRunEndDetails 展示，JSON 区只保留业务字段。 */
+export const stripEndDebugMetaFromOutputs = (
+  outputs?: Record<string, unknown>,
+): Record<string, unknown> | undefined => {
+  if (!outputs) {
+    return undefined
+  }
+
+  const { _debug, ...rest } = outputs
+  void _debug
+
+  return Object.keys(rest).length > 0 ? rest : outputs
+}
+
 export const stringifyPanelLastRunPayload = (value: unknown): string => {
   if (value === undefined) {
     return '{}'
