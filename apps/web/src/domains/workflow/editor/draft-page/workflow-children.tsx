@@ -19,7 +19,6 @@ import {
   addEdge,
   useEdgesState,
   useNodesState,
-  useReactFlow,
   useUpdateNodeInternals,
   type Connection,
   type Node,
@@ -28,7 +27,7 @@ import {
   type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-import { getWorkflowAppById } from '../../app/workflowAppStore';
+import { getWorkflowAppById, type WorkflowAppRecord } from '../../app/workflowAppStore';
 import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
 import {
   type OpenNodePanelHandler,
@@ -37,7 +36,10 @@ import {
 } from '../context/workflow-canvas-interaction-context';
 import { focusWorkflowNodeOnCanvas } from '../utils/focus-workflow-node-on-canvas';
 import { resolveDraftRunFocusNodeId } from '../utils/resolve-draft-run-focus-node';
-import { WorkflowCanvasNodesProvider } from '../context/workflow-canvas-nodes-context';
+import {
+  useWorkflowCanvasNodes,
+  WorkflowCanvasNodesProvider,
+} from '../context/workflow-canvas-nodes-context';
 import {
   collectEditorStateFromCanvasNodes,
   mergePersistedEditorStateIntoNodes,
@@ -290,7 +292,13 @@ const WorkflowNode = ({ id, data }: NodeProps<CanvasNodeData>) => {
   const [appendSourceHandle, setAppendSourceHandle] = useState<string>('out');
   const menuRef = useRef<HTMLDivElement>(null);
   const baseZIndexRef = useRef<number | undefined>(undefined);
-  const { setNodes, setEdges, getNode, getEdges, getNodes } = useReactFlow<CanvasNodeData, Edge>();
+  const { nodes: canvasNodes, edges: canvasEdges, setNodes, setEdges } = useWorkflowCanvasNodes();
+  const getNodes = useCallback(() => canvasNodes, [canvasNodes]);
+  const getEdges = useCallback(() => canvasEdges, [canvasEdges]);
+  const getNode = useCallback(
+    (nodeId: string) => canvasNodes.find((node) => node.id === nodeId),
+    [canvasNodes],
+  );
   const currentNode = getNode(id);
   const currentNodeZIndex = currentNode?.zIndex;
   const parentNodeId = currentNode?.parentId;
@@ -912,7 +920,11 @@ export const WorkflowChildren = () => {
     hasHydrated: hasKnowledgeDatasetsHydrated,
     errorMessage: knowledgeDatasetsErrorMessage,
   } = useKnowledgeDatasets();
-  const currentApp = appId ? getWorkflowAppById(appId) : undefined;
+  const [syncedApp, setSyncedApp] = useState<WorkflowAppRecord | undefined>(() =>
+    appId ? getWorkflowAppById(appId) : undefined,
+  );
+  const hydratedForAppIdRef = useRef<string | null>(null);
+  const currentApp = syncedApp;
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const reactFlowCaptureRef = useRef<HTMLDivElement | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
@@ -942,23 +954,39 @@ export const WorkflowChildren = () => {
     };
   }, [isChecklistOpen]);
 
-  const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
-    if (!appId) return [createInitialTriggerNode()];
+  useEffect(() => {
+    if (!appId) {
+      setSyncedApp(undefined);
+      return;
+    }
 
-    const app = getWorkflowAppById(appId);
-    if (!app) return [createInitialTriggerNode()];
+    const refreshSyncedApp = () => {
+      setSyncedApp(getWorkflowAppById(appId));
+    };
 
-    return hydrateCanvasNodesFromDsl(app.dsl);
+    refreshSyncedApp();
+    window.addEventListener('kronos:workflow-apps-changed', refreshSyncedApp);
+
+    return () => {
+      window.removeEventListener('kronos:workflow-apps-changed', refreshSyncedApp);
+    };
   }, [appId]);
+
+  const initialNodes = useMemo<Node<CanvasNodeData>[]>(() => {
+    if (!syncedApp) {
+      return [createInitialTriggerNode()];
+    }
+
+    return hydrateCanvasNodesFromDsl(syncedApp.dsl);
+  }, [syncedApp]);
 
   const initialEdges = useMemo<Edge[]>(() => {
-    if (!appId) return [];
+    if (!syncedApp) {
+      return [];
+    }
 
-    const app = getWorkflowAppById(appId);
-    if (!app) return [];
-
-    return (app.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge);
-  }, [appId]);
+    return (syncedApp.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge);
+  }, [syncedApp]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<CommonEdgeType>(initialEdges);
@@ -1127,21 +1155,26 @@ export const WorkflowChildren = () => {
   }, [nodes, handlePaneClick]);
 
   useEffect(() => {
-    if (!appId) return;
+    hydratedForAppIdRef.current = null;
+  }, [appId]);
 
-    const app = getWorkflowAppById(appId);
-    if (!app) {
-      setNodes([createInitialTriggerNode()]);
-      setEdges([]);
+  useEffect(() => {
+    if (!appId || !syncedApp) {
       return;
     }
 
-    const hydratedNodes = hydrateCanvasNodesFromDsl(app.dsl);
-    const persistedEditorState = appId ? readPersistedWorkflowEditorState(appId) : null;
+    if (hydratedForAppIdRef.current === appId) {
+      return;
+    }
+
+    hydratedForAppIdRef.current = appId;
+
+    const hydratedNodes = hydrateCanvasNodesFromDsl(syncedApp.dsl);
+    const persistedEditorState = readPersistedWorkflowEditorState(appId);
 
     setNodes(mergePersistedEditorStateIntoNodes(hydratedNodes, persistedEditorState));
-    setEdges((app.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge));
-  }, [appId, setEdges, setNodes]);
+    setEdges((syncedApp.dsl.workflow.graph.edges as Edge[]).map(normalizeWorkflowEdge));
+  }, [appId, syncedApp, setEdges, setNodes]);
 
   useEffect(() => {
     if (!appId) {

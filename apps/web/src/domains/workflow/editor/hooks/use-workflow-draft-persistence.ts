@@ -13,6 +13,10 @@ import { useWorkflowDraftStore, type WorkflowDraftBackup } from '../../../../sto
 import type { Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
 import { createWorkflowDslFromCanvas, hydrateCanvasNodesFromDsl } from '../utils/workflow-dsl';
+import {
+  mergePersistedEditorStateIntoNodes,
+  readPersistedWorkflowEditorState,
+} from '../utils/workflow-node-editor-state';
 import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
 import { useDraftBackup, usePersistedDraft } from './use-persisted-draft';
 
@@ -198,7 +202,11 @@ export const useWorkflowDraftPersistence = ({
         return;
       }
 
-      setNodes(hydrateCanvasNodesFromDsl(result.dsl));
+      const persistedEditorState = appId ? readPersistedWorkflowEditorState(appId) : null;
+      setNodes(mergePersistedEditorStateIntoNodes(
+        hydrateCanvasNodesFromDsl(result.dsl),
+        persistedEditorState,
+      ));
       setEdges(result.dsl.workflow.graph.edges as Edge[]);
       lastPersistedDslRef.current = JSON.stringify(result.dsl);
       setDraftUpdatedAt(result.updatedAt);
@@ -231,7 +239,11 @@ export const useWorkflowDraftPersistence = ({
       createdAt: Date.now(),
     }),
     restoreSnapshot: (snapshot) => {
-      setNodes(hydrateCanvasNodesFromDsl(snapshot.dsl));
+      const persistedEditorState = appId ? readPersistedWorkflowEditorState(appId) : null;
+      setNodes(mergePersistedEditorStateIntoNodes(
+        hydrateCanvasNodesFromDsl(snapshot.dsl),
+        persistedEditorState,
+      ));
       setEdges(snapshot.dsl.workflow.graph.edges as Edge[]);
       setIsSyncingWorkflowDraft(false);
     },
