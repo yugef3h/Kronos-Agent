@@ -31,7 +31,7 @@ import {
   getNextDayStartTimestamp,
   setCachedLocalStorage,
 } from '../../../lib/localStorageCache';
-import { usePlaygroundStore } from '../../../store/playgroundStore';
+import { createPlaygroundSessionId, usePlaygroundStore } from '../../../store/playgroundStore';
 import {
   createAssistantInvocation,
   extractToolNamesFromTimeline,
@@ -113,6 +113,7 @@ export type UseChatStreamControllerResult = {
   handleExplainFileClick: () => void;
   handleExplainImageClick: () => void;
   handleHistoryItemClick: (target: RecentDialogueItem) => void;
+  handleStartNewConversation: () => void;
   handleHotTopicClick: (topic: string) => void;
   handleImageFileChange: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -200,6 +201,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     memoryMetrics,
     takeoutFlowState: persistedTakeoutFlowState,
     switchPlaygroundHistorySession,
+    setSessionId,
     setAuthToken,
     setLatestUserQuestion,
     appendTimelineEvent,
@@ -1479,6 +1481,28 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     }
   }, [isHistoryOpen, refreshRecentSessions]);
 
+  const handleStartNewConversation = useCallback(() => {
+    setIsHistoryOpen(false);
+    setHistorySwitchConfirmTarget(null);
+    activeControllerRef.current?.abort();
+    activeControllerRef.current = null;
+    resetAssistantStreamingState();
+    setIsStreaming(false);
+    setIsOrchestrating(false);
+    setIsAwaitingTakeoutFollowup(false);
+    clearTimelineEvents();
+    setSessionId(createPlaygroundSessionId());
+    void refreshRecentSessions();
+  }, [
+    clearTimelineEvents,
+    refreshRecentSessions,
+    resetAssistantStreamingState,
+    setIsAwaitingTakeoutFollowup,
+    setIsOrchestrating,
+    setIsStreaming,
+    setSessionId,
+  ]);
+
   const handleHistoryItemClick = useCallback(
     (target: RecentDialogueItem) => {
       const sameRouting =
@@ -1657,6 +1681,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     handleExplainFileClick,
     handleExplainImageClick,
     handleHistoryItemClick,
+    handleStartNewConversation,
     handleHotTopicClick,
     handleImageFileChange,
     handlePromptKeyDown,

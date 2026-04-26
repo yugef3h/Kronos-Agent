@@ -33,6 +33,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     handleExplainFileClick,
     handleExplainImageClick,
     handleHistoryItemClick,
+    handleStartNewConversation,
     handleHotTopicClick,
     handleImageFileChange,
     handlePromptKeyDown,
@@ -114,7 +115,19 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
           ) : null} */}
         </div>
 
-        <div ref={historyPanelRef} className="relative">
+        <div ref={historyPanelRef} className="relative flex items-center gap-[10px]">
+          <button
+            type="button"
+            onClick={handleStartNewConversation}
+            aria-label="新建对话"
+            title="新建对话"
+            className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-xl border border-slate-300/90 bg-white text-slate-700 shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+          </button>
           <button
             type="button"
             onClick={toggleHistoryPanel}

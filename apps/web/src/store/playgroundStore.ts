@@ -63,6 +63,9 @@ export const createInitialChatPanelState = () => ({
   takeoutFlowState: createInitialTakeoutFlowState(),
 });
 
+export const createPlaygroundSessionId = (): string =>
+  `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 /**
  * 从 sessionStorage 读取已有 sessionId，若不存在则生成新的并写入。
  * 这样当前页刷新仍保留会话，但关闭页面后再次进入会开启新会话。
@@ -70,7 +73,7 @@ export const createInitialChatPanelState = () => ({
 const _getOrCreateSessionId = (): string => {
   const existing = sessionStorage.getItem(SESSION_STORAGE_KEY);
   if (existing) return existing;
-  const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const newId = createPlaygroundSessionId();
   sessionStorage.setItem(SESSION_STORAGE_KEY, newId);
   return newId;
 };
