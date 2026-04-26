@@ -1,3 +1,21 @@
+## 2026-04-26 Example 应用刷新草稿页只剩 Start 节点
+
+- 现象：仅 **内置 Example** 应用可稳定复现；直接刷新 `/workflow/draft?appId=…` 后画布只剩一个 Start 节点。从列表页再进入同一应用则节点完整恢复。自建应用刷新一般正常。
+- 根因：
+  1. Example 的 DSL **不在** `localStorage` 的 `workflow_apps`，只存在于 `fetchWorkflowExampleApps()` 拉取后的 **内存 cache**（`workflowExampleClient.ts`）。整页刷新后 cache 为空。
+  2. 草稿页 `workflow-children.tsx` 原先只监听 `kronos:workflow-apps-changed`，**不会**像列表页那样在挂载时请求 `/api/workflow/examples`。
+  3. `syncedApp` 为 `undefined` 时，`useNodesState` 以默认 `[createInitialTriggerNode()]` 初始化，且 hydrate 副作用因无 app 记录而跳过，画布一直停留在单 Start。
+  4. （相关）`WorkflowNode` 曾用 `useReactFlow().setNodes` 做增删改，在受控模式下可能与父级 `nodes` 脱节，存在把父 state 写成残缺列表的风险（自建应用较少触发）。
+- 修复：
+  1. 新增 `loadWorkflowAppById()`：本地无记录时先 `fetchWorkflowExampleApps()` 再 `getWorkflowAppById()`（`workflowAppStore.ts`）。
+  2. 草稿页挂载时对当前 `appId` 调用 `loadWorkflowAppById`，并监听 `WORKFLOW_EXAMPLES_CHANGED_EVENT` 刷新 `syncedApp`。
+  3. App 记录就绪后按 DSL hydrate 一次（`hydratedForAppIdRef` 防重复）；**不再**在找不到 app 时把画布重置为单 Start。
+  4. `WorkflowNode` 的增删改查统一走 `useWorkflowCanvasNodes()`，与父级 `useNodesState` 同源。
+- 涉及文件：
+  - `apps/web/src/domains/workflow/app/workflowAppStore.ts`（`loadWorkflowAppById`）
+  - `apps/web/src/domains/workflow/app/workflowExampleClient.ts`
+  - `apps/web/src/domains/workflow/editor/draft-page/workflow-children.tsx`
+
 ## 2026-04-18 Workflow 上次运行调试输入 + Example 只读画布开 Panel 节点消失
 
 - 现象：
