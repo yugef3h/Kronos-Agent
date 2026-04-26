@@ -1,6 +1,7 @@
 import { apiUrl } from '../../../lib/api';
 import { isViteDev } from '../../../lib/viteEnv';
 import {
+  fetchWorkflowExampleApps,
   getWorkflowExampleAppsCache,
   getWorkflowExamplePreviewSrc,
   isWorkflowReadOnlyExampleAppId,
@@ -712,6 +713,22 @@ export const getWorkflowAppById = (id: string): WorkflowAppRecord | undefined =>
   }
   const example = findExampleApp(id);
   return example ? withExampleMockPublishOverlay(example) : undefined;
+};
+
+/** 本地无记录时拉取内置示例（刷新草稿页时 example 仅存在内存 cache）。 */
+export const loadWorkflowAppById = async (id: string): Promise<WorkflowAppRecord | undefined> => {
+  const cached = getWorkflowAppById(id);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    await fetchWorkflowExampleApps();
+  } catch (error) {
+    console.warn('[workflow] loadWorkflowAppById: fetch examples failed', error);
+  }
+
+  return getWorkflowAppById(id);
 };
 
 export const getWorkflowAppEditorPath = (app: WorkflowAppRecord): string => {

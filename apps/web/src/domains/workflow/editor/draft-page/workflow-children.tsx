@@ -27,8 +27,11 @@ import {
   type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
-import { getWorkflowAppById, type WorkflowAppRecord } from '../../app/workflowAppStore';
-import { isWorkflowReadOnlyExampleAppId } from '../../app/workflowExampleClient';
+import { getWorkflowAppById, loadWorkflowAppById, type WorkflowAppRecord } from '../../app/workflowAppStore';
+import {
+  isWorkflowReadOnlyExampleAppId,
+  WORKFLOW_EXAMPLES_CHANGED_EVENT,
+} from '../../app/workflowExampleClient';
 import {
   type OpenNodePanelHandler,
   useWorkflowCanvasInteraction,
@@ -960,15 +963,29 @@ export const WorkflowChildren = () => {
       return;
     }
 
+    let cancelled = false;
+
     const refreshSyncedApp = () => {
-      setSyncedApp(getWorkflowAppById(appId));
+      if (!cancelled) {
+        setSyncedApp(getWorkflowAppById(appId));
+      }
     };
 
     refreshSyncedApp();
+
+    void loadWorkflowAppById(appId).then((app) => {
+      if (!cancelled && app) {
+        setSyncedApp(app);
+      }
+    });
+
     window.addEventListener('kronos:workflow-apps-changed', refreshSyncedApp);
+    window.addEventListener(WORKFLOW_EXAMPLES_CHANGED_EVENT, refreshSyncedApp);
 
     return () => {
+      cancelled = true;
       window.removeEventListener('kronos:workflow-apps-changed', refreshSyncedApp);
+      window.removeEventListener(WORKFLOW_EXAMPLES_CHANGED_EVENT, refreshSyncedApp);
     };
   }, [appId]);
 
