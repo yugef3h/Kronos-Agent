@@ -202,6 +202,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     takeoutFlowState: persistedTakeoutFlowState,
     switchPlaygroundHistorySession,
     setSessionId,
+    resetChatPanelState,
     setAuthToken,
     setLatestUserQuestion,
     appendTimelineEvent,
@@ -1484,6 +1485,23 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const handleStartNewConversation = useCallback(() => {
     setIsHistoryOpen(false);
     setHistorySwitchConfirmTarget(null);
+
+    if (messages.length === 0) {
+      if (!hasRestorableDraft) {
+        return;
+      }
+
+      activeControllerRef.current?.abort();
+      activeControllerRef.current = null;
+      resetAssistantStreamingState();
+      setIsStreaming(false);
+      setIsOrchestrating(false);
+      setIsAwaitingTakeoutFollowup(false);
+      clearTimelineEvents();
+      resetChatPanelState();
+      return;
+    }
+
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
     resetAssistantStreamingState();
@@ -1495,8 +1513,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     void refreshRecentSessions();
   }, [
     clearTimelineEvents,
+    hasRestorableDraft,
+    messages.length,
     refreshRecentSessions,
     resetAssistantStreamingState,
+    resetChatPanelState,
     setIsAwaitingTakeoutFollowup,
     setIsOrchestrating,
     setIsStreaming,
