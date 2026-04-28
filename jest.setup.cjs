@@ -34,3 +34,8 @@ if (typeof globalThis.sessionStorage === 'undefined') {
     configurable: true,
   });
 }
+
+// env.ts 在模块加载时校验必填字段；测试环境注入默认值
+process.env.DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || 'test-key';
+process.env.DOUBAO_BASE_URL = process.env.DOUBAO_BASE_URL || 'https://test.example.com/v1';
+process.env.DOUBAO_MODEL = process.env.DOUBAO_MODEL || 'test-model';
