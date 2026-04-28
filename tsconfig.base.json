@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "types": ["node"]
   }
 }
