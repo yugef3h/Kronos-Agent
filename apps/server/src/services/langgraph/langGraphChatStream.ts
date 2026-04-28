@@ -3,6 +3,7 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
 import { buildPlaygroundGatewayContext } from '../../ai/gateway/buildPlaygroundGatewayContext.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
 import { resolveDegradePolicy } from '../../ai/circuit/resolveDegradePolicy.js';
@@ -67,6 +68,7 @@ export async function* streamLangGraphChatReply(params: {
   });
 
   const initialMessages: BaseMessage[] = [
+    new SystemMessage(DEFAULT_SYSTEM_PROMPT),
     ...(agentHint ? [new SystemMessage(agentHint)] : []),
     ...(params.memorySummary && params.memorySummary.trim().length > 0
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]

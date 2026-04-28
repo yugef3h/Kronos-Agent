@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages
 import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
 import { invokeGatewayLlm } from '../../ai/gateway/invokeGatewayLlm.js';
 import { streamGatewayLlm } from '../../ai/gateway/streamGatewayLlm.js';
@@ -102,6 +103,7 @@ export async function* streamLinearChatReply(params: {
   yield createTimelineEvent('plan', 'start', '规划器开始分析当前提示词意图。');
 
   const planningMessages = [
+    new SystemMessage(DEFAULT_SYSTEM_PROMPT),
     ...(planningHint ? [new SystemMessage(planningHint)] : []),
     ...(params.memorySummary && params.memorySummary.trim().length > 0
       ? [new SystemMessage(`Conversation memory summary:\n${params.memorySummary}`)]
@@ -192,6 +194,7 @@ export async function* streamLinearChatReply(params: {
   const reasonStartedAt = Date.now();
 
   const messages = [
+    new SystemMessage(DEFAULT_SYSTEM_PROMPT),
     ...params.history.map(toLangChainMessage),
     new SystemMessage(
       toolOutputs.length > 0
