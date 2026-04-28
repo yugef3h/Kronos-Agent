@@ -8,10 +8,11 @@ const serverPackageRoot = existsSync(join(process.cwd(), 'apps/server', 'src'))
   ? join(process.cwd(), 'apps/server')
   : process.cwd();
 const appsRoot = join(serverPackageRoot, '..');
+const repoRoot = join(appsRoot, '..');
 
-/** Node / Python 共用：优先 apps/.env，兼容旧版 apps/server/.env */
+/** Node / Python 共用：优先 repo_root/.env，兼容旧版 apps/.env / apps/server/.env */
 const resolveEnvFilePath = (): string | undefined => {
-  const candidates = [join(appsRoot, '.env'), join(serverPackageRoot, '.env')];
+  const candidates = [join(repoRoot, '.env'), join(appsRoot, '.env'), join(serverPackageRoot, '.env')];
   return candidates.find((path) => existsSync(path));
 };
 
@@ -23,9 +24,14 @@ if (envFilePath) {
 const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 chars'),
-  DOUBAO_API_KEY: z.string().min(1),
-  DOUBAO_BASE_URL: z.string().url(),
-  DOUBAO_MODEL: z.string().min(1),
+  /** 设为非 doubao 时走通用 OpenAI 兼容配置（AI_API_KEY / AI_BASE_URL / AI_MODEL） */
+  AI_PROVIDER: z.string().optional(),
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional(),
+  AI_MODEL: z.string().optional(),
+  DOUBAO_API_KEY: z.string().optional(),
+  DOUBAO_BASE_URL: z.string().url().optional(),
+  DOUBAO_MODEL: z.string().optional(),
   DOUBAO_EMBEDDING_MODEL: z.string().optional(),
   DOUBAO_PLAN_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   DOUBAO_FIRST_TOKEN_WARN_MS: z.coerce.number().int().positive().default(3000),
@@ -58,6 +64,55 @@ const envSchema = z.object({
   /** 单用户日 Token 预算，0=不限制 */
   AI_USER_TOKEN_BUDGET_PER_DAY: z.coerce.number().int().nonnegative().default(0),
 }).superRefine((value, ctx) => {
+  const provider = value.AI_PROVIDER?.trim().toLowerCase();
+  const useDoubao = !provider || provider === 'doubao';
+
+  if (useDoubao) {
+    if (!value.DOUBAO_API_KEY?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['DOUBAO_API_KEY'],
+        message: 'DOUBAO_API_KEY is required when AI_PROVIDER is unset or doubao',
+      });
+    }
+    if (!value.DOUBAO_BASE_URL?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['DOUBAO_BASE_URL'],
+        message: 'DOUBAO_BASE_URL is required when AI_PROVIDER is unset or doubao',
+      });
+    }
+    if (!value.DOUBAO_MODEL?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['DOUBAO_MODEL'],
+        message: 'DOUBAO_MODEL is required when AI_PROVIDER is unset or doubao',
+      });
+    }
+  } else {
+    if (!value.AI_API_KEY?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_API_KEY'],
+        message: 'AI_API_KEY is required when AI_PROVIDER is set to a non-doubao provider',
+      });
+    }
+    if (!value.AI_BASE_URL?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_BASE_URL'],
+        message: 'AI_BASE_URL is required when AI_PROVIDER is set to a non-doubao provider',
+      });
+    }
+    if (!value.AI_MODEL?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_MODEL'],
+        message: 'AI_MODEL is required when AI_PROVIDER is set to a non-doubao provider',
+      });
+    }
+  }
+
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

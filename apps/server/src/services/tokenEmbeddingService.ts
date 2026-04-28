@@ -1,6 +1,7 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { getEncoding } from 'js-tiktoken';
 import { env } from '../config/env.js';
+import { getActiveModelCredentials } from '../ai/gateway/resolveDefaultGatewayModel.js';
 import { type ProjectionMethod, projectVectorsTo2D } from './vectorProjection.js';
 
 export type TokenRow = {
@@ -227,11 +228,12 @@ const embedChunks = async (chunks: string[], embeddingModel: string) => {
   let embeddingSource: 'doubao' | 'fallback' = 'doubao';
 
   try {
+    const creds = getActiveModelCredentials();
     const embeddings = new OpenAIEmbeddings({
       model: embeddingModel,
-      apiKey: env.DOUBAO_API_KEY,
+      apiKey: creds.apiKey,
       configuration: {
-        baseURL: env.DOUBAO_BASE_URL,
+        baseURL: creds.baseUrl,
       },
     });
 
@@ -312,7 +314,7 @@ export const analyzeTokenAndEmbedding = async (params: AnalyzeTokenAndEmbeddingP
   const secondaryTokens = tokenizeText(params.text, secondaryTokenizerName);
 
   const chunks = chunkTextByLength(params.text, params.maxChunkSize);
-  const embeddingModel = env.DOUBAO_EMBEDDING_MODEL || env.DOUBAO_MODEL;
+  const embeddingModel = env.DOUBAO_EMBEDDING_MODEL || getActiveModelCredentials().model;
   const secondaryEmbeddingModel = params.secondaryEmbeddingModel || embeddingModel;
 
   const primaryEmbedding = await embedChunks(chunks, embeddingModel);

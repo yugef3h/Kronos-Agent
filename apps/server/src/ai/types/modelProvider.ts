@@ -1,6 +1,7 @@
 /** 统一网关支持的模型供应商标识 */
 export type ModelProviderId =
   | 'doubao'
+  | 'deepseek'
   | 'openai'
   | 'qwen'
   | 'wenxin'
@@ -9,6 +10,7 @@ export type ModelProviderId =
 
 export const MODEL_PROVIDER_IDS: readonly ModelProviderId[] = [
   'doubao',
+  'deepseek',
   'openai',
   'qwen',
   'wenxin',

@@ -1,4 +1,4 @@
-import { env } from '../config/env.js';
+import { getActiveModelCredentials } from '../ai/gateway/resolveDefaultGatewayModel.js';
 import {
   normalizeExtractedText,
   parseFileDataUrl,
@@ -76,10 +76,11 @@ export const analyzeFileByDoubao = async (params: {
     throw new Error('文件内容为空或暂无法提取文本');
   }
 
+  const creds = getActiveModelCredentials();
   const trimmedText = truncateExtractedText(extractedText);
-  const endpoint = `${env.DOUBAO_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+  const endpoint = `${creds.baseUrl.replace(/\/$/, '')}/chat/completions`;
   const requestBody: DoubaoChatCompletionRequest = {
-    model: env.DOUBAO_MODEL,
+    model: creds.model,
     temperature: 0.2,
     max_tokens: FILE_REPLY_MAX_TOKENS,
     stream: true,
@@ -100,24 +101,24 @@ export const analyzeFileByDoubao = async (params: {
     headers: {
       Accept: 'text/event-stream',
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${env.DOUBAO_API_KEY}`,
+      Authorization: `Bearer ${creds.apiKey}`,
     },
     body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
-    throw new Error(`Doubao file analysis failed: ${response.status}`);
+    throw new Error(`File analysis failed (${response.status})`);
   }
 
   const reply = await readDoubaoChatStreamReply(response);
 
   if (!reply) {
-    throw new Error('Doubao file analysis returned empty reply');
+    throw new Error('File analysis returned empty reply');
   }
 
   return {
     reply,
-    model: env.DOUBAO_MODEL,
+    model: creds.model,
     extractedCharacters: extractedText.length,
   };
 };

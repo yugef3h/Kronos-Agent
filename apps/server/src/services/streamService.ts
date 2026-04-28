@@ -2,10 +2,10 @@ import { buildModelResultCacheKey } from '../ai/cache/buildModelResultCacheKey.j
 import { buildPromptCacheKey } from '../ai/cache/buildPromptCacheKey.js';
 import { getCacheStore } from '../ai/cache/getCacheStore.js';
 import { streamCachedPromptReply } from '../ai/cache/streamCachedPromptReply.js';
-import { env } from '../config/env.js';
 import { getSession, persistSession } from '../domain/sessionStore.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
+import { getActiveModelName } from '../ai/gateway/resolveDefaultGatewayModel.js';
 import { recordTokenUsage } from '../ai/cost/tokenUsageStore.js';
 import { estimateTextTokens } from '../memory/tokenEstimate.js';
 import { streamMockReply } from './mockReplyService.js';
@@ -68,7 +68,7 @@ export async function* streamChat(params: {
     })}\nid: ${eventId}\n\n`;
   }
 
-  const modelResultKey = buildModelResultCacheKey(prompt, env.DOUBAO_MODEL, 'playground');
+  const modelResultKey = buildModelResultCacheKey(prompt, getActiveModelName(), 'playground');
   const modelResultEntry = await getCacheStore().get(modelResultKey);
   const modelResultAnswer = typeof modelResultEntry?.value === 'string' ? modelResultEntry.value : null;
 
@@ -83,7 +83,7 @@ export async function* streamChat(params: {
     return;
   }
 
-  const promptCacheKey = buildPromptCacheKey(prompt, env.DOUBAO_MODEL, 0.5);
+  const promptCacheKey = buildPromptCacheKey(prompt, getActiveModelName(), 0.5);
   const promptCacheEntry = await getCacheStore().get(promptCacheKey);
   const cachedAnswer = typeof promptCacheEntry?.value === 'string' ? promptCacheEntry.value : null;
 
@@ -193,7 +193,7 @@ export async function* streamChat(params: {
   recordTokenUsage(params.userId ?? 'anonymous', {
     input: estimateTextTokens(`${prompt}\n${memoryPlan.memorySummary}`),
     output: estimateTextTokens(assistantText),
-    model: env.DOUBAO_MODEL,
+    model: getActiveModelName(),
   });
 
   const finalizePlan = createMemoryPlan({
