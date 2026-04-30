@@ -36,22 +36,30 @@ import { streamPlaygroundAgentReply } from './agentStreamRouter.js';
 
 describe('streamPlaygroundAgentReply', () => {
   it('falls back to linear when langgraph throws', async () => {
-    const events = [];
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    for await (const event of streamPlaygroundAgentReply({
-      prompt: 'hello',
-      history: [],
-      sessionId: 'sess-1',
-    })) {
-      events.push(event);
+    try {
+      const events = [];
+
+      for await (const event of streamPlaygroundAgentReply({
+        prompt: 'hello',
+        history: [],
+        sessionId: 'sess-1',
+      })) {
+        events.push(event);
+      }
+
+      expect(events.some((item) => item.type === 'timeline' && item.message.includes('graph'))).toBe(
+        true,
+      );
+      expect(
+        events.some((item) => item.type === 'timeline' && item.message.includes('线性兜底')),
+      ).toBe(true);
+      expect(events.some((item) => item.type === 'timeline' && item.message === 'linear')).toBe(
+        true,
+      );
+    } finally {
+      warnSpy.mockRestore();
     }
-
-    expect(events.some((item) => item.type === 'timeline' && item.message.includes('graph'))).toBe(
-      true,
-    );
-    expect(events.some((item) => item.type === 'timeline' && item.message.includes('线性兜底'))).toBe(
-      true,
-    );
-    expect(events.some((item) => item.type === 'timeline' && item.message === 'linear')).toBe(true);
   });
 });
