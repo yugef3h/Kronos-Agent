@@ -24,8 +24,9 @@ import type {
 } from '../services/knowledgeChunkingService.js';
 import type { KnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
-import { assertNoDuplicateDocument, computeBufferMd5 } from '../domain/knowledgeDocumentDuplicate.js';
-import { parseFileDataUrl } from '../services/fileAnalysisHelpers.js';
+import { computeKnowledgeDocumentContentHash } from '../domain/knowledgeContentHash.js';
+import { assertNoDuplicateDocument } from '../domain/knowledgeDocumentDuplicate.js';
+import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
 import { getRagEngineMode } from './engine.js';
 import { buildKnowledgeDocumentChunksWithLangChain } from './langchain/buildChunksWithLangChain.js';
 import { createRagEmbeddings } from './langchain/ragEmbeddings.js';
@@ -109,11 +110,21 @@ export async function importKnowledgeDocument(params: {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const parsedPayload = parseFileDataUrl(params.fileDataUrl);
-  const contentMd5 = computeBufferMd5(parsedPayload.buffer);
-  await assertNoDuplicateDocument(params.datasetId, params.fileName, contentMd5);
+  const preprocessingRules = resolveImportPreprocessingRules(dataset, params.preprocessingRules);
+  const result = await buildKnowledgeDocumentChunksWithLangChain({
+    ...params,
+    preprocessingRules,
+  });
+  const contentHash = computeKnowledgeDocumentContentHash(result.processedText);
+  await assertNoDuplicateDocument({
+    datasetId: params.datasetId,
+    fileName: params.fileName,
+    contentHash,
+    dataset,
+    extractedText: result.processedText,
+    preprocessingRules,
+  });
 
-  const result = await buildKnowledgeDocumentChunksWithLangChain(params);
   const persisted = await persistImportedDocument({
     dataset,
     fileName: params.fileName,
@@ -122,7 +133,7 @@ export async function importKnowledgeDocument(params: {
     extractedText: result.processedText,
     chunks: result.chunks,
     metadata: { ...(params.metadata ?? {}) },
-    contentMd5: computeBufferMd5(result.buffer),
+    contentHash,
   });
 
   /**

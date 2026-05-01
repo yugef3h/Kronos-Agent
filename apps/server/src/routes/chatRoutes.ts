@@ -17,7 +17,7 @@ import {
   updateKnowledgeDataset,
   updateKnowledgeDocumentBlockKeywords,
 } from '../rag/knowledgeFacade.js';
-import { KnowledgeDocumentDuplicateError } from '../domain/knowledgeDocumentStore.js';
+import { KnowledgeDocumentDuplicateError } from '../domain/knowledgeDocumentDuplicate.js';
 import {
   indexingEstimateSchema,
   knowledgeDatasetInputSchema,
@@ -611,12 +611,16 @@ chatRoutes.post('/workflow/knowledge-datasets/:datasetId/documents/import', asyn
       return;
     }
 
-    if (error instanceof KnowledgeDocumentDuplicateError) {
+    if (
+      error instanceof KnowledgeDocumentDuplicateError
+      || (error instanceof Error && error.name === 'KnowledgeDocumentDuplicateError')
+    ) {
+      const duplicate = error as KnowledgeDocumentDuplicateError;
       response.status(409).json({
         error: 'KNOWLEDGE_DOCUMENT_DUPLICATE',
-        message: `「${error.fileName}」已存在（与「${error.existingDocumentName}」内容相同）`,
-        fileName: error.fileName,
-        existingDocumentName: error.existingDocumentName,
+        message: `「${duplicate.fileName}」已存在（与「${duplicate.existingDocumentName}」内容相同）`,
+        fileName: duplicate.fileName,
+        existingDocumentName: duplicate.existingDocumentName,
       });
       return;
     }

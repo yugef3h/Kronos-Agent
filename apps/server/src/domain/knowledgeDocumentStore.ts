@@ -14,15 +14,19 @@ import {
   type KnowledgeDocumentChunkOptions,
   type KnowledgeDocumentPreprocessingRules,
 } from '../services/knowledgeChunkingService.js';
-import { parseFileDataUrl } from '../services/fileAnalysisHelpers.js';
 import {
   extractKnowledgeKeywords,
   normalizeKeywords,
 } from '../services/knowledgeKeywordService.js';
+import { computeKnowledgeDocumentContentHash, generateKnowledgeTextHash } from './knowledgeContentHash.js';
+import { assertNoDuplicateDocument } from './knowledgeDocumentDuplicate.js';
+import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
 import {
-  assertNoDuplicateDocument,
-  computeBufferMd5,
-} from './knowledgeDocumentDuplicate.js';
+  attachContentHashToDocuments,
+  registerContentHashIndexEntry,
+  removeDatasetFromContentHashIndex,
+  syncKnowledgeContentHashIndex,
+} from './knowledgeDocumentContentHashIndex.js';
 import {
   getKnowledgeDatasetById,
   updateKnowledgeDatasetStats,
@@ -48,8 +52,8 @@ export type KnowledgeDocumentRecord = {
   characterCount: number;
   previewText: string;
   metadata: Record<string, string>;
-  /** 原文件字节 MD5，用于同库去重 */
-  contentMd5?: string;
+  /** API 返回时由 content-hash-index.json 注入（Dify 同款正文 hash） */
+  contentHash?: string;
 };
 
 export type KnowledgeDocumentPreviewItem = {
@@ -74,6 +78,8 @@ export type StoredChunk = {
   charCount: number;
   metadata: Record<string, string>;
   keywords: string[];
+  /** Dify `index_node_hash`：segment 正文 hash */
+  indexNodeHash?: string;
   source: {
     title: string;
   };
@@ -108,7 +114,7 @@ const ensureDatasetDirectories = async (datasetId: string) => {
   await mkdir(documentsDir, { recursive: true });
 };
 
-const readDocumentsIndex = async (datasetId: string): Promise<KnowledgeDocumentRecord[]> => {
+export const readKnowledgeDocumentsIndex = async (datasetId: string): Promise<KnowledgeDocumentRecord[]> => {
   const indexPath = getDocumentsIndexPath(datasetId);
 
   try {
@@ -189,10 +195,16 @@ export const persistImportedDocument = async (params: {
   extractedText: string;
   chunks: KnowledgeChunkPreview[];
   metadata: Record<string, string>;
-  contentMd5?: string;
+  contentHash?: string;
 }) => {
-  const contentMd5 = params.contentMd5 ?? computeBufferMd5(params.buffer);
-  await assertNoDuplicateDocument(params.dataset.id, params.fileName, contentMd5);
+  const contentHash = params.contentHash ?? computeKnowledgeDocumentContentHash(params.extractedText);
+  await assertNoDuplicateDocument({
+    datasetId: params.dataset.id,
+    fileName: params.fileName,
+    contentHash,
+    dataset: params.dataset,
+    extractedText: params.extractedText,
+  });
 
   const now = Date.now();
   const documentId = randomUUID();
@@ -230,6 +242,7 @@ export const persistImportedDocument = async (params: {
     charCount: chunk.charCount,
     metadata: { ...params.metadata },
     keywords: extractKnowledgeKeywords(chunk.text),
+    indexNodeHash: generateKnowledgeTextHash(chunk.text),
     source: {
       title: params.fileName,
     },
@@ -259,12 +272,16 @@ export const persistImportedDocument = async (params: {
     characterCount: params.extractedText.length,
     previewText: buildPreviewText(params.extractedText),
     metadata: { ...params.metadata },
-    contentMd5,
   };
 
-  const records = await readDocumentsIndex(params.dataset.id);
+  const records = await readKnowledgeDocumentsIndex(params.dataset.id);
   const nextRecords = [record, ...records].sort((left, right) => right.updatedAt - left.updatedAt);
   await writeDocumentsIndex(params.dataset.id, nextRecords);
+  await registerContentHashIndexEntry(params.dataset.id, contentHash, {
+    documentId,
+    fileName: params.fileName,
+    createdAt: now,
+  });
   await updateKnowledgeDatasetStats(params.dataset.id, {
     documentCount: nextRecords.length,
     chunkCount: nextRecords.reduce((sum, item) => sum + item.chunkCount, 0),
@@ -282,7 +299,9 @@ export const listKnowledgeDocuments = async (datasetId: string): Promise<Knowled
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  return readDocumentsIndex(datasetId);
+  const records = await readKnowledgeDocumentsIndex(datasetId);
+  const index = await syncKnowledgeContentHashIndex(datasetId, records);
+  return attachContentHashToDocuments(records, index);
 };
 
 export const getKnowledgeDocumentBlocks = async (
@@ -294,8 +313,10 @@ export const getKnowledgeDocumentBlocks = async (
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const records = await readDocumentsIndex(datasetId);
-  const document = records.find((item) => item.id === documentId);
+  const records = await readKnowledgeDocumentsIndex(datasetId);
+  const index = await syncKnowledgeContentHashIndex(datasetId, records);
+  const documents = attachContentHashToDocuments(records, index);
+  const document = documents.find((item) => item.id === documentId);
   if (!document) {
     throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');
   }
@@ -325,7 +346,9 @@ export const listKnowledgeDatasetChunks = async (
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const documents = await readDocumentsIndex(datasetId);
+  const records = await readKnowledgeDocumentsIndex(datasetId);
+  const index = await syncKnowledgeContentHashIndex(datasetId, records);
+  const documents = attachContentHashToDocuments(records, index);
   const results = await Promise.all(
     documents.map(async (document) => {
       const chunks = await readStoredChunks(datasetId, document.chunkPath);
@@ -345,6 +368,7 @@ export const deleteKnowledgeDatasetFiles = async (datasetId: string): Promise<vo
     return;
   }
   await rm(join(getDatasetsDir(), datasetId), { recursive: true, force: true });
+  await removeDatasetFromContentHashIndex(datasetId);
 };
 
 export const previewKnowledgeDocuments = async (params: {
@@ -385,11 +409,20 @@ export const importKnowledgeDocument = async (params: {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const parsedPayload = parseFileDataUrl(params.fileDataUrl);
-  const contentMd5 = computeBufferMd5(parsedPayload.buffer);
-  await assertNoDuplicateDocument(params.datasetId, params.fileName, contentMd5);
-
-  const result = await buildKnowledgeDocumentChunks(params);
+  const preprocessingRules = resolveImportPreprocessingRules(dataset, params.preprocessingRules);
+  const result = await buildKnowledgeDocumentChunks({
+    ...params,
+    preprocessingRules,
+  });
+  const contentHash = computeKnowledgeDocumentContentHash(result.processedText);
+  await assertNoDuplicateDocument({
+    datasetId: params.datasetId,
+    fileName: params.fileName,
+    contentHash,
+    dataset,
+    extractedText: result.processedText,
+    preprocessingRules,
+  });
 
   const persisted = await persistImportedDocument({
     dataset,
@@ -399,7 +432,7 @@ export const importKnowledgeDocument = async (params: {
     extractedText: result.processedText,
     chunks: result.chunks,
     metadata: { ...(params.metadata ?? {}) },
-    contentMd5,
+    contentHash,
   });
 
   return {
@@ -419,7 +452,7 @@ export const updateKnowledgeDocumentBlockKeywords = async (params: {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
-  const records = await readDocumentsIndex(params.datasetId);
+  const records = await readKnowledgeDocumentsIndex(params.datasetId);
   const document = records.find((item) => item.id === params.documentId);
   if (!document) {
     throw new Error('KNOWLEDGE_DOCUMENT_NOT_FOUND');

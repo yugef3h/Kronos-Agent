@@ -42,7 +42,7 @@ import {
 import type { KnowledgeDatasetDetail } from '../../domains/knowledge/types';
 import PanelAlert from '../../components/form/panel-alert';
 import { appendTagItems } from './tag-input-utils';
-import { computeFileMd5, filterDuplicateKnowledgeFiles } from './utils';
+import { filterDuplicateFilesInBatch } from './utils';
 
 const RagImportDialog = lazy(async () => {
   const module = await import('./components/import-dialog');
@@ -578,13 +578,7 @@ export const RagPage = () => {
       return;
     }
 
-    let filesToImport = acceptedFiles;
-    let duplicateMessages: string[] = [];
-    if (datasetId?.trim()) {
-      const filtered = await filterDuplicateKnowledgeFiles(acceptedFiles, datasetId);
-      filesToImport = filtered.acceptedFiles;
-      duplicateMessages = filtered.duplicateMessages;
-    }
+    const { acceptedFiles: filesToImport, duplicateMessages } = filterDuplicateFilesInBatch(acceptedFiles);
 
     if (!filesToImport.length) {
       setImportDuplicateMessages(duplicateMessages);
@@ -728,17 +722,9 @@ export const RagPage = () => {
 
       let importedCount = 0;
       const failedFiles: string[] = [];
-      const batchMd5 = new Set<string>();
+      const duplicateLines: string[] = [];
 
       for (const file of files) {
-        const md5 = await computeFileMd5(file);
-        if (batchMd5.has(md5)) {
-          const duplicateLine = `「${file.name}」与本次选择的其他文件内容相同，已跳过`;
-          setImportDuplicateMessages((current) => [...current, duplicateLine]);
-          continue;
-        }
-        batchMd5.add(md5);
-
         try {
           const fileDataUrl = await readFileAsDataUrl(file);
 
@@ -765,8 +751,15 @@ export const RagPage = () => {
           importedCount += 1;
         } catch (error) {
           const reason = error instanceof Error && error.message ? error.message : '导入失败';
-          if (reason.includes('已存在')) {
-            const duplicateLine = reason.startsWith('「') ? reason : `「${file.name}」已存在`;
+          const isDuplicate = reason.includes('已存在')
+            || reason.includes('KNOWLEDGE_DOCUMENT_DUPLICATE');
+          if (isDuplicate) {
+            const duplicateLine = reason.startsWith('「')
+              ? reason
+              : reason.includes('已存在')
+                ? `「${file.name}」${reason}`
+                : `「${file.name}」已存在（与库内文档内容相同）`;
+            duplicateLines.push(duplicateLine);
             setImportDuplicateMessages((current) => [...current, duplicateLine]);
           }
           failedFiles.push(`${file.name}：${reason}`);
@@ -783,7 +776,7 @@ export const RagPage = () => {
         }
 
         await refresh();
-        throw new Error(failedFiles[0] || '没有文件导入成功');
+        throw new Error(duplicateLines[0] || failedFiles[0] || '没有文件导入成功');
       }
 
       await refresh();

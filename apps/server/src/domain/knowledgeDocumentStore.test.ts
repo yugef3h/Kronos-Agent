@@ -74,10 +74,10 @@ describe('knowledgeDocumentStore', () => {
     expect(updated?.chunkCount).toBeGreaterThan(0);
   });
 
-  it('rejects duplicate file content by md5 in the same dataset', async () => {
+  it('rejects duplicate processed text by content hash in the same dataset', async () => {
     const dataset = await createKnowledgeDataset({
       name: '去重测试库',
-      description: 'md5',
+      description: 'content-hash',
       is_multimodal: false,
       doc_metadata: [],
     });
@@ -99,7 +99,13 @@ describe('knowledgeDocumentStore', () => {
 
     const documents = await listKnowledgeDocuments(dataset.id);
     expect(documents).toHaveLength(1);
-    expect(documents[0]?.contentMd5).toMatch(/^[a-f0-9]{32}$/);
+    expect(documents[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/);
+
+    const indexPath = join(tempDir, 'knowledge-datasets', dataset.id, 'content-hash-index.json');
+    const indexRaw = await readFile(indexPath, 'utf-8');
+    const index = JSON.parse(indexRaw) as { entries: Record<string, { fileName: string }> };
+    expect(Object.keys(index.entries)).toHaveLength(1);
+    expect(Object.values(index.entries)[0]?.fileName).toBe('a.txt');
   });
 
   it('imports xlsx documents as text rows', async () => {

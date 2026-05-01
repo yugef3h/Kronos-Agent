@@ -10,6 +10,9 @@ const API_BASE_URL = readViteApiBaseUrl() || 'http://localhost:3001';
 
 export const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
+const knowledgeDatasetApiPath = (datasetId: string, suffix = '') =>
+	`/api/workflow/knowledge-datasets/${encodeURIComponent(datasetId)}${suffix}`;
+
 type ApiErrorPayload = {
 	error?:
 		| string
@@ -19,9 +22,15 @@ type ApiErrorPayload = {
 			formErrors?: unknown;
 			fieldErrors?: unknown;
 		};
+	/** 知识库导入 409 等接口在顶层返回人类可读文案 */
+	message?: string;
 };
 
 const extractStructuredApiErrorMessage = (payload: ApiErrorPayload) => {
+	if (typeof payload.message === 'string' && payload.message.trim()) {
+		return payload.message.trim();
+	}
+
 	if (typeof payload.error === 'string' && payload.error.trim()) {
 		return payload.error.trim();
 	}
@@ -411,7 +420,7 @@ export type KnowledgeDocumentResponseItem = {
 	characterCount: number;
 	previewText: string;
 	metadata: Record<string, string>;
-	contentMd5?: string;
+	contentHash?: string;
 	sourcePath: string;
 	parsedTextPath: string;
 	chunkPath: string;
@@ -931,7 +940,7 @@ export const requestUpdateKnowledgeDataset = async (params: {
 	datasetId: string;
 	input: KnowledgeDatasetMutationInput;
 }): Promise<{ item: KnowledgeDatasetResponseItem }> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId)), {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json',
@@ -951,7 +960,7 @@ export const requestDeleteKnowledgeDataset = async (params: {
 	authToken: string;
 	datasetId: string;
 }): Promise<void> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId)), {
 		method: 'DELETE',
 		headers: {
 			Authorization: `Bearer ${params.authToken}`,
@@ -982,7 +991,7 @@ export const requestKnowledgeDocuments = async (params: {
 	authToken: string;
 	datasetId: string;
 }): Promise<KnowledgeDocumentsResponse> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId, '/documents')), {
 		headers: {
 			Authorization: `Bearer ${params.authToken}`,
 		},
@@ -1000,7 +1009,7 @@ export const requestKnowledgeDocumentBlocks = async (params: {
 	datasetId: string;
 	documentId: string;
 }): Promise<KnowledgeDocumentBlocksResponse> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/${params.documentId}/blocks`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId, `/documents/${encodeURIComponent(params.documentId)}/blocks`)), {
 		headers: {
 			Authorization: `Bearer ${params.authToken}`,
 		},
@@ -1032,7 +1041,7 @@ export const requestImportKnowledgeDocument = async (params: {
 		metadata?: Record<string, string>;
 	};
 }): Promise<KnowledgeDocumentImportResponse> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/import`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId, '/documents/import')), {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -1055,7 +1064,7 @@ export const requestUpdateKnowledgeDocumentBlockKeywords = async (params: {
 	blockId: string;
 	keywords: string[];
 }): Promise<KnowledgeDocumentBlockKeywordUpdateResponse> => {
-	const response = await fetch(apiUrl(`/api/workflow/knowledge-datasets/${params.datasetId}/documents/${params.documentId}/blocks/${params.blockId}/keywords`), {
+	const response = await fetch(apiUrl(knowledgeDatasetApiPath(params.datasetId, `/documents/${encodeURIComponent(params.documentId)}/blocks/${encodeURIComponent(params.blockId)}/keywords`)), {
 		method: 'PUT',
 		headers: {
 			'Content-Type': 'application/json',
