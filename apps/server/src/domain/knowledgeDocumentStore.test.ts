@@ -11,6 +11,7 @@ import {
 import {
   getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
+  KnowledgeDocumentDuplicateError,
   listKnowledgeDocuments,
   updateKnowledgeDocumentBlockKeywords,
 } from './knowledgeDocumentStore.js';
@@ -71,6 +72,34 @@ describe('knowledgeDocumentStore', () => {
     const updated = datasets.find((item) => item.id === dataset.id);
     expect(updated?.documentCount).toBe(1);
     expect(updated?.chunkCount).toBeGreaterThan(0);
+  });
+
+  it('rejects duplicate file content by md5 in the same dataset', async () => {
+    const dataset = await createKnowledgeDataset({
+      name: '去重测试库',
+      description: 'md5',
+      is_multimodal: false,
+      doc_metadata: [],
+    });
+
+    const payload = toDataUrl('text/plain', '重复内容测试');
+    await importKnowledgeDocument({
+      datasetId: dataset.id,
+      fileName: 'a.txt',
+      mimeType: 'text/plain',
+      fileDataUrl: payload,
+    });
+
+    await expect(importKnowledgeDocument({
+      datasetId: dataset.id,
+      fileName: 'b.txt',
+      mimeType: 'text/plain',
+      fileDataUrl: payload,
+    })).rejects.toBeInstanceOf(KnowledgeDocumentDuplicateError);
+
+    const documents = await listKnowledgeDocuments(dataset.id);
+    expect(documents).toHaveLength(1);
+    expect(documents[0]?.contentMd5).toMatch(/^[a-f0-9]{32}$/);
   });
 
   it('imports xlsx documents as text rows', async () => {

@@ -26,8 +26,9 @@ export const resolvePublishedChatbotForPlayground = (
 };
 
 /**
- * 与 `/workflow/config` 调试区「与 Bot 聊天」一致：检索 + 系统提示（含 `{{var}}`）+ 用户问题；
- * 未命中假发布 Chatbot 时原样返回用户输入，供普通 Playground 对话使用。
+ * Playground 选中假发布 Chatbot 时走 RAG（与 `/workflow/config` 调试区相同）：
+ * `buildChatbotAugmentedUserPrompt` → 检索 + 拼 prompt → `/api/chat-stream` 生成回答。
+ * 未选中时原样返回 userQuery，走普通 Agent 对话。
  */
 export const buildPublishedChatbotPlaygroundAugmentedPrompt = async (params: {
   authToken: string;

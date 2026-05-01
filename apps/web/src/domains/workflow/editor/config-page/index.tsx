@@ -414,6 +414,7 @@ export const WorkflowConfigPage = () => {
       }
 
       const dv = debugVariableValuesLatest.current ?? {};
+      // RAG：先 knowledge-retrieval/query 取 chunk，再拼 augmented prompt → chat-stream 由 LLM 组织回答
       const augmented = await buildChatbotAugmentedUserPrompt({
         authToken: token,
         userQuery: text,

@@ -270,6 +270,7 @@ export const executeKnowledgeRetrievalNodeDebug: NodeDebugExecutor = async (requ
   }
 
   try {
+    // 工作流「知识检索」节点：仅执行检索，输出 result/documents 供下游 LLM 的 context 变量消费
     const retrieval = await runKnowledgeRetrievalQuery(
       buildKnowledgeRetrievalQueryPayload(config, query),
     )

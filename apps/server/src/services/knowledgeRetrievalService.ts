@@ -312,6 +312,17 @@ export const applyReranking = (params: {
     .sort((left, right) => right.score - left.score || left.chunk_index - right.chunk_index);
 };
 
+/**
+ * 自研检索引擎主流程（`RAG_ENGINE_MODE=self` 时由 knowledgeFacade 调用）。
+ *
+ * 1. 加载 dataset + chunk（内存 warm cache / 读 jsonl）
+ * 2. `maybeExpandRetrievalQueries`：可选 LLM 多 query 改写（`RAG_LC_MULTI_QUERY`）
+ * 3. 元数据过滤 → 对每 chunk `scoreBySearchMethod`（semantic/keyword/full_text/hybrid）
+ * 4. 阈值过滤 → 按分数排序取 Top-K
+ * 5. multiWay + reranking_enable 时 `applyReranking` 启发式提权
+ *
+ * 返回的 `items[].text` 原样交给前端/工作流拼 Prompt；不在此函数内调 LLM 生成答案。
+ */
 export const runKnowledgeRetrievalQuery = async (
   query: KnowledgeRetrievalQuery,
 ): Promise<KnowledgeRetrievalQueryResult> => {
@@ -326,6 +337,7 @@ export const runKnowledgeRetrievalQuery = async (
   );
 
   const queryTerms = getTermCandidates(query.query);
+  // 检索前可选 LLM 改写（与 langchain 分支共用 expandRetrievalQueries.ts）
   const queryVariants = await maybeExpandRetrievalQueries(query.query);
 
   const chunkGroups = await Promise.all(datasets.map(async (dataset) => {

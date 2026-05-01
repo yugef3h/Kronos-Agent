@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from '../../../domains/workflow/editor/base/dialog';
 import type { KnowledgeDatasetDetail } from '../../../domains/knowledge/types';
+import PanelAlert from '../../../components/form/panel-alert';
 import type { ImportFormState, LocalImportPreview, PendingImportConfig } from '../types';
 import { formatFileSize } from '../utils';
 
@@ -16,6 +17,7 @@ type RagImportDialogProps = {
   importForm: ImportFormState;
   setImportForm: Dispatch<SetStateAction<ImportFormState>>;
   importFormError: string;
+  importDuplicateMessages: string[];
   isImporting: boolean;
   isMutating: boolean;
   localPreview: LocalImportPreview | null;
@@ -36,6 +38,7 @@ export const RagImportDialog = ({
   importForm,
   setImportForm,
   importFormError,
+  importDuplicateMessages,
   isImporting,
   isMutating,
   localPreview,
@@ -231,6 +234,14 @@ export const RagImportDialog = ({
         </div>
 
         <div className="border-t border-slate-200 bg-white px-4 py-3">
+          {importDuplicateMessages.length > 0 ? (
+            <PanelAlert
+              type="warning"
+              title="以下文件已存在，已自动跳过"
+              messages={importDuplicateMessages}
+              className="mb-2"
+            />
+          ) : null}
           {importFormError ? (
             <p className="mb-2 text-sm text-rose-600">{importFormError}</p>
           ) : null}

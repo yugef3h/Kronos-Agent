@@ -40,7 +40,9 @@ import {
   readFileAsDataUrl,
 } from './utils';
 import type { KnowledgeDatasetDetail } from '../../domains/knowledge/types';
+import PanelAlert from '../../components/form/panel-alert';
 import { appendTagItems } from './tag-input-utils';
+import { computeFileMd5, filterDuplicateKnowledgeFiles } from './utils';
 
 const RagImportDialog = lazy(async () => {
   const module = await import('./components/import-dialog');
@@ -77,6 +79,7 @@ export const RagPage = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importForm, setImportForm] = useState<ImportFormState>(() => createImportFormState([]));
   const [importFormError, setImportFormError] = useState('');
+  const [importDuplicateMessages, setImportDuplicateMessages] = useState<string[]>([]);
   const [localPreview, setLocalPreview] = useState<LocalImportPreview | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
@@ -564,20 +567,39 @@ export const RagPage = () => {
     previewRefreshTick,
   ]);
 
-  const openImportDialog = (files: File[], datasetId?: string, source: PendingImportConfig['source'] = 'file') => {
+  const openImportDialog = async (
+    files: File[],
+    datasetId?: string,
+    source: PendingImportConfig['source'] = 'file',
+  ) => {
     const { acceptedFiles, rejectedFiles } = filterSupportedKnowledgeFiles(files);
     if (!acceptedFiles.length) {
       setPageError(rejectedFiles[0]?.reason || '没有可导入的文件');
       return;
     }
 
+    let filesToImport = acceptedFiles;
+    let duplicateMessages: string[] = [];
+    if (datasetId?.trim()) {
+      const filtered = await filterDuplicateKnowledgeFiles(acceptedFiles, datasetId);
+      filesToImport = filtered.acceptedFiles;
+      duplicateMessages = filtered.duplicateMessages;
+    }
+
+    if (!filesToImport.length) {
+      setImportDuplicateMessages(duplicateMessages);
+      setPageError(duplicateMessages[0] || '所选文件均已存在于该知识库');
+      return;
+    }
+
     const dataset = datasets.find((item) => item.id === datasetId);
-    setPendingImport({ files: acceptedFiles, datasetId, source, rejectedFiles });
+    setPendingImport({ files: filesToImport, datasetId, source, rejectedFiles });
+    setImportDuplicateMessages(duplicateMessages);
     setImportForm({
       ...createImportFormState(
-        acceptedFiles,
+        filesToImport,
         dataset?.name,
-        dataset?.description || `${acceptedFiles.length} 个文件导入`,
+        dataset?.description || `${filesToImport.length} 个文件导入`,
       ),
       metadataFields: createMetadataDrafts(dataset?.doc_metadata ?? []),
     });
@@ -600,6 +622,7 @@ export const RagPage = () => {
     setPendingImport(null);
     setImportForm(createImportFormState([]));
     setImportFormError('');
+    setImportDuplicateMessages([]);
     setLocalPreview(null);
     setPreviewError('');
     setPreviewRefreshTick(0);
@@ -705,8 +728,17 @@ export const RagPage = () => {
 
       let importedCount = 0;
       const failedFiles: string[] = [];
+      const batchMd5 = new Set<string>();
 
       for (const file of files) {
+        const md5 = await computeFileMd5(file);
+        if (batchMd5.has(md5)) {
+          const duplicateLine = `「${file.name}」与本次选择的其他文件内容相同，已跳过`;
+          setImportDuplicateMessages((current) => [...current, duplicateLine]);
+          continue;
+        }
+        batchMd5.add(md5);
+
         try {
           const fileDataUrl = await readFileAsDataUrl(file);
 
@@ -733,6 +765,10 @@ export const RagPage = () => {
           importedCount += 1;
         } catch (error) {
           const reason = error instanceof Error && error.message ? error.message : '导入失败';
+          if (reason.includes('已存在')) {
+            const duplicateLine = reason.startsWith('「') ? reason : `「${file.name}」已存在`;
+            setImportDuplicateMessages((current) => [...current, duplicateLine]);
+          }
           failedFiles.push(`${file.name}：${reason}`);
         }
       }
@@ -777,7 +813,7 @@ export const RagPage = () => {
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
       const nextFiles = Array.from(event.target.files || []);
     if (nextFiles.length) {
-      openImportDialog(
+      void openImportDialog(
         nextFiles,
         pendingTargetDatasetId || undefined,
         event.target === folderInputRef.current ? 'folder' : 'file',
@@ -932,6 +968,14 @@ export const RagPage = () => {
           </div>
         </div>
 
+        {importDuplicateMessages.length > 0 && !isImportDialogOpen ? (
+          <PanelAlert
+            type="warning"
+            title="以下文件已存在，已自动跳过"
+            messages={importDuplicateMessages}
+            className="mt-4"
+          />
+        ) : null}
         {bannerError ? (
           <p className="mt-4 text-sm text-rose-600">{bannerError}</p>
         ) : null}
@@ -974,7 +1018,7 @@ export const RagPage = () => {
               setIsDragOver(false);
               const nextFiles = Array.from(event.dataTransfer.files || []);
               if (nextFiles.length) {
-                openImportDialog(nextFiles, undefined, 'drop');
+                void openImportDialog(nextFiles, undefined, 'drop');
               }
             }}
           >
@@ -1081,6 +1125,7 @@ export const RagPage = () => {
             importForm={importForm}
             setImportForm={setImportForm}
             importFormError={importFormError}
+            importDuplicateMessages={importDuplicateMessages}
             isImporting={isImporting}
             isMutating={isMutating}
             localPreview={localPreview}

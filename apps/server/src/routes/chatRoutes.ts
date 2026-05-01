@@ -17,6 +17,7 @@ import {
   updateKnowledgeDataset,
   updateKnowledgeDocumentBlockKeywords,
 } from '../rag/knowledgeFacade.js';
+import { KnowledgeDocumentDuplicateError } from '../domain/knowledgeDocumentStore.js';
 import {
   indexingEstimateSchema,
   knowledgeDatasetInputSchema,
@@ -610,6 +611,16 @@ chatRoutes.post('/workflow/knowledge-datasets/:datasetId/documents/import', asyn
       return;
     }
 
+    if (error instanceof KnowledgeDocumentDuplicateError) {
+      response.status(409).json({
+        error: 'KNOWLEDGE_DOCUMENT_DUPLICATE',
+        message: `「${error.fileName}」已存在（与「${error.existingDocumentName}」内容相同）`,
+        fileName: error.fileName,
+        existingDocumentName: error.existingDocumentName,
+      });
+      return;
+    }
+
     response.status(500).json({ error: `Knowledge document import failed: ${reason}` });
   }
 });
@@ -631,7 +642,10 @@ chatRoutes.post('/workflow/knowledge-datasets/preview-chunks', async (request: R
   }
 });
 
-/** 双引擎检索：`runKnowledgeRetrievalQuery` 经 `knowledgeFacade` 在 `RAG_ENGINE_MODE` 下切换自研 / LangChain。 */
+/**
+ * 知识库检索 HTTP（Chatbot 编排、RAG 页、工作流调试共用）。
+ * 仅返回 Top-K chunk；不包含 LLM 答案生成。生成阶段见前端 `buildChatbotAugmentedUserPrompt` + `/api/chat-stream`。
+ */
 chatRoutes.post('/workflow/knowledge-retrieval/query', async (request: Request, response: Response) => {
   const parsed = knowledgeRetrievalQuerySchema.safeParse(request.body);
 

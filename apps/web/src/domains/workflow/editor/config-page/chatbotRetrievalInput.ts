@@ -5,7 +5,7 @@ import {
 } from '../../app/workflowAppStore';
 import { createDefaultKnowledgeRetrievalNodeConfig } from '../panels/knowledge-retrieval-panel/schema';
 
-/** 将编排 recall 草稿映射为 `knowledge-retrieval/query` 请求体（自研与 LangChain 引擎共用）。 */
+/** Chatbot RAG 阶段 ①：将编排「召回设置」映射为 POST `/api/workflow/knowledge-retrieval/query` 请求体。 */
 export const buildChatbotRetrievalInput = (
   query: string,
   orch: Pick<

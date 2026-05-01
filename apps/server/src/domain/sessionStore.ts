@@ -24,7 +24,6 @@ import {
   recordSessionLoad,
   recordSessionSaveConflict,
   recordSessionSaveSuccess,
-  getSessionMetrics,
 } from './session/sessionMetrics.js';
 import { SessionConflictError } from './session/sessionConflictError.js';
 import { enqueueSessionSave, flushSessionSaveQueue } from './session/sessionWriteQueue.js';

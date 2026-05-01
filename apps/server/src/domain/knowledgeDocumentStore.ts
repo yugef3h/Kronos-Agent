@@ -14,15 +14,22 @@ import {
   type KnowledgeDocumentChunkOptions,
   type KnowledgeDocumentPreprocessingRules,
 } from '../services/knowledgeChunkingService.js';
+import { parseFileDataUrl } from '../services/fileAnalysisHelpers.js';
 import {
   extractKnowledgeKeywords,
   normalizeKeywords,
 } from '../services/knowledgeKeywordService.js';
 import {
+  assertNoDuplicateDocument,
+  computeBufferMd5,
+} from './knowledgeDocumentDuplicate.js';
+import {
   getKnowledgeDatasetById,
   updateKnowledgeDatasetStats,
   type KnowledgeDatasetRecord,
 } from './knowledgeDatasetStore.js';
+
+export { KnowledgeDocumentDuplicateError } from './knowledgeDocumentDuplicate.js';
 
 export type KnowledgeDocumentRecord = {
   id: string;
@@ -41,6 +48,8 @@ export type KnowledgeDocumentRecord = {
   characterCount: number;
   previewText: string;
   metadata: Record<string, string>;
+  /** 原文件字节 MD5，用于同库去重 */
+  contentMd5?: string;
 };
 
 export type KnowledgeDocumentPreviewItem = {
@@ -180,7 +189,11 @@ export const persistImportedDocument = async (params: {
   extractedText: string;
   chunks: KnowledgeChunkPreview[];
   metadata: Record<string, string>;
+  contentMd5?: string;
 }) => {
+  const contentMd5 = params.contentMd5 ?? computeBufferMd5(params.buffer);
+  await assertNoDuplicateDocument(params.dataset.id, params.fileName, contentMd5);
+
   const now = Date.now();
   const documentId = randomUUID();
   const extension = extname(params.fileName).replace(/^\./, '').toLowerCase();
@@ -246,6 +259,7 @@ export const persistImportedDocument = async (params: {
     characterCount: params.extractedText.length,
     previewText: buildPreviewText(params.extractedText),
     metadata: { ...params.metadata },
+    contentMd5,
   };
 
   const records = await readDocumentsIndex(params.dataset.id);
@@ -371,6 +385,10 @@ export const importKnowledgeDocument = async (params: {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
+  const parsedPayload = parseFileDataUrl(params.fileDataUrl);
+  const contentMd5 = computeBufferMd5(parsedPayload.buffer);
+  await assertNoDuplicateDocument(params.datasetId, params.fileName, contentMd5);
+
   const result = await buildKnowledgeDocumentChunks(params);
 
   const persisted = await persistImportedDocument({
@@ -381,6 +399,7 @@ export const importKnowledgeDocument = async (params: {
     extractedText: result.processedText,
     chunks: result.chunks,
     metadata: { ...(params.metadata ?? {}) },
+    contentMd5,
   });
 
   return {

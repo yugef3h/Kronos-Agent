@@ -5,7 +5,23 @@ import { applyPromptVariables } from '../editor/config-page/promptVariablesUtils
 import { ensureKnowledgeDatasetAuthToken } from '../../knowledge/dataset-store';
 
 /**
- * 与 `/workflow/config` 调试区一致：知识库检索 + 系统提示（含 `{{var}}`）+ 当前用户问题段落。
+ * Chatbot / Playground「假发布」RAG 生成链路（检索与 LLM 生成分两阶段）：
+ *
+ * ① 检索（服务端，无二次 LLM 整理 chunk）：
+ *    `requestKnowledgeRetrievalQuery` → POST `/api/workflow/knowledge-retrieval/query`
+ *    → `knowledgeFacade.runKnowledgeRetrievalQuery`（`RAG_ENGINE_MODE` 切 self / langchain）
+ *    → Top-K chunk 列表（含 score、matched_terms）。
+ *
+ * ② 拼 prompt（本文件，前端）：
+ *    将命中片段格式化为 `[1] 文本\n\n[2] 文本`，写入 `## 知识库检索上下文`，
+ *    再拼接系统提示（`{{var}}` 替换）与 `## 当前用户问题`。
+ *
+ * ③ LLM 整理/突出（服务端 `/api/chat-stream`）：
+ *    整段 augmented 作为 `prompt` 送入线性 Agent / LangGraph；
+ *    由模型根据上下文组织答案、引用要点——无单独的「摘要/高亮」后处理服务。
+ *
+ * 工作流画布路径：知识检索节点只产出 `result`/`documents`；下游 LLM 节点在 Prompt 里
+ * 用 `{{context}}` / `{{#knowledge-1.result#}}` 等变量接入，逻辑等价于本函数的 ②③。
  */
 export const buildChatbotAugmentedUserPrompt = async (params: {
   authToken: string;
@@ -19,12 +35,14 @@ export const buildChatbotAugmentedUserPrompt = async (params: {
       ? params.authToken.trim()
       : await ensureKnowledgeDatasetAuthToken();
 
+  // —— 阶段 ①：按用户问句检索知识库 chunk（详见 apps/server/src/rag/knowledgeFacade.ts）
   let contextBlock = '';
   if (params.orch.datasetIds.length > 0) {
     const retrieval = await requestKnowledgeRetrievalQuery({
       authToken: token,
       input: buildChatbotRetrievalInput(params.userQuery, params.orch),
     });
+    // —— 阶段 ②：把 chunk 编号拼接为纯文本上下文（不做 LLM 压缩，留给 chat-stream 生成）
     contextBlock =
       retrieval.items.length > 0
         ? retrieval.items.map((item, i) => `[${i + 1}] ${item.text}`).join('\n\n')
@@ -38,6 +56,7 @@ export const buildChatbotAugmentedUserPrompt = async (params: {
   const baseSystem = params.orch.systemPrompt.trim() || '你是帮助用户的助手。';
   const resolvedSystem = applyPromptVariables(baseSystem, values);
 
+  // —— 阶段 ② 收尾：单条 user-facing prompt（含系统设定 + 检索上下文 + 原问句）→ 阶段 ③ chat-stream
   return [resolvedSystem, params.orch.datasetIds.length > 0 ? `## 知识库检索上下文\n${contextBlock}` : '', `## 当前用户问题\n${params.userQuery}`]
     .filter(Boolean)
     .join('\n\n');

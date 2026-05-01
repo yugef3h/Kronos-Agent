@@ -411,6 +411,7 @@ export type KnowledgeDocumentResponseItem = {
 	characterCount: number;
 	previewText: string;
 	metadata: Record<string, string>;
+	contentMd5?: string;
 	sourcePath: string;
 	parsedTextPath: string;
 	chunkPath: string;

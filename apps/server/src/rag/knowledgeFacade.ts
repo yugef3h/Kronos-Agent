@@ -1,9 +1,15 @@
 /**
- * 知识库 HTTP 使用的唯一入口。
+ * 知识库 HTTP / 工作流检索的唯一服务端入口。
+ *
+ * 【检索主路径】`runKnowledgeRetrievalQuery`（本文件末尾）：
+ *   用户 query →（可选）`maybeExpandRetrievalQueries` 用 LLM 改写问句
+ *   → 加载 dataset chunk → 打分 / 向量相似度 → Top-K →（可选）rerank
+ *   → 返回 `items[]`（仅结构化片段，不调用 LLM 做答案整理）。
+ *   检索结果如何「整理、突出」：由调用方拼进 Prompt 后走 `/api/chat-stream` 或工作流 LLM 节点。
  *
  * Step3：`langchain` 时预览/入库切分用 `RecursiveCharacterTextSplitter`（见 `langchain/buildChunksWithLangChain`）。
- * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`（同一 `createRagEmbeddings()` 与入库一致；多 query 极大余弦语义 + 自研混合权重/rerank；可选 `RAG_LC_MULTI_QUERY` 见 `expandRetrievalQueries.ts`）。
- * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore` 自研实现。
+ * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`。
+ * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore`。
  */
 import { getKnowledgeDatasetById } from '../domain/knowledgeDatasetStore.js';
 import {
@@ -18,6 +24,8 @@ import type {
 } from '../services/knowledgeChunkingService.js';
 import type { KnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
+import { assertNoDuplicateDocument, computeBufferMd5 } from '../domain/knowledgeDocumentDuplicate.js';
+import { parseFileDataUrl } from '../services/fileAnalysisHelpers.js';
 import { getRagEngineMode } from './engine.js';
 import { buildKnowledgeDocumentChunksWithLangChain } from './langchain/buildChunksWithLangChain.js';
 import { createRagEmbeddings } from './langchain/ragEmbeddings.js';
@@ -44,9 +52,10 @@ export type {
   KnowledgeRetrievalResultItem,
 } from '../services/knowledgeRetrievalService.js';
 
+/** 知识库检索 API 与 Chatbot 编排共用的实现；输出 Top-K chunk，不含生成式答案。 */
 export async function runKnowledgeRetrievalQuery(query: KnowledgeRetrievalQuery) {
-  /** Step4：门面按 `RAG_ENGINE_MODE` 切换自研打分检索 vs 向量检索（契约相同）。 */
   return withRetrievalCache(query, async (q) => {
+    // `RAG_ENGINE_MODE=self` → 自研 hybrid/keyword/semantic；`langchain` → 向量 + 自研混合/rerank
     if (getRagEngineMode() !== 'langchain') {
       return selfHostedRunKnowledgeRetrievalQuery(q);
     }
@@ -100,6 +109,10 @@ export async function importKnowledgeDocument(params: {
     throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
   }
 
+  const parsedPayload = parseFileDataUrl(params.fileDataUrl);
+  const contentMd5 = computeBufferMd5(parsedPayload.buffer);
+  await assertNoDuplicateDocument(params.datasetId, params.fileName, contentMd5);
+
   const result = await buildKnowledgeDocumentChunksWithLangChain(params);
   const persisted = await persistImportedDocument({
     dataset,
@@ -109,6 +122,7 @@ export async function importKnowledgeDocument(params: {
     extractedText: result.processedText,
     chunks: result.chunks,
     metadata: { ...(params.metadata ?? {}) },
+    contentMd5: computeBufferMd5(result.buffer),
   });
 
   /**

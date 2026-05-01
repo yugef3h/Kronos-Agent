@@ -65,6 +65,9 @@ const messageContentToString = (content: unknown): string => {
 };
 
 /**
+ * 【检索前 LLM】非「把检索结果交给 LLM 整理」——而是在查库之前用 LLM 扩展问句，
+ * 提升召回。检索后的 chunk 整理/回答生成在 chat-stream 或工作流 LLM 节点完成。
+ *
  * 使用 LangChain `ChatOpenAI` 生成若干同义/改写查询，供自研与 LangChain 检索在语义通道做多 query 极大值融合。
  * 需 `RAG_LC_MULTI_QUERY=true` 且具备与聊天相同的 `DOUBAO_*` 环境变量。
  */

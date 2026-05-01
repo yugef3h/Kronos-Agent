@@ -1,6 +1,64 @@
-import type { KnowledgeDatasetMutationInput } from '../../lib/api';
+import SparkMD5 from 'spark-md5';
+
+import { ensureKnowledgeDatasetAuthToken } from '../../domains/knowledge/dataset-store';
+import { requestKnowledgeDocuments, type KnowledgeDatasetMutationInput } from '../../lib/api';
 import type { KnowledgeDatasetDetail } from '../../domains/knowledge/types';
 import type { ImportFormState, ImportMetadataFieldDraft } from './types';
+
+export const computeFileMd5 = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  return SparkMD5.ArrayBuffer.hash(buffer);
+};
+
+/** 向已有知识库追加文件时，按内容 MD5 剔除库内/本批重复项 */
+export const filterDuplicateKnowledgeFiles = async (
+  files: File[],
+  datasetId: string,
+): Promise<{ acceptedFiles: File[]; duplicateMessages: string[] }> => {
+  const trimmedDatasetId = datasetId.trim();
+  if (!trimmedDatasetId || files.length === 0) {
+    return { acceptedFiles: files, duplicateMessages: [] };
+  }
+
+  const authToken = await ensureKnowledgeDatasetAuthToken();
+  if (!authToken) {
+    return { acceptedFiles: files, duplicateMessages: [] };
+  }
+
+  const { items } = await requestKnowledgeDocuments({
+    authToken,
+    datasetId: trimmedDatasetId,
+  });
+  const md5ToName = new Map<string, string>();
+  for (const document of items) {
+    if (document.contentMd5) {
+      md5ToName.set(document.contentMd5, document.name);
+    }
+  }
+
+  const acceptedFiles: File[] = [];
+  const duplicateMessages: string[] = [];
+  const batchMd5 = new Set<string>();
+
+  for (const file of files) {
+    const md5 = await computeFileMd5(file);
+    const existingName = md5ToName.get(md5);
+    if (existingName) {
+      duplicateMessages.push(`「${file.name}」已存在（与「${existingName}」内容相同）`);
+      continue;
+    }
+
+    if (batchMd5.has(md5)) {
+      duplicateMessages.push(`「${file.name}」与本次选择的其他文件内容相同，已跳过`);
+      continue;
+    }
+
+    batchMd5.add(md5);
+    acceptedFiles.push(file);
+  }
+
+  return { acceptedFiles, duplicateMessages };
+};
 
 export const DOCUMENT_INPUT_ACCEPT = '.txt,.md,.mdx,.json,.csv,.yaml,.yml,.pdf,.doc,.docx,.xls,.xlsx,text/plain,text/markdown,text/csv,application/json,application/pdf,application/msword,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 export const MIN_SEGMENT_MAX_LENGTH = 100;
