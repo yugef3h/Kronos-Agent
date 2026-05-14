@@ -2,6 +2,24 @@
 
 探索 LLM 原理与 Agent Workflow 的前端主导项目，目标是让前端工程师能用可视化手段掌握并落地 AI Agent 系统 (Dify 平台)。
 
+---
+
+## 知识库与 RAG（已实现）
+
+面向产品的能力如下；**自研检索与 LangChain 检索视为同一产品能力**：由服务端 `RAG_ENGINE_MODE` 切换实现路径，**同一套 REST 契约与工作流配置页**，前端 `/rag` 与编排侧无分支 UI。实现细节与和 Dify 能力逐项对照见 [`docs/RAG_Prod_capability.md`](docs/RAG_Prod_capability.md)。
+
+| 能力 | 说明 |
+| --- | --- |
+| **入口** | 前端 [`/rag`](http://localhost:5173/rag)（壳导航「知识库」）：数据集 CRUD、按库导入、文档列表、Chunk 浏览与块级 **关键词** 编辑。 |
+| **文档与切片** | 上传/拖拽与批量导入、预处理规则（空白规范化、去 URL/邮箱等）、分段长度与重叠；导入前 **切片预估预览**（`requestDatasetIndexingEstimate`）。支持常见文本类文档（如 PDF 抽文本、docx 经 HTML 落文本等，见服务端导入链路）。 |
+| **检索** | 多库 `dataset_ids`、单向/多路模式、Top K、相关性阈值、**元数据条件**过滤；多路下 **rerank** 开关；语义 + 关键词 + 全文 + **混合**加权融合；返回 `score`、`matched_terms` 等。环境变量 **`RAG_LC_MULTI_QUERY`** 开启时 **多问句改写**，诊断里可出现 `query_variants`（自研与 LangChain 路径均会参与检索融合）。 |
+| **工作流侧** | 工作流配置页可调检索参数、多库选择与 Chatbot prompt 变量（如 `apps/web` 下 `config-page`、`chatbot-prompt-editor` 与编排 store）。 |
+| **健康度与快照** | `GET …/knowledge-datasets/:id/health`：**0–100 健康分**、空文档、完全重复块、近重复对、过短块占比等；Rag 详情弹窗内可刷新。`POST/GET …/snapshots`：数据集 **元数据快照**（数据落盘于 `apps/server/data/knowledge-snapshots/`，默认不进 Git）。 |
+| **对比与评测（API）** | `POST …/knowledge-retrieval/compare`：同一 query / 多库下两次完整检索的 **延迟** 与 TopK chunk_id **Jaccard**（便于 A/B，控制台可调 `requestKnowledgeRetrievalCompare`）。`POST …/knowledge-retrieval/evaluate`：批量用例复用 `shared` 检索参数，**免费、无 LLM 裁判** 指标：可选 `gold_chunk_ids` → Recall@K / MRR；可选 `expected_answer` → 以 TopK 正文拼接为伪预测的 **EM / 字级 F1**；可选 `generated_answer` → **证据外字符占比**（启发式，非业界标准幻觉率）。前端封装：`requestKnowledgeRetrievalEvaluate`（`features/rag/api`）。 |
+| **契约与测试** | 双引擎下 HTTP 形状一致；可参考 `apps/server/src/rag/knowledgeRagApi.contract.test.ts`。 |
+
+---
+
 ## 技术栈
 
 - 前端: React 18 + TypeScript + Vite 5 + TailwindCSS + Zustand + React Query
@@ -39,6 +57,7 @@ pnpm dev
 
 ## MVP 对应能力
 
+- 知识库与 RAG：见上文 **「知识库与 RAG（已实现）」**。
 - SSE Chat Stream（支持流式 Token 展示）
 - Sampling Inspector（温度 / Top-P 参数对概率分布影响）
 - Attention Heatmap（注意力矩阵可视化占位，后续接真实链路）
@@ -74,10 +93,11 @@ pnpm dev
 - `pnpm lint`：检查前后端代码
 - `pnpm test`：运行根级 Jest 测试
 
-## 下一步规划（LangChain 接入）
+## 下一步规划
 
-1. 在 `apps/web` 新增工作流面板，展示 ReAct 轨迹与工具调用。
+1. 在 `apps/web` 工作流面板深化 **ReAct 轨迹与工具调用** 可视化（与已有 LangChain / SSE 链路衔接）。
 2. 在 `packages/core` 落地统一事件协议，支持前后端同构调试。
+3. RAG：检索对比 / 批量评测的 **独立产品 UI**（当前 API 已具备）；按需补充解析流水线日志、跨库全局搜索等（见 `RAG_Prod_capability.md` 缺口列）。
 
 ## Apache 2.0 合规声明模板（已启用）
 
