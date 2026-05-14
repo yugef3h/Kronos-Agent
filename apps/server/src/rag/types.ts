@@ -197,6 +197,18 @@ export const knowledgeRetrievalCompareSchema = z.object({
   }
 });
 
+const knowledgeRetrievalEvalCaseSchema = z.object({
+  query: z.string().trim().min(1).max(4000),
+  gold_chunk_ids: z.array(z.string().trim().min(1).max(120)).max(80).default([]),
+  expected_answer: z.string().trim().max(8000).optional(),
+  generated_answer: z.string().trim().max(8000).optional(),
+});
+
+export const knowledgeRetrievalEvalSchema = z.object({
+  shared: knowledgeRetrievalQuerySchema.omit({ query: true }),
+  cases: z.array(knowledgeRetrievalEvalCaseSchema).min(1).max(200),
+});
+
 const indexingEstimateFileSchema = z.object({
   file_id: z.string().trim().min(1).max(120).optional(),
   file_name: z.string().trim().min(1).max(240),
@@ -268,3 +280,4 @@ export type KnowledgeDocumentPreviewBody = z.infer<typeof knowledgeDocumentPrevi
 export type KnowledgeRetrievalQueryBody = z.infer<typeof knowledgeRetrievalQuerySchema>;
 export type KnowledgeIndexingEstimateBody = z.infer<typeof indexingEstimateSchema>;
 export type KnowledgeRetrievalCompareBody = z.infer<typeof knowledgeRetrievalCompareSchema>;
+export type KnowledgeRetrievalEvalBody = z.infer<typeof knowledgeRetrievalEvalSchema>;

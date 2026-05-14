@@ -11,6 +11,7 @@ export {
   requestKnowledgeDocumentBlocks,
   requestKnowledgeDocuments,
   requestKnowledgeRetrievalCompare,
+  requestKnowledgeRetrievalEvaluate,
   requestKnowledgeRetrievalQuery,
   requestUpdateKnowledgeDocumentBlockKeywords,
 } from '../../lib/api';

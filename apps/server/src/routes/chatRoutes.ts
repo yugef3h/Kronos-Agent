@@ -24,6 +24,7 @@ import {
   knowledgeDocumentKeywordsUpdateSchema,
   knowledgeDocumentPreviewSchema,
   knowledgeRetrievalCompareSchema,
+  knowledgeRetrievalEvalSchema,
   knowledgeRetrievalQuerySchema,
 } from '../rag/types.js';
 import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
@@ -50,6 +51,7 @@ import {
   readKnowledgeDatasetSnapshot,
 } from '../services/knowledgeDatasetSnapshotService.js';
 import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
+import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEvalService.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -506,6 +508,30 @@ chatRoutes.post('/workflow/knowledge-retrieval/compare', async (request: Request
     }
 
     response.status(500).json({ error: `Knowledge retrieval compare failed: ${reason}` });
+  }
+});
+
+/** 离线风格批量评测：Recall@K、MRR、拼接 chunk 的 EM/F1、证据外字符比例（无 LLM 裁判）。 */
+chatRoutes.post('/workflow/knowledge-retrieval/evaluate', async (request: Request, response: Response) => {
+  const parsed = knowledgeRetrievalEvalSchema.safeParse(request.body);
+
+  if (!parsed.success) {
+    sendValidationError(response, parsed.error);
+    return;
+  }
+
+  try {
+    const result = await evaluateKnowledgeRetrievalRun(parsed.data);
+    response.json(result);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'unknown error';
+
+    if (reason === 'KNOWLEDGE_DATASET_NOT_FOUND') {
+      response.status(404).json({ error: 'Knowledge dataset not found' });
+      return;
+    }
+
+    response.status(500).json({ error: `Knowledge retrieval evaluate failed: ${reason}` });
   }
 });
 

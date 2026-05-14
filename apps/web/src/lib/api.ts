@@ -479,6 +479,44 @@ export type KnowledgeRetrievalCompareResponse = {
 	overlapTopK: { chunkIdsInBoth: number; jaccardChunkIds: number };
 };
 
+export type KnowledgeRetrievalEvalSharedInput = Omit<KnowledgeRetrievalQueryInput, 'query'>;
+
+export type KnowledgeRetrievalEvalCaseInput = {
+	query: string;
+	gold_chunk_ids?: string[];
+	expected_answer?: string;
+	generated_answer?: string;
+};
+
+export type KnowledgeRetrievalEvalInput = {
+	shared: KnowledgeRetrievalEvalSharedInput;
+	cases: KnowledgeRetrievalEvalCaseInput[];
+};
+
+export type KnowledgeRetrievalEvalCaseResult = {
+	query: string;
+	recall_at_k: number | null;
+	mrr: number | null;
+	em: number | null;
+	f1: number | null;
+	hallucination_char_miss_rate: number | null;
+	top_chunk_ids: string[];
+};
+
+export type KnowledgeRetrievalEvalSummary = {
+	sample_count: number;
+	recall_at_k: number | null;
+	mrr: number | null;
+	em: number | null;
+	f1: number | null;
+	hallucination_char_miss_rate: number | null;
+};
+
+export type KnowledgeRetrievalEvalResponse = {
+	cases: KnowledgeRetrievalEvalCaseResult[];
+	summary: KnowledgeRetrievalEvalSummary;
+};
+
 export type DatasetIndexingEstimateResponse = {
 	total_nodes: number;
 	tokens: number;
@@ -1056,6 +1094,26 @@ export const requestKnowledgeRetrievalCompare = async (params: {
 	}
 
 	return (await response.json()) as KnowledgeRetrievalCompareResponse;
+};
+
+export const requestKnowledgeRetrievalEvaluate = async (params: {
+	authToken: string;
+	input: KnowledgeRetrievalEvalInput;
+}): Promise<KnowledgeRetrievalEvalResponse> => {
+	const response = await fetch(apiUrl('/api/workflow/knowledge-retrieval/evaluate'), {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${params.authToken}`,
+		},
+		body: JSON.stringify(params.input),
+	});
+
+	if (!response.ok) {
+		throw new Error(await readApiErrorMessage(response, 'Failed to evaluate knowledge retrieval'));
+	}
+
+	return (await response.json()) as KnowledgeRetrievalEvalResponse;
 };
 
 export const requestDatasetIndexingEstimate = async (params: {
