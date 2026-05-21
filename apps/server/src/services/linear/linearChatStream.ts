@@ -3,6 +3,8 @@ import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
+import { invokeGatewayLlm } from '../../ai/gateway/invokeGatewayLlm.js';
+import { streamGatewayLlm } from '../../ai/gateway/streamGatewayLlm.js';
 import type { ChatOpenAI } from '@langchain/openai';
 import { safeStringify } from '../chat/safeStringify.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
@@ -109,7 +111,7 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const planningStep = await runPlanningStep({
-    invokePlanning: () => toolEnabledModel.invoke(planningMessages),
+    invokePlanning: () => invokeGatewayLlm(toolEnabledModel, planningMessages),
     timeoutMs: env.DOUBAO_PLAN_TIMEOUT_MS,
   });
   let modelToolCalls: ModelToolCall[] = planningStep.modelToolCalls;
