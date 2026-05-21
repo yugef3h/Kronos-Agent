@@ -10,6 +10,7 @@ export type AgentStreamParams = {
   history: Message[];
   memorySummary?: string;
   sessionId: string;
+  userId?: string;
   imageDataUrls?: string[];
 };
 
@@ -38,6 +39,7 @@ export async function* streamPlaygroundAgentReply(
       memorySummary: params.memorySummary,
       imageDataUrls: params.imageDataUrls,
       sessionId: params.sessionId,
+      userId: params.userId,
     });
     return;
   }
@@ -50,6 +52,7 @@ export async function* streamPlaygroundAgentReply(
       history: params.history,
       memorySummary: params.memorySummary,
       sessionId: params.sessionId,
+      userId: params.userId,
       imageDataUrls: params.imageDataUrls,
     });
   } catch (error) {
@@ -67,6 +70,7 @@ export async function* streamPlaygroundAgentReply(
       memorySummary: params.memorySummary,
       imageDataUrls: params.imageDataUrls,
       sessionId: params.sessionId,
+      userId: params.userId,
     });
   }
 }
