@@ -1,3 +1,6 @@
+import { getAiTaskEventStore } from './getAiTaskEventStore.js';
+import { clearAllMemoryAiTaskEvents } from './memoryAiTaskEventStore.js';
+
 export type AiTaskEvent = {
   id: number;
   taskId: string;
@@ -6,35 +9,22 @@ export type AiTaskEvent = {
   timestamp: number;
 };
 
-const eventsByTask = new Map<string, AiTaskEvent[]>();
-
-/** P2-Q-01: 追加任务事件 */
-export const appendAiTaskEvent = (
+/** P4-Q-04: 追加任务事件（memory / redis） */
+export const appendAiTaskEvent = async (
   taskId: string,
   type: AiTaskEvent['type'],
   data: Record<string, unknown> = {},
-): AiTaskEvent => {
-  const list = eventsByTask.get(taskId) ?? [];
-  const event: AiTaskEvent = {
-    id: list.length + 1,
-    taskId,
-    type,
-    data,
-    timestamp: Date.now(),
-  };
-  list.push(event);
-  eventsByTask.set(taskId, list);
-  return event;
+): Promise<AiTaskEvent> => getAiTaskEventStore().append(taskId, type, data);
+
+/** P2-Q-01 / P4-Q-04: 列出任务事件 */
+export const listAiTaskEvents = async (taskId: string, afterId = 0): Promise<AiTaskEvent[]> =>
+  getAiTaskEventStore().list(taskId, afterId);
+
+export const clearAiTaskEvents = async (taskId: string): Promise<void> => {
+  await getAiTaskEventStore().clear(taskId);
 };
 
-/** P2-Q-01: 列出任务事件（可按 lastEventId 过滤） */
-export const listAiTaskEvents = (taskId: string, afterId = 0): AiTaskEvent[] =>
-  (eventsByTask.get(taskId) ?? []).filter((event) => event.id > afterId);
-
-export const clearAiTaskEvents = (taskId: string): void => {
-  eventsByTask.delete(taskId);
-};
-
+/** 测试清理（仅内存实现） */
 export const clearAllAiTaskEvents = (): void => {
-  eventsByTask.clear();
+  clearAllMemoryAiTaskEvents();
 };

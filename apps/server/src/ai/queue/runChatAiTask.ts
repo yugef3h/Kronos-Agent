@@ -1,6 +1,7 @@
 import { appendAiTaskEvent } from './aiTaskEvents.js';
 import { getAiTaskStore } from './getAiTaskStore.js';
 import type { AiTaskRecord } from '../types/aiTaskRecord.js';
+import { appendSessionMessages } from '../../domain/sessionStore.js';
 import { streamPlaygroundAgentReply } from '../../services/agent/agentStreamRouter.js';
 import type { Message } from '../../domain/sessionStore.js';
 
@@ -31,12 +32,12 @@ export const runChatAiTask = async (taskId: string): Promise<void> => {
   const prompt = typeof payload.prompt === 'string' ? payload.prompt.trim() : '';
   if (!prompt) {
     await store.patch(taskId, { status: 'failed', error: 'Missing prompt in task payload' });
-    appendAiTaskEvent(taskId, 'error', { message: 'Missing prompt' });
+    await appendAiTaskEvent(taskId, 'error', { message: 'Missing prompt' });
     return;
   }
 
   await store.patch(taskId, { status: 'running', progress: 5 });
-  appendAiTaskEvent(taskId, 'status', { status: 'running' });
+  await appendAiTaskEvent(taskId, 'status', { status: 'running' });
 
   let assistantText = '';
   let progress = 10;
@@ -56,9 +57,9 @@ export const runChatAiTask = async (taskId: string): Promise<void> => {
         assistantText += event.content;
         progress = Math.min(95, progress + 2);
         await store.patch(taskId, { progress });
-        appendAiTaskEvent(taskId, 'content', { content: event.content, progress });
+        await appendAiTaskEvent(taskId, 'content', { content: event.content, progress });
       } else if (event.type === 'timeline') {
-        appendAiTaskEvent(taskId, 'progress', {
+        await appendAiTaskEvent(taskId, 'progress', {
           stage: event.stage,
           status: event.status,
           message: event.message,
@@ -71,10 +72,18 @@ export const runChatAiTask = async (taskId: string): Promise<void> => {
       progress: 100,
       result: { text: assistantText },
     });
-    appendAiTaskEvent(taskId, 'done', { text: assistantText });
+    await appendAiTaskEvent(taskId, 'done', { text: assistantText });
+
+    const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId.trim() : '';
+    if (sessionId && assistantText.trim().length > 0) {
+      await appendSessionMessages({
+        sessionId,
+        messages: [{ role: 'assistant', content: assistantText }],
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'chat task failed';
     await store.patch(taskId, { status: 'failed', error: message });
-    appendAiTaskEvent(taskId, 'error', { message });
+    await appendAiTaskEvent(taskId, 'error', { message });
   }
 };

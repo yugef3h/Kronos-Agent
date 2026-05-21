@@ -210,6 +210,24 @@ chatRoutes.post(
   }
 
   if (shouldEnqueueChatTask(parsed.data.prompt.length)) {
+    const persistedUserLine =
+      typeof parsed.data.sessionUserContent === 'string' && parsed.data.sessionUserContent.trim().length > 0
+        ? parsed.data.sessionUserContent.trim()
+        : parsed.data.prompt;
+    const asyncImageUrls = parsed.data.imageDataUrls?.filter((u) => {
+      const trimmed = u.trim();
+      return trimmed.startsWith('data:image/') || /^https?:\/\//i.test(trimmed);
+    });
+    const userContent =
+      asyncImageUrls && asyncImageUrls.length > 0
+        ? `${persistedUserLine}\n[附图×${asyncImageUrls.length}]`
+        : persistedUserLine;
+
+    await appendSessionMessages({
+      sessionId: parsed.data.sessionId,
+      messages: [{ role: 'user', content: userContent }],
+    });
+
     const session = getSession(parsed.data.sessionId);
     const memoryPlan = createMemoryPlan({
       prompt: parsed.data.prompt,

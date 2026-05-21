@@ -81,7 +81,7 @@ aiTaskRoutes.get('/ai/tasks/:taskId/events', async (request: Request, response: 
   let cursor = lastEventId;
 
   while (Date.now() < deadline) {
-    const events = listAiTaskEvents(taskId, cursor);
+    const events = await listAiTaskEvents(taskId, cursor);
     for (const event of events) {
       response.write(`data: ${JSON.stringify(event)}\nid: ${event.id}\n\n`);
       cursor = event.id;

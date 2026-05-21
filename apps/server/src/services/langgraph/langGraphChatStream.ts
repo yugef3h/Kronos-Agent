@@ -3,6 +3,7 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
+import { buildPlaygroundGatewayContext } from '../../ai/gateway/buildPlaygroundGatewayContext.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
 import { resolveDegradePolicy } from '../../ai/circuit/resolveDegradePolicy.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
@@ -50,15 +51,15 @@ export async function* streamLangGraphChatReply(params: {
   const sessionId = params.sessionId ?? 'session';
   const loadPercent = Number(process.env.AI_LOAD_PERCENT ?? '0');
   const degradePolicy = resolveDegradePolicy(Number.isFinite(loadPercent) ? loadPercent : 0);
-  const model = getPlaygroundChatModel(
-    {
-      userId: params.userId,
-      sessionId,
-      intent: 'chat',
-      traceId: `${sessionId}-langgraph-${Date.now()}`,
-    },
-    { temperature: 0.5 },
-  );
+  const gatewayCtx = buildPlaygroundGatewayContext({
+    userId: params.userId,
+    sessionId,
+    suffix: 'langgraph',
+  });
+  const model = getPlaygroundChatModel(gatewayCtx, {
+    temperature: 0.5,
+    maxTokens: degradePolicy.maxOutputTokens,
+  });
 
   const agent = createReactAgent({
     llm: model,
