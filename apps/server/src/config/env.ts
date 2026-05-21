@@ -45,6 +45,8 @@ const envSchema = z.object({
   /** `memory`（默认）| `redis` — 多实例 Workflow SSE 事件 */
   WORKFLOW_RUN_EVENTS_STORE: z.enum(['memory', 'redis']).default('memory'),
   WORKFLOW_QUEUE_ENABLED: z.coerce.boolean().default(false),
+  /** 本地 OpenAI 兼容推理端点（M-08） */
+  AI_LOCAL_MODEL_BASE_URL: z.string().url().optional(),
 }).superRefine((value, ctx) => {
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
     ctx.addIssue({
