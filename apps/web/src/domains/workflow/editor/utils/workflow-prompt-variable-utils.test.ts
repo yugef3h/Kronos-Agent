@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest'
 import { resolvePromptVariableMenuTrigger } from '../config-page/promptVariablesUtils'
 import { formatWorkflowVariableToken } from './workflow-prompt-variable-utils'
 
