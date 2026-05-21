@@ -205,7 +205,7 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const requestStartedAt = Date.now();
-  const stream = await baseModel.stream(messages);
+  const stream = await streamGatewayLlm(baseModel, messages);
   const requestSetupElapsedMs = Date.now() - requestStartedAt;
 
   yield createTimelineEvent('reason', 'info', createReasonRequestInfoMessage(requestSetupElapsedMs));
