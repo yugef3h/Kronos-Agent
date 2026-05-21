@@ -1,8 +1,11 @@
 import type { GatewayRequestContext } from '../types/gatewayRequestContext.js';
-import { buildOpenAiCompatibleClient } from './buildOpenAiCompatibleClient.js';
-import { parseGatewayModelConfigs } from './parseGatewayModelConfigs.js';
-import { resolveDefaultGatewayModel } from './resolveDefaultGatewayModel.js';
+import type { ModelRouteRule } from '../types/modelRouteRule.js';
 import { selectFallbackModel } from '../circuit/selectFallbackModel.js';
+import { buildOpenAiCompatibleClient } from './buildOpenAiCompatibleClient.js';
+import { filterConfigsByTier } from './filterConfigsByTier.js';
+import { parseGatewayModelConfigs } from './parseGatewayModelConfigs.js';
+import { pickModelTierByTokens } from './pickModelTierByTokens.js';
+import { resolveDefaultGatewayModel } from './resolveDefaultGatewayModel.js';
 import { selectGatewayModel } from './selectGatewayModel.js';
 
 export type GatewayChatModelOptions = {
@@ -10,14 +13,32 @@ export type GatewayChatModelOptions = {
   maxTokens?: number;
   topP?: number;
   timeoutMs?: number;
+  promptTokens?: number;
 };
 
-/** G-11/G-12 共用：解析网关模型并构造 ChatOpenAI */
+const DEFAULT_TIER_RULES: ModelRouteRule[] = [
+  { intent: 'chat', tier: 'small', maxPromptTokens: 500 },
+  { intent: 'chat', tier: 'large', maxPromptTokens: 4000 },
+];
+
+const isTierRoutingEnabled = (): boolean =>
+  (process.env.AI_MODEL_TIER_ROUTING ?? 'false').trim().toLowerCase() === 'true';
+
+/** G-11/G-12/M-09 共用：解析网关模型并构造 ChatOpenAI */
 export const resolveGatewayChatModel = (
   ctx: GatewayRequestContext,
   options: GatewayChatModelOptions = {},
 ) => {
-  const configs = parseGatewayModelConfigs(process.env.AI_GATEWAY_MODELS);
+  let configs = parseGatewayModelConfigs(process.env.AI_GATEWAY_MODELS);
+
+  if (isTierRoutingEnabled() && typeof options.promptTokens === 'number') {
+    const tier = pickModelTierByTokens(options.promptTokens, DEFAULT_TIER_RULES);
+    const tierFiltered = filterConfigsByTier(configs, tier);
+    if (tierFiltered.length > 0) {
+      configs = tierFiltered;
+    }
+  }
+
   const primary = selectGatewayModel(ctx, configs);
   const selected = selectFallbackModel(ctx, configs, primary)
     ?? primary
