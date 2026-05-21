@@ -1,0 +1,13 @@
+/** T-01: 分层限流作用域 */
+export type RateLimitScope =
+  | 'user'
+  | 'session'
+  | 'token_budget'
+  | 'concurrent_session';
+
+export const RATE_LIMIT_SCOPES: readonly RateLimitScope[] = [
+  'user',
+  'session',
+  'token_budget',
+  'concurrent_session',
+] as const;
