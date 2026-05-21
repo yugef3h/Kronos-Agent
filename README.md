@@ -148,8 +148,10 @@ pnpm dev
 | `AI_CACHE_REDIS` | 缓存走 Redis |
 | `AI_LOAD_PERCENT` | 0–100，高峰时收紧 LangGraph `recursionLimit` |
 | `AI_MAX_CONCURRENT_SESSIONS_PER_USER` | 单用户并发会话槽 |
+| `AI_TASK_STORE_REDIS` | 任务状态持久化到 Redis |
+| `AI_USER_TOKEN_BUDGET_PER_DAY` | 单用户日 Token 上限 |
 
-详见 [docs/AI_SERVICE_IMPLEMENTATION_PLAN.md](docs/AI_SERVICE_IMPLEMENTATION_PLAN.md)。
+健康检查：`GET /api/ai/health`。详见 [docs/AI_SERVICE_IMPLEMENTATION_PLAN.md](docs/AI_SERVICE_IMPLEMENTATION_PLAN.md)。
 
 ## 安全与模型接入
 
