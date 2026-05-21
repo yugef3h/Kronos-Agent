@@ -4,14 +4,14 @@ jest.mock('../../services/agent/agentStreamRouter.js', () => ({
   }),
 }));
 
-import { clearAiTaskEvents } from './aiTaskEvents.js';
+import { clearAllAiTaskEvents } from './aiTaskEvents.js';
 import { clearAiTaskStore, createAiTask, getAiTask } from './memoryAiTaskStore.js';
 import { runChatAiTask } from './runChatAiTask.js';
 
 describe('runChatAiTask', () => {
   beforeEach(() => {
     clearAiTaskStore();
-    clearAiTaskEvents();
+    clearAllAiTaskEvents();
   });
 
   it('marks task succeeded with aggregated text', async () => {
