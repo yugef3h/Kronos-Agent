@@ -7,7 +7,7 @@ const DEFAULT_TTL_SEC = 24 * 60 * 60;
 
 const eventKey = (taskId: string) => `${EVENT_KEY_PREFIX}${taskId}`;
 
-/** P4-Q-03: Redis 任务事件列表 */
+/** Redis 任务事件列表 */
 export const createRedisAiTaskEventStore = (redis: Redis, ttlSec = DEFAULT_TTL_SEC): AiTaskEventStore => ({
   async append(taskId, type, data = {}) {
     const rawItems = await redis.lrange(eventKey(taskId), 0, -1);

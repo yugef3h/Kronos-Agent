@@ -13,7 +13,7 @@ const resolveUserId = (request: Request): string => {
   return auth.auth?.sub?.trim() || 'anonymous';
 };
 
-/** G-10: JWT sub → GatewayRequestContext，挂到 req.gatewayContext */
+/** JWT sub → GatewayRequestContext，挂到 req.gatewayContext */
 export const attachGatewayContext = (defaultIntent: ModelRouteIntent = 'chat') => (
   request: RequestWithGatewayContext,
   _response: Response,

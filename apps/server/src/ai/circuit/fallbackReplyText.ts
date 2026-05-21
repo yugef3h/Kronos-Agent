@@ -1,4 +1,4 @@
-/** F-10: 统一兜底文案 */
+/** 统一兜底文案 */
 const FALLBACK_MESSAGES: Record<string, string> = {
   model_timeout: '模型响应超时，请稍后重试或缩短问题长度。',
   model_unavailable: '模型服务暂时不可用，已切换备用策略，请稍后再试。',

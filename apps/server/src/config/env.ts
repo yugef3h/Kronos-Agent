@@ -45,15 +45,15 @@ const envSchema = z.object({
   /** `memory`（默认）| `redis` — 多实例 Workflow SSE 事件 */
   WORKFLOW_RUN_EVENTS_STORE: z.enum(['memory', 'redis']).default('memory'),
   WORKFLOW_QUEUE_ENABLED: z.coerce.boolean().default(false),
-  /** 本地 OpenAI 兼容推理端点（M-08） */
+  /** 本地 OpenAI 兼容推理端点 */
   AI_LOCAL_MODEL_BASE_URL: z.string().url().optional(),
-  /** BullMQ 消费 `/api/ai/tasks` chat 任务（P2-Q-04） */
+  /** BullMQ 消费 `/api/ai/tasks` chat 任务 */
   AI_TASK_QUEUE_ENABLED: z.coerce.boolean().default(false),
-  /** 0–100，用于 `resolveDegradePolicy`（P2-F-01） */
+  /** 0–100，用于 `resolveDegradePolicy` */
   AI_LOAD_PERCENT: z.coerce.number().min(0).max(100).default(0),
-  /** 任务状态存 Redis（P3-Q-03，需 REDIS_URL） */
+  /** 任务状态存 Redis（需 REDIS_URL） */
   AI_TASK_STORE_REDIS: z.coerce.boolean().default(false),
-  /** 单用户日 Token 预算，0=不限制（P3-T-01） */
+  /** 单用户日 Token 预算，0=不限制 */
   AI_USER_TOKEN_BUDGET_PER_DAY: z.coerce.number().int().nonnegative().default(0),
 }).superRefine((value, ctx) => {
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {

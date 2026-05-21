@@ -9,7 +9,7 @@ const DEFAULT_TTL_SEC = 24 * 60 * 60;
 
 const taskKey = (taskId: string) => `${TASK_KEY_PREFIX}${taskId}`;
 
-/** P3-Q-03: Redis 任务持久化 */
+/** Redis 任务持久化 */
 export const createRedisAiTaskStore = (redis: Redis, ttlSec = DEFAULT_TTL_SEC): AiTaskStore => ({
   async create(partial) {
     const now = Date.now();

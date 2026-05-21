@@ -10,7 +10,7 @@ type StoredPayload = {
   hitCount: number;
 };
 
-/** C-07: Redis TTL 缓存（需 REDIS_URL） */
+/** Redis TTL 缓存（需 REDIS_URL） */
 export const createRedisCacheStore = (redis: Redis): CacheStore => ({
   async get(key) {
     const raw = await redis.get(toRedisKey(key));

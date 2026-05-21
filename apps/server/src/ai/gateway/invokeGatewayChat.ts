@@ -5,7 +5,7 @@ import { fallbackReplyText } from '../circuit/fallbackReplyText.js';
 import type { GatewayChatModelOptions } from './resolveGatewayChatModel.js';
 import { resolveGatewayChatModel } from './resolveGatewayChatModel.js';
 
-/** F-11: 网关调用包裹重试 + 熔断记账 */
+/** 网关调用包裹重试 + 熔断记账 */
 export const invokeGatewayChat = async (
   ctx: GatewayRequestContext,
   messages: Parameters<ReturnType<typeof resolveGatewayChatModel>['invoke']>[0],

@@ -7,7 +7,7 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => {
   setTimeout(resolve, ms);
 });
 
-/** F-09: 带指数退避的重试 */
+/** 带指数退避的重试 */
 export const invokeWithRetry = async <T>(
   fn: () => Promise<T>,
   options: RetryOptions,

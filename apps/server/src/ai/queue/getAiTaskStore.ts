@@ -21,7 +21,7 @@ const memoryStore: AiTaskStore = {
   listByStatus: memoryListAiTasksByStatus,
 };
 
-/** P3-Q-02: 按 env 选择任务存储 */
+/** 按 env 选择任务存储 */
 export const getAiTaskStore = (): AiTaskStore => {
   if (!isRedisTaskStoreEnabled()) {
     return memoryStore;

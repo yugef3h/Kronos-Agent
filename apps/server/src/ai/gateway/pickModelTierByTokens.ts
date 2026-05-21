@@ -2,7 +2,7 @@ import type { ModelRouteRule } from '../types/modelRouteRule.js';
 import type { ModelTier } from '../types/modelTier.js';
 import { estimatePromptTier } from './estimatePromptTier.js';
 
-/** M-04: 规则表 + token 数 → 档位 */
+/** 规则表 + token 数 → 档位 */
 export const pickModelTierByTokens = (
   tokenCount: number,
   rules: ModelRouteRule[],

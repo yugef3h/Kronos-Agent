@@ -10,7 +10,7 @@ const isRedisTaskEventsEnabled = (): boolean =>
   || process.env.AI_TASK_EVENTS_REDIS === '1'
   || (process.env.AI_TASK_STORE_REDIS ?? 'false').trim().toLowerCase() === 'true';
 
-/** P4-Q-02: 任务事件 memory / redis */
+/** 任务事件 memory / redis */
 export const getAiTaskEventStore = (): AiTaskEventStore => {
   if (!isRedisTaskEventsEnabled()) {
     return memoryAiTaskEventStore;

@@ -9,7 +9,7 @@ export type RetrievalPathWeights = {
   fullText: number;
 };
 
-/** R-06: 多路分数加权融合 */
+/** 多路分数加权融合 */
 export const mergeRetrievalPaths = (
   semantic: WeightedRetrievalScore[],
   keyword: WeightedRetrievalScore[],

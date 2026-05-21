@@ -5,7 +5,7 @@ const entries = new Map<string, CacheEntry<unknown>>();
 
 const isExpired = (entry: CacheEntry<unknown>, nowMs: number): boolean => entry.expiresAt <= nowMs;
 
-/** C-06: 进程内 TTL 缓存 */
+/** 进程内 TTL 缓存 */
 export const memoryCacheStore: CacheStore = {
   async get(key) {
     const entry = entries.get(key);

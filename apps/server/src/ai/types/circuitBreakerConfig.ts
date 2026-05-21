@@ -1,4 +1,4 @@
-/** F-02: 熔断器配置 */
+/** 熔断器配置 */
 export type CircuitBreakerConfig = {
   failureThreshold: number;
   openMs: number;

@@ -10,7 +10,7 @@ export type GatewayInvokeOptions = {
   backoffMs?: number;
 };
 
-/** P3-G-02: 对已有 ChatOpenAI 实例做熔断 + 重试 invoke */
+/** 对已有 ChatOpenAI 实例做熔断 + 重试 invoke */
 export const invokeGatewayLlm = async (
   model: ChatOpenAI,
   messages: BaseMessage[],

@@ -1,4 +1,4 @@
-/** G-01: 统一网关支持的模型供应商标识 */
+/** 统一网关支持的模型供应商标识 */
 export type ModelProviderId =
   | 'doubao'
   | 'openai'

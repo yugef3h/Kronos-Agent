@@ -3,7 +3,7 @@ export type BatchPromptItem = {
   prompt: string;
 };
 
-/** M-06: 短请求合并为单条 batch prompt（占位实现） */
+/** 短请求合并为单条 batch prompt（占位实现） */
 export const mergeBatchPrompts = (items: BatchPromptItem[], maxChars: number): string => {
   const header = 'Answer each item with a section titled [id].\n\n';
   let merged = header;

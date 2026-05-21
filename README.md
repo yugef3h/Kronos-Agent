@@ -140,6 +140,8 @@ pnpm dev
 
 ## AI 高并发开关（`apps/server/src/ai`）
 
+** AI 高并发方案**：多模型网关调度、超长对话、SSE（BullMQ/Redis）、prompt/检索/结果三层缓存、熔断降级与 RAG 预热，并配合 Token/并发会话限流与前端异步写回会话。
+
 | 变量 | 说明 |
 | --- | --- |
 | `AI_GATEWAY_MODELS` | 多模型 JSON，Playground/调试经网关选型 |

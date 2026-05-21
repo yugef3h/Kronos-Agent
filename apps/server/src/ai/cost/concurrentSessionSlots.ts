@@ -6,7 +6,7 @@ const resolveMaxSlots = (): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 3;
 };
 
-/** T-07: 占用用户并发会话槽 */
+/** 占用用户并发会话槽 */
 export const acquireConcurrentSessionSlot = (userId: string, sessionId: string): boolean => {
   const max = resolveMaxSlots();
   const sessions = slotsByUser.get(userId) ?? new Set<string>();
@@ -24,7 +24,7 @@ export const acquireConcurrentSessionSlot = (userId: string, sessionId: string):
   return true;
 };
 
-/** T-07: 释放会话槽 */
+/** 释放会话槽 */
 export const releaseConcurrentSessionSlot = (userId: string, sessionId: string): void => {
   const sessions = slotsByUser.get(userId);
   if (!sessions) {

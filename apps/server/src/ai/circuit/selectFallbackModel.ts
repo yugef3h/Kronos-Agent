@@ -3,7 +3,7 @@ import type { GatewayRequestContext } from '../types/gatewayRequestContext.js';
 import { isCircuitOpen } from './circuitBreaker.js';
 import { selectGatewayModel } from '../gateway/selectGatewayModel.js';
 
-/** F-06: 主模型熔断 open 时选择下一优先级备用 */
+/** 主模型熔断 open 时选择下一优先级备用 */
 export const selectFallbackModel = (
   ctx: GatewayRequestContext,
   configs: GatewayModelConfig[],

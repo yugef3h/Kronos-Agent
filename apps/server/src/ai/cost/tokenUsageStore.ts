@@ -7,7 +7,7 @@ type TokenUsageRecord = {
 
 const usageByUser = new Map<string, TokenUsageRecord[]>();
 
-/** T-08: 记录用户 Token 消耗 */
+/** 记录用户 Token 消耗 */
 export const recordTokenUsage = (
   userId: string,
   usage: { input: number; output: number; model: string },

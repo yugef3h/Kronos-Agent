@@ -17,7 +17,7 @@ const gatewayModelConfigSchema = z.object({
 
 const gatewayModelsSchema = z.array(gatewayModelConfigSchema);
 
-/** G-05: 从 `AI_GATEWAY_MODELS` JSON 解析网关模型列表；空/非法返回 [] */
+/** 从 `AI_GATEWAY_MODELS` JSON 解析网关模型列表；空/非法返回 [] */
 export const parseGatewayModelConfigs = (raw: string | undefined): GatewayModelConfig[] => {
   const trimmed = raw?.trim();
   if (!trimmed) {

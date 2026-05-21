@@ -5,7 +5,7 @@ import { getOrCreateBucket } from './rateLimitStore.js';
 const DEFAULT_USER_CAPACITY = 60;
 const DEFAULT_USER_REFILL_PER_SEC = 1;
 
-/** T-05: 用户级请求限流（令牌桶） */
+/** 用户级请求限流（令牌桶） */
 export const checkUserRateLimit = (
   userId: string,
   cost = 1,

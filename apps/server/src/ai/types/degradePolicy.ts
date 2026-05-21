@@ -1,4 +1,4 @@
-/** F-07: 高峰降级策略 */
+/** 高峰降级策略 */
 export type DegradePolicy = {
   disableCoT: boolean;
   maxToolSteps: number;

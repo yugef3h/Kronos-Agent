@@ -1,6 +1,6 @@
 import type { GatewayRequestContext } from '../types/gatewayRequestContext.js';
 
-/** G-09: 向上游模型透传 trace / user 元数据 */
+/** 向上游模型透传 trace / user 元数据 */
 export const createGatewayInvokeHeaders = (
   ctx: GatewayRequestContext,
 ): Record<string, string> => ({

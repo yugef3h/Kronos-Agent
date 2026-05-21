@@ -29,7 +29,7 @@ export const getAiTaskQueue = (): Queue<AiTaskRecord> => {
   return queue;
 };
 
-/** Q-09: 入队异步 AI 任务（需 Redis + AI_TASK_QUEUE_ENABLED） */
+/** 入队异步 AI 任务（需 Redis + AI_TASK_QUEUE_ENABLED） */
 export const enqueueAiTask = async (record: AiTaskRecord): Promise<void> => {
   const jobId = buildAiTaskJobId(record.kind, record.taskId);
   await getAiTaskQueue().add(record.kind, record, {
@@ -39,7 +39,7 @@ export const enqueueAiTask = async (record: AiTaskRecord): Promise<void> => {
   await getAiTaskStore().patch(record.taskId, { status: 'queued', progress: 0 });
 };
 
-/** P2-Q-03: BullMQ Worker 消费 chat 任务 */
+/** BullMQ Worker 消费 chat 任务 */
 export const startAiTaskWorker = (): Worker<AiTaskRecord> => {
   if (worker) {
     return worker;

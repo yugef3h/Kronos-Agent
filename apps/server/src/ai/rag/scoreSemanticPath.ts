@@ -1,4 +1,4 @@
-/** R-05: 语义路打分（向量或 bigram 占位） */
+/** 语义路打分（向量或 bigram 占位） */
 export const scoreSemanticPath = (
   query: string,
   text: string,

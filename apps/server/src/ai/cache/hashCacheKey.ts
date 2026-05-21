@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { CacheLayer } from '../types/cacheLayer.js';
 
-/** C-03: 稳定缓存键（layer + 有序 parts） */
+/** 稳定缓存键（layer + 有序 parts） */
 export const hashCacheKey = (layer: CacheLayer, parts: Record<string, string | number | boolean>): string => {
   const normalized = Object.keys(parts)
     .sort()

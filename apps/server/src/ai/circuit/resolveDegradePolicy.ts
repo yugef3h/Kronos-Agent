@@ -1,7 +1,7 @@
 import type { DegradePolicy } from '../types/degradePolicy.js';
 import { DEFAULT_DEGRADE_POLICY, PEAK_DEGRADE_POLICY } from '../types/degradePolicy.js';
 
-/** F-08: 按负载百分比选择降级策略 */
+/** 按负载百分比选择降级策略 */
 export const resolveDegradePolicy = (loadPercent: number): DegradePolicy => {
   if (loadPercent >= 85) {
     return PEAK_DEGRADE_POLICY;

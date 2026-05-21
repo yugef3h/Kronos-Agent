@@ -24,7 +24,7 @@ const DEFAULT_TIER_RULES: ModelRouteRule[] = [
 const isTierRoutingEnabled = (): boolean =>
   (process.env.AI_MODEL_TIER_ROUTING ?? 'false').trim().toLowerCase() === 'true';
 
-/** G-11/G-12/M-09 共用：解析网关模型并构造 ChatOpenAI */
+/** 共用：解析网关模型并构造 ChatOpenAI */
 export const resolveGatewayChatModel = (
   ctx: GatewayRequestContext,
   options: GatewayChatModelOptions = {},

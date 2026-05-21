@@ -1,6 +1,6 @@
 import type { GatewayRequestContext } from '../types/gatewayRequestContext.js';
 
-/** P3-G-01: Playground 网关上下文工厂 */
+/** Playground 网关上下文工厂 */
 export const buildPlaygroundGatewayContext = (params: {
   userId?: string;
   sessionId?: string;

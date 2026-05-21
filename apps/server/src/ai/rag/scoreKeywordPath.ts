@@ -1,6 +1,6 @@
 import { getTermCandidates, normalizeText } from '../../services/knowledgeRetrievalService.js';
 
-/** R-04: 关键词路打分 */
+/** 关键词路打分 */
 export const scoreKeywordPath = (query: string, text: string): number => {
   const terms = getTermCandidates(query);
   if (!terms.length) {

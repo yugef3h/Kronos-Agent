@@ -1,4 +1,4 @@
-/** M-07: 批量响应按 section 拆条 */
+/** 批量响应按 section 拆条 */
 export const splitBatchResults = (raw: string, ids: string[]): Record<string, string> => {
   const result: Record<string, string> = {};
 

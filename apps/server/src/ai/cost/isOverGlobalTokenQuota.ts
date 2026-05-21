@@ -12,7 +12,7 @@ const resolveDailyQuota = (): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
-/** T-09: 全局日 Token 配额是否已用尽（0 表示不启用） */
+/** 全局日 Token 配额是否已用尽（0 表示不启用） */
 export const isOverGlobalTokenQuota = (nowMs = Date.now()): boolean => {
   const quota = resolveDailyQuota();
   if (quota <= 0) {

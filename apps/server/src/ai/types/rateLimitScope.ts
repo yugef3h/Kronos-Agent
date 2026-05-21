@@ -1,4 +1,4 @@
-/** T-01: 分层限流作用域 */
+/** 分层限流作用域 */
 export type RateLimitScope =
   | 'user'
   | 'session'

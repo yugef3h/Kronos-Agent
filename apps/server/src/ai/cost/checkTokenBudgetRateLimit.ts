@@ -13,7 +13,7 @@ const resolveUserDailyBudget = (): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
-/** P3-T-01: 用户日 Token 预算检查（0=不启用） */
+/** 用户日 Token 预算检查（0=不启用） */
 export const checkTokenBudgetRateLimit = (
   userId: string,
   cost = 1,

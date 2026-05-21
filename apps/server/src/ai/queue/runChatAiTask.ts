@@ -20,7 +20,7 @@ const readPayload = (record: AiTaskRecord): ChatTaskPayload => {
   return typeof raw === 'object' && raw != null ? raw as ChatTaskPayload : {};
 };
 
-/** P2-Q-02: 执行 chat 异步任务 */
+/** 执行 chat 异步任务 */
 export const runChatAiTask = async (taskId: string): Promise<void> => {
   const store = getAiTaskStore();
   const record = await store.get(taskId);

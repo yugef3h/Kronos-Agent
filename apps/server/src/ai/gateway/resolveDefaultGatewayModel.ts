@@ -4,7 +4,7 @@ import type { ModelRouteIntent } from '../types/modelRouteIntent.js';
 
 const defaultApiKeyEnv = 'DOUBAO_API_KEY';
 
-/** G-08: 无网关配置时回退豆包默认模型 */
+/** 无网关配置时回退豆包默认模型 */
 export const resolveDefaultGatewayModel = (intent: ModelRouteIntent): GatewayModelConfig => {
   const model = intent === 'embedding' && env.DOUBAO_EMBEDDING_MODEL?.trim()
     ? env.DOUBAO_EMBEDDING_MODEL.trim()

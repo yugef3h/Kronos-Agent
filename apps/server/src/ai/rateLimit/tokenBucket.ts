@@ -1,4 +1,4 @@
-/** T-03: 内存令牌桶 */
+/** 内存令牌桶 */
 export type TokenBucket = {
   key: string;
   capacity: number;
@@ -25,7 +25,7 @@ const refillTokens = (bucket: TokenBucket, nowMs: number): number => {
   return Math.min(bucket.capacity, refilled);
 };
 
-/** T-04: 消费令牌；不足返回 false */
+/** 消费令牌；不足返回 false */
 export const consumeTokenBucket = (bucket: TokenBucket, cost: number, nowMs = Date.now()): boolean => {
   const available = refillTokens(bucket, nowMs);
   if (available < cost) {

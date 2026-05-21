@@ -5,7 +5,7 @@ import { getOrCreateBucket } from './rateLimitStore.js';
 const DEFAULT_SESSION_CAPACITY = 30;
 const DEFAULT_SESSION_REFILL_PER_SEC = 0.5;
 
-/** T-06: 会话级请求限流 */
+/** 会话级请求限流 */
 export const checkSessionRateLimit = (
   sessionId: string,
   cost = 1,

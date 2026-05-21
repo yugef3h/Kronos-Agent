@@ -6,7 +6,7 @@ import { isOverGlobalTokenQuota } from '../ai/cost/isOverGlobalTokenQuota.js';
 
 export const aiHealthRoutes = Router();
 
-/** P3-A-01: AI 子系统健康快照 */
+/** AI 子系统健康快照 */
 aiHealthRoutes.get('/ai/health', (_request: Request, response: Response) => {
   response.json({
     ok: true,

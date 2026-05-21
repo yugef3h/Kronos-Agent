@@ -1,4 +1,4 @@
-/** R-02: 数据集分片键（预留水平扩展） */
+/** 数据集分片键（预留水平扩展） */
 export const shardDatasetId = (datasetId: string, shardCount = 4): string => {
   const normalized = datasetId.trim().toLowerCase();
   if (!normalized || shardCount <= 1) {

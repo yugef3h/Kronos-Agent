@@ -7,7 +7,7 @@ import { getCacheStore } from '../cache/getCacheStore.js';
 
 const RETRIEVAL_CACHE_TTL_MS = 5 * 60 * 1000;
 
-/** C-10: 检索结果缓存包装 */
+/** 检索结果缓存包装 */
 export const withRetrievalCache = async (
   query: KnowledgeRetrievalQuery,
   invoke: (q: KnowledgeRetrievalQuery) => Promise<KnowledgeRetrievalQueryResult>,

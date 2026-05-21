@@ -12,7 +12,7 @@ export type CircuitBreaker = {
 
 const breakers = new Map<string, CircuitBreaker>();
 
-/** F-03: 创建或获取命名熔断器 */
+/** 创建或获取命名熔断器 */
 export const createCircuitBreaker = (
   name: string,
   config: CircuitBreakerConfig = DEFAULT_CIRCUIT_BREAKER_CONFIG,
@@ -65,7 +65,7 @@ const maybeAdvanceOpenState = (breaker: CircuitBreaker, nowMs: number): void => 
   }
 };
 
-/** F-04: 记录成功，关闭或保持 half_open → closed */
+/** 记录成功，关闭或保持 half_open → closed */
 export const recordCircuitSuccess = (name: string, nowMs = Date.now()): void => {
   const breaker = createCircuitBreaker(name);
   maybeAdvanceOpenState(breaker, nowMs);
@@ -78,7 +78,7 @@ export const recordCircuitSuccess = (name: string, nowMs = Date.now()): void => 
   breaker.failureCount = 0;
 };
 
-/** F-04: 记录失败，达阈值则 open */
+/** 记录失败，达阈值则 open */
 export const recordCircuitFailure = (name: string, nowMs = Date.now()): void => {
   const breaker = createCircuitBreaker(name);
   maybeAdvanceOpenState(breaker, nowMs);
@@ -94,7 +94,7 @@ export const recordCircuitFailure = (name: string, nowMs = Date.now()): void => 
   }
 };
 
-/** F-05: 是否应拒绝请求（open 且未到 half_open 窗口） */
+/** 是否应拒绝请求（open 且未到 half_open 窗口） */
 export const isCircuitOpen = (name: string, nowMs = Date.now()): boolean => {
   const breaker = breakers.get(name);
   if (!breaker) {

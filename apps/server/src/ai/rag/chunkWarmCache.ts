@@ -9,7 +9,7 @@ const warmEntries = new Map<string, WarmEntry>();
 
 const DEFAULT_WARM_TTL_MS = 10 * 60 * 1000;
 
-/** R-08: 数据集 chunk 预热 LRU */
+/** 数据集 chunk 预热 LRU */
 export const getWarmChunks = (datasetId: string, nowMs = Date.now()): KnowledgeDatasetChunkRecord[] | null => {
   const entry = warmEntries.get(datasetId);
   if (!entry) {

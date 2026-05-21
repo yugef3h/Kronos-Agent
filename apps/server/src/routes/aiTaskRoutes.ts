@@ -15,7 +15,7 @@ const createTaskSchema = z.object({
 
 export const aiTaskRoutes = Router();
 
-/** Q-10: 创建异步 AI 任务 */
+/** 创建异步 AI 任务 */
 aiTaskRoutes.post('/ai/tasks', async (request: Request, response: Response) => {
   const parsed = createTaskSchema.safeParse(request.body);
   if (!parsed.success) {
@@ -39,7 +39,7 @@ aiTaskRoutes.post('/ai/tasks', async (request: Request, response: Response) => {
   });
 });
 
-/** Q-10: 查询任务状态 */
+/** 查询任务状态 */
 aiTaskRoutes.get('/ai/tasks/:taskId', async (request: Request, response: Response) => {
   const taskId = String(request.params.taskId || '').trim();
   if (!taskId) {
@@ -58,7 +58,7 @@ aiTaskRoutes.get('/ai/tasks/:taskId', async (request: Request, response: Respons
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
 
-/** P2-Q-06: 任务事件 SSE（轮询至终态或超时） */
+/** 任务事件 SSE（轮询至终态或超时） */
 aiTaskRoutes.get('/ai/tasks/:taskId/events', async (request: Request, response: Response) => {
   const taskId = String(request.params.taskId || '').trim();
   if (!taskId) {

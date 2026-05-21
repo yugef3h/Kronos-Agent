@@ -1,7 +1,7 @@
 import type { ModelProviderId } from './modelProvider.js';
 import type { ModelRouteIntent } from './modelRouteIntent.js';
 
-/** G-03: 单条网关模型配置 */
+/** 单条网关模型配置 */
 export type GatewayModelConfig = {
   id: string;
   provider: ModelProviderId;

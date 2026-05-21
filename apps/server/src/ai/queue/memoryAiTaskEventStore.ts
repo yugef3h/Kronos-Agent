@@ -21,7 +21,7 @@ const buildEvent = (
   return event;
 };
 
-/** P4-Q-02: 内存任务事件存储 */
+/** 内存任务事件存储 */
 export const memoryAiTaskEventStore: AiTaskEventStore = {
   async append(taskId, type, data = {}) {
     return buildEvent(taskId, type, data);

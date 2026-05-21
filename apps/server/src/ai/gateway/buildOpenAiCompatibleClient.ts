@@ -7,7 +7,7 @@ export type OpenAiCompatibleClientOptions = {
   timeoutMs?: number;
 };
 
-/** G-07: 由网关配置构造 OpenAI 兼容 Chat 客户端 */
+/** 由网关配置构造 OpenAI 兼容 Chat 客户端 */
 export const buildOpenAiCompatibleClient = (
   config: GatewayModelConfig,
   options: OpenAiCompatibleClientOptions = {},

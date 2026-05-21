@@ -11,7 +11,7 @@ export type TaskPriorityContext = {
   kind: AiTaskKind;
 };
 
-/** Q-05: 用户档位 + 任务类型 → 优先级 */
+/** 用户档位 + 任务类型 → 优先级 */
 export const computeTaskPriority = (ctx: TaskPriorityContext): AiTaskPriority => {
   if (ctx.kind === 'workflow_draft') {
     return AI_TASK_PRIORITY_CORE_BUSINESS;

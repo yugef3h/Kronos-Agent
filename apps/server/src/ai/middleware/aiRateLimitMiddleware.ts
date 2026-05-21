@@ -6,7 +6,7 @@ import { checkTokenBudgetRateLimit } from '../cost/checkTokenBudgetRateLimit.js'
 import { isOverGlobalTokenQuota } from '../cost/isOverGlobalTokenQuota.js';
 import type { RequestWithGatewayContext } from './attachGatewayContext.js';
 
-/** T-10: chat / ai 入口限流 */
+/** chat / ai 入口限流 */
 export const aiRateLimitMiddleware = (
   request: RequestWithGatewayContext,
   response: Response,

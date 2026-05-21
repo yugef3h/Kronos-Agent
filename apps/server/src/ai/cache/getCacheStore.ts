@@ -9,7 +9,7 @@ const isRedisCacheEnabled = (): boolean =>
   (process.env.AI_CACHE_REDIS ?? 'false').trim().toLowerCase() === 'true'
   || process.env.AI_CACHE_REDIS === '1';
 
-/** C-08: 按 env 选择 memory 或 redis 缓存实现 */
+/** 按 env 选择 memory 或 redis 缓存实现 */
 export const getCacheStore = (): CacheStore => {
   if (!isRedisCacheEnabled()) {
     return memoryCacheStore;

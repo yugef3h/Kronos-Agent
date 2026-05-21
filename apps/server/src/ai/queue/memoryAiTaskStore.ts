@@ -4,7 +4,7 @@ import type { AiTaskStatus } from '../types/aiTaskStatus.js';
 
 const tasks = new Map<string, AiTaskRecord>();
 
-/** Q-08: 内存异步任务表 */
+/** 内存异步任务表 */
 export const createAiTask = (
   partial: Pick<AiTaskRecord, 'kind' | 'priority' | 'payload'> & { taskId?: string },
 ): AiTaskRecord => {

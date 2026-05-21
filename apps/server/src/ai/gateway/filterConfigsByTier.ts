@@ -7,7 +7,7 @@ const tierProviderMap: Record<ModelTier, GatewayModelConfig['provider'][]> = {
   local: ['local'],
 };
 
-/** M-05: 按档位过滤网关模型配置 */
+/** 按档位过滤网关模型配置 */
 export const filterConfigsByTier = (
   configs: GatewayModelConfig[],
   tier: ModelTier,

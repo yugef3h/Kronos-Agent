@@ -4,7 +4,7 @@ import { recordCircuitFailure, recordCircuitSuccess } from '../circuit/circuitBr
 import { fallbackReplyText } from '../circuit/fallbackReplyText.js';
 import { isCircuitOpen } from '../circuit/circuitBreaker.js';
 
-/** P3-G-03: 流式推理并记录熔断状态 */
+/** 流式推理并记录熔断状态 */
 export const streamGatewayLlm = async (
   model: ChatOpenAI,
   messages: BaseMessage[],

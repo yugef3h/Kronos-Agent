@@ -1,4 +1,4 @@
-/** C-11: 将缓存回答编码为 Playground SSE 事件流 */
+/** 将缓存回答编码为 Playground SSE 事件流 */
 export const streamCachedPromptReply = function* (
   text: string,
   sessionId: string,
