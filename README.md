@@ -143,7 +143,9 @@ pnpm dev
 | 变量 | 说明 |
 | --- | --- |
 | `AI_GATEWAY_MODELS` | 多模型 JSON，Playground/调试经网关选型 |
-| `AI_CHAT_ASYNC_ENABLED` | 超长 Prompt 走 `202` + `/api/ai/tasks/:id/events` |
+| `AI_CHAT_ASYNC_ENABLED` | 超长 Prompt（默认 ≥12000 字）走 `202` + `/api/ai/tasks/:id/events`；前端超长时先 `fetch` 再接任务 SSE |
+| `AI_CHAT_ASYNC_THRESHOLD_CHARS` | 异步阈值字符数（默认 `12000`） |
+| `AI_TASK_EVENTS_REDIS` | 任务事件 SSE 走 Redis（可与 `AI_TASK_STORE_REDIS` 同开） |
 | `AI_TASK_QUEUE_ENABLED` | 需 `REDIS_URL`，BullMQ 消费 chat 任务 |
 | `AI_CACHE_REDIS` | 缓存走 Redis |
 | `AI_LOAD_PERCENT` | 0–100，高峰时收紧 LangGraph `recursionLimit` |
