@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
 import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
+import { listAiTaskEvents } from '../ai/queue/aiTaskEvents.js';
 import { createAiTask, getAiTask } from '../ai/queue/memoryAiTaskStore.js';
 import type { AiTaskKind } from '../ai/types/aiTaskKind.js';
 
@@ -53,4 +54,46 @@ aiTaskRoutes.get('/ai/tasks/:taskId', async (request: Request, response: Respons
   }
 
   response.json({ task });
+});
+
+const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'cancelled']);
+
+/** P2-Q-06: 任务事件 SSE（轮询至终态或超时） */
+aiTaskRoutes.get('/ai/tasks/:taskId/events', async (request: Request, response: Response) => {
+  const taskId = String(request.params.taskId || '').trim();
+  if (!taskId) {
+    response.status(400).json({ error: 'Invalid task id' });
+    return;
+  }
+
+  const task = await getAiTask(taskId);
+  if (!task) {
+    response.status(404).json({ error: 'Task not found' });
+    return;
+  }
+
+  const lastEventId = Number(request.header('last-event-id') || '0');
+  response.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
+  response.setHeader('Cache-Control', 'no-cache');
+  response.setHeader('Connection', 'keep-alive');
+
+  const deadline = Date.now() + 120_000;
+  let cursor = lastEventId;
+
+  while (Date.now() < deadline) {
+    const events = listAiTaskEvents(taskId, cursor);
+    for (const event of events) {
+      response.write(`data: ${JSON.stringify(event)}\nid: ${event.id}\n\n`);
+      cursor = event.id;
+    }
+
+    const latest = await getAiTask(taskId);
+    if (latest && TERMINAL_STATUSES.has(latest.status)) {
+      break;
+    }
+
+    await new Promise((resolve) => { setTimeout(resolve, 400); });
+  }
+
+  response.end();
 });
