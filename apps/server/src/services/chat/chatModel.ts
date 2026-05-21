@@ -1,11 +1,4 @@
-import { resolveGatewayChatModel } from '../../ai/gateway/resolveGatewayChatModel.js';
+import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
 
-/** G-11: Playground 默认经 AI 网关解析豆包/多模型配置 */
-export const chatModel = resolveGatewayChatModel(
-  {
-    userId: 'playground',
-    intent: 'chat',
-    traceId: 'playground-default',
-  },
-  { temperature: 0.5 },
-);
+/** G-11 / P2-G-01: 模块加载时默认模型（无请求上下文） */
+export const chatModel = getPlaygroundChatModel({}, { temperature: 0.5 });
