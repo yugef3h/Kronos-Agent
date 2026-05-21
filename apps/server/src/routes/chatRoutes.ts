@@ -72,7 +72,11 @@ import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
 import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
 import { createAiTask } from '../ai/queue/memoryAiTaskStore.js';
+import { runChatAiTask } from '../ai/queue/runChatAiTask.js';
 import { shouldEnqueueChatTask } from '../ai/queue/shouldEnqueueChatTask.js';
+import { releaseConcurrentSessionOnFinish } from '../ai/middleware/releaseConcurrentSessionOnFinish.js';
+import { getSession } from '../domain/sessionStore.js';
+import { createMemoryPlan } from '../memory/index.js';
 import { aiTaskRoutes } from './aiTaskRoutes.js';
 
 const chatSchema = z.object({
@@ -194,6 +198,7 @@ chatRoutes.post(
   '/chat-stream',
   attachGatewayContext('chat'),
   aiRateLimitMiddleware,
+  releaseConcurrentSessionOnFinish,
   async (request: RequestWithGatewayContext, response: Response) => {
   const parsed = chatSchema.safeParse(request.body);
 
@@ -203,6 +208,17 @@ chatRoutes.post(
   }
 
   if (shouldEnqueueChatTask(parsed.data.prompt.length)) {
+    const session = getSession(parsed.data.sessionId);
+    const memoryPlan = createMemoryPlan({
+      prompt: parsed.data.prompt,
+      messages: session.messages,
+      memoryState: {
+        summary: session.memorySummary,
+        summaryUpdatedAt: session.memorySummaryUpdatedAt,
+        summaryArchiveMessageCount: session.summaryArchiveMessageCount,
+      },
+    });
+
     const task = createAiTask({
       kind: 'chat',
       priority: computeTaskPriority({ kind: 'chat' }),
@@ -211,17 +227,23 @@ chatRoutes.post(
         sessionId: parsed.data.sessionId,
         sessionUserContent: parsed.data.sessionUserContent,
         imageDataUrls: parsed.data.imageDataUrls,
+        userId: request.gatewayContext?.userId,
+        history: memoryPlan.history,
+        memorySummary: memoryPlan.memorySummary,
       },
     });
 
     if (isAiTaskQueueEnabled()) {
       await enqueueAiTask(task);
+    } else {
+      void runChatAiTask(task.taskId);
     }
 
     response.status(202).json({
       taskId: task.taskId,
       status: task.status,
       pollUrl: `/api/ai/tasks/${task.taskId}`,
+      eventsUrl: `/api/ai/tasks/${task.taskId}/events`,
     });
     return;
   }
