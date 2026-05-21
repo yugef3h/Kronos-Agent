@@ -47,6 +47,10 @@ const envSchema = z.object({
   WORKFLOW_QUEUE_ENABLED: z.coerce.boolean().default(false),
   /** 本地 OpenAI 兼容推理端点（M-08） */
   AI_LOCAL_MODEL_BASE_URL: z.string().url().optional(),
+  /** BullMQ 消费 `/api/ai/tasks` chat 任务（P2-Q-04） */
+  AI_TASK_QUEUE_ENABLED: z.coerce.boolean().default(false),
+  /** 0–100，用于 `resolveDegradePolicy`（P2-F-01） */
+  AI_LOAD_PERCENT: z.coerce.number().min(0).max(100).default(0),
 }).superRefine((value, ctx) => {
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
     ctx.addIssue({
@@ -69,6 +73,14 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['REDIS_URL'],
       message: 'REDIS_URL is required when WORKFLOW_QUEUE_ENABLED=true',
+    });
+  }
+
+  if (value.AI_TASK_QUEUE_ENABLED && !value.REDIS_URL?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL is required when AI_TASK_QUEUE_ENABLED=true',
     });
   }
 });
