@@ -71,12 +71,13 @@ import { attachGatewayContext, type RequestWithGatewayContext } from '../ai/midd
 import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
 import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
-import { createAiTask } from '../ai/queue/memoryAiTaskStore.js';
+import { getAiTaskStore } from '../ai/queue/getAiTaskStore.js';
 import { runChatAiTask } from '../ai/queue/runChatAiTask.js';
 import { shouldEnqueueChatTask } from '../ai/queue/shouldEnqueueChatTask.js';
 import { releaseConcurrentSessionOnFinish } from '../ai/middleware/releaseConcurrentSessionOnFinish.js';
 import { getSession } from '../domain/sessionStore.js';
 import { createMemoryPlan } from '../memory/index.js';
+import { aiHealthRoutes } from './aiHealthRoutes.js';
 import { aiTaskRoutes } from './aiTaskRoutes.js';
 
 const chatSchema = z.object({
@@ -162,6 +163,7 @@ const sessionAppendSchema = z.object({
 export const chatRoutes = Router();
 
 chatRoutes.use(aiTaskRoutes);
+chatRoutes.use(aiHealthRoutes);
 
 const sendValidationError = (response: Response, error: z.ZodError) => {
   const flattened = error.flatten();
@@ -219,7 +221,7 @@ chatRoutes.post(
       },
     });
 
-    const task = createAiTask({
+    const task = await getAiTaskStore().create({
       kind: 'chat',
       priority: computeTaskPriority({ kind: 'chat' }),
       payload: {

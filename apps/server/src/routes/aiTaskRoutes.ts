@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
 import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
 import { listAiTaskEvents } from '../ai/queue/aiTaskEvents.js';
-import { createAiTask, getAiTask } from '../ai/queue/memoryAiTaskStore.js';
+import { getAiTaskStore } from '../ai/queue/getAiTaskStore.js';
 import type { AiTaskKind } from '../ai/types/aiTaskKind.js';
 
 const createTaskSchema = z.object({
@@ -25,7 +25,7 @@ aiTaskRoutes.post('/ai/tasks', async (request: Request, response: Response) => {
 
   const kind = parsed.data.kind as AiTaskKind;
   const priority = computeTaskPriority({ kind, userTier: parsed.data.userTier });
-  const record = createAiTask({ kind, priority, payload: parsed.data.payload });
+  const record = await getAiTaskStore().create({ kind, priority, payload: parsed.data.payload });
 
   if (isAiTaskQueueEnabled()) {
     await enqueueAiTask(record);
@@ -47,7 +47,7 @@ aiTaskRoutes.get('/ai/tasks/:taskId', async (request: Request, response: Respons
     return;
   }
 
-  const task = await getAiTask(taskId);
+  const task = await getAiTaskStore().get(taskId);
   if (!task) {
     response.status(404).json({ error: 'Task not found' });
     return;
@@ -66,7 +66,7 @@ aiTaskRoutes.get('/ai/tasks/:taskId/events', async (request: Request, response: 
     return;
   }
 
-  const task = await getAiTask(taskId);
+  const task = await getAiTaskStore().get(taskId);
   if (!task) {
     response.status(404).json({ error: 'Task not found' });
     return;
@@ -87,7 +87,7 @@ aiTaskRoutes.get('/ai/tasks/:taskId/events', async (request: Request, response: 
       cursor = event.id;
     }
 
-    const latest = await getAiTask(taskId);
+    const latest = await getAiTaskStore().get(taskId);
     if (latest && TERMINAL_STATUSES.has(latest.status)) {
       break;
     }

@@ -3,7 +3,7 @@ import { runChatAiTask } from './runChatAiTask.js';
 import { getRedisClient } from '../../infra/redisClient.js';
 import type { AiTaskRecord } from '../types/aiTaskRecord.js';
 import { buildAiTaskJobId } from './buildAiTaskJobId.js';
-import { patchAiTask } from './memoryAiTaskStore.js';
+import { getAiTaskStore } from './getAiTaskStore.js';
 
 export const AI_TASK_QUEUE_NAME = 'kronos-ai-tasks';
 
@@ -36,7 +36,7 @@ export const enqueueAiTask = async (record: AiTaskRecord): Promise<void> => {
     jobId,
     priority: record.priority,
   });
-  await patchAiTask(record.taskId, { status: 'queued', progress: 0 });
+  await getAiTaskStore().patch(record.taskId, { status: 'queued', progress: 0 });
 };
 
 /** P2-Q-03: BullMQ Worker 消费 chat 任务 */
