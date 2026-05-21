@@ -3,7 +3,8 @@ import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
-import { chatModel } from '../chat/chatModel.js';
+import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
+import { resolveDegradePolicy } from '../../ai/circuit/resolveDegradePolicy.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
 import { createTimelineEvent } from '../chat/timelineEvents.js';
 import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/index.js';
@@ -36,6 +37,7 @@ export async function* streamLangGraphChatReply(params: {
   history: Message[];
   memorySummary?: string;
   sessionId?: string;
+  userId?: string;
   imageDataUrls?: string[];
   registry?: PlaygroundToolRegistry;
 }): AsyncGenerator<LangChainStreamEvent> {
@@ -45,8 +47,21 @@ export async function* streamLangGraphChatReply(params: {
 
   yield createTimelineEvent('plan', 'start', 'LangGraph React Agent 初始化。');
 
+  const sessionId = params.sessionId ?? 'session';
+  const loadPercent = Number(process.env.AI_LOAD_PERCENT ?? '0');
+  const degradePolicy = resolveDegradePolicy(Number.isFinite(loadPercent) ? loadPercent : 0);
+  const model = getPlaygroundChatModel(
+    {
+      userId: params.userId,
+      sessionId,
+      intent: 'chat',
+      traceId: `${sessionId}-langgraph-${Date.now()}`,
+    },
+    { temperature: 0.5 },
+  );
+
   const agent = createReactAgent({
-    llm: chatModel,
+    llm: model,
     tools,
   });
 
@@ -63,14 +78,15 @@ export async function* streamLangGraphChatReply(params: {
   yield createTimelineEvent('reason', 'start', 'LangGraph 推理开始。');
 
   // 每轮独立 thread，避免 checkpoint 污染；会话历史已由 initialMessages 传入。
-  const turnThreadId = `${params.sessionId ?? 'session'}-turn-${Date.now()}`;
+  const turnThreadId = `${sessionId}-turn-${Date.now()}`;
+  const recursionLimit = Math.min(env.LANGGRAPH_MAX_TOOL_STEPS, degradePolicy.maxToolSteps);
 
   const stream = await agent.stream(
     { messages: initialMessages },
     {
       streamMode: ['updates', 'values'] as ['updates', 'values'],
       configurable: { thread_id: turnThreadId },
-      recursionLimit: env.LANGGRAPH_MAX_TOOL_STEPS,
+      recursionLimit,
     },
   );
 
