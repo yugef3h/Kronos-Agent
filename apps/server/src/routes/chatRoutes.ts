@@ -66,6 +66,13 @@ import {
 } from '../services/knowledgeDatasetSnapshotService.js';
 import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
 import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEvalService.js';
+import { attachGatewayContext } from '../ai/middleware/attachGatewayContext.js';
+import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
+import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
+import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
+import { createAiTask } from '../ai/queue/memoryAiTaskStore.js';
+import { shouldEnqueueChatTask } from '../ai/queue/shouldEnqueueChatTask.js';
+import { aiTaskRoutes } from './aiTaskRoutes.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -149,6 +156,8 @@ const sessionAppendSchema = z.object({
 
 export const chatRoutes = Router();
 
+chatRoutes.use(aiTaskRoutes);
+
 const sendValidationError = (response: Response, error: z.ZodError) => {
   const flattened = error.flatten();
   const firstFieldError = Object.values(flattened.fieldErrors)
@@ -180,11 +189,39 @@ const persistSessionMessagesSafely = (params: {
   });
 };
 
-chatRoutes.post('/chat-stream', async (request: Request, response: Response) => {
+chatRoutes.post(
+  '/chat-stream',
+  attachGatewayContext('chat'),
+  aiRateLimitMiddleware,
+  async (request: Request, response: Response) => {
   const parsed = chatSchema.safeParse(request.body);
 
   if (!parsed.success) {
     sendValidationError(response, parsed.error);
+    return;
+  }
+
+  if (shouldEnqueueChatTask(parsed.data.prompt.length)) {
+    const task = createAiTask({
+      kind: 'chat',
+      priority: computeTaskPriority({ kind: 'chat' }),
+      payload: {
+        prompt: parsed.data.prompt,
+        sessionId: parsed.data.sessionId,
+        sessionUserContent: parsed.data.sessionUserContent,
+        imageDataUrls: parsed.data.imageDataUrls,
+      },
+    });
+
+    if (isAiTaskQueueEnabled()) {
+      await enqueueAiTask(task);
+    }
+
+    response.status(202).json({
+      taskId: task.taskId,
+      status: task.status,
+      pollUrl: `/api/ai/tasks/${task.taskId}`,
+    });
     return;
   }
 
@@ -221,7 +258,8 @@ chatRoutes.post('/chat-stream', async (request: Request, response: Response) => 
   } catch {
     response.end();
   }
-});
+},
+);
 
 chatRoutes.get('/session/:sessionId', (request: Request, response: Response) => {
   const sessionId = String(request.params.sessionId || '');
