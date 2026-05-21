@@ -1,3 +1,4 @@
+import { buildModelResultCacheKey } from '../ai/cache/buildModelResultCacheKey.js';
 import { buildPromptCacheKey } from '../ai/cache/buildPromptCacheKey.js';
 import { getCacheStore } from '../ai/cache/getCacheStore.js';
 import { streamCachedPromptReply } from '../ai/cache/streamCachedPromptReply.js';
@@ -89,6 +90,7 @@ export async function* streamChat(params: {
       history: memoryPlan.history,
       memorySummary: memoryPlan.memorySummary,
       sessionId,
+      userId: params.userId,
       imageDataUrls,
     });
 
@@ -170,6 +172,8 @@ export async function* streamChat(params: {
 
   if (assistantText.trim().length > 0) {
     await getCacheStore().set(promptCacheKey, assistantText, 60 * 60 * 1000);
+    const modelResultKey = buildModelResultCacheKey(prompt, env.DOUBAO_MODEL, 'playground');
+    await getCacheStore().set(modelResultKey, assistantText, 30 * 60 * 1000);
   }
 
   recordTokenUsage(params.userId ?? 'anonymous', {
