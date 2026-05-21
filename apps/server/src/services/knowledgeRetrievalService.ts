@@ -7,6 +7,7 @@ import {
   listKnowledgeDatasetChunks,
   type KnowledgeDatasetChunkRecord,
 } from '../domain/knowledgeDocumentStore.js';
+import { getWarmChunks, setWarmChunks } from '../ai/rag/chunkWarmCache.js';
 import { maybeExpandRetrievalQueries } from '../rag/langchain/expandRetrievalQueries.js';
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay';
@@ -327,10 +328,18 @@ export const runKnowledgeRetrievalQuery = async (
   const queryTerms = getTermCandidates(query.query);
   const queryVariants = await maybeExpandRetrievalQueries(query.query);
 
-  const chunkGroups = await Promise.all(datasets.map(async (dataset) => ({
-    dataset,
-    chunks: await listKnowledgeDatasetChunks(dataset.id),
-  })));
+  const chunkGroups = await Promise.all(datasets.map(async (dataset) => {
+    const warmed = getWarmChunks(dataset.id);
+    const chunks = warmed ?? await listKnowledgeDatasetChunks(dataset.id);
+    if (!warmed) {
+      setWarmChunks(dataset.id, chunks);
+    }
+
+    return {
+      dataset,
+      chunks,
+    };
+  }));
 
   const totalChunkCount = chunkGroups.reduce((sum, item) => sum + item.chunks.length, 0);
   const ranked: RankedChunk[] = [];
