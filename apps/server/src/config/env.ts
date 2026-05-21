@@ -51,6 +51,10 @@ const envSchema = z.object({
   AI_TASK_QUEUE_ENABLED: z.coerce.boolean().default(false),
   /** 0–100，用于 `resolveDegradePolicy`（P2-F-01） */
   AI_LOAD_PERCENT: z.coerce.number().min(0).max(100).default(0),
+  /** 任务状态存 Redis（P3-Q-03，需 REDIS_URL） */
+  AI_TASK_STORE_REDIS: z.coerce.boolean().default(false),
+  /** 单用户日 Token 预算，0=不限制（P3-T-01） */
+  AI_USER_TOKEN_BUDGET_PER_DAY: z.coerce.number().int().nonnegative().default(0),
 }).superRefine((value, ctx) => {
   if (value.WORKFLOW_RUN_STORE === 'redis' && !value.REDIS_URL?.trim()) {
     ctx.addIssue({
@@ -81,6 +85,14 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['REDIS_URL'],
       message: 'REDIS_URL is required when AI_TASK_QUEUE_ENABLED=true',
+    });
+  }
+
+  if (value.AI_TASK_STORE_REDIS && !value.REDIS_URL?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL is required when AI_TASK_STORE_REDIS=true',
     });
   }
 });
