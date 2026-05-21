@@ -68,6 +68,21 @@ export async function* streamChat(params: {
     })}\nid: ${eventId}\n\n`;
   }
 
+  const modelResultKey = buildModelResultCacheKey(prompt, env.DOUBAO_MODEL, 'playground');
+  const modelResultEntry = await getCacheStore().get(modelResultKey);
+  const modelResultAnswer = typeof modelResultEntry?.value === 'string' ? modelResultEntry.value : null;
+
+  if (modelResultAnswer) {
+    for (const chunk of streamCachedPromptReply(modelResultAnswer, sessionId, lastEventId)) {
+      yield chunk;
+    }
+
+    session.messages.push({ role: 'assistant', content: modelResultAnswer, timestamp: Date.now() });
+    session.lastId = eventId + 2;
+    void persistSession(sessionId, session);
+    return;
+  }
+
   const promptCacheKey = buildPromptCacheKey(prompt, env.DOUBAO_MODEL, 0.5);
   const promptCacheEntry = await getCacheStore().get(promptCacheKey);
   const cachedAnswer = typeof promptCacheEntry?.value === 'string' ? promptCacheEntry.value : null;
@@ -172,7 +187,6 @@ export async function* streamChat(params: {
 
   if (assistantText.trim().length > 0) {
     await getCacheStore().set(promptCacheKey, assistantText, 60 * 60 * 1000);
-    const modelResultKey = buildModelResultCacheKey(prompt, env.DOUBAO_MODEL, 'playground');
     await getCacheStore().set(modelResultKey, assistantText, 30 * 60 * 1000);
   }
 
