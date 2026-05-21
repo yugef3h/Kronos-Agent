@@ -1,5 +1,6 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { ChatOpenAI } from '@langchain/openai'
+import type { ChatOpenAI } from '@langchain/openai'
+import { resolveGatewayChatModel } from '../../ai/gateway/resolveGatewayChatModel.js'
 import {
   NodeRunStatus,
   type NodeDebugExecutor,
@@ -251,30 +252,19 @@ const normalizeMessageContent = (content: unknown): string => {
   return stringifyVariableValue(content)
 }
 
-const readDoubaoEnv = () => ({
-  apiKey: process.env.DOUBAO_API_KEY || '',
-  baseURL: process.env.DOUBAO_BASE_URL || '',
-  model: process.env.DOUBAO_MODEL || '',
-})
-
-const createLlmDebugModel = (config: LLMNodeConfig): ChatOpenAI => {
-  const doubaoEnv = readDoubaoEnv()
-
-  if (!doubaoEnv.apiKey || !doubaoEnv.baseURL || !doubaoEnv.model) {
-    throw new Error('Doubao model env is not fully configured')
-  }
-
-  return new ChatOpenAI({
-    model: doubaoEnv.model,
-    apiKey: doubaoEnv.apiKey,
-    configuration: {
-      baseURL: doubaoEnv.baseURL,
+const createLlmDebugModel = (config: LLMNodeConfig, nodeId: string) =>
+  resolveGatewayChatModel(
+    {
+      userId: 'workflow-debug',
+      intent: 'chat',
+      traceId: `llm-debug-${nodeId}`,
     },
-    temperature: config.model.completionParams.temperature,
-    topP: config.model.completionParams.topP,
-    maxTokens: config.model.completionParams.maxTokens,
-  })
-}
+    {
+      temperature: config.model.completionParams.temperature,
+      topP: config.model.completionParams.topP,
+      maxTokens: config.model.completionParams.maxTokens,
+    },
+  )
 
 const buildChatMessages = (config: LLMNodeConfig, variables: Record<string, unknown>) => {
   const promptItems = config.promptTemplate as ChatPromptItem[]
@@ -351,7 +341,7 @@ export const executeLlmNodeDebug: NodeDebugExecutor = async (request) => {
     : DEFAULT_LLM_DEBUG_TIMEOUT_MS
 
   try {
-    const model = createLlmDebugModel(config)
+    const model = createLlmDebugModel(config, request.node.id)
     const messages = buildChatMessages(config, variables)
     const response = await invokeLlmWithTimeout(model, messages, timeoutMs)
     const text = normalizeMessageContent(response.content)
@@ -368,7 +358,7 @@ export const executeLlmNodeDebug: NodeDebugExecutor = async (request) => {
         model: {
           provider: config.model.provider,
           name: config.model.name,
-          resolvedModel: readDoubaoEnv().model,
+          resolvedModel: model.model,
         },
         messages: messages.map((message) => ({
           role: message.getType(),
