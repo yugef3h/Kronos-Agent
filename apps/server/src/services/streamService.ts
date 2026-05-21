@@ -1,3 +1,7 @@
+import { buildPromptCacheKey } from '../ai/cache/buildPromptCacheKey.js';
+import { getCacheStore } from '../ai/cache/getCacheStore.js';
+import { streamCachedPromptReply } from '../ai/cache/streamCachedPromptReply.js';
+import { env } from '../config/env.js';
 import { getSession, persistSession } from '../domain/sessionStore.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
@@ -58,6 +62,21 @@ export async function* streamChat(params: {
       eventId,
       timestamp: Date.now(),
     })}\nid: ${eventId}\n\n`;
+  }
+
+  const promptCacheKey = buildPromptCacheKey(prompt, env.DOUBAO_MODEL, 0.5);
+  const promptCacheEntry = await getCacheStore().get(promptCacheKey);
+  const cachedAnswer = typeof promptCacheEntry?.value === 'string' ? promptCacheEntry.value : null;
+
+  if (cachedAnswer) {
+    for (const chunk of streamCachedPromptReply(cachedAnswer, sessionId, lastEventId)) {
+      yield chunk;
+    }
+
+    session.messages.push({ role: 'assistant', content: cachedAnswer, timestamp: Date.now() });
+    session.lastId = eventId + 2;
+    void persistSession(sessionId, session);
+    return;
   }
 
   try {
@@ -145,6 +164,10 @@ export async function* streamChat(params: {
   }
 
   session.messages.push({ role: 'assistant', content: assistantText, timestamp: Date.now() });
+
+  if (assistantText.trim().length > 0) {
+    await getCacheStore().set(promptCacheKey, assistantText, 60 * 60 * 1000);
+  }
 
   const finalizePlan = createMemoryPlan({
     prompt,
