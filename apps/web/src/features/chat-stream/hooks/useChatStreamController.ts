@@ -38,7 +38,13 @@ import {
   mergeAssistantInvocation,
 } from '../assistantInvocation';
 import { isPlaygroundToolName } from '../invocationRegistry';
+import type { ChatAsyncAccepted } from '../../../types/chatAsyncTask';
 import type { StreamChunk, TimelineEvent } from '../../../types/chat';
+import { CHAT_ASYNC_THRESHOLD_CHARS } from '../constants';
+import {
+  consumeAiTaskEventsSse,
+  consumeChatStreamSseResponse,
+} from '../utils/consumeAiTaskEventsSse';
 import type { ValueSelector, VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
 import {
@@ -506,74 +512,161 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       let lastSeenEventId = 0;
       let isRequestComplete = false;
 
+      const requestBody = JSON.stringify({
+        prompt: streamPrompt,
+        sessionId: streamSessionId,
+        ...(typeof sessionUserContent === 'string' && sessionUserContent.trim().length > 0
+          ? { sessionUserContent: sessionUserContent.trim() }
+          : {}),
+        ...(imageDataUrls?.length ? { imageDataUrls } : {}),
+      });
+
+      const handleStreamChunk = (payload: StreamChunk) => {
+        if (requestId !== activeRequestIdRef.current) {
+          return;
+        }
+
+        if (payload.eventId <= lastSeenEventId) {
+          return;
+        }
+        lastSeenEventId = payload.eventId;
+
+        if (payload.type === 'timeline') {
+          appendTimelineEvent({
+            eventId: payload.eventId,
+            stage: payload.stage,
+            status: payload.status,
+            message: payload.message,
+            toolName: payload.toolName,
+            toolInput: payload.toolInput,
+            toolOutput: payload.toolOutput,
+            toolError: payload.toolError,
+            timestamp: payload.timestamp,
+          });
+
+          if (payload.message.includes('LangChain 流式响应失败')) {
+            console.warn(`[ChatStreamPanel] ${payload.message}`);
+          }
+
+          if (
+            payload.stage === 'tool'
+            && payload.status === 'end'
+            && payload.toolName
+            && isPlaygroundToolName(payload.toolName)
+          ) {
+            patchLastAssistantInvocation({ tools: [payload.toolName] });
+          }
+        }
+
+        if (payload.type === 'content') {
+          appendStreamingContent(payload.content);
+        }
+
+        if (payload.type === 'complete') {
+          isRequestComplete = true;
+          if (requestId === activeRequestIdRef.current) {
+            const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
+            if (tools.length > 0) {
+              patchLastAssistantInvocation({ tools });
+            }
+            completeStreamingContent();
+          }
+        }
+      };
+
+      const finishIncompleteStream = () => {
+        if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+          abortStreamingAssistantMessage();
+          setMessages((prev) => markLastAssistantMessageIncomplete(prev));
+        }
+
+        if (!isRequestComplete && requestId === activeRequestIdRef.current) {
+          setIsStreaming(false);
+          activeControllerRef.current = null;
+        }
+
+        interruptedRequestIdsRef.current.delete(requestId);
+      };
+
+      const markStreamComplete = () => {
+        isRequestComplete = true;
+        if (requestId === activeRequestIdRef.current) {
+          const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
+          if (tools.length > 0) {
+            patchLastAssistantInvocation({ tools });
+          }
+          completeStreamingContent();
+        }
+      };
+
+      const useFetchFirst = streamPrompt.length >= CHAT_ASYNC_THRESHOLD_CHARS;
+
+      if (useFetchFirst) {
+        const response = await fetch(apiUrl('/api/chat-stream'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: requestBody,
+          signal: controller.signal,
+        });
+
+        if (response.status === 202) {
+          const accepted = await response.json() as ChatAsyncAccepted;
+          try {
+            isRequestComplete = await consumeAiTaskEventsSse({
+              accepted,
+              authToken,
+              signal: controller.signal,
+              handlers: {
+                shouldContinue: () => requestId === activeRequestIdRef.current,
+                onContent: (content) => {
+                  appendStreamingContent(content);
+                },
+                onTimeline: (event) => {
+                  appendTimelineEvent(event);
+                },
+                onComplete: markStreamComplete,
+                onError: (message) => {
+                  throw new Error(message);
+                },
+              },
+            });
+          } finally {
+            finishIncompleteStream();
+          }
+          return isRequestComplete;
+        }
+
+        if (response.ok) {
+          try {
+            await consumeChatStreamSseResponse({
+              response,
+              handlers: {
+                shouldContinue: () => requestId === activeRequestIdRef.current,
+                onChunk: handleStreamChunk,
+              },
+            });
+          } finally {
+            finishIncompleteStream();
+          }
+          return isRequestComplete;
+        }
+
+        throw new Error(`chat stream failed: ${response.status}`);
+      }
+
       await fetchEventSource(apiUrl('/api/chat-stream'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({
-          prompt: streamPrompt,
-          sessionId: streamSessionId,
-          ...(typeof sessionUserContent === 'string' && sessionUserContent.trim().length > 0
-            ? { sessionUserContent: sessionUserContent.trim() }
-            : {}),
-          ...(imageDataUrls?.length ? { imageDataUrls } : {}),
-        }),
+        body: requestBody,
         signal: controller.signal,
         onmessage(event) {
-          if (requestId !== activeRequestIdRef.current) {
-            return;
-          }
-
-          const payload = JSON.parse(event.data) as StreamChunk;
-
-          if (payload.eventId <= lastSeenEventId) {
-            return;
-          }
-          lastSeenEventId = payload.eventId;
-
-          if (payload.type === 'timeline') {
-            appendTimelineEvent({
-              eventId: payload.eventId,
-              stage: payload.stage,
-              status: payload.status,
-              message: payload.message,
-              toolName: payload.toolName,
-              toolInput: payload.toolInput,
-              toolOutput: payload.toolOutput,
-              toolError: payload.toolError,
-              timestamp: payload.timestamp,
-            });
-
-            if (payload.message.includes('LangChain 流式响应失败')) {
-              console.warn(`[ChatStreamPanel] ${payload.message}`);
-            }
-
-            if (
-              payload.stage === 'tool'
-              && payload.status === 'end'
-              && payload.toolName
-              && isPlaygroundToolName(payload.toolName)
-            ) {
-              patchLastAssistantInvocation({ tools: [payload.toolName] });
-            }
-          }
-
-          if (payload.type === 'content') {
-            appendStreamingContent(payload.content);
-          }
-
-          if (payload.type === 'complete') {
-            isRequestComplete = true;
-            if (requestId === activeRequestIdRef.current) {
-              const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
-              if (tools.length > 0) {
-                patchLastAssistantInvocation({ tools });
-              }
-              completeStreamingContent();
-            }
-          }
+          handleStreamChunk(JSON.parse(event.data) as StreamChunk);
         },
         onerror(error) {
           if (requestId === activeRequestIdRef.current) {
@@ -581,19 +674,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           }
           throw error;
         },
-        onclose() {
-          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-            abortStreamingAssistantMessage();
-            setMessages((prev) => markLastAssistantMessageIncomplete(prev));
-          }
-
-          if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-            setIsStreaming(false);
-            activeControllerRef.current = null;
-          }
-
-          interruptedRequestIdsRef.current.delete(requestId);
-        },
+        onclose: finishIncompleteStream,
       });
       return isRequestComplete;
     },

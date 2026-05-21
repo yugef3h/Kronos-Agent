@@ -3,6 +3,8 @@ import { HOT_TOPIC_PROMPTS } from '../../components/chatHotTopics';
 import type { PromptQuickAction } from './types';
 
 export const MAX_CONTEXT_TOKENS = 8192;
+/** P4-W-02: 与后端 AI_CHAT_ASYNC_THRESHOLD_CHARS 默认一致 */
+export const CHAT_ASYNC_THRESHOLD_CHARS = 12_000;
 export const TAKEOUT_QUICK_ACTION_REPLY = '好呀，你想吃点什么呢？';
 export const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
 export const IMAGE_DEFAULT_PROMPT = '解释图片';
