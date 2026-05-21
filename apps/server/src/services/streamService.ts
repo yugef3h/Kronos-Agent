@@ -5,9 +5,12 @@ import { env } from '../config/env.js';
 import { getSession, persistSession } from '../domain/sessionStore.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
+import { recordTokenUsage } from '../ai/cost/tokenUsageStore.js';
+import { estimateTextTokens } from '../memory/tokenEstimate.js';
 import { streamMockReply } from './mockReplyService.js';
 
 export async function* streamChat(params: {
+  userId?: string;
   prompt: string;
   /** 落盘到 session 的用户消息正文；不传则使用 prompt。 */
   sessionUserContent?: string;
@@ -168,6 +171,12 @@ export async function* streamChat(params: {
   if (assistantText.trim().length > 0) {
     await getCacheStore().set(promptCacheKey, assistantText, 60 * 60 * 1000);
   }
+
+  recordTokenUsage(params.userId ?? 'anonymous', {
+    input: estimateTextTokens(`${prompt}\n${memoryPlan.memorySummary}`),
+    output: estimateTextTokens(assistantText),
+    model: env.DOUBAO_MODEL,
+  });
 
   const finalizePlan = createMemoryPlan({
     prompt,

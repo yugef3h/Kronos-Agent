@@ -67,7 +67,7 @@ import {
 import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
 import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEvalService.js';
 import { warmDatasetChunks } from '../ai/rag/warmDatasetChunks.js';
-import { attachGatewayContext } from '../ai/middleware/attachGatewayContext.js';
+import { attachGatewayContext, type RequestWithGatewayContext } from '../ai/middleware/attachGatewayContext.js';
 import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
 import { enqueueAiTask, isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
@@ -194,7 +194,7 @@ chatRoutes.post(
   '/chat-stream',
   attachGatewayContext('chat'),
   aiRateLimitMiddleware,
-  async (request: Request, response: Response) => {
+  async (request: RequestWithGatewayContext, response: Response) => {
   const parsed = chatSchema.safeParse(request.body);
 
   if (!parsed.success) {
@@ -243,6 +243,7 @@ chatRoutes.post(
   );
 
   const stream = streamChat({
+    userId: request.gatewayContext?.userId,
     prompt: parsed.data.prompt,
     sessionUserContent: parsed.data.sessionUserContent,
     sessionId: parsed.data.sessionId,
