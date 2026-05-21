@@ -16,10 +16,32 @@
 | 7 资源成本 | 11 | 11 |
 | **Phase 2 生产闭环** | **18** | **18** |
 | **Phase 3 深化集成** | **13** | **13** |
-| **合计** | **108** | **108** |
+| **Phase 4 体验闭环** | **14** | **14** |
+| **合计** | **122** | **122** |
 
 > Phase 1（77 项）骨架与接线已完成；Phase 2 补齐 **异步 Worker、任务 SSE、网关动态模型、会话槽释放、降级策略生效**。  
-> Phase 3：**invokeGateway 接入线性规划/推理流、model_result 读缓存、Redis 任务持久化、Token 预算限流、健康检查**。
+> Phase 3：**invokeGateway 接入线性规划/推理流、model_result 读缓存、Redis 任务持久化、Token 预算限流、健康检查**。  
+> Phase 4：**前端接 202+任务 SSE、异步结果写回 session、任务事件 Redis、LangGraph 降级 token 上限**。
+
+---
+
+## Phase 4：体验闭环（14）
+
+| ID | 粒度 | 交付物 | 状态 |
+|----|------|--------|------|
+| P4-Q-01 | type | `AiTaskEventStore` append/list 接口 | ✅ |
+| P4-Q-02 | fn | `getAiTaskEventStore` memory / redis | ✅ |
+| P4-Q-03 | store | `redisAiTaskEventStore` 事件 RPUSH/LRANGE | ✅ |
+| P4-Q-04 | wire | `appendAiTaskEvent` / routes 改走 event store | ✅ |
+| P4-S-01 | wire | `runChatAiTask` 成功后 `appendSessionMessages` 写助手消息 | ✅ |
+| P4-S-02 | wire | `chat-stream` 返回 202 前先落盘用户消息 | ✅ |
+| P4-G-01 | wire | LangGraph `buildPlaygroundGatewayContext` + `maxTokens` 降级 | ✅ |
+| P4-W-01 | type | `ChatAsyncAccepted` / `AiTaskSseEvent` 前端类型 | ✅ |
+| P4-W-02 | const | `CHAT_ASYNC_THRESHOLD_CHARS` 与后端对齐 | ✅ |
+| P4-W-03 | fn | `consumeAiTaskEventsSse` 消费任务事件流 | ✅ |
+| P4-W-04 | wire | `useChatStreamController` 超长 prompt 走 202+events | ✅ |
+| P4-W-05 | test | `consumeAiTaskEventsSse` 事件解析单测 | ✅ |
+| P4-D-01 | doc | README Phase 4 异步对话说明 | ✅ |
 
 ---
 
