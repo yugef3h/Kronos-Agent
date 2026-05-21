@@ -2,6 +2,7 @@ import type { NextFunction, Response } from 'express';
 import { checkSessionRateLimit } from '../rateLimit/checkSessionRateLimit.js';
 import { checkUserRateLimit } from '../rateLimit/checkUserRateLimit.js';
 import { acquireConcurrentSessionSlot } from '../cost/concurrentSessionSlots.js';
+import { checkTokenBudgetRateLimit } from '../cost/checkTokenBudgetRateLimit.js';
 import { isOverGlobalTokenQuota } from '../cost/isOverGlobalTokenQuota.js';
 import type { RequestWithGatewayContext } from './attachGatewayContext.js';
 
@@ -16,6 +17,16 @@ export const aiRateLimitMiddleware = (
 
   if (isOverGlobalTokenQuota()) {
     response.status(503).json({ error: 'Global token quota exceeded', code: 'token_quota_exceeded' });
+    return;
+  }
+
+  const tokenBudgetLimit = checkTokenBudgetRateLimit(userId);
+  if (!tokenBudgetLimit.allowed) {
+    response.status(429).json({
+      error: 'Daily token budget exceeded',
+      code: 'token_budget_exceeded',
+      scope: tokenBudgetLimit.scope,
+    });
     return;
   }
 
