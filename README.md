@@ -138,6 +138,19 @@ pnpm dev
 | **编排** | Workflow 列表/草稿/Chatbot 配置、DSL 自动保存、缩略图、内置示例、假发布 |
 | **运行** | 单节点调试 API、整图 draft-run SSE、画布运行态与「上次运行」 |
 
+## AI 高并发开关（`apps/server/src/ai`）
+
+| 变量 | 说明 |
+| --- | --- |
+| `AI_GATEWAY_MODELS` | 多模型 JSON，Playground/调试经网关选型 |
+| `AI_CHAT_ASYNC_ENABLED` | 超长 Prompt 走 `202` + `/api/ai/tasks/:id/events` |
+| `AI_TASK_QUEUE_ENABLED` | 需 `REDIS_URL`，BullMQ 消费 chat 任务 |
+| `AI_CACHE_REDIS` | 缓存走 Redis |
+| `AI_LOAD_PERCENT` | 0–100，高峰时收紧 LangGraph `recursionLimit` |
+| `AI_MAX_CONCURRENT_SESSIONS_PER_USER` | 单用户并发会话槽 |
+
+详见 [docs/AI_SERVICE_IMPLEMENTATION_PLAN.md](docs/AI_SERVICE_IMPLEMENTATION_PLAN.md)。
+
 ## 安全与模型接入
 
 - API 路由统一 JWT Bearer；Workflow 调试与 draft-run 与 Playground 共用鉴权头构建逻辑。
