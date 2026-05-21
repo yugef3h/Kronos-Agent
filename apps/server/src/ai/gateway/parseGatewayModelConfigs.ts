@@ -31,10 +31,19 @@ export const parseGatewayModelConfigs = (raw: string | undefined): GatewayModelC
       return [];
     }
 
-    return result.data.map((item) => ({
-      ...item,
-      intents: [...item.intents],
-    }));
+    return result.data.map(
+      (item): GatewayModelConfig => ({
+        id: item.id,
+        provider: item.provider,
+        model: item.model,
+        baseUrl: item.baseUrl,
+        apiKeyEnv: item.apiKeyEnv,
+        intents: [...item.intents],
+        priority: item.priority,
+        maxConcurrency: item.maxConcurrency,
+        enabled: item.enabled,
+      }),
+    );
   } catch {
     return [];
   }

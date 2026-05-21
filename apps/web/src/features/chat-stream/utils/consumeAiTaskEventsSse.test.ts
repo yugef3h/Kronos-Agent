@@ -1,11 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import type { AiTaskSseEvent } from '../../../types/chatAsyncTask';
 import { mapAiTaskEventToHandlers } from './consumeAiTaskEventsSse';
 
 describe('mapAiTaskEventToHandlers', () => {
   it('maps content events', () => {
-    const onContent = vi.fn();
+    const onContent = jest.fn();
     const event: AiTaskSseEvent = {
       id: 1,
       taskId: 't1',
@@ -16,9 +14,9 @@ describe('mapAiTaskEventToHandlers', () => {
 
     mapAiTaskEventToHandlers(event, {
       onContent,
-      onTimeline: vi.fn(),
-      onComplete: vi.fn(),
-      onError: vi.fn(),
+      onTimeline: jest.fn(),
+      onComplete: jest.fn(),
+      onError: jest.fn(),
       shouldContinue: () => true,
     });
 
@@ -26,7 +24,7 @@ describe('mapAiTaskEventToHandlers', () => {
   });
 
   it('maps done to onComplete', () => {
-    const onComplete = vi.fn();
+    const onComplete = jest.fn();
     mapAiTaskEventToHandlers(
       {
         id: 2,
@@ -36,10 +34,10 @@ describe('mapAiTaskEventToHandlers', () => {
         timestamp: 2,
       },
       {
-        onContent: vi.fn(),
-        onTimeline: vi.fn(),
+        onContent: jest.fn(),
+        onTimeline: jest.fn(),
         onComplete,
-        onError: vi.fn(),
+        onError: jest.fn(),
         shouldContinue: () => true,
       },
     );
@@ -48,7 +46,7 @@ describe('mapAiTaskEventToHandlers', () => {
   });
 
   it('stops when shouldContinue is false', () => {
-    const onContent = vi.fn();
+    const onContent = jest.fn();
     mapAiTaskEventToHandlers(
       {
         id: 3,
@@ -59,9 +57,9 @@ describe('mapAiTaskEventToHandlers', () => {
       },
       {
         onContent,
-        onTimeline: vi.fn(),
-        onComplete: vi.fn(),
-        onError: vi.fn(),
+        onTimeline: jest.fn(),
+        onComplete: jest.fn(),
+        onError: jest.fn(),
         shouldContinue: () => false,
       },
     );

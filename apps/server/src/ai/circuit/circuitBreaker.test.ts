@@ -28,14 +28,16 @@ describe('circuitBreaker', () => {
   it('closes after success in half_open', () => {
     const breaker = createCircuitBreaker('doubao', {
       failureThreshold: 1,
-      openMs: 0,
+      openMs: 1000,
       halfOpenProbe: 1,
     });
 
-    recordCircuitFailure(breaker.name);
-    expect(isCircuitOpen(breaker.name)).toBe(true);
+    const t0 = 1000;
+    recordCircuitFailure(breaker.name, t0);
+    expect(isCircuitOpen(breaker.name, t0)).toBe(true);
 
-    recordCircuitSuccess(breaker.name, Date.now() + 1);
-    expect(isCircuitOpen(breaker.name)).toBe(false);
+    const t1 = t0 + 1000;
+    recordCircuitSuccess(breaker.name, t1);
+    expect(isCircuitOpen(breaker.name, t1)).toBe(false);
   });
 });

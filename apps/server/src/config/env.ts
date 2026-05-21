@@ -1,10 +1,12 @@
 import { config } from 'dotenv';
 import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { z } from 'zod';
 
-const serverPackageRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+/** Jest(CJS) 不支持 `import.meta`；用 cwd 推断 server 包根目录 */
+const serverPackageRoot = existsSync(join(process.cwd(), 'apps/server', 'src'))
+  ? join(process.cwd(), 'apps/server')
+  : process.cwd();
 const appsRoot = join(serverPackageRoot, '..');
 
 /** Node / Python 共用：优先 apps/.env，兼容旧版 apps/server/.env */

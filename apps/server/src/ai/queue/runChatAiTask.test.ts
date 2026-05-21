@@ -4,6 +4,10 @@ jest.mock('../../services/agent/agentStreamRouter.js', () => ({
   }),
 }));
 
+jest.mock('../../domain/sessionStore.js', () => ({
+  appendSessionMessages: jest.fn().mockResolvedValue(undefined),
+}));
+
 import { clearAllAiTaskEvents } from './aiTaskEvents.js';
 import { clearAiTaskStore, createAiTask, getAiTask } from './memoryAiTaskStore.js';
 import { runChatAiTask } from './runChatAiTask.js';
