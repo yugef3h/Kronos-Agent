@@ -1,11 +1,11 @@
-import { ChatOpenAI } from '@langchain/openai';
-import { env } from '../../config/env.js';
+import { resolveGatewayChatModel } from '../../ai/gateway/resolveGatewayChatModel.js';
 
-export const chatModel = new ChatOpenAI({
-  model: env.DOUBAO_MODEL,
-  apiKey: env.DOUBAO_API_KEY,
-  configuration: {
-    baseURL: env.DOUBAO_BASE_URL,
+/** G-11: Playground 默认经 AI 网关解析豆包/多模型配置 */
+export const chatModel = resolveGatewayChatModel(
+  {
+    userId: 'playground',
+    intent: 'chat',
+    traceId: 'playground-default',
   },
-  temperature: 0.5,
-});
+  { temperature: 0.5 },
+);
