@@ -2,7 +2,8 @@ import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages
 import type { Message } from '../../domain/sessionStore.js';
 import { env } from '../../config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
-import { chatModel } from '../chat/chatModel.js';
+import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
+import type { ChatOpenAI } from '@langchain/openai';
 import { safeStringify } from '../chat/safeStringify.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
 import { createTimelineEvent } from '../chat/timelineEvents.js';
@@ -61,13 +62,13 @@ const readChunkText = (content: unknown): string => {
   return '';
 };
 
-const createToolEnabledModel = (registry: PlaygroundToolRegistry) => {
+const createToolEnabledModel = (registry: PlaygroundToolRegistry, model: ChatOpenAI) => {
   const tools = listRegistryTools(registry);
   if (tools.length === 0) {
-    return chatModel;
+    return model;
   }
 
-  return chatModel.bindTools(tools, { tool_choice: 'auto' });
+  return model.bindTools(tools, { tool_choice: 'auto' });
 };
 
 const PLAYGROUND_CHAT_LOG_PREFIX = '[playground-chat]';
@@ -80,9 +81,20 @@ export async function* streamLinearChatReply(params: {
   imageDataUrls?: string[];
   registry?: PlaygroundToolRegistry;
   sessionId?: string;
+  userId?: string;
 }): AsyncGenerator<LangChainStreamEvent> {
   const registry = params.registry ?? playgroundToolRegistry;
-  const toolEnabledModel = createToolEnabledModel(registry);
+  const sessionId = params.sessionId ?? 'session';
+  const baseModel = getPlaygroundChatModel(
+    {
+      userId: params.userId,
+      sessionId,
+      intent: 'chat',
+      traceId: `${sessionId}-linear-${Date.now()}`,
+    },
+    { temperature: 0.5 },
+  );
+  const toolEnabledModel = createToolEnabledModel(registry, baseModel);
   const planningHint = buildPlanningSystemHint(registry);
 
   yield createTimelineEvent('plan', 'start', '规划器开始分析当前提示词意图。');
@@ -191,7 +203,7 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const requestStartedAt = Date.now();
-  const stream = await chatModel.stream(messages);
+  const stream = await baseModel.stream(messages);
   const requestSetupElapsedMs = Date.now() - requestStartedAt;
 
   yield createTimelineEvent('reason', 'info', createReasonRequestInfoMessage(requestSetupElapsedMs));
