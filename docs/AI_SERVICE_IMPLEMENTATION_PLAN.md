@@ -15,9 +15,31 @@
 | 6 RAG 高并发 | 11 | 11 |
 | 7 资源成本 | 11 | 11 |
 | **Phase 2 生产闭环** | **18** | **18** |
-| **合计** | **95** | **95** |
+| **Phase 3 深化集成** | **13** | **0** |
+| **合计** | **108** | **95** |
 
-> Phase 1（77 项）骨架与接线已完成；Phase 2 补齐 **异步 Worker、任务 SSE、网关动态模型、会话槽释放、降级策略生效**。
+> Phase 1（77 项）骨架与接线已完成；Phase 2 补齐 **异步 Worker、任务 SSE、网关动态模型、会话槽释放、降级策略生效**。  
+> Phase 3：**invokeGateway 接入线性规划/推理流、model_result 读缓存、Redis 任务持久化、Token 预算限流、健康检查**。
+
+---
+
+## Phase 3：深化集成（13）
+
+| ID | 粒度 | 交付物 | 状态 |
+|----|------|--------|------|
+| P3-G-01 | fn | `buildPlaygroundGatewayContext` 统一构造网关上下文 | ⬜ |
+| P3-G-02 | fn | `invokeGatewayLlm` 任意 ChatOpenAI + 熔断重试 | ⬜ |
+| P3-G-03 | fn | `streamGatewayLlm` 流式推理 + 熔断记账 | ⬜ |
+| P3-G-04 | wire | `linearChatStream` 规划阶段走 `invokeGatewayLlm` | ⬜ |
+| P3-G-05 | wire | `linearChatStream` 推理阶段走 `streamGatewayLlm` | ⬜ |
+| P3-C-01 | wire | `streamChat` 先查 `model_result` 再查 `prompt` 缓存 | ⬜ |
+| P3-Q-01 | type | `AiTaskStore` 接口（create/get/patch） | ⬜ |
+| P3-Q-02 | fn | `getAiTaskStore` memory / redis 选择 | ⬜ |
+| P3-Q-03 | store | `redisAiTaskStore` 任务 JSON 持久化 | ⬜ |
+| P3-Q-04 | wire | 任务路由与 `runChatAiTask` 改走 `getAiTaskStore` | ⬜ |
+| P3-T-01 | fn | `checkTokenBudgetRateLimit` 用户日 Token 预算 | ⬜ |
+| P3-T-02 | wire | `aiRateLimitMiddleware` 接入 token_budget 检查 | ⬜ |
+| P3-A-01 | route | `GET /api/ai/health` 队列/熔断/缓存状态 | ⬜ |
 
 ---
 
