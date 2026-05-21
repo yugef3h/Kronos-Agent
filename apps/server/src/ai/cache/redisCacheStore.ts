@@ -1,5 +1,4 @@
 import type Redis from 'ioredis';
-import type { CacheEntry } from '../types/cacheEntry.js';
 import type { CacheStore } from './cacheStore.js';
 
 const CACHE_KEY_PREFIX = 'kronos:ai:cache:';
