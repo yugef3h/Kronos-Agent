@@ -14,7 +14,35 @@
 | 5 熔断降级 | 11 | 11 |
 | 6 RAG 高并发 | 11 | 11 |
 | 7 资源成本 | 11 | 11 |
-| **合计** | **77** | **77** |
+| **Phase 2 生产闭环** | **18** | **0** |
+| **合计** | **95** | **77** |
+
+> Phase 1（77 项）骨架与接线已完成；Phase 2 补齐 **异步 Worker、任务 SSE、网关动态模型、会话槽释放、降级策略生效**。
+
+---
+
+## Phase 2：生产闭环（18）
+
+| ID | 粒度 | 交付物 | 状态 |
+|----|------|--------|------|
+| P2-Q-01 | fn | `appendAiTaskEvent` / `listAiTaskEvents` 任务事件内存表 | ⬜ |
+| P2-Q-02 | fn | `runChatAiTask`：消费 chat 任务并写 result + events | ⬜ |
+| P2-Q-03 | fn | `startAiTaskWorker`：BullMQ Worker 绑定 `runChatAiTask` | ⬜ |
+| P2-Q-04 | wire | `index.ts` 在 `AI_TASK_QUEUE_ENABLED` 时启动 Worker | ⬜ |
+| P2-Q-05 | wire | 队列关闭时 `202` 后 `void runChatAiTask` 进程内执行 | ⬜ |
+| P2-Q-06 | route | `GET /api/ai/tasks/:id/events` SSE 推送任务进度 | ⬜ |
+| P2-G-01 | fn | `getPlaygroundChatModel(ctx, opts)` 按请求解析网关模型 | ⬜ |
+| P2-G-02 | wire | `langGraphChatStream` 每轮用 `getPlaygroundChatModel` | ⬜ |
+| P2-G-03 | wire | `linearChatStream` 每轮用 `getPlaygroundChatModel` | ⬜ |
+| P2-G-04 | wire | `agentStreamRouter` 透传 `userId` / `sessionId` | ⬜ |
+| P2-F-01 | wire | `resolveDegradePolicy` → LangGraph `recursionLimit` | ⬜ |
+| P2-T-01 | middleware | `releaseConcurrentSessionSlot` 在响应结束时释放槽位 | ⬜ |
+| P2-T-02 | wire | `chat-stream` 挂载释放中间件 | ⬜ |
+| P2-C-01 | fn | `buildModelResultCacheKey` + 可选写入 model_result 层 | ⬜ |
+| P2-E-01 | env | `env.ts` 增加 `AI_TASK_QUEUE_ENABLED` / `AI_LOAD_PERCENT` | ⬜ |
+| P2-E-02 | doc | `apps/.env.example` Phase 2 变量说明 | ⬜ |
+| P2-T-03 | test | `runChatAiTask` 单测（mock agent stream） | ⬜ |
+| P2-D-01 | doc | README 增加 AI 高并发开关说明一节 | ⬜ |
 
 ---
 
