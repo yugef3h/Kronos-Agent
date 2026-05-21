@@ -7,14 +7,14 @@
 
 | 域 | 计划 | 已完成 |
 |----|------|--------|
-| 1 网关调度 | 12 | 0 |
-| 2 削峰排队 | 11 | 0 |
-| 3 缓存复用 | 11 | 0 |
-| 4 模型弹性 | 10 | 0 |
-| 5 熔断降级 | 11 | 0 |
-| 6 RAG 高并发 | 11 | 0 |
-| 7 资源成本 | 11 | 0 |
-| **合计** | **77** | **0** |
+| 1 网关调度 | 12 | 10 |
+| 2 削峰排队 | 11 | 2 |
+| 3 缓存复用 | 11 | 5 |
+| 4 模型弹性 | 10 | 1 |
+| 5 熔断降级 | 11 | 2 |
+| 6 RAG 高并发 | 11 | 1 |
+| 7 资源成本 | 11 | 2 |
+| **合计** | **77** | **23** |
 
 ---
 
@@ -39,16 +39,16 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| G-01 | type | `ModelProviderId`：`'doubao' \| 'openai' \| 'qwen' \| 'wenxin' \| 'spark' \| 'local'` | ⬜ |
-| G-02 | type | `ModelRouteIntent`：`'chat' \| 'embedding' \| 'vision' \| 'planning'` | ⬜ |
-| G-03 | type | `GatewayModelConfig`：provider、model、baseUrl、priority、maxConcurrency | ⬜ |
-| G-04 | type | `GatewayRequestContext`：userId、sessionId、intent、traceId | ⬜ |
-| G-05 | fn | `parseGatewayModelConfigs(env)`：从 `AI_GATEWAY_MODELS` JSON 解析配置列表 | ⬜ |
-| G-06 | fn | `selectGatewayModel(ctx, configs)`：按 intent + priority 选可用模型 | ⬜ |
-| G-07 | fn | `buildOpenAiCompatibleClient(config)`：统一 LangChain ChatOpenAI 构造 | ⬜ |
-| G-08 | fn | `resolveDefaultGatewayModel(intent)`：未配置时回退 `DOUBAO_*` | ⬜ |
-| G-09 | fn | `createGatewayInvokeHeaders(ctx)`：透传 trace / user 到上游 | ⬜ |
-| G-10 | middleware | `attachGatewayContext`：JWT sub → `GatewayRequestContext` | ⬜ |
+| G-01 | type | `ModelProviderId`：`'doubao' \| 'openai' \| 'qwen' \| 'wenxin' \| 'spark' \| 'local'` | ✅ |
+| G-02 | type | `ModelRouteIntent`：`'chat' \| 'embedding' \| 'vision' \| 'planning'` | ✅ |
+| G-03 | type | `GatewayModelConfig`：provider、model、baseUrl、priority、maxConcurrency | ✅ |
+| G-04 | type | `GatewayRequestContext`：userId、sessionId、intent、traceId | ✅ |
+| G-05 | fn | `parseGatewayModelConfigs(env)`：从 `AI_GATEWAY_MODELS` JSON 解析配置列表 | ✅ |
+| G-06 | fn | `selectGatewayModel(ctx, configs)`：按 intent + priority 选可用模型 | ✅ |
+| G-07 | fn | `buildOpenAiCompatibleClient(config)`：统一 LangChain ChatOpenAI 构造 | ✅ |
+| G-08 | fn | `resolveDefaultGatewayModel(intent)`：未配置时回退 `DOUBAO_*` | ✅ |
+| G-09 | fn | `createGatewayInvokeHeaders(ctx)`：透传 trace / user 到上游 | ✅ |
+| G-10 | middleware | `attachGatewayContext`：JWT sub → `GatewayRequestContext` | ✅ |
 | G-11 | wire | `langchainChatService` 经 gateway 取 model（保持 mock 路径） | ⬜ |
 | G-12 | wire | `llmNodeDebugExecutor` 经 gateway 取 model | ⬜ |
 
@@ -58,8 +58,8 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| Q-01 | type | `AiTaskKind`：`'chat' \| 'workflow_draft' \| 'image' \| 'embedding_batch'` | ⬜ |
-| Q-02 | type | `AiTaskStatus`：`'queued' \| 'running' \| 'succeeded' \| 'failed' \| 'cancelled'` | ⬜ |
+| Q-01 | type | `AiTaskKind`：`'chat' \| 'workflow_draft' \| 'image' \| 'embedding_batch'` | ✅ |
+| Q-02 | type | `AiTaskStatus`：`'queued' \| 'running' \| 'succeeded' \| 'failed' \| 'cancelled'` | ✅ |
 | Q-03 | type | `AiTaskRecord`：taskId、kind、priority、payload、status、progress | ⬜ |
 | Q-04 | type | `AiTaskPriority`：0–9 数值，付费用户加权常量 | ⬜ |
 | Q-05 | fn | `computeTaskPriority(ctx)`：user tier + kind → priority | ⬜ |
@@ -76,11 +76,11 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| C-01 | type | `CacheLayer`：`'prompt' \| 'retrieval' \| 'model_result'` | ⬜ |
-| C-02 | type | `CacheEntry<T>`：key、value、expiresAt、hitCount | ⬜ |
-| C-03 | fn | `hashCacheKey(layer, parts)`：sha256 稳定键 | ⬜ |
-| C-04 | fn | `buildPromptCacheKey(prompt, model, temperature)` | ⬜ |
-| C-05 | fn | `buildRetrievalCacheKey(query, datasetIds, topK)` | ⬜ |
+| C-01 | type | `CacheLayer`：`'prompt' \| 'retrieval' \| 'model_result'` | ✅ |
+| C-02 | type | `CacheEntry<T>`：key、value、expiresAt、hitCount | ✅ |
+| C-03 | fn | `hashCacheKey(layer, parts)`：sha256 稳定键 | ✅ |
+| C-04 | fn | `buildPromptCacheKey(prompt, model, temperature)` | ✅ |
+| C-05 | fn | `buildRetrievalCacheKey(query, datasetIds, topK)` | ✅ |
 | C-06 | store | `memoryCacheStore`：get/set/delete + TTL | ⬜ |
 | C-07 | store | `redisCacheStore`：可选 Redis 实现（`AI_CACHE_REDIS=1`） | ⬜ |
 | C-08 | fn | `getCacheStore()`：按 env 选 memory/redis | ⬜ |
@@ -94,7 +94,7 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| M-01 | type | `ModelTier`：`'small' \| 'large' \| 'local'` | ⬜ |
+| M-01 | type | `ModelTier`：`'small' \| 'large' \| 'local'` | ✅ |
 | M-02 | type | `ModelRouteRule`：maxPromptTokens、intent、tier | ⬜ |
 | M-03 | fn | `estimatePromptTier(tokenCount)`：简单/复杂分流 | ⬜ |
 | M-04 | fn | `pickModelTierByTokens(tokens, rules)` | ⬜ |
@@ -111,8 +111,8 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| F-01 | type | `CircuitState`：`'closed' \| 'open' \| 'half_open'` | ⬜ |
-| F-02 | type | `CircuitBreakerConfig`：failureThreshold、openMs、halfOpenProbe | ⬜ |
+| F-01 | type | `CircuitState`：`'closed' \| 'open' \| 'half_open'` | ✅ |
+| F-02 | type | `CircuitBreakerConfig`：failureThreshold、openMs、halfOpenProbe | ✅ |
 | F-03 | fn | `createCircuitBreaker(name, config)`：内存状态机 | ⬜ |
 | F-04 | fn | `recordCircuitSuccess(name)` / `recordCircuitFailure(name)` | ⬜ |
 | F-05 | fn | `isCircuitOpen(name)` | ⬜ |
@@ -129,7 +129,7 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| R-01 | type | `RetrievalCacheKeyParts`：query、datasetIds、method、topK | ⬜ |
+| R-01 | type | `RetrievalCacheKeyParts`：query、datasetIds、method、topK | ✅ |
 | R-02 | fn | `shardDatasetId(datasetId)`：分片键（预留多实例） | ⬜ |
 | R-03 | fn | `runParallelRetrievalPaths(paths, fn)`：Promise.all 包装 | ⬜ |
 | R-04 | fn | `scoreKeywordPath(chunks, terms)`：抽离关键词路 | ⬜ |
@@ -147,8 +147,8 @@ apps/server/src/ai/
 
 | ID | 粒度 | 交付物 | 状态 |
 |----|------|--------|------|
-| T-01 | type | `RateLimitScope`：`'user' \| 'session' \| 'token_budget' \| 'concurrent_session'` | ⬜ |
-| T-02 | type | `RateLimitResult`：allowed、remaining、retryAfterMs | ⬜ |
+| T-01 | type | `RateLimitScope`：`'user' \| 'session' \| 'token_budget' \| 'concurrent_session'` | ✅ |
+| T-02 | type | `RateLimitResult`：allowed、remaining、retryAfterMs | ✅ |
 | T-03 | fn | `createTokenBucket(key, capacity, refillPerSec)` | ⬜ |
 | T-04 | fn | `consumeTokenBucket(bucket, cost)` | ⬜ |
 | T-05 | fn | `checkUserRateLimit(userId, scope)` | ⬜ |
@@ -194,4 +194,5 @@ pnpm --filter @kronos/server lint
 
 | 日期 | Commit | ID |
 |------|--------|-----|
-| 2026-05-21 | _(plan doc)_ | PLAN |
+| 2026-05-21 | `5d1cd21` | PLAN |
+| 2026-05-21 | `82f601f`…`784f3d3` | G-01～G-10, T-01～T-02, C-01～C-05, Q-01～Q-02, F-01～F-02, R-01, M-01 |
