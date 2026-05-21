@@ -21,6 +21,7 @@ import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } fr
 import { getRagEngineMode } from './engine.js';
 import { buildKnowledgeDocumentChunksWithLangChain } from './langchain/buildChunksWithLangChain.js';
 import { createRagEmbeddings } from './langchain/ragEmbeddings.js';
+import { withRetrievalCache } from '../ai/rag/cachedKnowledgeRetrieval.js';
 import { runLangchainVectorRetrievalQuery } from './langchain/vectorRetrieval.js';
 
 export {
@@ -45,10 +46,12 @@ export type {
 
 export async function runKnowledgeRetrievalQuery(query: KnowledgeRetrievalQuery) {
   /** Step4：门面按 `RAG_ENGINE_MODE` 切换自研打分检索 vs 向量检索（契约相同）。 */
-  if (getRagEngineMode() !== 'langchain') {
-    return selfHostedRunKnowledgeRetrievalQuery(query);
-  }
-  return runLangchainVectorRetrievalQuery(query);
+  return withRetrievalCache(query, async (q) => {
+    if (getRagEngineMode() !== 'langchain') {
+      return selfHostedRunKnowledgeRetrievalQuery(q);
+    }
+    return runLangchainVectorRetrievalQuery(q);
+  });
 }
 
 export async function previewKnowledgeDocuments(params: {
