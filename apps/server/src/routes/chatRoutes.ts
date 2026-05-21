@@ -66,6 +66,7 @@ import {
 } from '../services/knowledgeDatasetSnapshotService.js';
 import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
 import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEvalService.js';
+import { warmDatasetChunks } from '../ai/rag/warmDatasetChunks.js';
 import { attachGatewayContext } from '../ai/middleware/attachGatewayContext.js';
 import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
 import { computeTaskPriority } from '../ai/queue/computeTaskPriority.js';
@@ -362,6 +363,22 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
     }
 
     response.status(500).json({ error: `Knowledge dataset delete failed: ${reason}` });
+  }
+});
+
+chatRoutes.post('/workflow/knowledge-datasets/:datasetId/warm', async (request: Request, response: Response) => {
+  const datasetId = String(request.params.datasetId || '').trim();
+  if (!datasetId) {
+    response.status(400).json({ error: 'Invalid dataset id' });
+    return;
+  }
+
+  try {
+    const chunkCount = await warmDatasetChunks(datasetId);
+    response.json({ datasetId, chunkCount, warmed: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'warm failed';
+    response.status(500).json({ error: message });
   }
 });
 
