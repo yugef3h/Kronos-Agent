@@ -1,7 +1,9 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
+import {
+  buildTakeoutOrchestrationHistory,
+  takeoutOrchestrationChatPrompt,
+} from '../prompts/takeoutOrchestrationPrompt.js';
 import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from './takeoutIntentService.js';
-import { TAKEOUT_ORCHESTRATION_PROMPT } from '../const/prompt.js';
 
 export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call' | 'delegate_chat_stream';
 
@@ -173,11 +175,11 @@ export const orchestrateTakeoutPrompt = async (params: {
   try {
     const orchestratorModel = createOrchestratorModel();
 
-    const response = await orchestratorModel.invoke([
-      new SystemMessage(TAKEOUT_ORCHESTRATION_PROMPT),
-      ...history.map((item) => new HumanMessage(`上下文片段：${item}`)),
-      new HumanMessage(params.prompt),
-    ]);
+    const messages = await takeoutOrchestrationChatPrompt.formatMessages({
+      history: buildTakeoutOrchestrationHistory(history),
+      prompt: params.prompt,
+    });
+    const response = await orchestratorModel.invoke(messages);
 
     const output = normalizeMessageContent(response.content);
     return parseTakeoutOrchestrationOutput(output, params.prompt, history);

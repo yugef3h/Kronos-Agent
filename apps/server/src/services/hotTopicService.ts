@@ -1,7 +1,6 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-import { HOT_TOPICS_PROMPT } from '../const/prompt.js';
+import { HOT_TOPICS_TASK, hotTopicsChatPrompt } from '../prompts/hotTopicsPrompt.js';
 
 export const FALLBACK_HOT_TOPICS = [
   '最近有什么新的科技资讯值得关注',
@@ -105,10 +104,8 @@ export const generateHotTopics = async (): Promise<HotTopicsResult> => {
       return { topics: [...FALLBACK_HOT_TOPICS], source: 'fallback' };
     }
 
-    const response = await model.invoke([
-      new SystemMessage(HOT_TOPICS_PROMPT),
-      new HumanMessage('生成今日热门提问'),
-    ]);
+    const messages = await hotTopicsChatPrompt.formatMessages({ task: HOT_TOPICS_TASK });
+    const response = await model.invoke(messages);
 
     const topics = parseHotTopicsOutput(normalizeMessageContent(response.content));
     if (topics.length === 5) {

@@ -1,5 +1,5 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
+import { ragQueryExpansionChatPrompt } from '../../prompts/ragQueryExpansionPrompt.js';
 
 // 检查是否启用多查询
 const isMultiQueryEnabled = () => {
@@ -74,14 +74,10 @@ export async function expandRetrievalQueriesWithLangChain(userQuery: string): Pr
     return [];
   }
 
-  const response = await chat.invoke([
-    new SystemMessage(
-      'You rewrite user search queries for knowledge-base retrieval. Reply with JSON only, no markdown: '
-        + '{"queries":["...","..."]}. Include 2 to 4 short alternative phrasings (same language as the user). '
-        + 'Do not add keys other than "queries".',
-    ),
-    new HumanMessage(userQuery.trim() || '(empty)'),
-  ]);
+  const messages = await ragQueryExpansionChatPrompt.formatMessages({
+    userQuery: userQuery.trim() || '(empty)',
+  });
+  const response = await chat.invoke(messages);
 
   const parsed = extractJsonObject(messageContentToString(response.content));
   const list = parsed?.queries;

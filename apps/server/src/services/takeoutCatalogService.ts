@@ -1,8 +1,7 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
+import { takeoutCatalogChatPrompt } from '../prompts/takeoutCatalogPrompt.js';
 import { analyzeTakeoutIntent } from './takeoutIntentService.js';
-import { TAKEOUT_CATALOG_PROMPT } from '../const/prompt.js';
 
 export type TakeoutCatalogCombo = {
   id: string;
@@ -382,10 +381,8 @@ export const generateTakeoutCatalog = async (params: {
   }
 
   try {
-    const response = await model.invoke([
-      new SystemMessage(TAKEOUT_CATALOG_PROMPT),
-      new HumanMessage(prompt),
-    ]);
+    const messages = await takeoutCatalogChatPrompt.formatMessages({ prompt });
+    const response = await model.invoke(messages);
     const output = normalizeMessageContent(response.content);
     const drafts = parseModelCatalog(output);
     const foods = buildCatalogFoods(drafts, prompt);
