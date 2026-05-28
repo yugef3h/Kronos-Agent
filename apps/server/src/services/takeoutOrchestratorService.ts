@@ -1,7 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import {
   buildTakeoutOrchestrationHistory,
-  takeoutOrchestrationChatPrompt,
+  formatTakeoutOrchestrationMessages,
 } from '../prompts/takeoutOrchestrationPrompt.js';
 import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from './takeoutIntentService.js';
 
@@ -175,7 +175,7 @@ export const orchestrateTakeoutPrompt = async (params: {
   try {
     const orchestratorModel = createOrchestratorModel();
 
-    const messages = await takeoutOrchestrationChatPrompt.formatMessages({
+    const messages = await formatTakeoutOrchestrationMessages({
       history: buildTakeoutOrchestrationHistory(history),
       prompt: params.prompt,
     });
