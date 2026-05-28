@@ -5,7 +5,13 @@ import logging
 import time
 from typing import AsyncIterator, List, Optional
 
-from app.domain.session_store import Message, get_session, persist_session
+from app.domain.session.errors import SessionConflictError
+from app.domain.session.types import Message
+from app.domain.session_store import (
+    load_session,
+    persist_session,
+    wait_for_session_persist,
+)
 from app.memory.orchestrator import create_memory_plan
 from app.memory.types import SessionMemoryState
 from app.services.linear_chat_stream import stream_linear_chat_reply
@@ -27,14 +33,25 @@ def _format_sse(payload: dict, event_id: int) -> str:
     return f"data: {body}\nid: {event_id}\n\n"
 
 
-async def stream_chat(
+async def _wait_for_session_persist_safe(session_id: str) -> str | None:
+    try:
+        await wait_for_session_persist(session_id)
+        return None
+    except SessionConflictError:
+        return f"会话版本冲突（{session_id}），请刷新后重试。"
+    except Exception as error:
+        reason = str(error)[:180] if str(error) else "unknown error"
+        return f"会话落盘失败：{reason}"
+
+
+async def _stream_chat_body(
     prompt: str,
     session_id: str,
     last_event_id: int = 0,
     session_user_content: Optional[str] = None,
     image_data_urls: Optional[List[str]] = None,
 ) -> AsyncIterator[str]:
-    session = get_session(session_id)
+    session = await load_session(session_id)
     user_timestamp = int(time.time() * 1000)
     persisted_user_line = (
         session_user_content.strip()
@@ -50,6 +67,7 @@ async def stream_chat(
     session.messages.append(
         Message(role="user", content=user_content, timestamp=user_timestamp)
     )
+    persist_session(session_id, session)
 
     assistant_text = ""
     event_id = 0
@@ -186,8 +204,43 @@ async def stream_chat(
 
     complete_id = event_id + 1
     session.lastId = complete_id
+    persist_session(session_id, session)
+    persist_issue = await _wait_for_session_persist_safe(session_id)
+
+    if persist_issue:
+        event_id += 1
+        if event_id > last_event_id:
+            yield _format_sse(
+                {
+                    "type": "timeline",
+                    "stage": "plan",
+                    "status": "info",
+                    "message": persist_issue,
+                    "sessionId": session_id,
+                    "eventId": event_id,
+                    "timestamp": int(time.time() * 1000),
+                },
+                event_id,
+            )
+
     yield _format_sse(
         {"type": "complete", "sessionId": session_id, "eventId": complete_id},
         complete_id,
     )
-    await persist_session(session_id, session)
+
+
+async def stream_chat(
+    prompt: str,
+    session_id: str,
+    last_event_id: int = 0,
+    session_user_content: Optional[str] = None,
+    image_data_urls: Optional[List[str]] = None,
+) -> AsyncIterator[str]:
+    async for chunk in _stream_chat_body(
+        prompt=prompt,
+        session_id=session_id,
+        last_event_id=last_event_id,
+        session_user_content=session_user_content,
+        image_data_urls=image_data_urls,
+    ):
+        yield chunk

@@ -63,6 +63,32 @@ class Settings(BaseSettings):
         default="node",
         alias="KRONOS_SERVER_RUNTIME",
     )
+    session_store: Literal["file", "redis"] = Field(default="file", alias="SESSION_STORE")
+    redis_url: Optional[str] = Field(default=None, alias="REDIS_URL")
+    session_ttl_sec: int = Field(default=604800, alias="SESSION_TTL_SEC")
+    session_file_mirror: str = Field(default="true", alias="SESSION_FILE_MIRROR")
+    session_stream_lock: str = Field(default="true", alias="SESSION_STREAM_LOCK")
+    session_stream_lock_ttl_sec: int = Field(default=120, alias="SESSION_STREAM_LOCK_TTL_SEC")
+
+    @field_validator("session_store", mode="before")
+    @classmethod
+    def normalize_session_store(cls, value: object) -> str:
+        raw = str(value or "file").strip().lower()
+        return "redis" if raw == "redis" else "file"
+
+    @field_validator("session_ttl_sec", mode="before")
+    @classmethod
+    def normalize_session_ttl(cls, value: object) -> int:
+        try:
+            parsed = int(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return 604800
+        return parsed if parsed > 0 else 604800
+
+    @property
+    def session_file_mirror_enabled(self) -> bool:
+        raw = self.session_file_mirror.strip().lower()
+        return raw not in ("false", "0", "no")
 
     @field_validator("rag_engine_mode", mode="before")
     @classmethod

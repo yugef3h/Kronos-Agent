@@ -34,8 +34,8 @@ class SessionAppendBody(BaseModel):
 
 
 @router.get("/api/session/{session_id}", response_model=SessionSnapshot)
-def session_snapshot(session_id: str) -> SessionSnapshot:
-    return get_session_snapshot(session_id)
+async def session_snapshot(session_id: str) -> SessionSnapshot:
+    return await get_session_snapshot(session_id)
 
 
 @router.get("/api/sessions/recent")

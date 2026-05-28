@@ -4,9 +4,11 @@ import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Header, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.domain.session.errors import SessionStreamLockBusyError
+from app.domain.session.session_stream_lock import acquire_session_stream_lock
 from app.services.stream_service import stream_chat
 
 logger = logging.getLogger(__name__)
@@ -37,17 +39,33 @@ async def chat_stream(
         len(body.prompt),
     )
 
+    try:
+        release_lock = await acquire_session_stream_lock(body.sessionId)
+    except SessionStreamLockBusyError:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "SESSION_STREAM_BUSY",
+                "sessionId": body.sessionId,
+                "message": "该会话正在处理另一条消息，请稍后再试。",
+            },
+        )
+
     async def event_generator():
-        async for chunk in stream_chat(
-            prompt=body.prompt,
-            session_id=body.sessionId,
-            last_event_id=parsed_last_event_id,
-            session_user_content=body.sessionUserContent,
-            image_data_urls=image_data_urls or None,
-        ):
-            if await request.is_disconnected():
-                break
-            yield chunk
+        try:
+            async for chunk in stream_chat(
+                prompt=body.prompt,
+                session_id=body.sessionId,
+                last_event_id=parsed_last_event_id,
+                session_user_content=body.sessionUserContent,
+                image_data_urls=image_data_urls or None,
+            ):
+                if await request.is_disconnected():
+                    break
+                yield chunk
+        finally:
+            if release_lock is not None:
+                await release_lock()
 
     return StreamingResponse(
         event_generator(),

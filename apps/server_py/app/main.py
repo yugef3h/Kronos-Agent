@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.domain.session_store import init_session_store
+from app.domain.session_store import init_session_store, resolve_session_store_mode
 from app.middleware.auth import JwtAuthMiddleware
 from app.routes.dev_token import router as dev_token_router
 from app.routes.chat import router as chat_router
@@ -44,6 +44,7 @@ def healthz() -> dict:
         "ok": True,
         "service": "kronos-server-py",
         "runtime": settings.kronos_server_runtime,
+        "sessionStore": resolve_session_store_mode(),
     }
 
 
