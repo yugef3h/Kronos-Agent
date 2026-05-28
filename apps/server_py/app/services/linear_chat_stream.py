@@ -1,18 +1,11 @@
 from __future__ import annotations
 
 import time
-from typing import AsyncIterator, List, Optional, Union
-
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from typing import AsyncIterator, List, Optional
 
 from app.domain.session_store import Message
+from app.prompts.linear_chat_prompt import format_linear_chat_messages
 from app.services.chat_model import get_chat_model
-
-
-def _to_langchain_message(message: Message) -> Union[HumanMessage, AIMessage]:
-    if message.role == "user":
-        return HumanMessage(content=message.content)
-    return AIMessage(content=message.content)
 
 
 def _read_chunk_text(content: object) -> str:
@@ -35,11 +28,11 @@ async def stream_linear_chat_reply(
     memory_summary: Optional[str] = None,
 ) -> AsyncIterator[dict]:
     model = get_chat_model()
-    messages = []
-    if memory_summary and memory_summary.strip():
-        messages.append(SystemMessage(content=f"Conversation memory summary:\n{memory_summary.strip()}"))
-    messages.extend(_to_langchain_message(message) for message in history)
-    messages.append(HumanMessage(content=prompt))
+    messages = format_linear_chat_messages(
+        prompt=prompt,
+        history=history,
+        memory_summary=memory_summary,
+    )
 
     yield {
         "type": "timeline",
