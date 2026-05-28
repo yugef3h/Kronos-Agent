@@ -1,4 +1,4 @@
-import { getRedisClient } from '../../infra/redisClient.js';
+import { duplicateRedisClient } from '../../infra/redisClient.js';
 import { resolveSessionStoreMode } from './getSessionRepository.js';
 
 const LOCK_KEY_PREFIX = 'kronos:session:lock:';
@@ -35,7 +35,7 @@ export const acquireSessionStreamLock = async (
     return null;
   }
 
-  const redis = getRedisClient().duplicate();
+  const redis = duplicateRedisClient();
   const key = `${LOCK_KEY_PREFIX}${sessionId}`;
   const token = `${process.pid}-${Date.now()}`;
   const acquired = await redis.set(key, token, 'EX', resolveLockTtlSec(), 'NX');

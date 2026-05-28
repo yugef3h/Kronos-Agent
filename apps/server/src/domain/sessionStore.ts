@@ -8,9 +8,10 @@ import { estimateTextTokens } from '../memory/tokenEstimate.js';
 import {
   getFileSessionRepositoryOrNull,
   getSessionRepository,
+  initSessionRepository,
   resolveSessionStoreMode,
 } from './session/getSessionRepository.js';
-import { getRedisClient } from '../infra/redisClient.js';
+import { duplicateRedisClient } from '../infra/redisClient.js';
 import {
   listRecentDialoguesFromFiles,
 } from './session/listRecentDialogues.js';
@@ -49,7 +50,7 @@ export { resolveSessionStoreMode } from './session/getSessionRepository.js';
 export { getSessionMetrics } from './session/sessionMetrics.js';
 
 export const initSessionStore = async (): Promise<void> => {
-  await getSessionRepository().init();
+  await initSessionRepository();
 };
 
 export const loadSession = async (sessionId: string): Promise<Session> => {
@@ -118,7 +119,7 @@ export const listRecentDialogues = async (limit = 10): Promise<RecentDialogueIte
       return fileItems.slice(0, capped);
     }
 
-    const redis = getRedisClient().duplicate();
+    const redis = duplicateRedisClient();
     try {
       const redisItems = await listRecentDialoguesFromRedis(redis, capped * 2);
       return mergeRecentDialogueItems(fileItems, redisItems, capped);
