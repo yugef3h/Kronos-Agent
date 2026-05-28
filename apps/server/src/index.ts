@@ -3,7 +3,7 @@ import express from 'express';
 import { allowedOrigins, env } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
-import { initSessionStore } from './domain/sessionStore.js';
+import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
 import { authenticateJwt } from './middleware/authenticateJwt.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
@@ -82,6 +82,7 @@ const PORT = env.PORT;
 
 app.listen(PORT, () => {
   console.warn(`kronos server running on http://localhost:${PORT}`);
+  console.warn(`Session store: ${resolveSessionStoreMode()}`);
   console.warn(`RAG engine mode: ${getRagEngineMode()}`);
   console.warn(`Workflow run store: ${env.WORKFLOW_RUN_STORE}`);
   console.warn(`Workflow run events: ${env.WORKFLOW_RUN_EVENTS_STORE}`);

@@ -27,7 +27,7 @@ import {
   knowledgeRetrievalEvalSchema,
   knowledgeRetrievalQuerySchema,
 } from '../rag/types.js';
-import { appendSessionMessages, getSessionSnapshot, listRecentDialogues } from '../domain/sessionStore.js';
+import { appendSessionMessages, getSessionSnapshot, listRecentDialogues, loadSession } from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
@@ -75,7 +75,6 @@ import { getAiTaskStore } from '../ai/queue/getAiTaskStore.js';
 import { runChatAiTask } from '../ai/queue/runChatAiTask.js';
 import { shouldEnqueueChatTask } from '../ai/queue/shouldEnqueueChatTask.js';
 import { releaseConcurrentSessionOnFinish } from '../ai/middleware/releaseConcurrentSessionOnFinish.js';
-import { getSession } from '../domain/sessionStore.js';
 import { createMemoryPlan } from '../memory/index.js';
 import { aiHealthRoutes } from './aiHealthRoutes.js';
 import { aiTaskRoutes } from './aiTaskRoutes.js';
@@ -228,7 +227,7 @@ chatRoutes.post(
       messages: [{ role: 'user', content: userContent }],
     });
 
-    const session = getSession(parsed.data.sessionId);
+    const session = await loadSession(parsed.data.sessionId);
     const memoryPlan = createMemoryPlan({
       prompt: parsed.data.prompt,
       messages: session.messages,
@@ -305,9 +304,9 @@ chatRoutes.post(
 },
 );
 
-chatRoutes.get('/session/:sessionId', (request: Request, response: Response) => {
+chatRoutes.get('/session/:sessionId', async (request: Request, response: Response) => {
   const sessionId = String(request.params.sessionId || '');
-  response.json(getSessionSnapshot(sessionId));
+  response.json(await getSessionSnapshot(sessionId));
 });
 
 chatRoutes.get('/sessions/recent', async (request: Request, response: Response) => {

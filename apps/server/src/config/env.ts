@@ -48,6 +48,10 @@ const envSchema = z.object({
   RAG_ENGINE_MODE: z.string().optional(),
   /** `memory`（默认，本地）| `redis` — 多实例 Workflow Run */
   WORKFLOW_RUN_STORE: z.enum(['memory', 'redis']).default('memory'),
+  /** Playground 会话：`file`（默认，json + 内存）| `redis` */
+  SESSION_STORE: z.enum(['file', 'redis']).default('file'),
+  /** `SESSION_STORE=redis` 时会话 key TTL（秒），默认 7 天 */
+  SESSION_TTL_SEC: z.coerce.number().int().positive().default(604800),
   /** `WORKFLOW_RUN_STORE=redis` 时必填 */
   REDIS_URL: z.string().url().optional(),
   /** `memory`（默认）| `redis` — 多实例 Workflow SSE 事件 */
@@ -150,6 +154,14 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['REDIS_URL'],
       message: 'REDIS_URL is required when AI_TASK_STORE_REDIS=true',
+    });
+  }
+
+  if (value.SESSION_STORE === 'redis' && !value.REDIS_URL?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL is required when SESSION_STORE=redis',
     });
   }
 });

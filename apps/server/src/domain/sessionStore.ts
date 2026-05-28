@@ -1,6 +1,3 @@
-import { readFile, writeFile, readdir, mkdir, stat } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import {
   CONTEXT_WINDOW_TOKENS,
   INPUT_BUDGET_RATIO,
@@ -8,217 +5,90 @@ import {
   SUMMARY_TRIGGER_MESSAGE_COUNT,
 } from '../memory/constants.js';
 import { estimateTextTokens } from '../memory/tokenEstimate.js';
+import {
+  getFileSessionRepositoryOrNull,
+  getSessionRepository,
+  resolveSessionStoreMode,
+} from './session/getSessionRepository.js';
+import { listRecentDialoguesFromFiles } from './session/listRecentDialogues.js';
+import { createEmptySession } from './session/normalizeSession.js';
+import { enqueueSessionSave, flushSessionSaveQueue } from './session/sessionWriteQueue.js';
+import type {
+  AttachmentMeta,
+  Message,
+  RecentDialogueItem,
+  Session,
+  SessionAppendMessage,
+} from './session/types.js';
 
-export type AttachmentMeta = {
-  id: string;
-  type: 'image';
-  fileName: string;
-  mimeType: string;
-  size: number;
-  /**
-   * 相对路径，基于附件根目录，如 "<id>.jpeg"。
-   */
-  filePath?: string;
-  /**
-   * 兼容旧数据的绝对路径。
-   */
-  storagePath?: string;
-  createdAt: number;
+export type {
+  AttachmentMeta,
+  Message,
+  RecentDialogueItem,
+  Session,
+  SessionAppendMessage,
 };
 
-export type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: number;
-  attachments?: AttachmentMeta[];
-};
+export { SessionConflictError } from './session/sessionConflictError.js';
+export { resolveSessionStoreMode } from './session/getSessionRepository.js';
 
-export type SessionAppendMessage = {
-  role: Message['role'];
-  content: string;
-  attachments?: AttachmentMeta[];
-};
-
-export type Session = {
-  lastId: number;
-  messages: Message[];
-  memorySummary: string;
-  memorySummaryUpdatedAt: number | null;
-  /** 与 `createMemoryPlan` 中 `summaryArchiveMessageCount` 一致；缺省按 0 处理 */
-  summaryArchiveMessageCount?: number;
-};
-
-export type PlaygroundHistorySurface = 'default' | 'published';
-
-export type RecentDialogueItem = {
-  id: string;
-  /** 服务端快照/落盘文件名对应的会话键（可能与 Playground 页签 sessionId 不同） */
-  sessionId: string;
-  updatedAt: number;
-  userContent: string;
-  playgroundSurface: PlaygroundHistorySurface;
-  /** Playground 页签 sessionStorage 中的基础会话 id */
-  basePlaygroundSessionId: string;
-  /** 仅当 playgroundSurface 为 published 时有值 */
-  publishedChatbotWorkflowAppId: string | null;
-};
-
-const tryParsePublishedPlaygroundStreamSessionId = (
-  streamSessionId: string,
-): { baseSessionId: string; workflowAppId: string } | null => {
-  const marker = '-chatbot-';
-  if (!streamSessionId.startsWith('playground-')) {
-    return null;
-  }
-  const markerIndex = streamSessionId.indexOf(marker);
-  if (markerIndex < 0) {
-    return null;
-  }
-  const baseSessionId = streamSessionId.slice('playground-'.length, markerIndex);
-  const workflowAppId = streamSessionId.slice(markerIndex + marker.length);
-  if (!baseSessionId || !workflowAppId) {
-    return null;
-  }
-  return { baseSessionId, workflowAppId };
-};
-
-// 持久化目录：apps/server/data/sessions/（此文件位于 src/domain/，上溯两级到 server root）
-const _dirname = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(_dirname, '../../data/sessions');
-
-const sessions = new Map<string, Session>();
-
-const normalizeSession = (session: Session, baseTimestamp: number): Session => {
-  const normalizedMessages = session.messages.map((message, index) => ({
-    ...message,
-    timestamp: typeof message.timestamp === 'number' ? message.timestamp : baseTimestamp + index,
-  }));
-
-  return {
-    ...session,
-    messages: normalizedMessages,
-  };
-};
-
-const listDialoguesFromSessionSnapshots = async (limit: number): Promise<RecentDialogueItem[]> => {
-  await mkdir(DATA_DIR, { recursive: true });
-  const files = await readdir(DATA_DIR);
-  const jsonFiles = files.filter((file) => file.endsWith('.json'));
-
-  const dialogues = await Promise.all(
-    jsonFiles.map(async (file) => {
-      const filePath = join(DATA_DIR, file);
-
-      try {
-        const [raw, fileStat] = await Promise.all([readFile(filePath, 'utf-8'), stat(filePath)]);
-        const session = normalizeSession(JSON.parse(raw) as Session, fileStat.mtimeMs);
-        const sessionId = file.slice(0, -5);
-        const parsed = tryParsePublishedPlaygroundStreamSessionId(sessionId);
-        const playgroundSurface: PlaygroundHistorySurface = parsed ? 'published' : 'default';
-        const basePlaygroundSessionId = parsed?.baseSessionId ?? sessionId;
-        const publishedChatbotWorkflowAppId = parsed?.workflowAppId ?? null;
-
-        for (let index = session.messages.length - 1; index >= 0; index -= 1) {
-          const message = session.messages[index];
-          if (message.role === 'user') {
-            return {
-              id: sessionId,
-              sessionId,
-              updatedAt: fileStat.mtimeMs,
-              userContent: message.content,
-              playgroundSurface,
-              basePlaygroundSessionId,
-              publishedChatbotWorkflowAppId,
-            } satisfies RecentDialogueItem;
-          }
-        }
-
-        return null;
-      } catch {
-        console.warn(`[sessionStore] 跳过无法读取的 session 文件: ${file}`);
-        return null;
-      }
-    }),
-  );
-
-  return dialogues
-    .filter((item): item is RecentDialogueItem => item !== null)
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, limit);
-};
-
-/**
- * 将 session 序列化写盘，fire-and-forget，不阻塞主流程。
- * 每次对话轮次结束后调用，保证重启后历史可恢复。
- */
-export const persistSession = async (sessionId: string, session: Session): Promise<void> => {
-  try {
-    await mkdir(DATA_DIR, { recursive: true });
-    const normalizedSession = normalizeSession(session, Date.now());
-    session.messages = normalizedSession.messages;
-    await writeFile(join(DATA_DIR, `${sessionId}.json`), JSON.stringify(normalizedSession), 'utf-8');
-  } catch (err) {
-    console.warn(`[sessionStore] 持久化 session ${sessionId} 失败:`, err);
-  }
-};
-
-/**
- * 服务启动时调用：扫描 DATA_DIR，将所有已持久化的 session 加载进内存 Map。
- * 若文件损坏则跳过并打印警告，不中断启动流程。
- */
 export const initSessionStore = async (): Promise<void> => {
-  try {
-    await mkdir(DATA_DIR, { recursive: true });
-    const files = await readdir(DATA_DIR);
-    let loaded = 0;
-
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue;
-      const sessionId = file.slice(0, -5);
-      try {
-        const [raw, fileStat] = await Promise.all([readFile(join(DATA_DIR, file), 'utf-8'), stat(join(DATA_DIR, file))]);
-        const data = normalizeSession(JSON.parse(raw) as Session, fileStat.mtimeMs);
-        sessions.set(sessionId, data);
-        loaded += 1;
-      } catch {
-        console.warn(`[sessionStore] 跳过损坏的 session 文件: ${file}`);
-      }
-    }
-
-    console.warn(`[sessionStore] 已加载 ${loaded} 个 session`);
-  } catch (err) {
-    console.warn('[sessionStore] initSessionStore 失败:', err);
-  }
+  await getSessionRepository().init();
 };
 
+export const loadSession = async (sessionId: string): Promise<Session> =>
+  getSessionRepository().load(sessionId);
+
+export const saveSession = async (sessionId: string, session: Session): Promise<Session> => {
+  const saved = await getSessionRepository().save(sessionId, session, {
+    expectedVersion: session.version,
+  });
+  session.version = saved.version;
+  session.messages = saved.messages;
+  return saved;
+};
+
+/** 同 session 串行异步落盘，不阻塞 SSE 主流程。 */
+export const saveSessionAsync = (sessionId: string, session: Session): void => {
+  enqueueSessionSave(sessionId, session, saveSession);
+};
+
+export const waitForSessionPersist = async (sessionId: string): Promise<void> => {
+  await flushSessionSaveQueue(sessionId);
+};
+
+/** @deprecated 仅 `SESSION_STORE=file` 时同步读内存；Redis 模式请用 `loadSession` */
 export const getSession = (sessionId: string): Session => {
-  const existing = sessions.get(sessionId);
-  if (existing) return existing;
+  if (resolveSessionStoreMode() === 'redis') {
+    throw new Error('getSession() is unavailable when SESSION_STORE=redis; use loadSession()');
+  }
 
-  const created: Session = {
-    lastId: 0,
-    messages: [],
-    memorySummary: '',
-    memorySummaryUpdatedAt: null,
-    summaryArchiveMessageCount: 0,
-  };
-  sessions.set(sessionId, created);
-  return created;
+  const fileRepo = getFileSessionRepositoryOrNull();
+  if (!fileRepo) {
+    return createEmptySession();
+  }
+
+  return fileRepo.getSessionSync(sessionId);
 };
 
-export const listMessages = (sessionId: string): Message[] => getSession(sessionId).messages;
+export const persistSession = (sessionId: string, session: Session): void => {
+  saveSessionAsync(sessionId, session);
+};
+
+export const listMessages = async (sessionId: string): Promise<Message[]> =>
+  (await loadSession(sessionId)).messages;
 
 export const listRecentDialogues = async (limit = 10): Promise<RecentDialogueItem[]> => {
   try {
-    return await listDialoguesFromSessionSnapshots(limit);
+    return await listRecentDialoguesFromFiles(limit);
   } catch (err) {
     console.warn('[sessionStore] listRecentDialogues 失败:', err);
     return [];
   }
 };
 
-export const getSessionSnapshot = (sessionId: string) => {
-  const session = getSession(sessionId);
+export const getSessionSnapshot = async (sessionId: string) => {
+  const session = await loadSession(sessionId);
   const messageCount = session.messages.length;
   const summaryTokensEstimate = estimateTextTokens(session.memorySummary);
   const conversationTokensEstimate = session.messages.reduce(
@@ -248,7 +118,7 @@ export const appendSessionMessages = async (params: {
   sessionId: string;
   messages: SessionAppendMessage[];
 }): Promise<void> => {
-  const session = getSession(params.sessionId);
+  const session = await loadSession(params.sessionId);
   const now = Date.now();
 
   const nextMessages = params.messages
@@ -267,5 +137,5 @@ export const appendSessionMessages = async (params: {
   session.messages.push(...nextMessages);
   session.lastId += nextMessages.length;
 
-  await persistSession(params.sessionId, session);
+  await saveSession(params.sessionId, session);
 };

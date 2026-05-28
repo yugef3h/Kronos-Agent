@@ -2,7 +2,7 @@ import { buildModelResultCacheKey } from '../ai/cache/buildModelResultCacheKey.j
 import { buildPromptCacheKey } from '../ai/cache/buildPromptCacheKey.js';
 import { getCacheStore } from '../ai/cache/getCacheStore.js';
 import { streamCachedPromptReply } from '../ai/cache/streamCachedPromptReply.js';
-import { getSession, persistSession } from '../domain/sessionStore.js';
+import { loadSession, persistSession, waitForSessionPersist } from '../domain/sessionStore.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
 import { getActiveModelName } from '../ai/gateway/resolveDefaultGatewayModel.js';
@@ -20,7 +20,7 @@ export async function* streamChat(params: {
   imageDataUrls?: string[];
 }) {
   const { prompt, sessionUserContent, sessionId, lastEventId, imageDataUrls } = params;
-  const session = getSession(sessionId);
+  let session = await loadSession(sessionId);
   const userMessageTimestamp = Date.now();
 
   const persistedUserLine =
@@ -34,6 +34,7 @@ export async function* streamChat(params: {
       : persistedUserLine;
 
   session.messages.push({ role: 'user', content: userContent, timestamp: userMessageTimestamp });
+  persistSession(sessionId, session);
   let assistantText = '';
   let eventId = 0;
 
@@ -79,7 +80,8 @@ export async function* streamChat(params: {
 
     session.messages.push({ role: 'assistant', content: modelResultAnswer, timestamp: Date.now() });
     session.lastId = eventId + 2;
-    void persistSession(sessionId, session);
+    persistSession(sessionId, session);
+    await waitForSessionPersist(sessionId);
     return;
   }
 
@@ -94,7 +96,8 @@ export async function* streamChat(params: {
 
     session.messages.push({ role: 'assistant', content: cachedAnswer, timestamp: Date.now() });
     session.lastId = eventId + 2;
-    void persistSession(sessionId, session);
+    persistSession(sessionId, session);
+    await waitForSessionPersist(sessionId);
     return;
   }
 
@@ -217,8 +220,8 @@ export async function* streamChat(params: {
   const completeId = eventId + 1;
   session.lastId = completeId;
 
-  // 须在 complete 之前落盘助手消息与滚动摘要，否则客户端收到 complete 后拉快照会读到空摘要
-  yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
+  persistSession(sessionId, session);
+  await waitForSessionPersist(sessionId);
 
-  void persistSession(sessionId, session);
+  yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
 }
