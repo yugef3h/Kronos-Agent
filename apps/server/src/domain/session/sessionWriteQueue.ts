@@ -1,3 +1,5 @@
+import { SessionConflictError } from './sessionConflictError.js';
+import { recordSessionSaveConflict } from './sessionMetrics.js';
 import type { Session } from './types.js';
 
 type SaveHandler = (sessionId: string, session: Session) => Promise<Session>;
@@ -19,6 +21,15 @@ export const enqueueSessionSave = (
       session.messages = saved.messages;
     })
     .catch((error: unknown) => {
+      if (error instanceof SessionConflictError) {
+        recordSessionSaveConflict({
+          sessionId: error.sessionId,
+          expectedVersion: error.expectedVersion,
+          actualVersion: error.actualVersion,
+        });
+        throw error;
+      }
+
       const reason = error instanceof Error ? error.message : 'unknown error';
       console.warn(`[sessionStore] async save failed for ${sessionId}: ${reason}`);
     })

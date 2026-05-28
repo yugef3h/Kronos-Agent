@@ -10,8 +10,22 @@ import {
   getSessionRepository,
   resolveSessionStoreMode,
 } from './session/getSessionRepository.js';
-import { listRecentDialoguesFromFiles } from './session/listRecentDialogues.js';
+import { getRedisClient } from '../infra/redisClient.js';
+import {
+  listRecentDialoguesFromFiles,
+} from './session/listRecentDialogues.js';
+import {
+  listRecentDialoguesFromRedis,
+  mergeRecentDialogueItems,
+} from './session/listRecentDialoguesFromRedis.js';
 import { createEmptySession } from './session/normalizeSession.js';
+import {
+  recordSessionLoad,
+  recordSessionSaveConflict,
+  recordSessionSaveSuccess,
+  getSessionMetrics,
+} from './session/sessionMetrics.js';
+import { SessionConflictError } from './session/sessionConflictError.js';
 import { enqueueSessionSave, flushSessionSaveQueue } from './session/sessionWriteQueue.js';
 import type {
   AttachmentMeta,
@@ -30,22 +44,39 @@ export type {
 };
 
 export { SessionConflictError } from './session/sessionConflictError.js';
+export { SessionStreamLockBusyError } from './session/sessionStreamLock.js';
 export { resolveSessionStoreMode } from './session/getSessionRepository.js';
+export { getSessionMetrics } from './session/sessionMetrics.js';
 
 export const initSessionStore = async (): Promise<void> => {
   await getSessionRepository().init();
 };
 
-export const loadSession = async (sessionId: string): Promise<Session> =>
-  getSessionRepository().load(sessionId);
+export const loadSession = async (sessionId: string): Promise<Session> => {
+  recordSessionLoad();
+  return getSessionRepository().load(sessionId);
+};
 
 export const saveSession = async (sessionId: string, session: Session): Promise<Session> => {
-  const saved = await getSessionRepository().save(sessionId, session, {
-    expectedVersion: session.version,
-  });
-  session.version = saved.version;
-  session.messages = saved.messages;
-  return saved;
+  try {
+    const saved = await getSessionRepository().save(sessionId, session, {
+      expectedVersion: session.version,
+    });
+    session.version = saved.version;
+    session.messages = saved.messages;
+    recordSessionSaveSuccess();
+    return saved;
+  } catch (error) {
+    if (error instanceof SessionConflictError) {
+      recordSessionSaveConflict({
+        sessionId: error.sessionId,
+        expectedVersion: error.expectedVersion,
+        actualVersion: error.actualVersion,
+      });
+    }
+
+    throw error;
+  }
 };
 
 /** 同 session 串行异步落盘，不阻塞 SSE 主流程。 */
@@ -80,7 +111,20 @@ export const listMessages = async (sessionId: string): Promise<Message[]> =>
 
 export const listRecentDialogues = async (limit = 10): Promise<RecentDialogueItem[]> => {
   try {
-    return await listRecentDialoguesFromFiles(limit);
+    const capped = Math.min(Math.max(Math.floor(limit), 1), 50);
+    const fileItems = await listRecentDialoguesFromFiles(capped * 2);
+
+    if (resolveSessionStoreMode() !== 'redis') {
+      return fileItems.slice(0, capped);
+    }
+
+    const redis = getRedisClient().duplicate();
+    try {
+      const redisItems = await listRecentDialoguesFromRedis(redis, capped * 2);
+      return mergeRecentDialogueItems(fileItems, redisItems, capped);
+    } finally {
+      redis.disconnect();
+    }
   } catch (err) {
     console.warn('[sessionStore] listRecentDialogues 失败:', err);
     return [];

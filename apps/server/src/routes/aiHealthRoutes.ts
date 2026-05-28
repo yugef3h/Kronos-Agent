@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
 import { isCircuitOpen } from '../ai/circuit/circuitBreaker.js';
 import { isOverGlobalTokenQuota } from '../ai/cost/isOverGlobalTokenQuota.js';
+import { getSessionMetrics, resolveSessionStoreMode } from '../domain/sessionStore.js';
 
 export const aiHealthRoutes = Router();
 
@@ -15,5 +16,7 @@ aiHealthRoutes.get('/ai/health', (_request: Request, response: Response) => {
     defaultModelCircuitOpen: isCircuitOpen(`model:${process.env.DOUBAO_MODEL ?? 'unknown'}`),
     cacheRedis: (process.env.AI_CACHE_REDIS ?? 'false').trim().toLowerCase() === 'true',
     taskStoreRedis: (process.env.AI_TASK_STORE_REDIS ?? 'false').trim().toLowerCase() === 'true',
+    sessionStore: resolveSessionStoreMode(),
+    sessionMetrics: getSessionMetrics(),
   });
 });

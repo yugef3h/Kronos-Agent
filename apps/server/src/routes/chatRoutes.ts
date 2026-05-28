@@ -27,7 +27,14 @@ import {
   knowledgeRetrievalEvalSchema,
   knowledgeRetrievalQuerySchema,
 } from '../rag/types.js';
-import { appendSessionMessages, getSessionSnapshot, listRecentDialogues, loadSession } from '../domain/sessionStore.js';
+import {
+  appendSessionMessages,
+  getSessionSnapshot,
+  listRecentDialogues,
+  loadSession,
+  SessionConflictError,
+  SessionStreamLockBusyError,
+} from '../domain/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
@@ -298,7 +305,25 @@ chatRoutes.post(
     }
 
     response.end();
-  } catch {
+  } catch (error) {
+    if (!response.headersSent && error instanceof SessionStreamLockBusyError) {
+      response.status(409).json({
+        error: 'SESSION_STREAM_BUSY',
+        sessionId: parsed.data.sessionId,
+        message: '该会话正在处理另一条消息，请稍后再试。',
+      });
+      return;
+    }
+
+    if (!response.headersSent && error instanceof SessionConflictError) {
+      response.status(409).json({
+        error: 'SESSION_VERSION_CONFLICT',
+        sessionId: parsed.data.sessionId,
+        message: '会话已被其他请求更新，请刷新后重试。',
+      });
+      return;
+    }
+
     response.end();
   }
 },

@@ -2,7 +2,13 @@ import { buildModelResultCacheKey } from '../ai/cache/buildModelResultCacheKey.j
 import { buildPromptCacheKey } from '../ai/cache/buildPromptCacheKey.js';
 import { getCacheStore } from '../ai/cache/getCacheStore.js';
 import { streamCachedPromptReply } from '../ai/cache/streamCachedPromptReply.js';
-import { loadSession, persistSession, waitForSessionPersist } from '../domain/sessionStore.js';
+import {
+  loadSession,
+  persistSession,
+  SessionConflictError,
+  waitForSessionPersist,
+} from '../domain/sessionStore.js';
+import { acquireSessionStreamLock } from '../domain/session/sessionStreamLock.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
 import { getActiveModelName } from '../ai/gateway/resolveDefaultGatewayModel.js';
@@ -10,15 +16,28 @@ import { recordTokenUsage } from '../ai/cost/tokenUsageStore.js';
 import { estimateTextTokens } from '../memory/tokenEstimate.js';
 import { streamMockReply } from './mockReplyService.js';
 
-export async function* streamChat(params: {
+const waitForSessionPersistSafe = async (sessionId: string): Promise<string | null> => {
+  try {
+    await waitForSessionPersist(sessionId);
+    return null;
+  } catch (error) {
+    if (error instanceof SessionConflictError) {
+      return `会话版本冲突（${sessionId}），请刷新后重试。`;
+    }
+
+    const reason = error instanceof Error ? error.message : 'unknown error';
+    return `会话落盘失败：${reason}`;
+  }
+};
+
+async function* streamChatBody(params: {
   userId?: string;
   prompt: string;
-  /** 落盘到 session 的用户消息正文；不传则使用 prompt。 */
   sessionUserContent?: string;
   sessionId: string;
   lastEventId: number;
   imageDataUrls?: string[];
-}) {
+}): AsyncGenerator<string> {
   const { prompt, sessionUserContent, sessionId, lastEventId, imageDataUrls } = params;
   let session = await loadSession(sessionId);
   const userMessageTimestamp = Date.now();
@@ -81,7 +100,10 @@ export async function* streamChat(params: {
     session.messages.push({ role: 'assistant', content: modelResultAnswer, timestamp: Date.now() });
     session.lastId = eventId + 2;
     persistSession(sessionId, session);
-    await waitForSessionPersist(sessionId);
+    const cachePersistIssue = await waitForSessionPersistSafe(sessionId);
+    if (cachePersistIssue) {
+      console.warn(`[streamChat] ${cachePersistIssue}`);
+    }
     return;
   }
 
@@ -97,7 +119,10 @@ export async function* streamChat(params: {
     session.messages.push({ role: 'assistant', content: cachedAnswer, timestamp: Date.now() });
     session.lastId = eventId + 2;
     persistSession(sessionId, session);
-    await waitForSessionPersist(sessionId);
+    const promptPersistIssue = await waitForSessionPersistSafe(sessionId);
+    if (promptPersistIssue) {
+      console.warn(`[streamChat] ${promptPersistIssue}`);
+    }
     return;
   }
 
@@ -221,7 +246,41 @@ export async function* streamChat(params: {
   session.lastId = completeId;
 
   persistSession(sessionId, session);
-  await waitForSessionPersist(sessionId);
+  const persistIssue = await waitForSessionPersistSafe(sessionId);
+
+  if (persistIssue) {
+    eventId += 1;
+    if (eventId > lastEventId) {
+      yield `data: ${JSON.stringify({
+        type: 'timeline',
+        stage: 'plan',
+        status: 'info',
+        message: persistIssue,
+        sessionId,
+        eventId,
+        timestamp: Date.now(),
+      })}\nid: ${eventId}\n\n`;
+    }
+  }
 
   yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
+}
+
+export async function* streamChat(params: {
+  userId?: string;
+  prompt: string;
+  sessionUserContent?: string;
+  sessionId: string;
+  lastEventId: number;
+  imageDataUrls?: string[];
+}): AsyncGenerator<string> {
+  const releaseLock = await acquireSessionStreamLock(params.sessionId);
+
+  try {
+    yield* streamChatBody(params);
+  } finally {
+    if (releaseLock) {
+      await releaseLock();
+    }
+  }
 }
