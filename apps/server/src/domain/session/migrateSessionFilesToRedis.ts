@@ -1,6 +1,6 @@
 import { readdir, readFile, stat } from 'fs/promises';
 import { join } from 'path';
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import { parseStoredSession } from './normalizeSession.js';
 import { SESSION_DATA_DIR } from './sessionPaths.js';
 import { toSessionRedisKey } from './sessionKeys.js';

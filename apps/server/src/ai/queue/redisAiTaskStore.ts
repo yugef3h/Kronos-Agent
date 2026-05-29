@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import type { AiTaskRecord } from '../types/aiTaskRecord.js';
 import type { AiTaskStore } from './aiTaskStore.js';
 import { randomUUID } from 'node:crypto';

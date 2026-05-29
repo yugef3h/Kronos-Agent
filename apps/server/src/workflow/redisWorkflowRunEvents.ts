@@ -1,4 +1,4 @@
-import type Redis from 'ioredis'
+import type { Redis } from 'ioredis'
 import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
 import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
 import type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
@@ -21,7 +21,7 @@ export class RedisWorkflowRunEvents implements WorkflowRunEventsBackend {
 
   async list(runId: string): Promise<WorkflowRunEvent[]> {
     const rawItems = await this.redis.lrange(eventsKey(runId), 0, -1)
-    return rawItems.map((raw) => JSON.parse(raw) as WorkflowRunEvent)
+    return rawItems.map((raw: string) => JSON.parse(raw) as WorkflowRunEvent)
   }
 
   async clear(runId: string): Promise<void> {

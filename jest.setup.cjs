@@ -36,6 +36,7 @@ if (typeof globalThis.sessionStorage === 'undefined') {
 }
 
 // env.ts 在模块加载时校验必填字段；测试环境注入默认值
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-16ch';
 process.env.DOUBAO_API_KEY = process.env.DOUBAO_API_KEY || 'test-key';
 process.env.DOUBAO_BASE_URL = process.env.DOUBAO_BASE_URL || 'https://test.example.com/v1';
 process.env.DOUBAO_MODEL = process.env.DOUBAO_MODEL || 'test-model';

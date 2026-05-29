@@ -23,6 +23,7 @@ describe('knowledgeRetrievalService', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'kronos-knowledge-retrieval-'));
     storeFilePath = join(tempDir, 'knowledge-datasets.json');
+    process.env.KNOWLEDGE_DATASETS_DIR = join(tempDir, 'knowledge-datasets');
     process.env.KNOWLEDGE_DATASETS_STORE_PATH = storeFilePath;
     resetKnowledgeDatasetStoreForTests();
     await initKnowledgeDatasetStore();

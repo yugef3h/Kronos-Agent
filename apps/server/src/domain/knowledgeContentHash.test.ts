@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { createHash } from 'crypto';
 
 import { generateKnowledgeTextHash } from './knowledgeContentHash.js';
