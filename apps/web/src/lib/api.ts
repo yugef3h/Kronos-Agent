@@ -1,3 +1,5 @@
+import { isViteDev } from './viteEnv';
+
 const readViteApiBaseUrl = (): string | undefined => {
 	try {
 		const value = Function('return import.meta?.env?.VITE_API_BASE_URL')() as string | undefined;
@@ -17,7 +19,7 @@ const resolveApiBaseUrl = (): string => {
 	}
 
 	// dev：同源请求走 Vite proxy → 后端，避免硬编码 localhost:3001
-	if (import.meta.env.DEV) {
+	if (isViteDev()) {
 		return '';
 	}
 
