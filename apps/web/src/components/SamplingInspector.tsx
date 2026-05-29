@@ -11,7 +11,10 @@ const toProbabilities = (temperature: number): number[] => {
 };
 
 export const SamplingInspector = () => {
-  const { temperature, topP, setTemperature, setTopP } = usePlaygroundStore();
+  const temperature = usePlaygroundStore((state) => state.temperature);
+  const topP = usePlaygroundStore((state) => state.topP);
+  const setTemperature = usePlaygroundStore((state) => state.setTemperature);
+  const setTopP = usePlaygroundStore((state) => state.setTopP);
 
   const probabilities = useMemo(() => toProbabilities(temperature), [temperature]);
 

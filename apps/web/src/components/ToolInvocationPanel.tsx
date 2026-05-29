@@ -1,7 +1,7 @@
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 export const ToolInvocationPanel = () => {
-  const { timelineEvents } = usePlaygroundStore();
+  const timelineEvents = usePlaygroundStore((state) => state.timelineEvents);
 
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">

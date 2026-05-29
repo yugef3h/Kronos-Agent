@@ -1,7 +1,9 @@
 import { usePlaygroundStore } from '../store/playgroundStore';
 
 export const MemorySummaryPanel = () => {
-  const { memoryMetrics, memorySummary, isStreaming } = usePlaygroundStore();
+  const memoryMetrics = usePlaygroundStore((state) => state.memoryMetrics);
+  const memorySummary = usePlaygroundStore((state) => state.memorySummary);
+  const isStreaming = usePlaygroundStore((state) => state.isStreaming);
 
   return (
     <section className="rounded-2xl bg-white/80 p-5 shadow-sm backdrop-blur">

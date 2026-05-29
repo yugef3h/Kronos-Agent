@@ -15,6 +15,7 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   apiUrl,
@@ -221,7 +222,44 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setTakeoutFlowState,
     publishedChatbotWorkflowAppId,
     setPublishedChatbotWorkflowAppId,
-  } = usePlaygroundStore();
+  } = usePlaygroundStore(
+    useShallow((state) => ({
+      sessionId: state.sessionId,
+      authToken: state.authToken,
+      timelineEvents: state.timelineEvents,
+      chatMessages: state.chatMessages,
+      chatPrompt: state.chatPrompt,
+      pendingFile: state.pendingFile,
+      pendingImage: state.pendingImage,
+      isStreaming: state.isStreaming,
+      isOrchestrating: state.isOrchestrating,
+      isAnalyzingImage: state.isAnalyzingImage,
+      isAwaitingTakeoutFollowup: state.isAwaitingTakeoutFollowup,
+      memoryMetrics: state.memoryMetrics,
+      takeoutFlowState: state.takeoutFlowState,
+      switchPlaygroundHistorySession: state.switchPlaygroundHistorySession,
+      setSessionId: state.setSessionId,
+      resetChatPanelState: state.resetChatPanelState,
+      setAuthToken: state.setAuthToken,
+      setLatestUserQuestion: state.setLatestUserQuestion,
+      appendTimelineEvent: state.appendTimelineEvent,
+      clearTimelineEvents: state.clearTimelineEvents,
+      setChatMessages: state.setChatMessages,
+      setChatPrompt: state.setChatPrompt,
+      setPendingFile: state.setPendingFile,
+      setPendingImage: state.setPendingImage,
+      setIsStreaming: state.setIsStreaming,
+      setIsOrchestrating: state.setIsOrchestrating,
+      setIsAnalyzingImage: state.setIsAnalyzingImage,
+      setIsAwaitingTakeoutFollowup: state.setIsAwaitingTakeoutFollowup,
+      setMemoryMetrics: state.setMemoryMetrics,
+      setMemorySummary: state.setMemorySummary,
+      setMemorySummaryUpdatedAt: state.setMemorySummaryUpdatedAt,
+      setTakeoutFlowState: state.setTakeoutFlowState,
+      publishedChatbotWorkflowAppId: state.publishedChatbotWorkflowAppId,
+      setPublishedChatbotWorkflowAppId: state.setPublishedChatbotWorkflowAppId,
+    })),
+  );
 
   const applySnapshotMemory = useCallback(
     (patch: Awaited<ReturnType<typeof buildSessionSnapshotMemoryPatch>>) => {
