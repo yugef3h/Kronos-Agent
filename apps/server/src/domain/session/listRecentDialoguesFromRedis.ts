@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import { parseStoredSession } from './normalizeSession.js';
 import { SESSION_REDIS_KEY_PREFIX, toSessionRedisKey } from './sessionKeys.js';
 import type { PlaygroundHistorySurface, RecentDialogueItem } from './types.js';

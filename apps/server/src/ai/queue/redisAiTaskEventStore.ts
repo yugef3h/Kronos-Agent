@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import type { AiTaskEvent } from './aiTaskEvents.js';
 import type { AiTaskEventStore } from './aiTaskEventStore.js';
 

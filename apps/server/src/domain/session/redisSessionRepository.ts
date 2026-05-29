@@ -1,4 +1,4 @@
-import type Redis from 'ioredis';
+import type { Redis } from 'ioredis';
 import { SessionConflictError } from './sessionConflictError.js';
 import { migrateSessionFilesToRedis } from './migrateSessionFilesToRedis.js';
 import { createEmptySession, normalizeSession, parseStoredSession } from './normalizeSession.js';

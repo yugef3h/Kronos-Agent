@@ -113,7 +113,7 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const planningStep = await runPlanningStep({
-    invokePlanning: () => invokeGatewayLlm(toolEnabledModel, planningMessages),
+    invokePlanning: () => invokeGatewayLlm(toolEnabledModel, planningMessages, { modelName: baseModel.model }),
     timeoutMs: env.DOUBAO_PLAN_TIMEOUT_MS,
   });
   let modelToolCalls: ModelToolCall[] = planningStep.modelToolCalls;

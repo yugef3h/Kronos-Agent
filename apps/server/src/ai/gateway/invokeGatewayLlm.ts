@@ -1,5 +1,5 @@
+import type { AIMessageChunk } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { ChatOpenAI } from '@langchain/openai';
 import { recordCircuitFailure, recordCircuitSuccess } from '../circuit/circuitBreaker.js';
 import { invokeWithRetry } from '../circuit/invokeWithRetry.js';
 import { fallbackReplyText } from '../circuit/fallbackReplyText.js';
@@ -8,15 +8,22 @@ import { isCircuitOpen } from '../circuit/circuitBreaker.js';
 export type GatewayInvokeOptions = {
   maxAttempts?: number;
   backoffMs?: number;
+  /** bindTools 后的 Runnable 无 `.model` 时由调用方传入 */
+  modelName?: string;
 };
 
-/** 对已有 ChatOpenAI 实例做熔断 + 重试 invoke */
+type GatewayInvokableModel = {
+  model?: string;
+  invoke: (messages: BaseMessage[]) => Promise<AIMessageChunk>;
+};
+
+/** 对 ChatOpenAI（或 bindTools 后的 Runnable）做熔断 + 重试 invoke */
 export const invokeGatewayLlm = async (
-  model: ChatOpenAI,
+  model: GatewayInvokableModel,
   messages: BaseMessage[],
   options: GatewayInvokeOptions = {},
 ) => {
-  const circuitName = `model:${model.model}`;
+  const circuitName = `model:${options.modelName ?? model.model ?? 'unknown'}`;
   if (isCircuitOpen(circuitName)) {
     throw new Error(fallbackReplyText('circuit_open'));
   }
