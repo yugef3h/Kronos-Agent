@@ -1,14 +1,35 @@
 const readViteApiBaseUrl = (): string | undefined => {
 	try {
-		return Function('return import.meta?.env?.VITE_API_BASE_URL')() as string | undefined;
+		const value = Function('return import.meta?.env?.VITE_API_BASE_URL')() as string | undefined;
+		if (typeof value === 'string' && value.trim().length > 0) {
+			return value.trim().replace(/\/$/, '');
+		}
+		return undefined;
 	} catch {
 		return undefined;
 	}
 };
 
-const API_BASE_URL = readViteApiBaseUrl() || 'http://localhost:3001';
+const resolveApiBaseUrl = (): string => {
+	const configured = readViteApiBaseUrl();
+	if (configured) {
+		return configured;
+	}
 
-export const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
+	// dev：同源请求走 Vite proxy → 后端，避免硬编码 localhost:3001
+	if (import.meta.env.DEV) {
+		return '';
+	}
+
+	return 'http://localhost:3001';
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+export const apiUrl = (path: string): string => {
+	const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+	return API_BASE_URL ? `${API_BASE_URL}${normalizedPath}` : normalizedPath;
+};
 
 const knowledgeDatasetApiPath = (datasetId: string, suffix = '') =>
 	`/api/workflow/knowledge-datasets/${encodeURIComponent(datasetId)}${suffix}`;
