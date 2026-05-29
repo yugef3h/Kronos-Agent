@@ -67,7 +67,7 @@ import type {
   PromptQuickAction,
   RecentDialogueItem,
 } from '../types';
-import { markLastAssistantMessageIncomplete } from '../utils/chatStreamHelpers';
+import { markLastAssistantMessageIncomplete, withClientMessageId } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
 import { usePlaygroundChatStream } from './usePlaygroundChatStream';
 import { usePlaygroundHistoryPanel } from './usePlaygroundHistoryPanel';
@@ -474,7 +474,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1]?.eventId || 0 : 0;
   }, [timelineEvents]);
 
-  const { metricsRefreshTimerRef, refreshMemoryMetrics, scheduleMemoryMetricsRefresh } = usePlaygroundMemoryMetrics({
+  const { metricsRefreshTimerRef, refreshMemoryMetrics, scheduleMemoryMetricsRefresh, cancelAllScheduling } = usePlaygroundMemoryMetrics({
     authToken,
     playgroundChatStreamSessionId,
     isStreaming,
@@ -670,21 +670,23 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [updateMessageListScrollPin]);
 
   useEffect(() => {
-    const flushTimerId = streamFlushTimerRef.current;
-
     return () => {
       activeControllerRef.current?.abort();
       if (takeoutQuickReplyTimerRef.current !== null) {
         window.clearTimeout(takeoutQuickReplyTimerRef.current);
+        takeoutQuickReplyTimerRef.current = null;
       }
+      cancelAllScheduling();
       if (metricsRefreshTimerRef.current !== null) {
         window.clearTimeout(metricsRefreshTimerRef.current);
+        metricsRefreshTimerRef.current = null;
       }
-      if (flushTimerId !== null) {
-        window.clearTimeout(flushTimerId);
+      if (streamFlushTimerRef.current !== null) {
+        window.clearTimeout(streamFlushTimerRef.current);
+        streamFlushTimerRef.current = null;
       }
     };
-  }, [streamFlushTimerRef]);
+  }, [cancelAllScheduling, metricsRefreshTimerRef, streamFlushTimerRef]);
 
   const renderPlainMessageContent = useCallback((message: LocalChatMessage) => {
     const suffix = message.isIncomplete ? '...' : '';
@@ -752,20 +754,20 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         if (published.kind === 'active' && published.orch.visionEnabled) {
           setMessages((prev) => [
             ...prev,
-            {
+            withClientMessageId({
               role: 'user',
               content: '',
               imagePreviewUrl: imageSnapshot.dataUrl,
               imageName: imageSnapshot.fileName,
               isIncomplete: false,
-            },
-            { role: 'user', content: imagePrompt, isIncomplete: false },
-            {
+            }),
+            withClientMessageId({ role: 'user', content: imagePrompt, isIncomplete: false }),
+            withClientMessageId({
               role: 'assistant',
               content: '',
               isIncomplete: false,
               assistantInvocation: createAssistantInvocation({ modalities: ['image'] }),
-            },
+            }),
           ]);
           setLatestUserQuestion(imagePrompt);
           setPrompt('');
@@ -841,20 +843,20 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
       setMessages((prev) => [
         ...prev,
-        {
+        withClientMessageId({
           role: 'user',
           content: '',
           imagePreviewUrl: imageSnapshot.dataUrl,
           imageName: imageSnapshot.fileName,
           isIncomplete: false,
-        },
-        { role: 'user', content: imagePrompt, isIncomplete: false },
-        {
+        }),
+        withClientMessageId({ role: 'user', content: imagePrompt, isIncomplete: false }),
+        withClientMessageId({
           role: 'assistant',
           content: '',
           isIncomplete: false,
           assistantInvocation: createAssistantInvocation({ modalities: ['image'] }),
-        },
+        }),
       ]);
       setLatestUserQuestion(imagePrompt);
       setPrompt('');
@@ -908,21 +910,21 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
       setMessages((prev) => [
         ...prev,
-        {
+        withClientMessageId({
           role: 'user',
           content: '',
           fileName: pendingFile.fileName,
           fileExtension: pendingFile.extension,
           fileSize: pendingFile.size,
           isIncomplete: false,
-        },
-        { role: 'user', content: filePrompt, isIncomplete: false },
-        {
+        }),
+        withClientMessageId({ role: 'user', content: filePrompt, isIncomplete: false }),
+        withClientMessageId({
           role: 'assistant',
           content: '',
           isIncomplete: false,
           assistantInvocation: createAssistantInvocation({ modalities: ['file'] }),
-        },
+        }),
       ]);
       setLatestUserQuestion(filePrompt);
       setPrompt('');
@@ -964,7 +966,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       return;
     }
 
-    setMessages((prev) => [...prev, { role: 'user', content: userPrompt, isIncomplete: false }]);
+    setMessages((prev) => [...prev, withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false })]);
     setPrompt('');
     setLatestUserQuestion(userPrompt);
 
@@ -1261,13 +1263,13 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       const takeoutInvocation = createAssistantInvocation({ modalities: ['takeout'] });
       setMessages((prev) => [
         ...prev,
-        { role: 'user', content: takeoutPrompt, isIncomplete: false },
-        {
+        withClientMessageId({ role: 'user', content: takeoutPrompt, isIncomplete: false }),
+        withClientMessageId({
           role: 'assistant',
           content: '',
           isIncomplete: false,
           assistantInvocation: takeoutInvocation,
-        },
+        }),
       ]);
       setPrompt('');
       setLatestUserQuestion(takeoutPrompt);

@@ -15,6 +15,7 @@ import VariableSelect from '../../../components/form/variable-select';
 import { WorkflowBlankAppCreateDialog } from '../../../domains/workflow/app/WorkflowBlankAppCreateDialog';
 import {
   formatUploadSize,
+  getMessageListKey,
   getRenderableImageName,
   getRenderableImageSource,
 } from '../utils/chatStreamHelpers';
@@ -213,7 +214,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
                 : null;
 
               return (
-                <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div key={getMessageListKey(message, index)} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <article
                     className={`max-w-[80%] rounded-2xl border text-sm shadow-sm md:text-[15px] ${message.role === 'user'
                       ? imageSource || (message.fileName && message.fileExtension)

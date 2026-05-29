@@ -1,8 +1,9 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
 import { STREAM_TYPEWRITER_DELAY_MS } from '../constants';
 import type { AssistantTypewriterOptions, LocalChatMessage } from '../types';
+import { withClientMessageId } from '../utils/chatStreamHelpers';
 
 type UseAssistantTypewriterParams = {
   setMessages: Dispatch<SetStateAction<LocalChatMessage[]>>;
@@ -162,13 +163,13 @@ export const useAssistantTypewriter = ({
 
       return [
         ...draft,
-        {
+        withClientMessageId({
           role: 'assistant',
           content: '',
           isIncomplete: false,
           isStreamingText: true,
           assistantInvocation: options?.assistantInvocation,
-        },
+        }),
       ];
     });
 
@@ -179,13 +180,13 @@ export const useAssistantTypewriter = ({
     resetAssistantStreamingState();
     setMessages((prev) => [
       ...prev,
-      {
+      withClientMessageId({
         role: 'assistant',
         content: '',
         isStreamingText: true,
         isIncomplete: false,
         assistantInvocation,
-      },
+      }),
     ]);
     setIsStreaming(true);
   }, [resetAssistantStreamingState, setIsStreaming, setMessages]);
@@ -213,6 +214,11 @@ export const useAssistantTypewriter = ({
     setIsStreaming(false);
     activeControllerRef.current = null;
   }, [activeControllerRef, finalizeStreamingAssistantMessage, flushRemainingAssistantBuffer, resetAssistantStreamingState, setIsStreaming]);
+
+  useEffect(() => () => {
+    stopStreamFlushTimer();
+    streamPendingCharsRef.current = [];
+  }, [stopStreamFlushTimer]);
 
   return {
     streamFlushTimerRef,

@@ -14,6 +14,7 @@ import {
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
 import { createAssistantInvocation } from '../../chat-stream/assistantInvocation';
+import { withClientMessageId } from '../../chat-stream/utils/chatStreamHelpers';
 import { requestAppendSessionMessages, requestTakeoutCatalog } from '../../../lib/api';
 import {
   hasTakeoutBindingConfirmed,
@@ -139,7 +140,7 @@ export const useTakeoutTool = ({
 
       setMessages((prev) => [
         ...prev,
-        {
+        withClientMessageId({
           role: 'assistant',
           content,
           isIncomplete: false,
@@ -147,7 +148,7 @@ export const useTakeoutTool = ({
           flowId: options?.flowId,
           takeoutMessageType: options?.takeoutMessageType,
           assistantInvocation,
-        },
+        }),
       ]);
     },
     [setMessages],
@@ -157,14 +158,14 @@ export const useTakeoutTool = ({
     (flowId: number, takeoutMessageType: TakeoutMessageType) => {
       setMessages((prev) => [
         ...prev,
-        {
+        withClientMessageId({
           role: 'assistant',
           content: '',
           flowType: 'takeout',
           takeoutMessageType,
           flowId,
           assistantInvocation: createAssistantInvocation({ modalities: ['takeout'] }),
-        },
+        }),
       ]);
     },
     [setMessages],
@@ -402,11 +403,11 @@ export const useTakeoutTool = ({
     const userOrderPrompt = buildTakeoutOrderPrompt(flowState);
     setMessages((prev) => [
       ...prev,
-      {
+      withClientMessageId({
         role: 'user',
         content: userOrderPrompt,
         isIncomplete: false,
-      },
+      }),
     ]);
 
     try {

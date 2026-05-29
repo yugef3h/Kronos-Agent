@@ -42,6 +42,8 @@ export type AssistantInvocationSummary = {
 };
 
 export type LocalChatMessage = TakeoutChatMessage & {
+  /** 客户端稳定 key，用于列表渲染 */
+  clientMessageId?: string;
   imagePreviewUrl?: string;
   imageName?: string;
   fileName?: string;

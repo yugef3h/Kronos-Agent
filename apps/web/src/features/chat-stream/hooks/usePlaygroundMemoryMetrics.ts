@@ -130,14 +130,19 @@ export const usePlaygroundMemoryMetrics = ({
     scheduleMemoryMetricsRefresh,
   ]);
 
-  useEffect(() => () => {
+  const cancelAllScheduling = useCallback(() => {
     clearDebounce();
     clearStreamPoll();
   }, [clearDebounce, clearStreamPoll]);
+
+  useEffect(() => () => {
+    cancelAllScheduling();
+  }, [cancelAllScheduling]);
 
   return {
     metricsRefreshTimerRef,
     refreshMemoryMetrics,
     scheduleMemoryMetricsRefresh,
+    cancelAllScheduling,
   };
 };

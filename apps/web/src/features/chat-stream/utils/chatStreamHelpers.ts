@@ -2,6 +2,32 @@ import { apiUrl } from '../../../lib/api';
 import type { AttachmentMeta, ChatMessage } from '../../../types/chat';
 import type { LocalChatMessage, TokenizerModule } from '../types';
 
+export const createClientMessageId = (): string =>
+  `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+export const withClientMessageId = (
+  message: Omit<LocalChatMessage, 'clientMessageId'> & { clientMessageId?: string },
+): LocalChatMessage => ({
+  ...message,
+  clientMessageId: message.clientMessageId ?? createClientMessageId(),
+});
+
+export const getMessageListKey = (message: LocalChatMessage, index: number): string => {
+  if (message.clientMessageId) {
+    return message.clientMessageId;
+  }
+
+  return [
+    message.role,
+    index,
+    message.content,
+    message.imagePreviewUrl ?? '',
+    message.fileName ?? '',
+    message.flowType ?? '',
+    message.takeoutMessageType ?? '',
+  ].join('|');
+};
+
 type ImageRenderableMessage = Pick<ChatMessage, 'attachments'> & {
   imagePreviewUrl?: string;
   imageName?: string;
@@ -126,33 +152,33 @@ export const hydrateRenderableMessages = (chatMessages: ChatMessage[]): LocalCha
     if (imageSource && content) {
       // 兼容旧历史快照：服务端曾把“图片 + 文字提示”落成同一条消息。
       return [
-        {
+        withClientMessageId({
           ...message,
           content: '',
           isIncomplete: false,
           imagePreviewUrl: imageSource,
           imageName,
-        },
-        {
+        }),
+        withClientMessageId({
           ...message,
           attachments: undefined,
           isIncomplete: false,
           imagePreviewUrl: undefined,
           imageName: undefined,
-        },
+        }),
       ];
     }
 
     const legacyFileMessage = message.role === 'user' ? parseLegacyFileAnalyzeMessage(content) : null;
 
     if (legacyFileMessage) {
-      const fileCardMessage: LocalChatMessage = {
+      const fileCardMessage = withClientMessageId({
         ...message,
         content: '',
         isIncomplete: false,
         fileName: legacyFileMessage.fileName,
         fileExtension: legacyFileMessage.fileExtension || undefined,
-      };
+      });
 
       if (!legacyFileMessage.prompt) {
         return [fileCardMessage];
@@ -160,7 +186,7 @@ export const hydrateRenderableMessages = (chatMessages: ChatMessage[]): LocalCha
 
       return [
         fileCardMessage,
-        {
+        withClientMessageId({
           ...message,
           content: legacyFileMessage.prompt,
           isIncomplete: false,
@@ -170,16 +196,16 @@ export const hydrateRenderableMessages = (chatMessages: ChatMessage[]): LocalCha
           fileName: undefined,
           fileExtension: undefined,
           fileSize: undefined,
-        },
+        }),
       ];
     }
 
-    return [{
+    return [withClientMessageId({
       ...message,
       isIncomplete: false,
       imagePreviewUrl: imageSource,
       imageName,
-    }];
+    })];
   });
 };
 
