@@ -13,7 +13,7 @@ import {
 } from '../utils/consumeAiTaskEventsSse';
 import {
   extractToolNamesFromTimeline,
-  mergeAssistantInvocation,
+  type mergeAssistantInvocation,
 } from '../assistantInvocation';
 import { isPlaygroundToolName } from '../invocationRegistry';
 import type { LocalChatMessage } from '../types';

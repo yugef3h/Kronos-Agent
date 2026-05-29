@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type Dispatch,
   type KeyboardEvent,
   type MutableRefObject,
@@ -58,13 +59,13 @@ export type UseChatStreamControllerResult = {
   currentTimelineEvent: TimelineEvent | undefined;
   fileInputRef: MutableRefObject<HTMLInputElement | null>;
   formatTimestamp: (timestamp: number) => string;
-  handleDocumentFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleDocumentFileChange: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handleExplainFileClick: () => void;
   handleExplainImageClick: () => void;
   handleHistoryItemClick: (target: RecentDialogueItem) => void;
   handleStartNewConversation: () => void;
   handleHotTopicClick: (topic: string) => void;
-  handleImageFileChange: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  handleImageFileChange: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   handlePromptKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   handleQuickActionClick: (action: PromptQuickAction['key']) => void;
   handleTakeoutCancel: (flowId: number) => void;
@@ -567,20 +568,25 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [authToken, generateDevToken]);
 
   useEffect(() => {
+    const controllerRef = activeControllerRef;
+    const takeoutTimerRef = takeoutQuickReplyTimerRef;
+    const metricsTimerRef = metricsRefreshTimerRef;
+    const flushTimerRef = streamFlushTimerRef;
+
     return () => {
-      activeControllerRef.current?.abort();
-      if (takeoutQuickReplyTimerRef.current !== null) {
-        window.clearTimeout(takeoutQuickReplyTimerRef.current);
-        takeoutQuickReplyTimerRef.current = null;
+      controllerRef.current?.abort();
+      if (takeoutTimerRef.current !== null) {
+        window.clearTimeout(takeoutTimerRef.current);
+        takeoutTimerRef.current = null;
       }
       cancelAllScheduling();
-      if (metricsRefreshTimerRef.current !== null) {
-        window.clearTimeout(metricsRefreshTimerRef.current);
-        metricsRefreshTimerRef.current = null;
+      if (metricsTimerRef.current !== null) {
+        window.clearTimeout(metricsTimerRef.current);
+        metricsTimerRef.current = null;
       }
-      if (streamFlushTimerRef.current !== null) {
-        window.clearTimeout(streamFlushTimerRef.current);
-        streamFlushTimerRef.current = null;
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
       }
     };
   }, [cancelAllScheduling, metricsRefreshTimerRef, streamFlushTimerRef, takeoutQuickReplyTimerRef]);

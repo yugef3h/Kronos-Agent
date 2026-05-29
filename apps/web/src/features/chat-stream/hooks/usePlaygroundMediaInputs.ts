@@ -103,7 +103,7 @@ export const usePlaygroundMediaInputs = ({
       const message = error instanceof Error ? error.message : '图片识别失败，请稍后重试';
       startAssistantTypewriter(message);
     }
-  }, [authToken, promptTextareaRef, setPendingFile, setPendingImage, startAssistantTypewriter]);
+  }, [authToken, pendingImageUploadRef, promptTextareaRef, setPendingFile, setPendingImage, startAssistantTypewriter]);
 
   const handleDocumentFileChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];

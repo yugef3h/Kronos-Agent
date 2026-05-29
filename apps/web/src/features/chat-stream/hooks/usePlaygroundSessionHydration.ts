@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 import { requestSessionSnapshot } from '../../../lib/api';
-import { usePlaygroundStore } from '../../../store/playgroundStore';
+import type { usePlaygroundStore } from '../../../store/playgroundStore';
 import {
   applySessionSnapshotMemoryPatch,
   buildSessionSnapshotMemoryPatch,
