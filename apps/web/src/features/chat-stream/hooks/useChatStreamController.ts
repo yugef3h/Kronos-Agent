@@ -14,39 +14,21 @@ import {
   type SetStateAction,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { useShallow } from 'zustand/react/shallow';
 
 import {
-  apiUrl,
   requestDevToken,
   requestFileAnalysis,
-  requestHotTopics,
   requestImageRecognition,
-  requestRecentSessions,
-  requestSessionSnapshot,
   requestTakeoutOrchestration,
 } from '../../../lib/api';
-import {
-  getCachedLocalStorage,
-  getNextDayStartTimestamp,
-  setCachedLocalStorage,
-} from '../../../lib/localStorageCache';
 import { ensureKnowledgeDatasetAuthToken } from '../../../domains/knowledge/dataset-store';
 import { createPlaygroundSessionId, usePlaygroundStore } from '../../../store/playgroundStore';
 import {
   createAssistantInvocation,
-  extractToolNamesFromTimeline,
   mergeAssistantInvocation,
 } from '../assistantInvocation';
-import { isPlaygroundToolName } from '../invocationRegistry';
-import type { ChatAsyncAccepted } from '../../../types/chatAsyncTask';
-import type { StreamChunk, TimelineEvent } from '../../../types/chat';
-import { CHAT_ASYNC_THRESHOLD_CHARS } from '../constants';
-import {
-  consumeAiTaskEventsSse,
-  consumeChatStreamSseResponse,
-} from '../utils/consumeAiTaskEventsSse';
+import type { TimelineEvent } from '../../../types/chat';
 import type { ValueSelector, VariableOption } from '../../../domains/workflow/editor/panels/llm-panel/types';
 import { shouldShowHotTopics } from '../../../components/chatHotTopics';
 import {
@@ -70,9 +52,7 @@ import {
   type ImageSelectionResult,
 } from '../../agent-tools/image';
 import {
-  DEFAULT_HOT_TOPICS,
   FILE_DEFAULT_PROMPT,
-  HOT_TOPICS_CACHE_KEY,
   IMAGE_DEFAULT_PROMPT,
   MESSAGE_LIST_STICK_THRESHOLD_PX,
   PROMPT_QUICK_ACTIONS,
@@ -87,13 +67,13 @@ import type {
   PromptQuickAction,
   RecentDialogueItem,
 } from '../types';
-import {
-  applySessionSnapshotMemoryPatch,
-  buildSessionSnapshotMemoryPatch,
-} from '../applySessionSnapshot';
-import { hydrateRenderableMessages, markLastAssistantMessageIncomplete } from '../utils/chatStreamHelpers';
-import { getLatestUserQuestion } from '../utils/chatStreamHelpers';
+import { markLastAssistantMessageIncomplete } from '../utils/chatStreamHelpers';
 import { useAssistantTypewriter } from './useAssistantTypewriter';
+import { usePlaygroundChatStream } from './usePlaygroundChatStream';
+import { usePlaygroundHistoryPanel } from './usePlaygroundHistoryPanel';
+import { usePlaygroundHotTopics } from './usePlaygroundHotTopics';
+import { usePlaygroundMemoryMetrics } from './usePlaygroundMemoryMetrics';
+import { usePlaygroundSessionHydration } from './usePlaygroundSessionHydration';
 import {
   WORKFLOW_APPS_STORAGE_KEY,
   WORKFLOW_DRAFT_PREVIEW_STORAGE_PREFIX,
@@ -262,25 +242,9 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     })),
   );
 
-  const applySnapshotMemory = useCallback(
-    (patch: Awaited<ReturnType<typeof buildSessionSnapshotMemoryPatch>>) => {
-      applySessionSnapshotMemoryPatch(patch, {
-        setMemoryMetrics,
-        setMemorySummary,
-        setMemorySummaryUpdatedAt,
-      });
-    },
-    [setMemoryMetrics, setMemorySummary, setMemorySummaryUpdatedAt],
-  );
-
   const navigate = useNavigate();
   const [, setIsGeneratingToken] = useState(false);
   const [, setTokenMessage] = useState('');
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [historySwitchConfirmTarget, setHistorySwitchConfirmTarget] = useState<RecentDialogueItem | null>(null);
-  const [recentDialogues, setRecentDialogues] = useState<RecentDialogueItem[]>([]);
-  const [hotTopics, setHotTopics] = useState<string[]>(() => getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY) || [...DEFAULT_HOT_TOPICS]);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [publishedChatbotApps, setPublishedChatbotApps] = useState<WorkflowAppRecord[]>(() =>
     listPublishedChatbotWorkflowApps(),
@@ -290,13 +254,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   const interruptedRequestIdsRef = useRef<Set<number>>(new Set());
   const activeControllerRef = useRef<AbortController | null>(null);
   const takeoutQuickReplyTimerRef = useRef<number | null>(null);
-  const metricsRefreshTimerRef = useRef<number | null>(null);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
-  const historyPanelRef = useRef<HTMLDivElement | null>(null);
   const pendingImageUploadRef = useRef<Promise<string | null> | null>(null);
 
   const playgroundChatStreamSessionId = useMemo(
@@ -375,6 +337,48 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       || persistedTakeoutFlowState.flowId !== 0
     );
   }, [messages.length, pendingFile, pendingImage, prompt, persistedTakeoutFlowState.flowId]);
+
+  const {
+    applySnapshotMemory,
+    hydrateSessionMessages,
+  } = usePlaygroundSessionHydration({
+    authToken,
+    playgroundChatStreamSessionId,
+    hasRestorableDraft,
+    setMessages,
+    setLatestUserQuestion,
+    setMemoryMetrics,
+    setMemorySummary,
+    setMemorySummaryUpdatedAt,
+  });
+
+  const hotTopics = usePlaygroundHotTopics(authToken);
+
+  const {
+    historyPanelRef,
+    historySwitchConfirmTarget,
+    isHistoryLoading,
+    isHistoryOpen,
+    recentDialogues,
+    refreshRecentSessions,
+    setHistorySwitchConfirmTarget,
+    setIsHistoryOpen,
+    toggleHistoryPanel,
+  } = usePlaygroundHistoryPanel(authToken);
+
+  const { executePlaygroundChatStream } = usePlaygroundChatStream({
+    authToken,
+    activeRequestIdRef,
+    interruptedRequestIdsRef,
+    activeControllerRef,
+    appendStreamingContent,
+    appendTimelineEvent,
+    abortStreamingAssistantMessage,
+    completeStreamingContent,
+    setMessages,
+    setIsStreaming,
+    patchLastAssistantInvocation,
+  });
 
   useEffect(() => {
     setHistorySwitchConfirmTarget(null);
@@ -470,270 +474,16 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     return timelineEvents.length > 0 ? timelineEvents[timelineEvents.length - 1]?.eventId || 0 : 0;
   }, [timelineEvents]);
 
-  const refreshMemoryMetrics = useCallback(async (snapshotSessionId?: string) => {
-    if (!authToken) {
-      return;
-    }
-
-    const sid = snapshotSessionId ?? playgroundChatStreamSessionId;
-
-    try {
-      const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
-      const patch = await buildSessionSnapshotMemoryPatch(snapshot);
-      applySnapshotMemory(patch);
-    } catch {
-      // 会话指标刷新失败时保留当前展示，避免影响主流程。
-    }
-  }, [applySnapshotMemory, authToken, playgroundChatStreamSessionId]);
-
-  const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
-    if (!authToken) {
-      return;
-    }
-
-    if (metricsRefreshTimerRef.current !== null) {
-      window.clearTimeout(metricsRefreshTimerRef.current);
-    }
-
-    metricsRefreshTimerRef.current = window.setTimeout(() => {
-      metricsRefreshTimerRef.current = null;
-      void refreshMemoryMetrics();
-    }, delayMs);
-  }, [authToken, refreshMemoryMetrics]);
-
-  const refreshRecentSessions = useCallback(async () => {
-    if (!authToken) {
-      return;
-    }
-
-    setIsHistoryLoading(true);
-    try {
-      const response = await requestRecentSessions({ authToken, limit: 10 });
-      setRecentDialogues(response.items);
-    } catch {
-      setRecentDialogues([]);
-    } finally {
-      setIsHistoryLoading(false);
-    }
-  }, [authToken]);
-
-  const hydrateSessionMessages = useCallback(async (snapshotSessionId?: string) => {
-    if (!authToken) {
-      return;
-    }
-
-    const sid = snapshotSessionId ?? playgroundChatStreamSessionId;
-
-    try {
-      const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
-      const patch = await buildSessionSnapshotMemoryPatch(snapshot);
-
-      setMessages(hydrateRenderableMessages(snapshot.messages));
-      setLatestUserQuestion(getLatestUserQuestion(snapshot.messages));
-      applySnapshotMemory(patch);
-    } catch {
-      // 历史会话回显失败时保留当前界面状态。
-    }
-  }, [applySnapshotMemory, authToken, playgroundChatStreamSessionId, setLatestUserQuestion, setMessages]);
-
-  const executePlaygroundChatStream = useCallback(
-    async (params: {
-      requestId: number;
-      controller: AbortController;
-      streamPrompt: string;
-      /** 与 streamPrompt 不一致时传入，供服务端写入会话历史（如已发布 RAG 增强前的用户原话）。 */
-      sessionUserContent?: string;
-      streamSessionId: string;
-      imageDataUrls?: string[];
-      authToken?: string;
-    }) => {
-      const streamAuthToken = (params.authToken ?? authToken).trim()
-        || usePlaygroundStore.getState().authToken.trim();
-      if (!streamAuthToken) {
-        return false;
-      }
-
-      const { requestId, controller, streamPrompt, sessionUserContent, streamSessionId, imageDataUrls } = params;
-      let lastSeenEventId = 0;
-      let isRequestComplete = false;
-
-      const requestBody = JSON.stringify({
-        prompt: streamPrompt,
-        sessionId: streamSessionId,
-        ...(typeof sessionUserContent === 'string' && sessionUserContent.trim().length > 0
-          ? { sessionUserContent: sessionUserContent.trim() }
-          : {}),
-        ...(imageDataUrls?.length ? { imageDataUrls } : {}),
-      });
-
-      const handleStreamChunk = (payload: StreamChunk) => {
-        if (requestId !== activeRequestIdRef.current) {
-          return;
-        }
-
-        if (payload.eventId <= lastSeenEventId) {
-          return;
-        }
-        lastSeenEventId = payload.eventId;
-
-        if (payload.type === 'timeline') {
-          appendTimelineEvent({
-            eventId: payload.eventId,
-            stage: payload.stage,
-            status: payload.status,
-            message: payload.message,
-            toolName: payload.toolName,
-            toolInput: payload.toolInput,
-            toolOutput: payload.toolOutput,
-            toolError: payload.toolError,
-            timestamp: payload.timestamp,
-          });
-
-          if (payload.message.includes('LangChain 流式响应失败')) {
-            console.warn(`[ChatStreamPanel] ${payload.message}`);
-          }
-
-          if (
-            payload.stage === 'tool'
-            && payload.status === 'end'
-            && payload.toolName
-            && isPlaygroundToolName(payload.toolName)
-          ) {
-            patchLastAssistantInvocation({ tools: [payload.toolName] });
-          }
-        }
-
-        if (payload.type === 'content') {
-          appendStreamingContent(payload.content);
-        }
-
-        if (payload.type === 'complete') {
-          isRequestComplete = true;
-          if (requestId === activeRequestIdRef.current) {
-            const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
-            if (tools.length > 0) {
-              patchLastAssistantInvocation({ tools });
-            }
-            completeStreamingContent();
-          }
-        }
-      };
-
-      const finishIncompleteStream = () => {
-        if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-          abortStreamingAssistantMessage();
-          setMessages((prev) => markLastAssistantMessageIncomplete(prev));
-        }
-
-        if (!isRequestComplete && requestId === activeRequestIdRef.current) {
-          setIsStreaming(false);
-          activeControllerRef.current = null;
-        }
-
-        interruptedRequestIdsRef.current.delete(requestId);
-      };
-
-      const markStreamComplete = () => {
-        isRequestComplete = true;
-        if (requestId === activeRequestIdRef.current) {
-          const tools = extractToolNamesFromTimeline(usePlaygroundStore.getState().timelineEvents);
-          if (tools.length > 0) {
-            patchLastAssistantInvocation({ tools });
-          }
-          completeStreamingContent();
-        }
-      };
-
-      const useFetchFirst = streamPrompt.length >= CHAT_ASYNC_THRESHOLD_CHARS;
-
-      if (useFetchFirst) {
-        const response = await fetch(apiUrl('/api/chat-stream'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${streamAuthToken}`,
-          },
-          body: requestBody,
-          signal: controller.signal,
-        });
-
-        if (response.status === 202) {
-          const accepted = await response.json() as ChatAsyncAccepted;
-          try {
-            isRequestComplete = await consumeAiTaskEventsSse({
-              accepted,
-              authToken: streamAuthToken,
-              signal: controller.signal,
-              handlers: {
-                shouldContinue: () => requestId === activeRequestIdRef.current,
-                onContent: (content) => {
-                  appendStreamingContent(content);
-                },
-                onTimeline: (event) => {
-                  appendTimelineEvent(event);
-                },
-                onComplete: markStreamComplete,
-                onError: (message) => {
-                  throw new Error(message);
-                },
-              },
-            });
-          } finally {
-            finishIncompleteStream();
-          }
-          return isRequestComplete;
-        }
-
-        if (response.ok) {
-          try {
-            await consumeChatStreamSseResponse({
-              response,
-              handlers: {
-                shouldContinue: () => requestId === activeRequestIdRef.current,
-                onChunk: handleStreamChunk,
-              },
-            });
-          } finally {
-            finishIncompleteStream();
-          }
-          return isRequestComplete;
-        }
-
-        throw new Error(`chat stream failed: ${response.status}`);
-      }
-
-      await fetchEventSource(apiUrl('/api/chat-stream'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${streamAuthToken}`,
-        },
-        body: requestBody,
-        signal: controller.signal,
-        onmessage(event) {
-          handleStreamChunk(JSON.parse(event.data) as StreamChunk);
-        },
-        onerror(error) {
-          if (requestId === activeRequestIdRef.current) {
-            abortStreamingAssistantMessage();
-          }
-          throw error;
-        },
-        onclose: finishIncompleteStream,
-      });
-      return isRequestComplete;
-    },
-    [
-      authToken,
-      appendStreamingContent,
-      appendTimelineEvent,
-      abortStreamingAssistantMessage,
-      completeStreamingContent,
-      patchLastAssistantInvocation,
-      setIsStreaming,
-      setMessages,
-    ],
-  );
+  const { metricsRefreshTimerRef, refreshMemoryMetrics, scheduleMemoryMetricsRefresh } = usePlaygroundMemoryMetrics({
+    authToken,
+    playgroundChatStreamSessionId,
+    isStreaming,
+    isOrchestrating,
+    isAnalyzingImage,
+    latestTimelineEventId,
+    latestMessageSignature,
+    applySnapshotMemory,
+  });
 
   const generateDevToken = useCallback(async () => {
     setIsGeneratingToken(true);
@@ -896,82 +646,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   }, [authToken, generateDevToken]);
 
   useEffect(() => {
-    const cachedTopics = getCachedLocalStorage<string[]>(HOT_TOPICS_CACHE_KEY);
-    if (cachedTopics && cachedTopics.length > 0) {
-      setHotTopics(cachedTopics);
-      return undefined;
-    }
-
-    if (!authToken) {
-      return undefined;
-    }
-
-    let isCancelled = false;
-
-    const hydrateHotTopics = async () => {
-      try {
-        const result = await requestHotTopics({ authToken });
-        if (isCancelled || result.topics.length === 0) {
-          return;
-        }
-
-        setHotTopics(result.topics);
-        setCachedLocalStorage(HOT_TOPICS_CACHE_KEY, result.topics, getNextDayStartTimestamp());
-      } catch {
-        // 热门问题获取失败时继续使用本地兜底列表。
-      }
-    };
-
-    void hydrateHotTopics();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [authToken]);
-
-  useEffect(() => {
-    if (hasRestorableDraft) {
-      return;
-    }
-
-    void hydrateSessionMessages();
-  }, [hasRestorableDraft, hydrateSessionMessages]);
-
-  useEffect(() => {
-    if (!authToken) {
-      return;
-    }
-
-    void hydrateSessionMessages();
-  }, [authToken, publishedChatbotWorkflowAppId, hydrateSessionMessages]);
-
-  useEffect(() => {
-    void refreshMemoryMetrics();
-  }, [latestTimelineEventId, refreshMemoryMetrics]);
-
-  useEffect(() => {
-    if (!isStreaming) {
-      return undefined;
-    }
-
-    const timer = window.setInterval(() => {
-      void refreshMemoryMetrics();
-    }, 1000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [isStreaming, refreshMemoryMetrics]);
-
-  useEffect(() => {
-    if (!authToken || isStreaming || isOrchestrating || isAnalyzingImage) {
-      return;
-    }
-
-    scheduleMemoryMetricsRefresh();
-  }, [authToken, isAnalyzingImage, isOrchestrating, isStreaming, latestMessageSignature, scheduleMemoryMetricsRefresh]);
-
-  useEffect(() => {
     const element = messageListRef.current;
     if (!element || !stickToBottomRef.current) {
       return;
@@ -983,24 +657,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
   useEffect(() => {
     adjustPromptTextareaHeight();
   }, [adjustPromptTextareaHeight, prompt]);
-
-  useEffect(() => {
-    if (!isHistoryOpen || historySwitchConfirmTarget) {
-      return undefined;
-    }
-
-    const handleDocumentClick = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!historyPanelRef.current?.contains(target)) {
-        setIsHistoryOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleDocumentClick);
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentClick);
-    };
-  }, [historySwitchConfirmTarget, isHistoryOpen]);
 
   useEffect(() => {
     const element = messageListRef.current;
@@ -1518,15 +1174,6 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       switchPlaygroundHistorySession,
     ],
   );
-
-  const toggleHistoryPanel = useCallback(() => {
-    const nextOpen = !isHistoryOpen;
-    setIsHistoryOpen(nextOpen);
-
-    if (nextOpen) {
-      void refreshRecentSessions();
-    }
-  }, [isHistoryOpen, refreshRecentSessions]);
 
   const handleStartNewConversation = useCallback(() => {
     setIsHistoryOpen(false);
