@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { requestSessionSnapshot } from '../../../lib/api';
 import { buildSessionSnapshotMemoryPatch } from '../applySessionSnapshot';
 import type { SessionSnapshotMemoryPatch } from '../applySessionSnapshot';
+import {
+  MEMORY_METRICS_IDLE_DEBOUNCE_MS,
+  MEMORY_METRICS_STREAM_POLL_MS,
+} from '../constants';
 
 type UsePlaygroundMemoryMetricsParams = {
   authToken: string;
@@ -26,13 +30,35 @@ export const usePlaygroundMemoryMetrics = ({
   applySnapshotMemory,
 }: UsePlaygroundMemoryMetricsParams) => {
   const metricsRefreshTimerRef = useRef<number | null>(null);
+  const streamPollTimerRef = useRef<number | null>(null);
+  const inFlightRef = useRef(false);
+
+  const clearDebounce = useCallback(() => {
+    if (metricsRefreshTimerRef.current !== null) {
+      window.clearTimeout(metricsRefreshTimerRef.current);
+      metricsRefreshTimerRef.current = null;
+    }
+  }, []);
+
+  const clearStreamPoll = useCallback(() => {
+    if (streamPollTimerRef.current !== null) {
+      window.clearInterval(streamPollTimerRef.current);
+      streamPollTimerRef.current = null;
+    }
+  }, []);
 
   const refreshMemoryMetrics = useCallback(async (snapshotSessionId?: string) => {
     if (!authToken) {
       return;
     }
 
+    const isExplicitSession = snapshotSessionId !== undefined;
+    if (!isExplicitSession && inFlightRef.current) {
+      return;
+    }
+
     const sid = snapshotSessionId ?? playgroundChatStreamSessionId;
+    inFlightRef.current = true;
 
     try {
       const snapshot = await requestSessionSnapshot({ sessionId: sid, authToken });
@@ -40,74 +66,74 @@ export const usePlaygroundMemoryMetrics = ({
       applySnapshotMemory(patch);
     } catch {
       // 会话指标刷新失败时保留当前展示，避免影响主流程。
+    } finally {
+      inFlightRef.current = false;
     }
   }, [applySnapshotMemory, authToken, playgroundChatStreamSessionId]);
 
-  const scheduleMemoryMetricsRefresh = useCallback((delayMs = 180) => {
-    if (!authToken) {
+  const scheduleMemoryMetricsRefresh = useCallback((delayMs = MEMORY_METRICS_IDLE_DEBOUNCE_MS) => {
+    if (!authToken || isStreaming || isOrchestrating || isAnalyzingImage) {
       return;
     }
 
-    if (metricsRefreshTimerRef.current !== null) {
-      window.clearTimeout(metricsRefreshTimerRef.current);
-    }
-
+    clearDebounce();
     metricsRefreshTimerRef.current = window.setTimeout(() => {
       metricsRefreshTimerRef.current = null;
       void refreshMemoryMetrics();
     }, delayMs);
-  }, [authToken, refreshMemoryMetrics]);
+  }, [
+    authToken,
+    clearDebounce,
+    isAnalyzingImage,
+    isOrchestrating,
+    isStreaming,
+    refreshMemoryMetrics,
+  ]);
 
+  // 流式：仅 1s 轮询（不再对每个 timeline 事件立即请求）
   useEffect(() => {
-    if (!authToken) {
-      return;
-    }
-
-    void refreshMemoryMetrics();
-  }, [authToken, latestTimelineEventId, refreshMemoryMetrics]);
-
-  useEffect(() => {
-    if (!isStreaming) {
+    if (!authToken || !isStreaming) {
+      clearStreamPoll();
       return undefined;
     }
 
-    const timer = window.setInterval(() => {
+    clearDebounce();
+    void refreshMemoryMetrics();
+    streamPollTimerRef.current = window.setInterval(() => {
       void refreshMemoryMetrics();
-    }, 1000);
+    }, MEMORY_METRICS_STREAM_POLL_MS);
 
     return () => {
-      window.clearInterval(timer);
+      clearStreamPoll();
     };
-  }, [isStreaming, refreshMemoryMetrics]);
+  }, [authToken, clearDebounce, clearStreamPoll, isStreaming, refreshMemoryMetrics]);
 
+  // 空闲：消息或 timeline 变化后防抖刷新
   useEffect(() => {
     if (!authToken || isStreaming || isOrchestrating || isAnalyzingImage) {
       return undefined;
     }
 
-    if (metricsRefreshTimerRef.current !== null) {
-      window.clearTimeout(metricsRefreshTimerRef.current);
-    }
-
-    metricsRefreshTimerRef.current = window.setTimeout(() => {
-      metricsRefreshTimerRef.current = null;
-      void refreshMemoryMetrics();
-    }, 180);
+    scheduleMemoryMetricsRefresh();
 
     return () => {
-      if (metricsRefreshTimerRef.current !== null) {
-        window.clearTimeout(metricsRefreshTimerRef.current);
-        metricsRefreshTimerRef.current = null;
-      }
+      clearDebounce();
     };
   }, [
     authToken,
+    clearDebounce,
     isAnalyzingImage,
     isOrchestrating,
     isStreaming,
     latestMessageSignature,
-    refreshMemoryMetrics,
+    latestTimelineEventId,
+    scheduleMemoryMetricsRefresh,
   ]);
+
+  useEffect(() => () => {
+    clearDebounce();
+    clearStreamPoll();
+  }, [clearDebounce, clearStreamPoll]);
 
   return {
     metricsRefreshTimerRef,

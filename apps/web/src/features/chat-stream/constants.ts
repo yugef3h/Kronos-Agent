@@ -10,6 +10,10 @@ export const TAKEOUT_QUICK_ACTION_REPLY_DELAY_MS = 600;
 export const IMAGE_DEFAULT_PROMPT = '解释图片';
 export const FILE_DEFAULT_PROMPT = '请解读这个文件';
 export const HOT_TOPICS_CACHE_KEY = 'kronos.hot-topics';
+/** 流式对话时 memory metrics 轮询间隔 */
+export const MEMORY_METRICS_STREAM_POLL_MS = 1000;
+/** 空闲时 memory metrics 防抖间隔 */
+export const MEMORY_METRICS_IDLE_DEBOUNCE_MS = 180;
 export const STREAM_TYPEWRITER_DELAY_MS = 32;
 /** 距底部小于该像素时视为「贴底」，流式更新会继续自动滚动 */
 export const MESSAGE_LIST_STICK_THRESHOLD_PX = 80;
