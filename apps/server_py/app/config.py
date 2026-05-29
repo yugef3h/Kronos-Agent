@@ -98,6 +98,10 @@ class Settings(BaseSettings):
         return value.strip().lower() or None
 
     @property
+    def is_production(self) -> bool:
+        return (self.node_env or "").strip().lower() == "production"
+
+    @property
     def allowed_origins(self) -> list[str]:
         parsed = [
             origin.strip()

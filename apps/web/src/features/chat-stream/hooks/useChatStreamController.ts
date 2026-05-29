@@ -32,6 +32,7 @@ import {
   getNextDayStartTimestamp,
   setCachedLocalStorage,
 } from '../../../lib/localStorageCache';
+import { ensureKnowledgeDatasetAuthToken } from '../../../domains/knowledge/dataset-store';
 import { createPlaygroundSessionId, usePlaygroundStore } from '../../../store/playgroundStore';
 import {
   createAssistantInvocation,
@@ -544,8 +545,11 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       sessionUserContent?: string;
       streamSessionId: string;
       imageDataUrls?: string[];
+      authToken?: string;
     }) => {
-      if (!authToken) {
+      const streamAuthToken = (params.authToken ?? authToken).trim()
+        || usePlaygroundStore.getState().authToken.trim();
+      if (!streamAuthToken) {
         return false;
       }
 
@@ -647,7 +651,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${authToken}`,
+            Authorization: `Bearer ${streamAuthToken}`,
           },
           body: requestBody,
           signal: controller.signal,
@@ -658,7 +662,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           try {
             isRequestComplete = await consumeAiTaskEventsSse({
               accepted,
-              authToken,
+              authToken: streamAuthToken,
               signal: controller.signal,
               handlers: {
                 shouldContinue: () => requestId === activeRequestIdRef.current,
@@ -702,7 +706,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${streamAuthToken}`,
         },
         body: requestBody,
         signal: controller.signal,
@@ -1066,12 +1070,14 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
     stickToBottomRef.current = true;
 
+    const resolvedAuthToken = authToken.trim() || await ensureKnowledgeDatasetAuthToken();
+
     if (pendingImage) {
       if (isStreaming || isOrchestrating || isAnalyzingImage) {
         return;
       }
 
-      if (!authToken) {
+      if (!resolvedAuthToken) {
         startAssistantTypewriter('识别图片前需要先准备 JWT。');
         return;
       }
@@ -1129,7 +1135,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
           let streamCompleted = false;
           try {
             const streamPrompt = await buildPublishedChatbotPlaygroundAugmentedPrompt({
-              authToken,
+              authToken: resolvedAuthToken,
               userQuery: imagePrompt,
               workflowAppId: publishedChatbotWorkflowAppId,
             });
@@ -1142,6 +1148,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
               sessionUserContent: imagePrompt,
               streamSessionId: playgroundChatStreamSessionId,
               imageDataUrls,
+              authToken: resolvedAuthToken,
             });
           } catch (error) {
             const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
@@ -1202,7 +1209,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
       try {
         const response = await requestImageRecognition({
-          authToken,
+          authToken: resolvedAuthToken,
           imageDataUrl: imagePayload,
           prompt: imagePrompt,
           sessionId,
@@ -1236,7 +1243,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         return;
       }
 
-      if (!authToken) {
+      if (!resolvedAuthToken) {
         startAssistantTypewriter('解读文件前需要先准备 JWT。');
         return;
       }
@@ -1270,7 +1277,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
       try {
         const response = await requestFileAnalysis({
-          authToken,
+          authToken: resolvedAuthToken,
           fileDataUrl: pendingFile.dataUrl,
           fileName: pendingFile.fileName,
           mimeType: pendingFile.mimeType,
@@ -1306,7 +1313,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     setLatestUserQuestion(userPrompt);
 
     const tryHandleTakeout = async (): Promise<boolean> => {
-      if (!authToken) {
+      if (!resolvedAuthToken) {
         if (isAwaitingTakeoutFollowup) {
           startAssistantTypewriter('请先完成 JWT 鉴权后再继续点餐，我会根据你的具体需求进入外卖流程。');
           return true;
@@ -1318,7 +1325,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       try {
         setIsOrchestrating(true);
         const orchestrated = await requestTakeoutOrchestration({
-          authToken,
+          authToken: resolvedAuthToken,
           prompt: userPrompt,
           history: messages.slice(-6).map((message) => message.content),
           sessionId,
@@ -1372,7 +1379,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
 
     if (
       !publishedChatbotWorkflowAppId
-      && !authToken
+      && !resolvedAuthToken
       && !isAwaitingTakeoutFollowup
       && isTakeoutIntentPrompt(userPrompt)
     ) {
@@ -1380,7 +1387,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
       return;
     }
 
-    if (!authToken) {
+    if (!resolvedAuthToken) {
       startAssistantTypewriter('发送前需要先准备 JWT。');
       return;
     }
@@ -1407,7 +1414,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
     if (publishedChatbotWorkflowAppId) {
       try {
         streamPrompt = await buildPublishedChatbotPlaygroundAugmentedPrompt({
-          authToken,
+          authToken: resolvedAuthToken,
           userQuery: userPrompt,
           workflowAppId: publishedChatbotWorkflowAppId,
         });
@@ -1430,6 +1437,7 @@ export const useChatStreamController = (): UseChatStreamControllerResult => {
         streamPrompt,
         ...(publishedChatbotWorkflowAppId ? { sessionUserContent: userPrompt } : {}),
         streamSessionId: playgroundChatStreamSessionId,
+        authToken: resolvedAuthToken,
       });
     } catch {
       const isInterruptedRequest = interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;

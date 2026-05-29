@@ -173,6 +173,16 @@ const LOCAL_DEV_ORIGINS = [
   'http://127.0.0.1:5173',
 ]
 
+const LOCAL_DEV_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
+
+/** 非 production 时放行 localhost / 127.0.0.1 任意端口（Vite 端口被占用时会自动换端口）。 */
+export const isLocalDevOrigin = (origin: string): boolean => {
+  if (process.env.NODE_ENV === 'production') {
+    return false
+  }
+  return LOCAL_DEV_ORIGIN_PATTERN.test(origin)
+}
+
 export const allowedOrigins = [...new Set([
   ...env.ALLOWED_ORIGIN
     .split(',')

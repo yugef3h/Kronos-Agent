@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import { allowedOrigins, env } from './config/env.js';
+import { allowedOrigins, env, isLocalDevOrigin } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
@@ -21,7 +21,7 @@ app.use(
         return;
       }
 
-      if (allowedOrigins.includes(requestOrigin)) {
+      if (allowedOrigins.includes(requestOrigin) || isLocalDevOrigin(requestOrigin)) {
         callback(null, true);
         return;
       }
