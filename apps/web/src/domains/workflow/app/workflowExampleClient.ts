@@ -1,5 +1,18 @@
 import { apiUrl } from '../../../lib/api';
+import { ensureKnowledgeDatasetAuthToken } from '../../../domains/knowledge/dataset-store';
 import type { WorkflowAppRecord } from './workflowAppStore';
+
+const requireMutationAuthHeaders = async (contentType?: string): Promise<Record<string, string>> => {
+  const authToken = await ensureKnowledgeDatasetAuthToken();
+  if (!authToken) {
+    throw new Error('Workflow example mutation requires JWT');
+  }
+
+  return {
+    ...(contentType ? { 'Content-Type': contentType } : {}),
+    Authorization: `Bearer ${authToken}`,
+  };
+};
 
 let exampleAppsCache: WorkflowAppRecord[] = [];
 
@@ -32,9 +45,10 @@ export async function fetchWorkflowExampleApps(): Promise<WorkflowAppRecord[]> {
 }
 
 export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise<boolean> {
+  const headers = await requireMutationAuthHeaders('application/json');
   const response = await fetch(apiUrl(`/api/workflow/examples/${encodeURIComponent(record.id)}`), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ app: record }),
   });
   if (response.status === 403 || response.status === 409) {
@@ -62,8 +76,10 @@ export async function saveWorkflowExampleApp(record: WorkflowAppRecord): Promise
 }
 
 export async function deleteWorkflowExampleApp(appId: string): Promise<void> {
+  const headers = await requireMutationAuthHeaders();
   const response = await fetch(apiUrl(`/api/workflow/examples/${encodeURIComponent(appId)}`), {
     method: 'DELETE',
+    headers,
   });
   if (!response.ok) {
     throw new Error(`Failed to delete workflow example (${response.status})`);
@@ -79,11 +95,12 @@ export async function putWorkflowExamplePreview(
   dataUrl: string,
 ): Promise<{ ok: boolean; status: number; errorMessage?: string }> {
   try {
+    const headers = await requireMutationAuthHeaders('application/json');
     const response = await fetch(
       apiUrl(`/api/workflow/examples/${encodeURIComponent(appId)}/draft-preview`),
       {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ dataUrl }),
       },
     );

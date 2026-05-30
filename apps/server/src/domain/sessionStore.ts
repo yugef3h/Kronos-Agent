@@ -19,6 +19,7 @@ import {
   listRecentDialoguesFromRedis,
   mergeRecentDialogueItems,
 } from './session/listRecentDialoguesFromRedis.js';
+import { augmentSessionMessagesForClient } from './session/attachmentClientView.js';
 import { createEmptySession } from './session/normalizeSession.js';
 import {
   recordSessionLoad,
@@ -143,7 +144,7 @@ export const getSessionSnapshot = async (sessionId: string) => {
   const isSummaryThresholdReached = messageCount >= SUMMARY_TRIGGER_MESSAGE_COUNT;
 
   return {
-    messages: session.messages,
+    messages: augmentSessionMessagesForClient(session.messages),
     memorySummary: session.memorySummary,
     memorySummaryUpdatedAt: session.memorySummaryUpdatedAt,
     lastId: session.lastId,

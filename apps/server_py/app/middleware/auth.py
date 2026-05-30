@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from typing import Callable, Optional
 
@@ -16,14 +17,18 @@ DRAFT_PREVIEW = re.compile(r"^/api/workflow/apps/[^/]+/draft-preview")
 WORKFLOW_EXAMPLES = re.compile(r"^/api/workflow/examples")
 
 
-def should_skip_auth(path: str) -> bool:
+def _is_production() -> bool:
+    return (os.environ.get("NODE_ENV") or "").strip().lower() == "production"
+
+
+def should_skip_auth(path: str, method: str = "GET") -> bool:
     if path == "/api/dev/token":
         return True
     if ATTACHMENT_PREFIX.match(path):
         return True
-    if DRAFT_PREVIEW.match(path):
+    if DRAFT_PREVIEW.match(path) and not _is_production():
         return True
-    if WORKFLOW_EXAMPLES.match(path):
+    if WORKFLOW_EXAMPLES.match(path) and method.upper() == "GET":
         return True
     return False
 
@@ -54,7 +59,7 @@ class JwtAuthMiddleware(BaseHTTPMiddleware):
         if not path.startswith("/api"):
             return await call_next(request)
 
-        if should_skip_auth(path):
+        if should_skip_auth(path, request.method):
             return await call_next(request)
 
         error_response = verify_bearer_token(

@@ -121,7 +121,16 @@ export const getRenderableImageSource = (message: ImageRenderableMessage): strin
   }
 
   const imageAttachment = getPrimaryImageAttachment(message);
-  return imageAttachment ? apiUrl(`/api/attachments/${imageAttachment.id}`) : undefined;
+  if (!imageAttachment) {
+    return undefined;
+  }
+
+  const accessUrl = imageAttachment.accessUrl?.trim();
+  if (accessUrl) {
+    return apiUrl(accessUrl.startsWith('/') ? accessUrl : `/${accessUrl}`);
+  }
+
+  return undefined;
 };
 
 export const getRenderableImageName = (message: ImageRenderableMessage): string | undefined => {

@@ -1,4 +1,5 @@
 import { putWorkflowDraftPreview } from '../../../lib/api';
+import { ensureKnowledgeDatasetAuthToken } from '../../../domains/knowledge/dataset-store';
 import { isWorkflowExampleAppId } from './workflowExampleClient';
 import { markWorkflowDraftPreviewBackendSynced } from './workflowAppStore';
 
@@ -12,7 +13,8 @@ export async function syncWorkflowDraftPreviewToBackend(
       return;
     }
 
-    const result = await putWorkflowDraftPreview(appId, dataUrl);
+    const authToken = await ensureKnowledgeDatasetAuthToken();
+    const result = await putWorkflowDraftPreview(appId, dataUrl, authToken || undefined);
     if (result.ok) {
       if (!isWorkflowExampleAppId(appId)) {
         markWorkflowDraftPreviewBackendSynced(appId, true);
