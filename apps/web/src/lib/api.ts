@@ -1313,17 +1313,27 @@ export const requestDatasetIndexingEstimate = async (params: {
 };
 
 /** 工作流草稿画布缩略图（磁盘缓存，避免 localStorage 配额） */
-export async function putWorkflowDraftPreview(appId: string, dataUrl: string): Promise<{
+export async function putWorkflowDraftPreview(
+  appId: string,
+  dataUrl: string,
+  authToken?: string,
+): Promise<{
 	ok: boolean;
 	status: number;
 	errorMessage?: string;
 }> {
 	try {
+		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+		const token = authToken?.trim();
+		if (token) {
+			headers.Authorization = `Bearer ${token}`;
+		}
+
 		const response = await fetch(
 			apiUrl(`/api/workflow/apps/${encodeURIComponent(appId)}/draft-preview`),
 			{
 				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
+				headers,
 				body: JSON.stringify({ dataUrl }),
 			},
 		);

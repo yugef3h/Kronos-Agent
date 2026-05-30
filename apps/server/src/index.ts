@@ -4,7 +4,7 @@ import { allowedOrigins, env, isLocalDevOrigin } from './config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
-import { authenticateJwt } from './middleware/authenticateJwt.js';
+import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
 import { startWorkflowDraftWorker } from './workflow/workflowDraftQueue.js';
@@ -45,28 +45,7 @@ app.get('/api/dev/token', (_req, res) => {
   res.json(createDevToken(env.JWT_SECRET));
 });
 
-// 附件文件流需要被 <img> 直接访问，无法带 Authorization 头。
-const maybeSkipAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (req.path.startsWith('/attachments/')) {
-    next();
-    return;
-  }
-  // 列表缩略图：<img> 与 PUT 均可能无 JWT（与附件类似，仅本地 dev 数据）
-  if (
-    req.originalUrl.startsWith('/api/workflow/apps/') &&
-    req.originalUrl.includes('/draft-preview')
-  ) {
-    next();
-    return;
-  }
-  // 仓库内置示例：只读列表与缩略图无需 JWT（fork 开箱可见）
-  if (req.originalUrl.startsWith('/api/workflow/examples')) {
-    next();
-    return;
-  }
-  authenticateJwt(req, res, next);
-};
-
+// 附件 / dev 缩略图 / 示例只读 GET 可跳过 JWT；其余走 authenticateJwt（见 maybeSkipAuth.ts）
 app.use('/api', maybeSkipAuth, chatRoutes);
 
 // 启动前加载持久化 session（ESM 顶层 await）
