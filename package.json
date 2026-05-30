@@ -18,7 +18,8 @@
     "lint": "pnpm --filter @kronos/server lint && pnpm --filter @kronos/web lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "export:workflow-examples": "python3 apps/server/devtools/export-workflow-examples.py"
+    "export:workflow-examples": "python3 apps/server/devtools/export-workflow-examples.py",
+    "verify": "pnpm lint && pnpm test && pnpm build"
   },
   "keywords": [],
   "author": "yugef3h",
