@@ -48,6 +48,8 @@ export type AttachmentMeta = {
   filePath?: string;
   storagePath?: string;
   createdAt: number;
+  /** 服务端 session snapshot 注入：带 exp+sig 的只读路径 */
+  accessUrl?: string;
 };
 
 export type ChatMessage = {

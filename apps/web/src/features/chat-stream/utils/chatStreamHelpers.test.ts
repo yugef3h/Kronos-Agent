@@ -33,7 +33,30 @@ describe('chatStreamHelpers', () => {
     expect(markLastAssistantMessageIncomplete(messages)[1]?.isIncomplete).toBe(true);
   });
 
-  it('resolves image attachments from persisted session messages', () => {
+  it('resolves signed attachment accessUrl from persisted session messages', () => {
+    const accessUrl = '/api/attachments/attachment-1?exp=9999999999&sig=abc123';
+    const message = {
+      role: 'user' as const,
+      content: '解释图片',
+      attachments: [
+        {
+          id: 'attachment-1',
+          type: 'image' as const,
+          fileName: 'diagram.png',
+          mimeType: 'image/png',
+          size: 1024,
+          createdAt: 1,
+          accessUrl,
+        },
+      ],
+    };
+
+    expect(getPrimaryImageAttachment(message)?.id).toBe('attachment-1');
+    expect(getRenderableImageSource(message)).toBe(`http://localhost:3001${accessUrl}`);
+    expect(getRenderableImageName(message)).toBe('diagram.png');
+  });
+
+  it('returns undefined when attachment has no accessUrl', () => {
     const message = {
       role: 'user' as const,
       content: '解释图片',
@@ -49,9 +72,7 @@ describe('chatStreamHelpers', () => {
       ],
     };
 
-    expect(getPrimaryImageAttachment(message)?.id).toBe('attachment-1');
-    expect(getRenderableImageSource(message)).toBe('http://localhost:3001/api/attachments/attachment-1');
-    expect(getRenderableImageName(message)).toBe('diagram.png');
+    expect(getRenderableImageSource(message)).toBeUndefined();
   });
 
   it('prefers in-memory preview metadata over persisted attachment data', () => {
@@ -77,6 +98,7 @@ describe('chatStreamHelpers', () => {
   });
 
   it('splits legacy restored image messages into separate image and text bubbles', () => {
+    const accessUrl = '/api/attachments/attachment-legacy?exp=9999999999&sig=legacy123';
     const messages = hydrateRenderableMessages([
       {
         role: 'user' as const,
@@ -89,6 +111,7 @@ describe('chatStreamHelpers', () => {
             mimeType: 'image/png',
             size: 512,
             createdAt: 3,
+            accessUrl,
           },
         ],
       },
@@ -99,7 +122,7 @@ describe('chatStreamHelpers', () => {
       role: 'user',
       content: '',
       imageName: 'meal.png',
-      imagePreviewUrl: 'http://localhost:3001/api/attachments/attachment-legacy',
+      imagePreviewUrl: `http://localhost:3001${accessUrl}`,
     });
     expect(messages[1]).toMatchObject({
       role: 'user',

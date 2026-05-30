@@ -5,6 +5,7 @@ import { authenticateJwt } from './authenticateJwt.js';
 const isProduction = (): boolean => process.env.NODE_ENV === 'production';
 
 const isAttachmentPath = (path: string): boolean => path.startsWith('/attachments/');
+// attachments 仍跳过 Bearer JWT（<img> 无法带头）；handler 内验 exp+sig HMAC
 
 const isWorkflowExampleRoute = (path: string, originalUrl: string): boolean =>
   path.startsWith('/workflow/examples') || originalUrl.startsWith('/api/workflow/examples');

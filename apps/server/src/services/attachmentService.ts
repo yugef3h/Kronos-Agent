@@ -2,7 +2,7 @@ import { mkdir, writeFile, readFile, access } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
-import type { AttachmentMeta } from '../domain/sessionStore.js';
+import type { AttachmentMeta } from '../domain/session/types.js';
 
 const _dirname = dirname(fileURLToPath(import.meta.url));
 export const ATTACHMENTS_DIR = join(_dirname, '../../data/attachments');

@@ -47,6 +47,7 @@ import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
 import { generateHotTopics } from '../services/hotTopicService.js';
 import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
+import { verifyAttachmentAccess } from '../services/attachmentSignedUrl.js';
 import {
   normalizeWorkflowAppId,
   readWorkflowDraftPreviewIfExists,
@@ -929,6 +930,14 @@ chatRoutes.get('/workflow/examples/:appId/draft-preview', async (request: Reques
 
 chatRoutes.get('/attachments/:id', async (request: Request, response: Response) => {
   const id = String(request.params.id || '');
+  const exp = typeof request.query.exp === 'string' ? request.query.exp : '';
+  const sig = typeof request.query.sig === 'string' ? request.query.sig : '';
+
+  if (!verifyAttachmentAccess(id, exp, sig)) {
+    response.status(401).json({ error: 'Invalid or expired attachment signature' });
+    return;
+  }
+
   const meta = await loadAttachmentMeta(id);
 
   if (!meta) {
