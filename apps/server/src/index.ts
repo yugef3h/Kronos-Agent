@@ -5,6 +5,7 @@ import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
 import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
+import { publicAssetGuard } from './middleware/publicAssetGuard.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
 import { startWorkflowDraftWorker } from './workflow/workflowDraftQueue.js';
@@ -12,6 +13,7 @@ import { chatRoutes } from './routes/chatRoutes.js';
 import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(
   cors({
@@ -46,7 +48,7 @@ app.get('/api/dev/token', (_req, res) => {
 });
 
 // 附件 / dev 缩略图 / 示例只读 GET 可跳过 JWT；其余走 authenticateJwt（见 maybeSkipAuth.ts）
-app.use('/api', maybeSkipAuth, chatRoutes);
+app.use('/api', maybeSkipAuth, publicAssetGuard, chatRoutes);
 
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();

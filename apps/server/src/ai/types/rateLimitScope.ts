@@ -3,11 +3,13 @@ export type RateLimitScope =
   | 'user'
   | 'session'
   | 'token_budget'
-  | 'concurrent_session';
+  | 'concurrent_session'
+  | 'public_asset_ip';
 
 export const RATE_LIMIT_SCOPES: readonly RateLimitScope[] = [
   'user',
   'session',
   'token_budget',
   'concurrent_session',
+  'public_asset_ip',
 ] as const;
