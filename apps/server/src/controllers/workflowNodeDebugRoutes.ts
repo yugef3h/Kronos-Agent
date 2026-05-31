@@ -1,0 +1,66 @@
+import type { Request, Response } from 'express'
+import { Router } from 'express'
+import {
+  NodeDebugExecutorNotFoundError,
+  executeNodeDebug,
+} from '../services/workflow/executors/nodeDebugExecutors.js'
+import { workflowRunStore } from '../services/workflow/store/workflowRunStore.js'
+import { toWorkflowRunSummary } from '../services/workflow/runner/workflowRunSummary.js'
+import { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
+
+export const NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE = 'node_debug_executor_not_found'
+
+export { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
+export type { NodeDebugRouteRequestBody, ParseNodeDebugRequestResult } from './workflowNodeDebugRequest.js'
+export { nodeDebugBlockKindSchema, nodeDebugRequestSchema } from './workflowNodeDebugRequest.js'
+
+export const workflowNodeDebugRoutes = Router()
+
+export const handleWorkflowNodeDebugNodePost = async (
+  request: Pick<Request, 'body'>,
+  response: Response,
+): Promise<void> => {
+  const parsedRequest = parseNodeDebugRequestBody(request.body)
+  if (parsedRequest.ok === false) {
+    response.status(parsedRequest.status).json(parsedRequest.payload)
+    return
+  }
+
+  try {
+    const result = await executeNodeDebug(parsedRequest.request)
+    const appId = parsedRequest.request.appId
+
+    if (!appId) {
+      response.json({ result })
+      return
+    }
+
+    const runRecord = await workflowRunStore.saveNodeDebugRun({
+      appId,
+      request: parsedRequest.request,
+      result,
+    })
+
+    response.json({
+      result,
+      run: toWorkflowRunSummary(runRecord),
+    })
+  } catch (error) {
+    if (error instanceof NodeDebugExecutorNotFoundError) {
+      response.status(404).json({
+        error: error.message,
+        code: NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE,
+        kind: error.kind,
+      })
+      return
+    }
+
+    const message = error instanceof Error ? error.message : 'unknown error'
+    response.status(500).json({
+      error: `Node debug failed: ${message}`,
+      code: 'node_debug_failed',
+    })
+  }
+}
+
+workflowNodeDebugRoutes.post('/workflow/debug/node', handleWorkflowNodeDebugNodePost)

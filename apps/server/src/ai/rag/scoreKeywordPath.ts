@@ -1,4 +1,4 @@
-import { getTermCandidates, normalizeText } from '../../services/knowledgeRetrievalService.js';
+import { getTermCandidates, normalizeText } from '../../services/knowledge/knowledgeRetrievalService.js';
 
 /** 关键词路打分 */
 export const scoreKeywordPath = (query: string, text: string): number => {

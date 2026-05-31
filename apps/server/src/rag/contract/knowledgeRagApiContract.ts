@@ -1,5 +1,5 @@
 /** Step5 — 校验 `knowledge-retrieval/query` 响应形状（双引擎应对齐）；`diagnostics.query_variants` 可选。 */
-import type { KnowledgeRetrievalQueryResult } from '../../services/knowledgeRetrievalService.js';
+import type { KnowledgeRetrievalQueryResult } from '../../services/knowledge/knowledgeRetrievalService.js';
 
 const RETRIEVAL_ITEM_KEYS = [
   'dataset_id',

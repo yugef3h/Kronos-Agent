@@ -1,4 +1,4 @@
-import type { KnowledgeDatasetChunkRecord } from '../../domain/knowledgeDocumentStore.js';
+import type { KnowledgeDatasetChunkRecord } from '../../models/knowledgeDocumentStore.js';
 
 type WarmEntry = {
   chunks: KnowledgeDatasetChunkRecord[];

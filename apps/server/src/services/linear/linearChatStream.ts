@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
-import type { Message } from '../../domain/sessionStore.js';
-import { env } from '../../config/env.js';
+import type { Message } from '../../models/sessionStore.js';
+import { env } from '../../core/config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
@@ -10,15 +10,15 @@ import type { ChatOpenAI } from '@langchain/openai';
 import { safeStringify } from '../chat/safeStringify.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
 import { createTimelineEvent } from '../chat/timelineEvents.js';
-import { runPlanningStep } from '../planningStep.js';
+import { runPlanningStep } from '../langchain/planningStep.js';
 import {
   createFirstTokenInfoMessage,
   createFirstTokenSlowWarningMessage,
   createReasonCompletedMessage,
   createReasonRequestInfoMessage,
   raceFirstChunkWithTimeout,
-} from '../reasonTelemetry.js';
-import { normalizeStreamDelta } from '../streamDelta.js';
+} from '../telemetry/reasonTelemetry.js';
+import { normalizeStreamDelta } from '../streaming/streamDelta.js';
 import {
   buildPlanningSystemHint,
   getRegistryTool,
@@ -29,7 +29,7 @@ import {
 } from '../tools/index.js';
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
-import type { ModelToolCall } from '../toolCallExtractor.js';
+import type { ModelToolCall } from '../tools/toolCallExtractor.js';
 import { WEB_SEARCH_TOOL_NAME } from '../tools/tavilyWebSearchTool.js';
 
 const toLangChainMessage = (message: Message): HumanMessage | AIMessage => {

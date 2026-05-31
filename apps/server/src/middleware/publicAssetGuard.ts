@@ -6,7 +6,7 @@ import {
   type PublicAssetAuditEvent,
 } from '../audit/publicAssetAuditLog.js';
 import { checkPublicAssetRateLimit } from '../rateLimit/checkPublicAssetRateLimit.js';
-import { getClientIp } from '../utils/clientIp.js';
+import { getClientIp } from '../core/utils/clientIp.js';
 
 export type PublicAssetRouteMeta = {
   kind: 'attachment' | 'draft_preview';

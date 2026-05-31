@@ -1,16 +1,16 @@
 import cors from 'cors';
 import express from 'express';
-import { allowedOrigins, env, isLocalDevOrigin } from './config/env.js';
-import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
-import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
-import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
+import { allowedOrigins, env, isLocalDevOrigin } from './core/config/env.js';
+import { initKnowledgeDatasetStore } from './models/knowledgeDatasetStore.js';
+import { reconcileAllWorkflowExampleKnowledge } from './services/workflow/workflowExampleKnowledgeSync.js';
+import { initSessionStore, resolveSessionStoreMode } from './models/sessionStore.js';
 import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
 import { publicAssetGuard } from './middleware/publicAssetGuard.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
-import { startWorkflowDraftWorker } from './workflow/workflowDraftQueue.js';
-import { chatRoutes } from './routes/chatRoutes.js';
-import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
+import { startWorkflowDraftWorker } from './services/workflow/runner/workflowDraftQueue.js';
+import { chatRoutes } from './controllers/chatRoutes.js';
+import { createDevToken, isDevTokenRouteEnabled } from './services/auth/devTokenService.js';
 
 const app = express();
 app.set('trust proxy', 1);

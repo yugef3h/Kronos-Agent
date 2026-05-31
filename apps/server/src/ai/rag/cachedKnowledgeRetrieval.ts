@@ -1,7 +1,7 @@
 import type {
   KnowledgeRetrievalQuery,
   KnowledgeRetrievalQueryResult,
-} from '../../services/knowledgeRetrievalService.js';
+} from '../../services/knowledge/knowledgeRetrievalService.js';
 import { buildRetrievalCacheKey } from '../cache/buildRetrievalCacheKey.js';
 import { getCacheStore } from '../cache/getCacheStore.js';
 

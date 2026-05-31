@@ -1,11 +1,11 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import type { KnowledgeChunkPreview, KnowledgeDocumentChunkOptions } from '../../services/knowledgeChunkingService.js';
+import type { KnowledgeChunkPreview, KnowledgeDocumentChunkOptions } from '../../services/knowledge/knowledgeChunkingService.js';
 import {
   decodeSegmentSeparator,
   estimateTokenCount,
   extractPreprocessedKnowledgeDocument,
   type BuiltKnowledgeDocumentChunks,
-} from '../../services/knowledgeChunkingService.js';
+} from '../../services/knowledge/knowledgeChunkingService.js';
 
 const buildSplitterSeparators = (primary: string): string[] => {
   const defaults = ['\n\n', '\n', ' ', ''];

@@ -1,9 +1,9 @@
-import { getKnowledgeDatasetById } from '../../domain/knowledgeDatasetStore.js';
+import { getKnowledgeDatasetById } from '../../models/knowledgeDatasetStore.js';
 import {
   listKnowledgeDatasetChunks,
   mergeEmbeddingsIntoChunkFile,
   type KnowledgeDatasetChunkRecord,
-} from '../../domain/knowledgeDocumentStore.js';
+} from '../../models/knowledgeDocumentStore.js';
 import {
   applyReranking,
   clampUnitScore,
@@ -16,7 +16,7 @@ import {
   type KnowledgeRetrievalQuery,
   type KnowledgeRetrievalQueryResult,
   type RankedChunk,
-} from '../../services/knowledgeRetrievalService.js';
+} from '../../services/knowledge/knowledgeRetrievalService.js';
 import { maybeExpandRetrievalQueries } from './expandRetrievalQueries.js';
 import { createRagEmbeddings } from './ragEmbeddings.js';
 

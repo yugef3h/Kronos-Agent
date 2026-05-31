@@ -1,4 +1,4 @@
-import type { Message } from '../domain/sessionStore.js';
+import type { Message } from '../models/sessionStore.js';
 
 export type SessionMemoryState = {
   summary: string;

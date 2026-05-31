@@ -1,9 +1,9 @@
 import { appendAiTaskEvent } from './aiTaskEvents.js';
 import { getAiTaskStore } from './getAiTaskStore.js';
 import type { AiTaskRecord } from '../types/aiTaskRecord.js';
-import { appendSessionMessages } from '../../domain/sessionStore.js';
+import { appendSessionMessages } from '../../models/sessionStore.js';
 import { streamPlaygroundAgentReply } from '../../services/agent/agentStreamRouter.js';
-import type { Message } from '../../domain/sessionStore.js';
+import type { Message } from '../../models/sessionStore.js';
 
 type ChatTaskPayload = {
   prompt?: string;
