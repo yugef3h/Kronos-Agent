@@ -1,7 +1,7 @@
 import type { Response } from 'express'
 import { registerNodeDebugExecutor } from '../services/workflow/executors/nodeDebugExecutors.js'
 import { executeStartNodeDebug } from '../services/workflow/debug/startNodeDebugExecutor.js'
-import { workflowRunStore } from '../services/workflow/workflowRunStore.js'
+import { workflowRunStore } from '../services/workflow/store/workflowRunStore.js'
 import { handleWorkflowNodeDebugNodePost } from './workflowNodeDebugRoutes.js'
 
 export type WorkflowNodeDebugHttpResponse = {

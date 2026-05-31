@@ -4,8 +4,8 @@ import {
   NodeDebugExecutorNotFoundError,
   executeNodeDebug,
 } from '../services/workflow/executors/nodeDebugExecutors.js'
-import { workflowRunStore } from '../services/workflow/workflowRunStore.js'
-import { toWorkflowRunSummary } from '../services/workflow/workflowRunSummary.js'
+import { workflowRunStore } from '../services/workflow/store/workflowRunStore.js'
+import { toWorkflowRunSummary } from '../services/workflow/runner/workflowRunSummary.js'
 import { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
 
 export const NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE = 'node_debug_executor_not_found'
