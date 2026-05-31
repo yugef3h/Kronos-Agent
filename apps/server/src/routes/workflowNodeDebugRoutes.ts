@@ -3,9 +3,9 @@ import { Router } from 'express'
 import {
   NodeDebugExecutorNotFoundError,
   executeNodeDebug,
-} from '../workflow/nodeDebugExecutors.js'
-import { workflowRunStore } from '../workflow/workflowRunStore.js'
-import { toWorkflowRunSummary } from '../workflow/workflowRunSummary.js'
+} from '../services/workflow/nodeDebugExecutors.js'
+import { workflowRunStore } from '../services/workflow/workflowRunStore.js'
+import { toWorkflowRunSummary } from '../services/workflow/workflowRunSummary.js'
 import { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
 
 export const NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE = 'node_debug_executor_not_found'
