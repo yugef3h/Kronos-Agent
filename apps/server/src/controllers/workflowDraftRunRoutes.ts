@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
-import { normalizeWorkflowAppId } from '../../services/workflow/workflowDraftPreviewDiskStore.js'
+import { normalizeWorkflowAppId } from '../services/workflow/workflowDraftPreviewDiskStore.js'
 import { runWorkflowDraft } from '../services/workflow/runner/workflowDraftRunner.js'
 import { workflowRunStore } from '../services/workflow/store/workflowRunStore.js'
 import { toWorkflowRunSummary } from '../services/workflow/runner/workflowRunSummary.js'

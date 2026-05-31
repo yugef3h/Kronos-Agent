@@ -1,5 +1,5 @@
-import { runKnowledgeRetrievalQuery } from '../../rag/knowledgeFacade.js'
-import type { KnowledgeRetrievalQuery } from '../../services/knowledge/knowledgeRetrievalService.js'
+import { runKnowledgeRetrievalQuery } from '../../../rag/knowledgeFacade.js'
+import type { KnowledgeRetrievalQuery } from '../../../services/knowledge/knowledgeRetrievalService.js'
 import {
   NodeRunStatus,
   type NodeDebugExecutor,

@@ -1,4 +1,4 @@
-import { getRedisClient } from '../../infra/redisClient.js'
+import { getRedisClient } from '../../../infra/redisClient.js'
 import { MemoryWorkflowRunCancellation } from '../store/memoryWorkflowRunCancellation.js'
 import { RedisWorkflowRunCancellation } from '../store/redisWorkflowRunCancellation.js'
 import type { WorkflowRunCancellationBackend } from './workflowRunCancellationBackend.js'

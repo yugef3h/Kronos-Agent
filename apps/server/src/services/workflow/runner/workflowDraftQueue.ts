@@ -1,5 +1,5 @@
 import { Queue, Worker } from 'bullmq'
-import { getRedisClient } from '../../infra/redisClient.js'
+import { getRedisClient } from '../../../infra/redisClient.js'
 import type { WorkflowDraftQueueJobData } from '../runner/workflowDraftQueueTypes.js'
 
 export type { WorkflowDraftQueueJobData } from '../runner/workflowDraftQueueTypes.js'

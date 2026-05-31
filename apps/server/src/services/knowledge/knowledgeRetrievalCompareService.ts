@@ -1,5 +1,5 @@
 import type { KnowledgeRetrievalQuery, KnowledgeRetrievalQueryResult } from './knowledgeRetrievalService.js';
-import { runKnowledgeRetrievalQuery } from '../../rag/knowledgeFacade.js';
+import { runKnowledgeRetrievalQuery } from '../../../rag/knowledgeFacade.js';
 
 export type KnowledgeRetrievalCompareResult = {
   query: string;

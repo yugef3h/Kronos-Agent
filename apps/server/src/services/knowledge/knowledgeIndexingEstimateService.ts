@@ -1,4 +1,4 @@
-import { getKnowledgeDatasetById } from '../../models/knowledgeDatasetStore.js';
+import { getKnowledgeDatasetById } from '../../../models/knowledgeDatasetStore.js';
 import {
   buildKnowledgeDocumentChunks,
   estimateTokenCount,

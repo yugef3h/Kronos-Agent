@@ -52,7 +52,7 @@ import {
   normalizeWorkflowAppId,
   readWorkflowDraftPreviewIfExists,
   saveWorkflowDraftPreviewJpeg,
-} from '../../services/workflow/workflowDraftPreviewDiskStore.js';
+} from '../services/workflow/workflowDraftPreviewDiskStore.js';
 import {
   deleteWorkflowExampleApp,
   listWorkflowExampleApps,
