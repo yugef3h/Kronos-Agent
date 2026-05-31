@@ -9,7 +9,7 @@ import { runWorkflowDraftGraph } from '../../runner/workflowDraftRunner.js'
 import { buildExecutionGraph } from '../../engine/buildExecutionGraph.js'
 import type { WorkflowDraftDslGraph } from '../workflowDsl.js'
 
-jest.mock('./debug/llmNodeDebugExecutor.js', () => ({
+jest.mock('../../debug/llmNodeDebugExecutor.js', () => ({
   executeLlmNodeDebug: jest.fn(async (request: { node: { id: string } }) => ({
     nodeId: request.node.id,
     status: NodeRunStatus.Succeeded,

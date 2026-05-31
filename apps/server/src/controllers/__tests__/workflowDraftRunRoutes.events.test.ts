@@ -2,7 +2,7 @@ jest.mock('../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: jest.fn(),
 }))
 
-jest.mock('../workflow/debug/llmNodeDebugExecutor.js', () => ({
+jest.mock('../services/workflow/debug/llmNodeDebugExecutor.js', () => ({
   executeLlmNodeDebug: jest.fn(async (request: { node: { id: string } }) => ({
     nodeId: request.node.id,
     status: 'succeeded',
