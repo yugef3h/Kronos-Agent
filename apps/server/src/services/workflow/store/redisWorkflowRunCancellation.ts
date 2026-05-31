@@ -1,5 +1,5 @@
 import type { Redis } from 'ioredis'
-import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
+import { DEFAULT_WORKFLOW_RUN_TTL_MS } from '../store/memoryWorkflowRunStore.js'
 import type { WorkflowRunCancellationBackend } from './workflowRunCancellationBackend.js'
 
 const CANCEL_KEY_PREFIX = 'kronos:wf:cancel:'

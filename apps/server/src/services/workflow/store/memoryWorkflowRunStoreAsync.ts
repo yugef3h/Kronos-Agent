@@ -1,4 +1,4 @@
-import type { WorkflowRunStore } from './memoryWorkflowRunStore.js'
+import type { WorkflowRunStore } from '../store/memoryWorkflowRunStore.js'
 import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 
 export const toAsyncWorkflowRunStore = (store: WorkflowRunStore): WorkflowRunStoreBackend => ({

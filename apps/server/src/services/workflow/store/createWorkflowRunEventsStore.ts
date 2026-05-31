@@ -1,6 +1,6 @@
 import { getRedisClient } from '../../infra/redisClient.js'
-import { MemoryWorkflowRunEvents } from './memoryWorkflowRunEvents.js'
-import { RedisWorkflowRunEvents } from './redisWorkflowRunEvents.js'
+import { MemoryWorkflowRunEvents } from '../store/memoryWorkflowRunEvents.js'
+import { RedisWorkflowRunEvents } from '../store/redisWorkflowRunEvents.js'
 import type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
 
 let singleton: WorkflowRunEventsBackend | undefined

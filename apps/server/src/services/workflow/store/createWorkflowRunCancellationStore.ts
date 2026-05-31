@@ -1,6 +1,6 @@
 import { getRedisClient } from '../../infra/redisClient.js'
-import { MemoryWorkflowRunCancellation } from './memoryWorkflowRunCancellation.js'
-import { RedisWorkflowRunCancellation } from './redisWorkflowRunCancellation.js'
+import { MemoryWorkflowRunCancellation } from '../store/memoryWorkflowRunCancellation.js'
+import { RedisWorkflowRunCancellation } from '../store/redisWorkflowRunCancellation.js'
 import type { WorkflowRunCancellationBackend } from './workflowRunCancellationBackend.js'
 
 let singleton: WorkflowRunCancellationBackend | undefined

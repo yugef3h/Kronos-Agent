@@ -125,7 +125,7 @@ export {
   interpolateWorkflowPrompt,
   normalizeLLMNodeConfig,
   validateLLMNodeConfig,
-} from './debug/llmNodeDebugExecutor.js'
+} from '../debug/llmNodeDebugExecutor.js'
 export {
   buildKnowledgeRetrievalQueryPayload,
   executeKnowledgeRetrievalNodeDebug,

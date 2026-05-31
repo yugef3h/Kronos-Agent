@@ -8,7 +8,7 @@ import {
   type WorkflowRunRecord,
 } from '../types/types.js'
 import { nodeRunStatusToWorkflowRunStatus } from '../runner/workflowRunSummary.js'
-import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
+import { DEFAULT_WORKFLOW_RUN_TTL_MS } from '../store/memoryWorkflowRunStore.js'
 import { buildUpdatedWorkflowRunRecord } from '../engine/workflowRunRecordPatch.js'
 import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 

@@ -1,7 +1,7 @@
 import { getRedisClient } from '../../infra/redisClient.js'
-import { WorkflowRunStore } from './memoryWorkflowRunStore.js'
+import { WorkflowRunStore } from '../store/memoryWorkflowRunStore.js'
 import { toAsyncWorkflowRunStore } from './memoryWorkflowRunStoreAsync.js'
-import { RedisWorkflowRunStore } from './redisWorkflowRunStore.js'
+import { RedisWorkflowRunStore } from '../store/redisWorkflowRunStore.js'
 import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 
 let singleton: WorkflowRunStoreBackend | undefined

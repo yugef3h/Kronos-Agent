@@ -1,7 +1,7 @@
 import { executeEndNodeDebug } from './debug/endNodeDebugExecutor.js'
 import { executeKnowledgeRetrievalNodeDebug } from './debug/knowledgeRetrievalNodeDebugExecutor.js'
 import { executeIfElseNodeDebug } from './debug/ifElseNodeDebugExecutor.js'
-import { executeLlmNodeDebug } from './debug/llmNodeDebugExecutor.js'
+import { executeLlmNodeDebug } from '../debug/llmNodeDebugExecutor.js'
 import { executeStartNodeDebug } from './debug/startNodeDebugExecutor.js'
 import { registerNodeDebugExecutor } from '../executors/nodeDebugExecutors.js'
 

@@ -1,6 +1,6 @@
 import { transitionWorkflowRun } from '../engine/workflowFsm.js'
 import type { UpdateWorkflowRunPatch, WorkflowRunRecord } from '../types/types.js'
-import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
+import { DEFAULT_WORKFLOW_RUN_TTL_MS } from '../store/memoryWorkflowRunStore.js'
 
 export const buildUpdatedWorkflowRunRecord = (
   current: WorkflowRunRecord,
