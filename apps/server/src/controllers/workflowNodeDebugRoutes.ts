@@ -3,7 +3,7 @@ import { Router } from 'express'
 import {
   NodeDebugExecutorNotFoundError,
   executeNodeDebug,
-} from '../services/workflow/nodeDebugExecutors.js'
+} from '../services/workflow/executors/nodeDebugExecutors.js'
 import { workflowRunStore } from '../services/workflow/workflowRunStore.js'
 import { toWorkflowRunSummary } from '../services/workflow/workflowRunSummary.js'
 import { parseNodeDebugRequestBody } from './workflowNodeDebugRequest.js'
