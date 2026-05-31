@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-import { takeoutCatalogChatPrompt } from '../prompts/takeoutCatalogPrompt.js';
+import { takeoutCatalogChatPrompt } from '../../prompts/takeoutCatalogPrompt.js';
 import { analyzeTakeoutIntent } from './takeoutIntentService.js';
 
 export type TakeoutCatalogCombo = {
