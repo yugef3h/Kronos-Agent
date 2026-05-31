@@ -21,7 +21,9 @@ export const MemorySummaryPanel = () => {
 
       <div className="mt-4 rounded-xl border border-amber-200/80 border-l-4 border-l-amber-400 bg-amber-50/40 p-3">
         <h3 className="text-sm font-semibold text-amber-950">滚动摘要</h3>
-        {/* <p className="mt-1 text-xs text-slate-500">
+                {/* TODO: 摘要更新时间展示 —— 当前 service 端 snapshot 不返回更新原因（如阈值触发），
+             显示时间可能误导用户以为摘要已过期。待后端补充 triggerReason 字段后恢复展示。
+        <p className="mt-1 text-xs text-slate-500">
           最近更新:{' '}
           <span className="font-medium text-slate-700">
             {memorySummaryUpdatedAt ? new Date(memorySummaryUpdatedAt).toLocaleString('zh-CN', { hour12: false }) : '暂无'}
