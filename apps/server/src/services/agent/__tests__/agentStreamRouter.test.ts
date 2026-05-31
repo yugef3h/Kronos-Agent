@@ -18,7 +18,7 @@ jest.mock('../../langgraph/langGraphChatStream.js', () => ({
   },
 }));
 
-jest.mock('../linear/linearChatStream.js', () => ({
+jest.mock('../../linear/linearChatStream.js', () => ({
   streamLinearChatReply: async function* () {
     for (const event of linearEvents) {
       yield event;
@@ -26,7 +26,7 @@ jest.mock('../linear/linearChatStream.js', () => ({
   },
 }));
 
-jest.mock('../../config/env.js', () => ({
+jest.mock('../../../core/config/env.js', () => ({
   env: {
     LANGGRAPH_ENABLED: true,
   },
