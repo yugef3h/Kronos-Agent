@@ -2,11 +2,7 @@ import { useCallback } from 'react';
 import { createAssistantInvocation } from '../../chat-stream/assistantInvocation';
 import { withClientMessageId } from '../../chat-stream/utils/chatStreamHelpers';
 import { requestAppendSessionMessages } from '../../../lib/api';
-import type {
-  TakeoutChatMessage,
-  TakeoutMessageType,
-  TakeoutMessageUpdater,
-} from './types';
+import type { TakeoutMessageType, TakeoutMessageUpdater } from './types';
 
 type TakeoutAssistantMessageOptions = {
   flowType?: 'takeout';

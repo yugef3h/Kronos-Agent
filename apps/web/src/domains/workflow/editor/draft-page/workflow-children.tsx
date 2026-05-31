@@ -4,16 +4,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
 } from 'react';
 import {
   Background,
-  Handle,
   MarkerType,
-  Position,
   ReactFlow,
   SelectionMode,
   addEdge,
@@ -23,7 +17,6 @@ import {
   type Connection,
   type Node,
   type NodeMouseHandler,
-  type NodeProps,
   type ReactFlowInstance,
 } from 'reactflow';
 import { useSearchParams } from 'react-router-dom';
@@ -34,15 +27,11 @@ import {
 } from '../../app/workflowExampleClient';
 import {
   type OpenNodePanelHandler,
-  useWorkflowCanvasInteraction,
   WorkflowCanvasInteractionProvider,
 } from '../context/workflow-canvas-interaction-context';
 import { focusWorkflowNodeOnCanvas } from '../utils/focus-workflow-node-on-canvas';
 import { resolveDraftRunFocusNodeId } from '../utils/resolve-draft-run-focus-node';
-import {
-  useWorkflowCanvasNodes,
-  WorkflowCanvasNodesProvider,
-} from '../context/workflow-canvas-nodes-context';
+import { WorkflowCanvasNodesProvider } from '../context/workflow-canvas-nodes-context';
 import {
   collectEditorStateFromCanvasNodes,
   mergePersistedEditorStateIntoNodes,
@@ -52,46 +41,22 @@ import {
 import { WorkflowCanvasNodeDebugRegistryProvider } from '../context/workflow-canvas-node-debug-registry';
 import {
   WORKFLOW_READONLY_EXAMPLE_LABEL,
-  useWorkflowReadOnly,
   WorkflowReadOnlyProvider,
 } from '../context/workflow-read-only-context';
-import { useCanvasNodeQuickRun } from '../hooks/use-canvas-node-quick-run';
-import { validateCanvasNodeQuickRun } from '../utils/validate-canvas-node-quick-run';
-import { useWorkflowAppId } from '../hooks/use-workflow-app-id';
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
-  NODE_WIDTH,
-  SEARCH_BOX_NODE_Z_INDEX,
 } from '../layout-constants';
-import CustomEdge from '../compts/custom-edge';
 import { EmptyView } from '../compts/empty-view';
 import DslPreviewDialog from '../compts/dsl-preview-dialog';
 import { EditingTitle } from '../compts/editing-title';
-import { SearchBox } from '../compts/search-box';
 import { type CommonEdgeType, type Edge } from '../types/common';
 import type { CanvasNodeData } from '../types/canvas';
-import type { NodeItem } from '../types/search-box';
 import {
   applyConnectedEdgeSelection,
   applyNodeSelection,
-  getDescendantNodeIds,
-  removeConnectedEdges,
-  removeNodeById,
 } from '../hooks/node-selection';
-import {
-  CONTAINER_CHILD_NODE_WIDTH,
-  CONTAINER_END_NODE_WIDTH,
-  CONTAINER_NODE_HORIZONTAL_PADDING,
-  CONTAINER_NODE_MIN_HEIGHT,
-  CONTAINER_NODE_WIDTH,
-  CONTAINER_START_HANDLE_RIGHT_OFFSET,
-  CONTAINER_START_NODE_COLLAPSED_WIDTH,
-  CONTAINER_START_NODE_WIDTH,
-  getContainerBlockEnum,
-  isContainerEndKind,
-  isContainerStartKind,
-} from '../panels/container-panel/canvas';
+import { getContainerBlockEnum } from '../panels/container-panel/canvas';
 import { createWorkflowEdgeData } from '../utils/edge-data';
 import {
   createInitialTriggerNode,
@@ -100,35 +65,18 @@ import {
 } from '../utils/workflow-dsl';
 import { useContainerNodeSync } from '../hooks/use-container-node-sync';
 import { useNodesInteractions } from '../hooks/use-nodes-interactions';
-import {
-  useWorkflowDraftPersistence,
-} from '../hooks/use-workflow-draft-persistence';
+import { useWorkflowDraftPersistence } from '../hooks/use-workflow-draft-persistence';
 import { captureWorkflowDraftPreview } from '../utils/capture-workflow-draft-preview';
 import Panel from '../compts/panel';
-import NodeControl from '../compts/node-control';
-import { IconCondition } from '../assets/condition';
-import {
-  ContainerNodeBoard,
-  ContainerNodeHeader,
-  NestedEndNodeCard,
-  NestedPlainNodeCard,
-} from '../compts/container-node-ui';
-import NodeRunStatusIcon from '../compts/node-run-status-icon';
 import WorkflowRunSummaryBar from '../compts/workflow-run-summary-bar';
 import { WorkflowDraftTestRunProvider } from '../context/workflow-draft-test-run-context';
 import { WorkflowMockPublishButton } from '../compts/workflow-mock-publish-button';
 import { WorkflowTestRunButton } from './workflow-test-run-button';
-import { ContainerStartNode } from '../compts/container-start-node';
-import WorkflowNodeSummary from '../compts/workflow-node-summary';
-import type { VariableOption } from '../panels/llm-panel/types';
 import { normalizeLLMNodeConfig, validateLLMNodeConfig } from '../panels/llm-panel/schema';
 import {
-  buildIfElseConditionSummary,
-  buildIfElseTargetBranches,
   normalizeIfElseNodeConfig,
   validateIfElseNodeConfig,
 } from '../panels/ifelse-panel/schema';
-import type { IfElseCaseItem } from '../panels/ifelse-panel/types';
 import {
   normalizeIterationNodeConfig,
   validateIterationNodeConfig,
@@ -144,30 +92,19 @@ import {
 import { normalizeEndNodeConfig, validateEndNodeConfig } from '../panels/end-panel/schema';
 import { normalizeStartNodeConfig, validateStartNodeConfig } from '../panels/start-panel/schema';
 import { normalizeLoopNodeConfig, validateLoopNodeConfig } from '../panels/loop-panel/schema';
-import { buildWorkflowVariableOptions } from '../utils/variable-options';
-import { getNodeRunBorderClass } from '../utils/get-node-run-border-class';
 import { validateRunnableDsl } from '../utils/validate-runnable-dsl';
 import type { WorkflowDraftNodeRunRecord } from '../../app/workflowRunApi';
 import { useWorkflowDraftRun } from '../hooks/use-workflow-draft-run';
 import type { WorkflowRunSummary } from '../types/run';
-import { NodeRunningStatus } from '../types/common';
 import {
   areKnowledgeDatasetsEqual,
   areStringArraysEqual,
-  createNodeFromSource,
   getContainerScopeData,
   getKnowledgeDatasetIds,
 } from '../utils/workflow-node-utils';
-import {
-  beginAppendHandlePointerState,
-  consumeAppendHandleClick,
-  createAppendHandlePointerState,
-  endAppendHandlePointerState,
-  updateAppendHandlePointerState,
-} from '../utils/append-handle-pointer';
-import { resolveSearchBoxScope } from '../utils/workflow-search-scope';
 import 'reactflow/dist/style.css';
 import { WORKFLOW_EDGE_STROKE_WIDTH } from '../utils/edge-geometry';
+import { nodeTypes, edgeTypes, type ChecklistGroup, type ChecklistIssue } from './WorkflowNode';
 
 const normalizeWorkflowEdge = (edge: Edge): Edge => {
   return {
@@ -184,18 +121,6 @@ const normalizeWorkflowEdge = (edge: Edge): Edge => {
     },
   };
 };
-
-const buildConditionNodeVariableOptions = (
-  currentNodeId: string,
-  nodes: Array<{ id: string; data: CanvasNodeData; parentId?: string }>,
-  edges: Array<{ source: string; target: string }>,
-): VariableOption[] => {
-  return buildWorkflowVariableOptions(currentNodeId, nodes, edges);
-};
-
-import { AppendConnectorTrigger } from './AppendConnectorTrigger';
-
-import { WorkflowNode, nodeTypes, edgeTypes, type ChecklistGroup, type ChecklistIssue } from './WorkflowNode';
 
 export const WorkflowChildren = () => {
   const [searchParams] = useSearchParams();

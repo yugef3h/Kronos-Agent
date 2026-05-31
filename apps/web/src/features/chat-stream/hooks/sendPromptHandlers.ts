@@ -17,7 +17,7 @@ import type { FileSelectionResult } from '../../agent-tools/file';
 import { resolveImageUrlForBackend, type ImageSelectionResult } from '../../agent-tools/image';
 import { isTakeoutIntentPrompt } from '../../agent-tools/takeout';
 import type { LocalChatMessage } from '../types';
-import { withClientMessageId, markLastAssistantMessageIncomplete } from '../utils/chatStreamHelpers';
+import { withClientMessageId } from '../utils/chatStreamHelpers';
 import {
   beginPlaygroundStreamRequest,
   interruptActivePlaygroundStream,
@@ -274,7 +274,7 @@ export async function handleSendFilePrompt(ctx: SendPromptContext): Promise<bool
 export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: string): Promise<void> {
   const {
     isAwaitingTakeoutFollowup, publishedChatbotWorkflowAppId, playgroundChatStreamSessionId,
-    sessionId, streamRefs, messages, authToken,
+    streamRefs, authToken,
   } = ctx;
 
   ctx.setMessages((prev) => [...prev, withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false })]);
