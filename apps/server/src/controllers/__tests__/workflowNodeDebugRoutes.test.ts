@@ -1,5 +1,5 @@
-import { parseNodeDebugRequestBody } from '../../../workflowNodeDebugRequest.js'
-import { NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE } from '../../../workflowNodeDebugRoutes.js'
+import { parseNodeDebugRequestBody } from '../../workflowNodeDebugRequest.js'
+import { NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE } from '../../workflowNodeDebugRoutes.js'
 
 describe('workflowNodeDebugRoutes helpers', () => {
   it('parses a valid start node debug request', () => {

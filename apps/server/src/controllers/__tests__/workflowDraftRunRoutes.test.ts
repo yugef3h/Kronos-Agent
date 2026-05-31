@@ -1,4 +1,4 @@
-import { normalizeWorkflowRunId } from '../../../workflowRunId.js'
+import { normalizeWorkflowRunId } from '../../workflowRunId.js'
 
 describe('workflowDraftRunRoutes helpers', () => {
   it('normalizes run ids', () => {
