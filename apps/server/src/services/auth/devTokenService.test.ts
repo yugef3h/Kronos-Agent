@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { createDevToken, isDevTokenRouteEnabled } from './devTokenService';
+import { createDevToken, isDevTokenRouteEnabled } from './auth/devTokenService';
 
 const getJwtVerify = (): typeof jwt.verify => {
   const verify = (jwt as unknown as { verify?: typeof jwt.verify }).verify;
