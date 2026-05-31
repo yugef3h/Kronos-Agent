@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { env } from '../core/config/env.js';
-import { resolveJwtVerify } from '../utils/jwtInterop.js';
+import { resolveJwtVerify } from '../core/utils/jwtInterop.js';
 
 export const authenticateJwt = (request: Request, response: Response, next: NextFunction) => {
   if (request.method === 'OPTIONS') {

@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { resolveJwtSign } from '../utils/jwtInterop.js';
+import { resolveJwtSign } from '../core/utils/jwtInterop.js';
 
 export type DevTokenPayload = {
   token: string;
