@@ -1,4 +1,4 @@
-import { getRedisClient } from '../../../infra/redisClient.js'
+import { getRedisClient } from '../../infra/redisClient.js'
 import { WorkflowRunStore } from '../store/memoryWorkflowRunStore.js'
 import { toAsyncWorkflowRunStore } from './memoryWorkflowRunStoreAsync.js'
 import { RedisWorkflowRunStore } from '../store/redisWorkflowRunStore.js'

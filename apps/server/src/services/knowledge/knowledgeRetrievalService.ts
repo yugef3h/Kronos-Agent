@@ -2,13 +2,13 @@ import {
   getKnowledgeDatasetById,
   type KnowledgeDatasetRecord,
   type KnowledgeSearchMethod,
-} from '../../../models/knowledgeDatasetStore.js';
+} from '../../models/knowledgeDatasetStore.js';
 import {
   listKnowledgeDatasetChunks,
   type KnowledgeDatasetChunkRecord,
-} from '../../../models/knowledgeDocumentStore.js';
-import { getWarmChunks, setWarmChunks } from '../../../ai/rag/chunkWarmCache.js';
-import { maybeExpandRetrievalQueries } from '../../../rag/langchain/expandRetrievalQueries.js';
+} from '../../models/knowledgeDocumentStore.js';
+import { getWarmChunks, setWarmChunks } from '../../ai/rag/chunkWarmCache.js';
+import { maybeExpandRetrievalQueries } from '../../rag/langchain/expandRetrievalQueries.js';
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay';
 export type KnowledgeMetadataFilteringMode = 'disabled' | 'manual';

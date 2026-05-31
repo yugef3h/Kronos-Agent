@@ -1,4 +1,4 @@
-import type { KnowledgeDatasetRecord } from '../../../models/knowledgeDatasetStore.js';
+import type { KnowledgeDatasetRecord } from '../../models/knowledgeDatasetStore.js';
 import type { KnowledgeDocumentPreprocessingRules } from './knowledgeChunkingService.js';
 
 export const DEFAULT_IMPORT_PREPROCESSING_RULES: KnowledgeDocumentPreprocessingRules = {
