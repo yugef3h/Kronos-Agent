@@ -1,6 +1,6 @@
 import { NodeRunStatus } from '../types/types.js'
 import { runIterationSandbox } from '../container/iterationSandbox.js'
-import type { NodeExecutor } from '../nodeExecutors.js'
+import type { NodeExecutor } from './nodeExecutors.js'
 
 export const executeIterationNode: NodeExecutor = async (request) => {
   const startedAt = Date.now()

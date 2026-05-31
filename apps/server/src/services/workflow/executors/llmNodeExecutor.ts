@@ -4,7 +4,7 @@ import {
   fromNodeDebugResult,
   toNodeDebugRequest,
 } from '../runner/executorBridge.js'
-import type { NodeExecutor } from '../nodeExecutors.js'
+import type { NodeExecutor } from './nodeExecutors.js'
 
 export const executeLlmNode: NodeExecutor = async (request) => {
   const debugResult = await executeLlmNodeDebug(toNodeDebugRequest(request))

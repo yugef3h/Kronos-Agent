@@ -10,7 +10,7 @@ import {
   importKnowledgeDocument,
   previewKnowledgeDocuments,
 } from '../../models/knowledgeDocumentStore.js';
-import { runKnowledgeRetrievalQuery } from '../../../services/knowledge/knowledgeRetrievalService.js';
+import { runKnowledgeRetrievalQuery } from '../../services/knowledge/knowledgeRetrievalService.js';
 import {
   assertKnowledgePreviewItemContract,
   assertKnowledgeRetrievalQueryResultContract,
