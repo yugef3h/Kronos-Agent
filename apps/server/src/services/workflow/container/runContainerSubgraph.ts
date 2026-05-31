@@ -4,10 +4,10 @@ import {
   nodeExecutorRegistry,
 } from '../executors/nodeExecutors.js'
 import type { WorkflowNodeBlockKind, WorkflowNodePayload } from '../executors/nodeExecutors.js'
-import type { RunContext } from '../runContext.js'
+import type { RunContext } from '../runner/runContext.js'
 import { NodeRunStatus, type RunError } from '../types/types.js'
-import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../workflowDsl.js'
-import type { WorkflowDraftNodeRunRecord } from '../workflowDraftRunner.js'
+import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../engine/workflowDsl.js'
+import type { WorkflowDraftNodeRunRecord } from '../runner/workflowDraftRunner.js'
 import { getExecutionGraphSuccessors } from '../engine/buildExecutionGraph.js'
 import type { ExecutionGraphNode } from '../engine/buildExecutionGraph.js'
 import {

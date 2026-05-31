@@ -1,4 +1,4 @@
-import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../workflowDsl.js'
+import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../engine/workflowDsl.js'
 import {
   getExecutionGraphSuccessors,
   type ExecutionGraph,
