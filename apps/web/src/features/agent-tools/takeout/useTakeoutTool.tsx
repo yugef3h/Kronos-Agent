@@ -7,19 +7,19 @@ import {
   type RefObject,
   type SetStateAction,
 } from 'react';
-import { MOCK_ADDRESS, MOCK_DELIVERY, MOCK_DISCOUNT, MOCK_FOODS, type TakeoutCombo, type TakeoutFood } from './data/mockData';
+import { MOCK_ADDRESS, type TakeoutCombo, type TakeoutFood } from './data/mockData';
 import {
   buildTakeoutOrderPrompt,
   createInitialTakeoutFlowState,
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
 import { withClientMessageId } from '../../chat-stream/utils/chatStreamHelpers';
-import { requestTakeoutCatalog } from '../../../lib/api';
 import {
   hasTakeoutBindingConfirmed,
   setTakeoutBindingConfirmed,
 } from './localBindingCache';
 import { useTakeoutMessageHelpers } from './takeoutMessageHelpers';
+import { useTakeoutCatalog } from './useTakeoutCatalog';
 import type {
   TakeoutChatMessage,
   TakeoutFlowState,
@@ -62,14 +62,6 @@ const createInitialModalState = (): TakeoutModalState => ({
   authFlowId: null,
   comboFlowId: null,
   paymentFlowId: null,
-});
-
-const createLocalCatalogFallback = (address = MOCK_ADDRESS) => ({
-  source: 'fallback' as const,
-  address,
-  discount: MOCK_DISCOUNT,
-  delivery: MOCK_DELIVERY,
-  foods: MOCK_FOODS,
 });
 
 export const useTakeoutTool = ({
@@ -126,30 +118,7 @@ export const useTakeoutTool = ({
     appendTakeoutSessionMessages,
   } = useTakeoutMessageHelpers(setMessages, authToken, sessionId);
 
-  const loadTakeoutCatalog = useCallback(async (params: {
-    prompt: string;
-    address: string;
-  }) => {
-    if (!authToken.trim()) {
-      return createLocalCatalogFallback(params.address);
-    }
-
-    try {
-      const catalog = await requestTakeoutCatalog({
-        authToken,
-        prompt: params.prompt,
-        address: params.address,
-      });
-
-      if (catalog.foods.length === 0) {
-        return createLocalCatalogFallback(params.address);
-      }
-
-      return catalog;
-    } catch {
-      return createLocalCatalogFallback(params.address);
-    }
-  }, [authToken]);
+  const { loadTakeoutCatalog } = useTakeoutCatalog(authToken);
 
   const startTakeoutConversation = useCallback(async (initialUserPrompt?: string) => {
     const nextFlowId = Date.now();
