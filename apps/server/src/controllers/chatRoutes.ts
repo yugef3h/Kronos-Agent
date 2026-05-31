@@ -36,11 +36,11 @@ import {
   SessionConflictError,
   SessionStreamLockBusyError,
 } from '../models/sessionStore.js';
-import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
+import { generateTakeoutCatalog } from '../services/takeout/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
-import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
-import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
-import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
+import { analyzeTakeoutIntent } from '../services/takeout/takeoutIntentService.js';
+import { orchestrateTakeoutPrompt } from '../services/takeout/takeoutOrchestratorService.js';
+import { simulateTakeoutReply } from '../services/takeout/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
 import { uploadImageToImgbb } from '../services/image/imgbbUploadService.js';
 import { recognizeImageByDoubao } from '../services/image/imageRecognitionService.js';
