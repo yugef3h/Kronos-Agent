@@ -1,5 +1,5 @@
-import { WorkflowRunStatus } from '../types.js'
-import { WorkflowFsmTransitionError } from '../workflowFsm.js'
+import { WorkflowRunStatus } from '../../types/types.js'
+import { WorkflowFsmTransitionError } from '../../engine/workflowFsm.js'
 import { buildUpdatedWorkflowRunRecord } from '../workflowRunRecordPatch.js'
 
 describe('buildUpdatedWorkflowRunRecord', () => {

@@ -1,5 +1,5 @@
-import { NodeRunStatus } from '../types.js'
-import type { NodeDebugRequest } from '../types.js'
+import { NodeRunStatus } from '../../types/types.js'
+import type { NodeDebugRequest } from '../../types/types.js'
 import {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,

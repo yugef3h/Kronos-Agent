@@ -1,4 +1,4 @@
-import { NodeRunStatus, WorkflowRunStatus } from '../types.js'
+import { NodeRunStatus, WorkflowRunStatus } from '../../types/types.js'
 import { WorkflowRunStore } from '../memoryWorkflowRunStore.js'
 
 describe('WorkflowRunStore', () => {

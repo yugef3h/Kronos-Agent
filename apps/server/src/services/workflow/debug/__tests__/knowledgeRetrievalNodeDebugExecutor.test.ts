@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../types.js'
+import { NodeRunStatus } from '../../types/types.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 

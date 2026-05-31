@@ -1,12 +1,12 @@
 import { fromNodeDebugResult } from '../executorBridge.js'
 import { executeLlmNode } from '../../executors/llmNodeExecutor.js'
 import { executeLlmNodeDebug } from '../../debug/llmNodeDebugExecutor.js'
-import { RunContext } from '../runContext.js'
+import { RunContext } from '../../runner/runContext.js'
 import {
   toWorkflowDraftNodeRunRecord,
   workflowDraftNodeRunRecordFromDebug,
 } from '../nodeRunRecord.js'
-import { NodeRunStatus } from '../types.js'
+import { NodeRunStatus } from '../../types/types.js'
 
 jest.mock('./debug/llmNodeDebugExecutor.js', () => ({
   executeLlmNodeDebug: jest.fn(async (request: { node: { id: string } }) => ({

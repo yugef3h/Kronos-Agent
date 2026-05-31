@@ -1,4 +1,4 @@
-import { buildExecutionGraph, getExecutionGraphSuccessors } from '../buildExecutionGraph.js'
+import { buildExecutionGraph, getExecutionGraphSuccessors } from '../../engine/buildExecutionGraph.js'
 
 describe('buildExecutionGraph', () => {
   it('builds adjacency and in-degree for a simple chain', () => {
