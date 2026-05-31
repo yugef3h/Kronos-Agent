@@ -1,9 +1,9 @@
-import { getKnowledgeDatasetById } from '../../domain/knowledgeDatasetStore.js';
+import { getKnowledgeDatasetById } from '../../models/knowledgeDatasetStore.js';
 import {
   listKnowledgeDatasetChunks,
   mergeEmbeddingsIntoChunkFile,
   type KnowledgeDatasetChunkRecord,
-} from '../../domain/knowledgeDocumentStore.js';
+} from '../../models/knowledgeDocumentStore.js';
 import {
   applyReranking,
   clampUnitScore,

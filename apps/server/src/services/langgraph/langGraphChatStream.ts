@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
-import type { Message } from '../../domain/sessionStore.js';
+import type { Message } from '../../models/sessionStore.js';
 import { env } from '../../core/config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
