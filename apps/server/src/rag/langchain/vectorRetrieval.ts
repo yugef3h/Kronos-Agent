@@ -16,7 +16,7 @@ import {
   type KnowledgeRetrievalQuery,
   type KnowledgeRetrievalQueryResult,
   type RankedChunk,
-} from '../../services/knowledgeRetrievalService.js';
+} from '../../services/knowledge/knowledgeRetrievalService.js';
 import { maybeExpandRetrievalQueries } from './expandRetrievalQueries.js';
 import { createRagEmbeddings } from './ragEmbeddings.js';
 
