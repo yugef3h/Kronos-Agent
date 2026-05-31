@@ -1,5 +1,5 @@
 import type { AttachmentMeta, Message } from './types.js';
-import { buildSignedAttachmentPath } from '../../services/attachmentSignedUrl.js';
+import { buildSignedAttachmentPath } from '../../services/attachment/attachmentSignedUrl.js';
 
 export type ClientAttachmentMeta = AttachmentMeta & {
   accessUrl: string;
