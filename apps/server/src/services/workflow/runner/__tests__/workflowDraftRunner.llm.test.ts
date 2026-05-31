@@ -1,4 +1,4 @@
-jest.mock('../rag/knowledgeFacade.js', () => ({
+jest.mock('../../../../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: jest.fn(),
 }))
 

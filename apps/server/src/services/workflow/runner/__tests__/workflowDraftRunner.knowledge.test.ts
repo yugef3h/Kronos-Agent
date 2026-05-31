@@ -7,7 +7,7 @@ import type { WorkflowDraftDslGraph } from '../workflowDsl.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 
-jest.mock('../rag/knowledgeFacade.js', () => ({
+jest.mock('../../../../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: (...args: unknown[]) => mockRunKnowledgeRetrievalQuery(...args),
 }))
 

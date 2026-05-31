@@ -9,7 +9,7 @@ const graphEvents: LangChainStreamEvent[] = [
   { type: 'timeline', stage: 'plan', status: 'start', message: 'graph', timestamp: 1 },
 ];
 
-jest.mock('../langgraph/langGraphChatStream.js', () => ({
+jest.mock('../../langgraph/langGraphChatStream.js', () => ({
   streamLangGraphChatReply: async function* () {
     for (const event of graphEvents) {
       yield event;
