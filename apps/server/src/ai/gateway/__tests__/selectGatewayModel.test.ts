@@ -1,5 +1,5 @@
-import type { GatewayModelConfig } from '../types/gatewayModelConfig.js';
-import { selectGatewayModel } from './selectGatewayModel.js';
+import type { GatewayModelConfig } from '../../../types/gatewayModelConfig.js';
+import { selectGatewayModel } from '../../../selectGatewayModel.js';
 
 const baseConfig = (overrides: Partial<GatewayModelConfig>): GatewayModelConfig => ({
   id: 'a',

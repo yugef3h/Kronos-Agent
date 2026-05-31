@@ -1,4 +1,4 @@
-import { parseGatewayModelConfigs } from './parseGatewayModelConfigs.js';
+import { parseGatewayModelConfigs } from '../../../parseGatewayModelConfigs.js';
 
 describe('parseGatewayModelConfigs', () => {
   it('returns empty array when raw is missing', () => {
