@@ -4,7 +4,7 @@ import {
   createReasonCompletedMessage,
   createReasonRequestInfoMessage,
   raceFirstChunkWithTimeout,
-} from '../../reasonTelemetry';
+} from '../reasonTelemetry';
 
 describe('reasonTelemetry', () => {
   it('should format reason request info message', () => {

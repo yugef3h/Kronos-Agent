@@ -4,7 +4,7 @@ import {
   isCircuitOpen,
   recordCircuitFailure,
   recordCircuitSuccess,
-} from '../../circuitBreaker.js';
+} from '../circuitBreaker.js';
 
 describe('circuitBreaker', () => {
   beforeEach(() => {

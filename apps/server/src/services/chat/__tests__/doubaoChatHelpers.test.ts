@@ -1,7 +1,7 @@
 import {
   extractDoubaoChatReply,
   readDoubaoChatStreamReply,
-} from '../../doubaoChatHelpers';
+} from '../doubaoChatHelpers';
 
 const createSseResponse = (chunks: string[]): Response => {
   const encoder = new TextEncoder();

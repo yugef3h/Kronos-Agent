@@ -1,4 +1,4 @@
-import { consumeTokenBucket, createTokenBucket, remainingTokens } from '../../tokenBucket.js';
+import { consumeTokenBucket, createTokenBucket, remainingTokens } from '../tokenBucket.js';
 
 describe('tokenBucket', () => {
   it('creates bucket at full capacity', () => {

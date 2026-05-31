@@ -1,4 +1,4 @@
-import { estimatePromptTier } from '../../estimatePromptTier.js';
+import { estimatePromptTier } from '../estimatePromptTier.js';
 
 describe('estimatePromptTier', () => {
   it('returns small for prompts under 500 tokens', () => {

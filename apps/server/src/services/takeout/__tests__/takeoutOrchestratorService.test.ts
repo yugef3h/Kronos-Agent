@@ -1,4 +1,4 @@
-import { parseTakeoutOrchestrationOutput } from '../../takeoutOrchestratorService';
+import { parseTakeoutOrchestrationOutput } from '../takeoutOrchestratorService';
 
 describe('takeoutOrchestratorService parser', () => {
   it('parses chat mode output and strips marker', () => {

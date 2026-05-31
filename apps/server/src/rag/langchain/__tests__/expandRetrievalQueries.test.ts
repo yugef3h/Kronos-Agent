@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { maybeExpandRetrievalQueries } from '../../expandRetrievalQueries.js';
+import { maybeExpandRetrievalQueries } from '../expandRetrievalQueries.js';
 
 describe('maybeExpandRetrievalQueries', () => {
   let previousFlag: string | undefined;

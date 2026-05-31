@@ -2,7 +2,7 @@ import { NodeRunStatus } from '../../services/workflow/types.js'
 import { registerNodeDebugExecutor } from '../../services/workflow/nodeDebugExecutors.js'
 import { executeKnowledgeRetrievalNodeDebug } from '../../services/workflow/debug/knowledgeRetrievalNodeDebugExecutor.js'
 import { workflowRunStore } from '../../services/workflow/workflowRunStore.js'
-import { invokeWorkflowNodeDebugNodePost } from '../../workflowNodeDebugRoutes.testUtils.js'
+import { invokeWorkflowNodeDebugNodePost } from '../workflowNodeDebugRoutes.testUtils.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 

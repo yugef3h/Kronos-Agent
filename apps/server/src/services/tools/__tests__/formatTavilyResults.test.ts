@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { formatTavilyResultsForLlm } from '../../formatTavilyResults';
+import { formatTavilyResultsForLlm } from '../formatTavilyResults';
 
 describe('formatTavilyResultsForLlm', () => {
   it('returns empty message when no hits', () => {

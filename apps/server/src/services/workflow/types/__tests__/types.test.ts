@@ -3,7 +3,7 @@ import {
   WorkflowRunStatus,
   isTerminalNodeRunStatus,
   isTerminalWorkflowRunStatus,
-} from '../../types.js'
+} from '../types.js'
 
 describe('workflow run types', () => {
   it('aligns waiting/stopped with web WorkflowRunningStatus', () => {

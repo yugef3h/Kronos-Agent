@@ -1,4 +1,4 @@
-import { deriveCatalogDiscount, generateTakeoutCatalog } from '../../takeoutCatalogService';
+import { deriveCatalogDiscount, generateTakeoutCatalog } from '../takeoutCatalogService';
 
 describe('takeoutCatalogService', () => {
   const previousEnv = {

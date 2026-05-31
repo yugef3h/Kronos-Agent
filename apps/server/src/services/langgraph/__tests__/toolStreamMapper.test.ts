@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { AIMessage, ToolMessage } from '@langchain/core/messages';
-import { mapLangGraphUpdateToTimelineEvents } from '../../toolStreamMapper';
+import { mapLangGraphUpdateToTimelineEvents } from '../toolStreamMapper';
 
 describe('mapLangGraphUpdateToTimelineEvents', () => {
   it('emits tool start on agent tool_calls', () => {

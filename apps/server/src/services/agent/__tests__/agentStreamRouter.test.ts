@@ -32,7 +32,7 @@ jest.mock('../../config/env.js', () => ({
   },
 }));
 
-import { streamPlaygroundAgentReply } from '../../agentStreamRouter.js';
+import { streamPlaygroundAgentReply } from '../agentStreamRouter.js';
 
 describe('streamPlaygroundAgentReply', () => {
   it('falls back to linear when langgraph throws', async () => {

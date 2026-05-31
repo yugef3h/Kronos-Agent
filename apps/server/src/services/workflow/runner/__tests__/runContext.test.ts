@@ -1,4 +1,4 @@
-import { RunContext, normalizeVariableSelector } from '../../runContext.js'
+import { RunContext, normalizeVariableSelector } from '../runContext.js'
 
 describe('RunContext', () => {
   it('normalizes dotted selectors', () => {

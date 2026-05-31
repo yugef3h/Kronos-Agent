@@ -8,7 +8,7 @@ jest.mock('../domain/knowledgeDocumentStore.js', () => ({
   listKnowledgeDatasetChunks: (...args: unknown[]) => mockListChunks(...args),
 }));
 
-import { computeKnowledgeDatasetHealth } from '../../knowledgeDatasetHealthService.js';
+import { computeKnowledgeDatasetHealth } from '../knowledgeDatasetHealthService.js';
 
 describe('computeKnowledgeDatasetHealth', () => {
   beforeEach(() => {

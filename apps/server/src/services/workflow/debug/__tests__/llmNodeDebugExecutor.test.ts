@@ -1,10 +1,10 @@
-import { NodeRunStatus } from '../../types.js'
+import { NodeRunStatus } from '../types.js'
 import {
   executeLlmNodeDebug,
   interpolateWorkflowPrompt,
   normalizeLLMNodeConfig,
   validateLLMNodeConfig,
-} from '../../llmNodeDebugExecutor.js'
+} from '../llmNodeDebugExecutor.js'
 
 describe('llmNodeDebugExecutor', () => {
   it('interpolates workflow variable placeholders', () => {

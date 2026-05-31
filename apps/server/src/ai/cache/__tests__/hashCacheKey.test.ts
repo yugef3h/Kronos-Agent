@@ -1,4 +1,4 @@
-import { hashCacheKey } from '../../hashCacheKey.js';
+import { hashCacheKey } from '../hashCacheKey.js';
 
 describe('hashCacheKey', () => {
   it('is stable for same parts regardless of key order', () => {

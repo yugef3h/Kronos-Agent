@@ -8,9 +8,9 @@ jest.mock('../../domain/sessionStore.js', () => ({
   appendSessionMessages: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { clearAllAiTaskEvents } from '../../aiTaskEvents.js';
-import { clearAiTaskStore, createAiTask, getAiTask } from '../../memoryAiTaskStore.js';
-import { runChatAiTask } from '../../runChatAiTask.js';
+import { clearAllAiTaskEvents } from '../aiTaskEvents.js';
+import { clearAiTaskStore, createAiTask, getAiTask } from '../memoryAiTaskStore.js';
+import { runChatAiTask } from '../runChatAiTask.js';
 
 describe('runChatAiTask', () => {
   beforeEach(() => {

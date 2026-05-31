@@ -6,7 +6,7 @@ import { initKnowledgeDatasetStore, resetKnowledgeDatasetStoreForTests } from '.
 import {
   promoteKnowledgeDatasetToExample,
   toExampleRelativeDocumentPath,
-} from '../../workflowExampleKnowledgeSync.js';
+} from '../workflowExampleKnowledgeSync.js';
 
 describe('workflowExampleKnowledgeSync', () => {
   let tempDir = '';

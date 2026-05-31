@@ -21,7 +21,7 @@ import {
   handleCancelWorkflowDraftRunPost,
   handleStartWorkflowDraftRunPost,
   handleWorkflowDraftRunEventsGet,
-} from '../../workflowDraftRunRoutes.js'
+} from '../workflowDraftRunRoutes.js'
 
 const createMockResponse = () => {
   let statusCode = 200

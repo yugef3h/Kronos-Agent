@@ -4,7 +4,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   collectDatasetIdsFromWorkflowApp,
   findWorkflowExampleAppsUsingDataset,
-} from '../../workflowKnowledgeDependencies.js';
+} from '../workflowKnowledgeDependencies.js';
 
 const EXAMPLES_DIR = join(process.cwd(), 'apps/server/data/workflow-examples');
 const DATASET_ID = 'ai工程师转型技能表-2026';

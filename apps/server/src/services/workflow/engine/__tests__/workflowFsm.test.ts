@@ -1,11 +1,11 @@
-import { WorkflowRunStatus } from '../../types.js'
+import { WorkflowRunStatus } from '../types.js'
 import {
   WorkflowFsmTransitionError,
   canTransitionWorkflowRun,
   getAllowedWorkflowRunTransitions,
   isWorkflowRunActive,
   transitionWorkflowRun,
-} from '../../workflowFsm.js'
+} from '../workflowFsm.js'
 
 describe('workflowFsm', () => {
   it('allows queued to running', () => {

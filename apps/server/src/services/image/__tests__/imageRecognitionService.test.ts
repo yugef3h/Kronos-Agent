@@ -1,4 +1,4 @@
-import { extractDoubaoChatReply } from '../../doubaoChatHelpers.js';
+import { extractDoubaoChatReply } from '../doubaoChatHelpers.js';
 
 const extractImageRecognitionReply = extractDoubaoChatReply as (payload: unknown) => string;
 

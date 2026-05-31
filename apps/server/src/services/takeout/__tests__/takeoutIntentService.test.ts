@@ -1,4 +1,4 @@
-import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from '../../takeoutIntentService';
+import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from '../takeoutIntentService';
 
 describe('takeoutIntentService', () => {
   it('detects high-confidence takeout order with slots', () => {

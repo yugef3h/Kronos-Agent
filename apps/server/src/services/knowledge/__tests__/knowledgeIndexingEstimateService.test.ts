@@ -7,7 +7,7 @@ import {
   resetKnowledgeDatasetStoreForTests,
 } from '../../../models/knowledgeDatasetStore.js';
 import { listKnowledgeDocuments } from '../../../models/knowledgeDocumentStore.js';
-import { runKnowledgeIndexingEstimate } from '../../knowledgeIndexingEstimateService.js';
+import { runKnowledgeIndexingEstimate } from '../knowledgeIndexingEstimateService.js';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {
   const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');

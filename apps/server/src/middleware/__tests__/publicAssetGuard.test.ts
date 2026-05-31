@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 import type { Request, Response } from 'express';
 
 import { clearRateLimitStore } from '../../ai/rateLimit/rateLimitStore.js';
-import { matchPublicAssetRoute, publicAssetGuard } from '../../publicAssetGuard.js';
+import { matchPublicAssetRoute, publicAssetGuard } from '../publicAssetGuard.js';
 
 const mockRequest = (params: {
   method?: string;

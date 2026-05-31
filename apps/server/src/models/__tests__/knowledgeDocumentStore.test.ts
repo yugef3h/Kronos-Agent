@@ -7,14 +7,14 @@ import {
   initKnowledgeDatasetStore,
   listKnowledgeDatasets,
   resetKnowledgeDatasetStoreForTests,
-} from '../../knowledgeDatasetStore.js';
+} from '../knowledgeDatasetStore.js';
 import {
   getKnowledgeDocumentBlocks,
   importKnowledgeDocument,
   KnowledgeDocumentDuplicateError,
   listKnowledgeDocuments,
   updateKnowledgeDocumentBlockKeywords,
-} from '../../knowledgeDocumentStore.js';
+} from '../knowledgeDocumentStore.js';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {
   const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value, 'utf8');
