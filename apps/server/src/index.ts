@@ -9,7 +9,7 @@ import { publicAssetGuard } from './middleware/publicAssetGuard.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
 import { startWorkflowDraftWorker } from './services/workflow/workflowDraftQueue.js';
-import { chatRoutes } from './routes/chatRoutes.js';
+import { chatRoutes } from './controllers/chatRoutes.js';
 import { createDevToken, isDevTokenRouteEnabled } from './services/auth/devTokenService.js';
 
 const app = express();
