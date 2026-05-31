@@ -5,11 +5,11 @@ import {
   createKnowledgeDataset,
   initKnowledgeDatasetStore,
   resetKnowledgeDatasetStoreForTests,
-} from '../domain/knowledgeDatasetStore.js';
+} from '../models/knowledgeDatasetStore.js';
 import {
   importKnowledgeDocument,
   previewKnowledgeDocuments,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDocumentStore.js';
 import { runKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import {
   assertKnowledgePreviewItemContract,

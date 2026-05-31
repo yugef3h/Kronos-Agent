@@ -1,4 +1,4 @@
-import type { Message } from '../domain/sessionStore.js';
+import type { Message } from '../models/sessionStore.js';
 import {
   CONTEXT_WINDOW_TOKENS,
   INPUT_BUDGET_RATIO,

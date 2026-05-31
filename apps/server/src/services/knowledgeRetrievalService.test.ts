@@ -6,10 +6,10 @@ import {
   initKnowledgeDatasetStore,
   resetKnowledgeDatasetStoreForTests,
   updateKnowledgeDataset,
-} from '../domain/knowledgeDatasetStore';
+} from '../models/knowledgeDatasetStore';
 import {
   importKnowledgeDocument,
-} from '../domain/knowledgeDocumentStore';
+} from '../models/knowledgeDocumentStore';
 import { runKnowledgeRetrievalQuery } from './knowledgeRetrievalService';
 
 const toDataUrl = (mimeType: string, value: string) => {

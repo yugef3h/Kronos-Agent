@@ -7,8 +7,8 @@ import {
   persistSession,
   SessionConflictError,
   waitForSessionPersist,
-} from '../domain/sessionStore.js';
-import { acquireSessionStreamLock } from '../domain/session/sessionStreamLock.js';
+} from '../models/sessionStore.js';
+import { acquireSessionStreamLock } from '../models/session/sessionStreamLock.js';
 import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../memory/index.js';
 import { getActiveModelName } from '../ai/gateway/resolveDefaultGatewayModel.js';

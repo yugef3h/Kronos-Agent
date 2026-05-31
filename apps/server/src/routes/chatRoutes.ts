@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import { createReadStream } from 'fs';
-import type { AttachmentMeta } from '../domain/sessionStore.js';
+import type { AttachmentMeta } from '../models/sessionStore.js';
 import {
   createKnowledgeDataset,
   deleteKnowledgeDataset,
@@ -17,7 +17,7 @@ import {
   updateKnowledgeDataset,
   updateKnowledgeDocumentBlockKeywords,
 } from '../rag/knowledgeFacade.js';
-import { KnowledgeDocumentDuplicateError } from '../domain/knowledgeDocumentDuplicate.js';
+import { KnowledgeDocumentDuplicateError } from '../models/knowledgeDocumentDuplicate.js';
 import {
   indexingEstimateSchema,
   knowledgeDatasetInputSchema,
@@ -35,7 +35,7 @@ import {
   loadSession,
   SessionConflictError,
   SessionStreamLockBusyError,
-} from '../domain/sessionStore.js';
+} from '../models/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeoutCatalogService.js';
 import { streamChat } from '../services/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';

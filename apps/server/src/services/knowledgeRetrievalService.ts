@@ -2,11 +2,11 @@ import {
   getKnowledgeDatasetById,
   type KnowledgeDatasetRecord,
   type KnowledgeSearchMethod,
-} from '../domain/knowledgeDatasetStore.js';
+} from '../models/knowledgeDatasetStore.js';
 import {
   listKnowledgeDatasetChunks,
   type KnowledgeDatasetChunkRecord,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDocumentStore.js';
 import { getWarmChunks, setWarmChunks } from '../ai/rag/chunkWarmCache.js';
 import { maybeExpandRetrievalQueries } from '../rag/langchain/expandRetrievalQueries.js';
 

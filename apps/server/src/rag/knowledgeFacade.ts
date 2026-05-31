@@ -11,21 +11,21 @@
  * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`。
  * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore`。
  */
-import { getKnowledgeDatasetById } from '../domain/knowledgeDatasetStore.js';
+import { getKnowledgeDatasetById } from '../models/knowledgeDatasetStore.js';
 import {
   importKnowledgeDocument as selfHostedImportKnowledgeDocument,
   mergeEmbeddingsIntoChunkFile,
   persistImportedDocument,
   previewKnowledgeDocuments as selfHostedPreviewKnowledgeDocuments,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDocumentStore.js';
 import type {
   KnowledgeDocumentChunkOptions,
   KnowledgeDocumentPreprocessingRules,
 } from '../services/knowledgeChunkingService.js';
 import type { KnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
 import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
-import { computeKnowledgeDocumentContentHash } from '../domain/knowledgeContentHash.js';
-import { assertNoDuplicateDocument } from '../domain/knowledgeDocumentDuplicate.js';
+import { computeKnowledgeDocumentContentHash } from '../models/knowledgeContentHash.js';
+import { assertNoDuplicateDocument } from '../models/knowledgeDocumentDuplicate.js';
 import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
 import { getRagEngineMode } from './engine.js';
 import { buildKnowledgeDocumentChunksWithLangChain } from './langchain/buildChunksWithLangChain.js';
@@ -38,13 +38,13 @@ export {
   deleteKnowledgeDataset,
   listKnowledgeDatasets,
   updateKnowledgeDataset,
-} from '../domain/knowledgeDatasetStore.js';
+} from '../models/knowledgeDatasetStore.js';
 export {
   deleteKnowledgeDatasetFiles,
   getKnowledgeDocumentBlocks,
   listKnowledgeDocuments,
   updateKnowledgeDocumentBlockKeywords,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDocumentStore.js';
 export { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
 export { getRagEngineMode, type RagEngineMode } from './engine.js';
 export type {

@@ -2,11 +2,11 @@ import { existsSync } from 'fs';
 import { mkdir, readdir, readFile, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { join } from 'path';
-import { getKnowledgeDatasetById } from '../domain/knowledgeDatasetStore.js';
+import { getKnowledgeDatasetById } from '../models/knowledgeDatasetStore.js';
 import {
   listKnowledgeDatasetChunks,
   listKnowledgeDocuments,
-} from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDocumentStore.js';
 
 const resolveSnapshotRoot = () => {
   const cwd = process.cwd();

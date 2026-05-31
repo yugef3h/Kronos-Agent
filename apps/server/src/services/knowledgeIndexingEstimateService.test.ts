@@ -5,8 +5,8 @@ import {
   createKnowledgeDataset,
   initKnowledgeDatasetStore,
   resetKnowledgeDatasetStoreForTests,
-} from '../domain/knowledgeDatasetStore.js';
-import { listKnowledgeDocuments } from '../domain/knowledgeDocumentStore.js';
+} from '../models/knowledgeDatasetStore.js';
+import { listKnowledgeDocuments } from '../models/knowledgeDocumentStore.js';
 import { runKnowledgeIndexingEstimate } from './knowledgeIndexingEstimateService.js';
 
 const toDataUrl = (mimeType: string, value: Buffer | string) => {

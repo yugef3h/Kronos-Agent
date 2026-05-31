@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { isAiTaskQueueEnabled } from '../ai/queue/aiTaskQueue.js';
 import { isCircuitOpen } from '../ai/circuit/circuitBreaker.js';
 import { isOverGlobalTokenQuota } from '../ai/cost/isOverGlobalTokenQuota.js';
-import { getSessionMetrics, resolveSessionStoreMode } from '../domain/sessionStore.js';
+import { getSessionMetrics, resolveSessionStoreMode } from '../models/sessionStore.js';
 
 export const aiHealthRoutes = Router();
 
