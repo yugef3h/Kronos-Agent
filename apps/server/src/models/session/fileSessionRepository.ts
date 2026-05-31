@@ -1,8 +1,9 @@
-import { mkdir, readdir, readFile, stat, writeFile } from 'fs/promises';
+import { mkdir, readdir, readFile, stat } from 'fs/promises';
 import { join } from 'path';
 import { SessionConflictError } from './sessionConflictError.js';
 import { createEmptySession, normalizeSession, parseStoredSession } from './normalizeSession.js';
 import { SESSION_DATA_DIR } from './sessionPaths.js';
+import { sessionFilePath, writeSessionFile } from './writeSessionFile.js';
 import type { SaveSessionOptions, SessionRepository } from './sessionRepository.js';
 import type { Session } from './types.js';
 
@@ -75,18 +76,11 @@ export class FileSessionRepository implements SessionRepository {
 
     this.sessions.set(sessionId, next);
 
-    void (async () => {
-      try {
-        await mkdir(SESSION_DATA_DIR, { recursive: true });
-        await writeFile(
-          join(SESSION_DATA_DIR, `${sessionId}.json`),
-          JSON.stringify(next),
-          'utf-8',
-        );
-      } catch (err) {
-        console.warn(`[sessionStore:file] 持久化 session ${sessionId} 失败:`, err);
-      }
-    })();
+    try {
+      await writeSessionFile(sessionId, next);
+    } catch (err) {
+      console.warn(`[sessionStore:file] 持久化 session ${sessionId} 失败:`, err);
+    }
 
     return { ...next, messages: [...next.messages] };
   }

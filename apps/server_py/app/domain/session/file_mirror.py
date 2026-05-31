@@ -3,17 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from pathlib import Path
 
 from app.domain.session.normalize import parse_stored_session
-from app.domain.session.session_paths import SESSIONS_DIR
 from app.domain.session.types import Session
+from app.domain.session.write_session_file import session_file_path, write_session_file
 
 logger = logging.getLogger(__name__)
-
-
-def session_file_path(session_id: str) -> Path:
-    return SESSIONS_DIR / f"{session_id}.json"
 
 
 async def read_session_from_file(session_id: str) -> Session | None:
@@ -29,9 +24,6 @@ async def read_session_from_file(session_id: str) -> Session | None:
 
 async def mirror_session_to_file(session_id: str, session: Session) -> None:
     try:
-        await asyncio.to_thread(SESSIONS_DIR.mkdir, parents=True, exist_ok=True)
-        path = session_file_path(session_id)
-        payload = session.model_dump_json()
-        await asyncio.to_thread(path.write_text, payload, encoding="utf-8")
+        await write_session_file(session_id, session)
     except OSError as error:
         logger.warning("[sessionStore] mirror session %s to file failed: %s", session_id, error)

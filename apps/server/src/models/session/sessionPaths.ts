@@ -6,4 +6,5 @@ const serverPackageRoot = existsSync(join(process.cwd(), 'apps/server', 'src'))
   ? join(process.cwd(), 'apps/server')
   : process.cwd();
 
-export const SESSION_DATA_DIR = join(serverPackageRoot, 'data/sessions');
+export const SESSION_DATA_DIR =
+  process.env.KRONOS_SESSION_DATA_DIR?.trim() || join(serverPackageRoot, 'data/sessions');
