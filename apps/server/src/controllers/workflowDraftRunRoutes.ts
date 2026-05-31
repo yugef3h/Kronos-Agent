@@ -11,7 +11,7 @@ import {
 import { cancelWorkflowRunRecord } from '../services/workflow/store/workflowRunCancellation.js'
 import { parseStartWorkflowDraftRunBody } from './workflowDraftRunRequest.js'
 import { normalizeWorkflowRunId } from './workflowRunId.js'
-import '../workflow/registerNodeExecutors.js'
+import '../services/workflow/executors/registerNodeExecutors.js'
 
 export { normalizeWorkflowRunId } from './workflowRunId.js'
 
