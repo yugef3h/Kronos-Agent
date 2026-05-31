@@ -10,7 +10,7 @@ import {
 } from '../../agent-tools/takeout';
 // import { ChatTimelineFold } from './ChatTimelineFold';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
-import type { UseChatStreamControllerResult } from '../hooks/useChatStreamController';
+import { useChatStreamContext } from '../ChatStreamContext';
 import VariableSelect from '../../../components/form/variable-select';
 import { WorkflowBlankAppCreateDialog } from '../../../domains/workflow/app/WorkflowBlankAppCreateDialog';
 import {
@@ -20,11 +20,7 @@ import {
   getRenderableImageSource,
 } from '../utils/chatStreamHelpers';
 
-type ChatStreamPanelViewProps = {
-  controller: UseChatStreamControllerResult;
-};
-
-export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) => {
+export const ChatStreamPanelView = () => {
   const {
     canSend,
     // currentTimelineEvent,
@@ -99,7 +95,7 @@ export const ChatStreamPanelView = ({ controller }: ChatStreamPanelViewProps) =>
     isWorkflowBlankCreateDialogOpen,
     closeWorkflowBlankCreateDialog,
     handleWorkflowBlankAppCreated,
-  } = controller;
+  } = useChatStreamContext();
 
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/90 p-4 shadow-[0_16px_48px_-24px_rgba(14,116,144,0.45)] backdrop-blur md:p-5">

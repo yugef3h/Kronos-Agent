@@ -1,8 +1,13 @@
 import { ChatStreamPanelView } from './components/ChatStreamPanelView';
 import { useChatStreamController } from './hooks/useChatStreamController';
+import { ChatStreamProvider } from './ChatStreamContext';
 
 export const ChatStreamPanel = () => {
   const controller = useChatStreamController();
 
-  return <ChatStreamPanelView controller={controller} />;
+  return (
+    <ChatStreamProvider value={controller}>
+      <ChatStreamPanelView />
+    </ChatStreamProvider>
+  );
 };

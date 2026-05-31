@@ -3,6 +3,11 @@ import { useState } from 'react';
 import { AgentOrchestratorPanel } from '../../components/AgentOrchestratorPanel';
 import { ChatStreamPanel } from '../../components/ChatStreamPanel';
 import { MemorySummaryPanel } from '../../components/MemorySummaryPanel';
+// TODO: 以下组件已实现但暂未启用，待功能完善后激活：
+// - SamplingInspector: Agent 采样检查面板，查看 LLM 采样结果
+// - TokenEmbeddingPanel: Token 嵌入可视化面板，分析文本 token 分布
+// - ToolInvocationPanel: 工具调用追踪面板，查看 Agent 工具调用链路
+// 注释原因：当前首页布局已满，需设计新的面板布局或折叠方案
 // import { SamplingInspector } from '../../components/SamplingInspector';
 // import { TokenEmbeddingPanel } from '../../components/TokenEmbeddingPanel';
 // import { ToolInvocationPanel } from '../../components/ToolInvocationPanel';
