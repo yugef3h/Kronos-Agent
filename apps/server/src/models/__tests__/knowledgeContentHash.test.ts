@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 
-import { generateKnowledgeTextHash } from './knowledgeContentHash.js';
+import { generateKnowledgeTextHash } from '../../../knowledgeContentHash.js';
 
 describe('generateKnowledgeTextHash', () => {
   it('matches Dify helper.generate_text_hash', () => {

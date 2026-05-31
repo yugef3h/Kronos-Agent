@@ -1,4 +1,4 @@
-import { resolveJwtSign, resolveJwtVerify } from './jwtInterop';
+import { resolveJwtSign, resolveJwtVerify } from '../../../jwtInterop';
 
 describe('jwtInterop', () => {
   it('should resolve direct sign and verify functions first', () => {
