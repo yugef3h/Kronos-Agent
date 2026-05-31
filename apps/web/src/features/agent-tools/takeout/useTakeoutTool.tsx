@@ -13,18 +13,16 @@ import {
   createInitialTakeoutFlowState,
 } from './helpers';
 import { callDoubaoAPI } from './services/doubaoMockApi';
-import { createAssistantInvocation } from '../../chat-stream/assistantInvocation';
 import { withClientMessageId } from '../../chat-stream/utils/chatStreamHelpers';
-import { requestAppendSessionMessages, requestTakeoutCatalog } from '../../../lib/api';
+import { requestTakeoutCatalog } from '../../../lib/api';
 import {
   hasTakeoutBindingConfirmed,
   setTakeoutBindingConfirmed,
 } from './localBindingCache';
+import { useTakeoutMessageHelpers } from './takeoutMessageHelpers';
 import type {
-  TakeoutAssistantMessageOptions,
   TakeoutChatMessage,
   TakeoutFlowState,
-  TakeoutMessageType,
   TakeoutMessageUpdater,
   TakeoutModalState,
 } from './types';
@@ -98,7 +96,6 @@ export const useTakeoutTool = ({
       setShowTakeoutScrollHint(false);
       return;
     }
-
     const hasHorizontalOverflow = scroller.scrollWidth - scroller.clientWidth > 10;
     const isAtStart = scroller.scrollLeft <= 8;
     setShowTakeoutScrollHint(hasHorizontalOverflow && isAtStart);
@@ -106,18 +103,11 @@ export const useTakeoutTool = ({
 
   useEffect(() => {
     const scroller = foodsScrollerRef.current;
-    if (!scroller) {
-      return;
-    }
-
-    const handleScroll = () => {
-      refreshTakeoutScrollHint();
-    };
-
+    if (!scroller) return;
+    const handleScroll = () => { refreshTakeoutScrollHint(); };
     refreshTakeoutScrollHint();
     scroller.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', refreshTakeoutScrollHint);
-
     return () => {
       scroller.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', refreshTakeoutScrollHint);
@@ -125,86 +115,16 @@ export const useTakeoutTool = ({
   }, [messages, refreshTakeoutScrollHint]);
 
   useEffect(() => {
-    if (modalState.paymentFlowId !== flowState.flowId) {
-      return;
-    }
-
+    if (modalState.paymentFlowId !== flowState.flowId) return;
     paymentInputRef.current?.focus();
   }, [flowState.flowId, modalState.paymentFlowId]);
 
-  const appendAssistantTextMessage = useCallback(
-    (content: string, options?: TakeoutAssistantMessageOptions) => {
-      const assistantInvocation = options?.flowType === 'takeout'
-        ? createAssistantInvocation({ modalities: ['takeout'] })
-        : undefined;
-
-      setMessages((prev) => [
-        ...prev,
-        withClientMessageId({
-          role: 'assistant',
-          content,
-          isIncomplete: false,
-          flowType: options?.flowType,
-          flowId: options?.flowId,
-          takeoutMessageType: options?.takeoutMessageType,
-          assistantInvocation,
-        }),
-      ]);
-    },
-    [setMessages],
-  );
-
-  const appendTakeoutCardMessage = useCallback(
-    (flowId: number, takeoutMessageType: TakeoutMessageType) => {
-      setMessages((prev) => [
-        ...prev,
-        withClientMessageId({
-          role: 'assistant',
-          content: '',
-          flowType: 'takeout',
-          takeoutMessageType,
-          flowId,
-          assistantInvocation: createAssistantInvocation({ modalities: ['takeout'] }),
-        }),
-      ]);
-    },
-    [setMessages],
-  );
-
-  const appendTakeoutFallbackMessage = useCallback(
-    (flowId: number, message = '外卖服务暂时不可用，请稍后再试。') => {
-      appendAssistantTextMessage(message, { flowType: 'takeout', flowId });
-    },
-    [appendAssistantTextMessage],
-  );
-
-  const appendTakeoutSessionMessages = useCallback(async (params: {
-    userContent?: string;
-    assistantContent?: string;
-  }) => {
-    if (!authToken) {
-      return;
-    }
-
-    const payload = [
-      params.userContent ? { role: 'user' as const, content: params.userContent } : null,
-      params.assistantContent ? { role: 'assistant' as const, content: params.assistantContent } : null,
-    ].filter((item): item is { role: 'user' | 'assistant'; content: string } => item !== null);
-
-    if (payload.length === 0) {
-      return;
-    }
-
-    try {
-      await requestAppendSessionMessages({
-        authToken,
-        sessionId,
-        messages: payload,
-      });
-    } catch {
-      // 本地 UI 可继续，历史写入失败不阻塞当前流程。
-    }
-  }, [authToken, sessionId]);
+  const {
+    appendAssistantTextMessage,
+    appendTakeoutCardMessage,
+    appendTakeoutFallbackMessage,
+    appendTakeoutSessionMessages,
+  } = useTakeoutMessageHelpers(setMessages, authToken, sessionId);
 
   const loadTakeoutCatalog = useCallback(async (params: {
     prompt: string;
