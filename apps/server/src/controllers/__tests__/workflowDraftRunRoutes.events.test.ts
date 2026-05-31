@@ -14,9 +14,9 @@ jest.mock('../workflow/debug/llmNodeDebugExecutor.js', () => ({
 }))
 
 import type { Response } from 'express'
-import { WorkflowRunStatus } from '../../services/workflow/types/types.js'
-import { workflowRunStore } from '../../services/workflow/store/workflowRunStore.js'
-import { listWorkflowRunEvents } from '../../services/workflow/store/workflowRunEvents.js'
+import { WorkflowRunStatus } from '../../../services/workflow/types/types.js'
+import { workflowRunStore } from '../../../services/workflow/store/workflowRunStore.js'
+import { listWorkflowRunEvents } from '../../../services/workflow/store/workflowRunEvents.js'
 import {
   handleCancelWorkflowDraftRunPost,
   handleStartWorkflowDraftRunPost,

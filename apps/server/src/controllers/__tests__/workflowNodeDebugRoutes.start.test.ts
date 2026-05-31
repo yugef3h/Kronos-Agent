@@ -1,5 +1,5 @@
-import { NodeRunStatus } from '../../services/workflow/types/types.js'
-import { workflowRunStore } from '../../services/workflow/store/workflowRunStore.js'
+import { NodeRunStatus } from '../../../services/workflow/types/types.js'
+import { workflowRunStore } from '../../../services/workflow/store/workflowRunStore.js'
 import { NODE_DEBUG_EXECUTOR_NOT_FOUND_CODE } from '../workflowNodeDebugRoutes.js'
 import { postWorkflowNodeDebugStart } from '../workflowNodeDebugRoutes.testUtils.js'
 
