@@ -1,8 +1,8 @@
-import { NodeRunStatus } from '../types/types.js'
+import { NodeRunStatus } from '../../types/types.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 
-jest.mock('../../rag/knowledgeFacade.js', () => ({
+jest.mock('../../../../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: (...args: unknown[]) => mockRunKnowledgeRetrievalQuery(...args),
 }))
 

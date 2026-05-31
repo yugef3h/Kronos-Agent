@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../types/types.js'
+import { NodeRunStatus } from '../../types/types.js'
 import { executeStartNodeDebug } from '../startNodeDebugExecutor.js'
 
 describe('executeStartNodeDebug', () => {
