@@ -1,8 +1,8 @@
 import { Queue, Worker } from 'bullmq'
 import { getRedisClient } from '../infra/redisClient.js'
-import type { WorkflowDraftQueueJobData } from './workflowDraftQueueTypes.js'
+import type { WorkflowDraftQueueJobData } from '../runner/workflowDraftQueueTypes.js'
 
-export type { WorkflowDraftQueueJobData } from './workflowDraftQueueTypes.js'
+export type { WorkflowDraftQueueJobData } from '../runner/workflowDraftQueueTypes.js'
 
 export const WORKFLOW_DRAFT_QUEUE_NAME = 'kronos-workflow-draft-runs'
 

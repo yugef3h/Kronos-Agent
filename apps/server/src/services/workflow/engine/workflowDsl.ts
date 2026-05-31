@@ -1,4 +1,4 @@
-import type { WorkflowDslGraph, WorkflowDslGraphEdge, WorkflowDslGraphNode } from './buildExecutionGraph.js'
+import type { WorkflowDslGraph, WorkflowDslGraphEdge, WorkflowDslGraphNode } from '../engine/buildExecutionGraph.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null

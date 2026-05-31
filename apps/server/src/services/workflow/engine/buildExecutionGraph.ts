@@ -1,4 +1,4 @@
-import type { NodeDebugBlockKind } from './types.js'
+import type { NodeDebugBlockKind } from '../types/types.js'
 
 export type WorkflowDslGraphNode = {
   id: string

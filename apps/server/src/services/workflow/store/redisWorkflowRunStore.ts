@@ -6,10 +6,10 @@ import {
   type SaveNodeDebugRunInput,
   type UpdateWorkflowRunPatch,
   type WorkflowRunRecord,
-} from './types.js'
-import { nodeRunStatusToWorkflowRunStatus } from './workflowRunSummary.js'
+} from '../types/types.js'
+import { nodeRunStatusToWorkflowRunStatus } from '../runner/workflowRunSummary.js'
 import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
-import { buildUpdatedWorkflowRunRecord } from './workflowRunRecordPatch.js'
+import { buildUpdatedWorkflowRunRecord } from '../engine/workflowRunRecordPatch.js'
 import type { WorkflowRunStoreBackend } from './workflowRunStoreBackend.js'
 
 const RUN_KEY_PREFIX = 'kronos:wf:run:'

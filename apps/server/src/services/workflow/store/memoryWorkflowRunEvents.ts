@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
+import type { WorkflowRunEvent } from '../types/workflowRunEventTypes.js'
 import type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
 
 const eventsByRunId = new Map<string, WorkflowRunEvent[]>()

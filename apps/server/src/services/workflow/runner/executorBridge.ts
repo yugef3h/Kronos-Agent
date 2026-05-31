@@ -1,6 +1,6 @@
-import type { NodeDebugRequest, NodeDebugResult } from './types.js'
-import type { RunContext } from './runContext.js'
-import type { NodeExecutionRequest, NodeExecutionResult } from './nodeExecutors.js'
+import type { NodeDebugRequest, NodeDebugResult } from '../types/types.js'
+import type { RunContext } from '../runner/runContext.js'
+import type { NodeExecutionRequest, NodeExecutionResult } from '../executors/nodeExecutors.js'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null

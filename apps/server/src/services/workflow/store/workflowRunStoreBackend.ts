@@ -3,7 +3,7 @@ import type {
   SaveNodeDebugRunInput,
   UpdateWorkflowRunPatch,
   WorkflowRunRecord,
-} from './types.js'
+} from '../types/types.js'
 
 export type WorkflowRunStoreBackend = {
   create: (input: CreateWorkflowRunInput) => Promise<WorkflowRunRecord>

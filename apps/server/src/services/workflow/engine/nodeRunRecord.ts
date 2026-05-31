@@ -1,6 +1,6 @@
-import type { NodeExecutionResult } from './nodeExecutors.js'
-import type { NodeDebugResult } from './types.js'
-import type { NodeRunStatus, RunError } from './types.js'
+import type { NodeExecutionResult } from '../executors/nodeExecutors.js'
+import type { NodeDebugResult } from '../types/types.js'
+import type { NodeRunStatus, RunError } from '../types/types.js'
 
 export type WorkflowDraftNodeRunRecord = {
   nodeId: string

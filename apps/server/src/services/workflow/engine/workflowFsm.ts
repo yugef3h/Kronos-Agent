@@ -1,4 +1,4 @@
-import { WorkflowRunStatus, isTerminalWorkflowRunStatus } from './types.js'
+import { WorkflowRunStatus, isTerminalWorkflowRunStatus } from '../types/types.js'
 
 export class WorkflowFsmTransitionError extends Error {
   readonly from: WorkflowRunStatus

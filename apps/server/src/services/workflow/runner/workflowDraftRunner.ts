@@ -1,31 +1,31 @@
-import { buildExecutionGraph, getExecutionGraphSuccessors } from './buildExecutionGraph.js'
-import type { ExecutionGraph, ExecutionGraphNode } from './buildExecutionGraph.js'
+import { buildExecutionGraph, getExecutionGraphSuccessors } from '../engine/buildExecutionGraph.js'
+import type { ExecutionGraph, ExecutionGraphNode } from '../engine/buildExecutionGraph.js'
 import {
   NodeExecutorNotFoundError,
   executeWorkflowNode,
   nodeExecutorRegistry,
-} from './nodeExecutors.js'
-import type { WorkflowNodeBlockKind, WorkflowNodePayload } from './nodeExecutors.js'
-import { RunContext } from './runContext.js'
-import { transitionWorkflowRun } from './workflowFsm.js'
-import { toWorkflowRunSummary } from './workflowRunSummary.js'
-import { WorkflowRunStatus, NodeRunStatus, type RunError, type WorkflowRunSummary } from './types.js'
-import { workflowRunStore } from './workflowRunStore.js'
-import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from './workflowDsl.js'
-import { extractWorkflowDraftDslGraph } from './workflowDsl.js'
-import { appendWorkflowRunEvent } from './workflowRunEvents.js'
-import { isWorkflowRunCancelled, clearWorkflowRunCancellation } from './workflowRunCancellation.js'
+} from '../executors/nodeExecutors.js'
+import type { WorkflowNodeBlockKind, WorkflowNodePayload } from '../executors/nodeExecutors.js'
+import { RunContext } from '../runner/runContext.js'
+import { transitionWorkflowRun } from '../engine/workflowFsm.js'
+import { toWorkflowRunSummary } from '../runner/workflowRunSummary.js'
+import { WorkflowRunStatus, NodeRunStatus, type RunError, type WorkflowRunSummary } from '../types/types.js'
+import { workflowRunStore } from '../store/workflowRunStore.js'
+import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../engine/workflowDsl.js'
+import { extractWorkflowDraftDslGraph } from '../engine/workflowDsl.js'
+import { appendWorkflowRunEvent } from '../store/workflowRunEvents.js'
+import { isWorkflowRunCancelled, clearWorkflowRunCancellation } from '../store/workflowRunCancellation.js'
 import {
   enqueueWorkflowDraftRun,
   isWorkflowQueueEnabled,
-} from './workflowDraftQueue.js'
-import type { WorkflowDraftQueueJobData } from './workflowDraftQueueTypes.js'
+} from '../runner/workflowDraftQueue.js'
+import type { WorkflowDraftQueueJobData } from '../runner/workflowDraftQueueTypes.js'
 import {
   toWorkflowDraftNodeRunRecord,
   type WorkflowDraftNodeRunRecord,
-} from './nodeRunRecord.js'
+} from '../engine/nodeRunRecord.js'
 
-export type { WorkflowDraftNodeRunRecord } from './nodeRunRecord.js'
+export type { WorkflowDraftNodeRunRecord } from '../engine/nodeRunRecord.js'
 
 const DEFAULT_MAX_STEPS = 128
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000

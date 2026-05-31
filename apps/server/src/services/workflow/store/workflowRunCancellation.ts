@@ -1,6 +1,6 @@
-import { WorkflowRunStatus } from './types.js'
-import { workflowRunStore } from './workflowRunStore.js'
-import { isTerminalWorkflowRunStatus } from './types.js'
+import { WorkflowRunStatus } from '../types/types.js'
+import { workflowRunStore } from '../store/workflowRunStore.js'
+import { isTerminalWorkflowRunStatus } from '../types/types.js'
 import { getWorkflowRunCancellationStore } from './createWorkflowRunCancellationStore.js'
 
 const store = () => getWorkflowRunCancellationStore()

@@ -4,7 +4,7 @@ import {
   type NodeDebugExecutor,
   type NodeDebugRequest,
   type NodeDebugResult,
-} from './types.js'
+} from '../types/types.js'
 
 export class NodeDebugExecutorNotFoundError extends Error {
   readonly kind: NodeDebugBlockKind

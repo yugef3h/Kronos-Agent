@@ -5,9 +5,9 @@ import {
   type SaveNodeDebugRunInput,
   type UpdateWorkflowRunPatch,
   type WorkflowRunRecord,
-} from './types.js'
-import { nodeRunStatusToWorkflowRunStatus } from './workflowRunSummary.js'
-import { buildUpdatedWorkflowRunRecord } from './workflowRunRecordPatch.js'
+} from '../types/types.js'
+import { nodeRunStatusToWorkflowRunStatus } from '../runner/workflowRunSummary.js'
+import { buildUpdatedWorkflowRunRecord } from '../engine/workflowRunRecordPatch.js'
 
 export const DEFAULT_WORKFLOW_RUN_TTL_MS = 30 * 60 * 1000
 

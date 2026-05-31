@@ -1,4 +1,4 @@
-import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
+import type { WorkflowRunEvent } from '../types/workflowRunEventTypes.js'
 
 export type WorkflowRunEventsBackend = {
   append: (event: WorkflowRunEvent) => Promise<void>

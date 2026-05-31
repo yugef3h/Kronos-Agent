@@ -1,6 +1,6 @@
 import type { Redis } from 'ioredis'
 import { DEFAULT_WORKFLOW_RUN_TTL_MS } from './memoryWorkflowRunStore.js'
-import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
+import type { WorkflowRunEvent } from '../types/workflowRunEventTypes.js'
 import type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
 
 const EVENTS_KEY_PREFIX = 'kronos:wf:events:'

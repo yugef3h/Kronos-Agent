@@ -1,4 +1,4 @@
-import { NodeRunStatus, isTerminalNodeRunStatus } from './types.js'
+import { NodeRunStatus, isTerminalNodeRunStatus } from '../types/types.js'
 
 export class NodeFsmTransitionError extends Error {
   readonly from: NodeRunStatus

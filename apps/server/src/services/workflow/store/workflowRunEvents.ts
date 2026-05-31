@@ -1,12 +1,12 @@
 export type {
   WorkflowRunEvent,
   WorkflowRunEventType,
-} from './workflowRunEventTypes.js'
-export { formatWorkflowRunEventSse } from './workflowRunEventTypes.js'
+} from '../types/workflowRunEventTypes.js'
+export { formatWorkflowRunEventSse } from '../types/workflowRunEventTypes.js'
 export type { WorkflowRunEventsBackend } from './workflowRunEventsBackend.js'
 export { createWorkflowRunEventsStore, getWorkflowRunEventsStore } from './createWorkflowRunEventsStore.js'
 import { getWorkflowRunEventsStore } from './createWorkflowRunEventsStore.js'
-import type { WorkflowRunEvent } from './workflowRunEventTypes.js'
+import type { WorkflowRunEvent } from '../types/workflowRunEventTypes.js'
 
 const store = () => getWorkflowRunEventsStore()
 

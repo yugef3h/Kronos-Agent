@@ -3,9 +3,9 @@ import {
   type NodeDebugBlockKind,
   type NodeRunStatus as NodeRunStatusType,
   type RunError,
-} from './types.js'
-import type { RunContext } from './runContext.js'
-import type { WorkflowDraftDslGraph } from './workflowDsl.js'
+} from '../types/types.js'
+import type { RunContext } from '../runner/runContext.js'
+import type { WorkflowDraftDslGraph } from '../engine/workflowDsl.js'
 
 export type WorkflowNodeBlockKind = NodeDebugBlockKind
 

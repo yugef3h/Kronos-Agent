@@ -1,5 +1,5 @@
-import type { NodeRunStatus, WorkflowRunRecord, WorkflowRunSummary } from './types.js'
-import { NodeRunStatus as NodeRunStatusEnum, WorkflowRunStatus } from './types.js'
+import type { NodeRunStatus, WorkflowRunRecord, WorkflowRunSummary } from '../types/types.js'
+import { NodeRunStatus as NodeRunStatusEnum, WorkflowRunStatus } from '../types/types.js'
 
 export const nodeRunStatusToWorkflowRunStatus = (status: NodeRunStatus): WorkflowRunStatus => {
   switch (status) {

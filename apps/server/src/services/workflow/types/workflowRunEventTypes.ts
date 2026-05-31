@@ -1,4 +1,4 @@
-import type { NodeRunStatus, RunError, WorkflowRunStatus } from './types.js'
+import type { NodeRunStatus, RunError, WorkflowRunStatus } from '../types/types.js'
 
 export type WorkflowRunEventType =
   | 'node_started'
