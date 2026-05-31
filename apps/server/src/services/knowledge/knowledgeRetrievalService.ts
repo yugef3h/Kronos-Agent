@@ -8,7 +8,7 @@ import {
   type KnowledgeDatasetChunkRecord,
 } from '../../models/knowledgeDocumentStore.js';
 import { getWarmChunks, setWarmChunks } from '../../ai/rag/chunkWarmCache.js';
-import { maybeExpandRetrievalQueries } from '../rag/langchain/expandRetrievalQueries.js';
+import { maybeExpandRetrievalQueries } from '../../rag/langchain/expandRetrievalQueries.js';
 
 export type KnowledgeRetrievalMode = 'oneWay' | 'multiWay';
 export type KnowledgeMetadataFilteringMode = 'disabled' | 'manual';

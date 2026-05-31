@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { z } from 'zod';
-import { HOT_TOPICS_TASK, hotTopicsChatPrompt } from '../prompts/hotTopicsPrompt.js';
+import { HOT_TOPICS_TASK, hotTopicsChatPrompt } from '../../prompts/hotTopicsPrompt.js';
 
 export const FALLBACK_HOT_TOPICS = [
   '最近有什么新的科技资讯值得关注',

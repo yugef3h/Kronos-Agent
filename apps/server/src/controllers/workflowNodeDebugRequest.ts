@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeWorkflowAppId } from '../services/workflowDraftPreviewDiskStore.js'
+import { normalizeWorkflowAppId } from '../../services/workflow/workflowDraftPreviewDiskStore.js'
 import type { NodeDebugBlockKind, NodeDebugRequest } from '../services/workflow/types/types.js'
 
 const NODE_DEBUG_BLOCK_KINDS = [

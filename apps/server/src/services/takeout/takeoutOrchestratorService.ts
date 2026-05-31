@@ -2,7 +2,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import {
   buildTakeoutOrchestrationHistory,
   formatTakeoutOrchestrationMessages,
-} from '../prompts/takeoutOrchestrationPrompt.js';
+} from '../../prompts/takeoutOrchestrationPrompt.js';
 import { analyzeTakeoutIntent, hasTakeoutSignals, isClearlyNonTakeout } from './takeoutIntentService.js';
 
 export type TakeoutOrchestrationAction = 'chat' | 'ask_slot' | 'tool_call' | 'delegate_chat_stream';
