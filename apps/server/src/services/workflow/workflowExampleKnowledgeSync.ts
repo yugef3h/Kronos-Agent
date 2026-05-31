@@ -1,18 +1,18 @@
 import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { KnowledgeDatasetRecord } from '../models/knowledgeDatasetStore.js';
+import type { KnowledgeDatasetRecord } from '../../models/knowledgeDatasetStore.js';
 import {
   getKnowledgeDatasetById,
   initKnowledgeDatasetStore,
   removeKnowledgeDatasetFromLocalIndex,
-} from '../models/knowledgeDatasetStore.js';
+} from '../../models/knowledgeDatasetStore.js';
 import {
   getKnowledgeExamplesDir,
   getLocalKnowledgeDatasetsDir,
   isInLocalKnowledgeDatasetIndex,
   isKnowledgeExampleDatasetId,
-} from '../models/knowledgeDataPaths.js';
+} from '../../models/knowledgeDataPaths.js';
 import { getKnowledgeExampleDataset, saveKnowledgeExampleDataset } from './knowledgeExampleStore.js';
 import { collectDatasetIdsFromWorkflowApp } from './workflowKnowledgeDependencies.js';
 import { listWorkflowExampleApps, type WorkflowExampleAppRecord } from './workflowExampleStore.js';

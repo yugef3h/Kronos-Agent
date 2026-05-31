@@ -11,7 +11,7 @@ import {
   initSessionRepository,
   resolveSessionStoreMode,
 } from './session/getSessionRepository.js';
-import { duplicateRedisClient } from '../../infra/redisClient.js';
+import { duplicateRedisClient } from '../infra/redisClient.js';
 import {
   listRecentDialoguesFromFiles,
 } from './session/listRecentDialogues.js';

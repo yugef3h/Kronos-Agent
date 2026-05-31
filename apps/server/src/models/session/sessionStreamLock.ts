@@ -1,4 +1,4 @@
-import { duplicateRedisClient } from '../../infra/redisClient.js';
+import { duplicateRedisClient } from '../infra/redisClient.js';
 import { resolveSessionStoreMode } from './getSessionRepository.js';
 
 const LOCK_KEY_PREFIX = 'kronos:session:lock:';
