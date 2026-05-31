@@ -1,8 +1,8 @@
-import { getActiveModelCredentials } from '../ai/gateway/resolveDefaultGatewayModel.js';
+import { getActiveModelCredentials } from '../../ai/gateway/resolveDefaultGatewayModel.js';
 import {
   normalizeExtractedText,
   parseFileDataUrl,
-} from './fileAnalysisHelpers.js';
+} from '../chat/fileAnalysisHelpers.js';
 import { extractDocumentText } from './documentTextExtractor.js';
 import { readDoubaoChatStreamReply } from './doubaoChatHelpers.js';
 

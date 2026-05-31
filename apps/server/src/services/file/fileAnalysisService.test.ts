@@ -2,7 +2,7 @@ import {
   extractFileAnalysisReply,
   normalizeExtractedText,
   parseFileDataUrl,
-} from './fileAnalysisHelpers';
+} from '../chat/fileAnalysisHelpers';
 
 describe('fileAnalysisService helpers', () => {
   it('reads array response text', () => {
