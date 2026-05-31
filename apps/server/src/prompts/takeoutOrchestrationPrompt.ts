@@ -1,6 +1,6 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
-import { TAKEOUT_ORCHESTRATION_PROMPT } from '../const/prompt.js';
+import { TAKEOUT_ORCHESTRATION_PROMPT } from '../core/const/prompt.js';
 import { takeoutOrchestrationFewShotPrompt } from './takeoutOrchestrationFewShots.js';
 
 export const takeoutOrchestrationChatPrompt = ChatPromptTemplate.fromMessages([
