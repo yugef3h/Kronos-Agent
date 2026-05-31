@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import { allowedOrigins, env, isLocalDevOrigin } from './config/env.js';
+import { allowedOrigins, env, isLocalDevOrigin } from './core/config/env.js';
 import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
