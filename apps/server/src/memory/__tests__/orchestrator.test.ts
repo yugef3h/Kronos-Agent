@@ -1,4 +1,4 @@
-import type { Message } from '../../../models/sessionStore';
+import type { Message } from '../../models/sessionStore';
 import { createMemoryPlan } from '../orchestrator';
 
 const createMessages = (count: number): Message[] => {

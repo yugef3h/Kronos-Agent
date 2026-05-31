@@ -5,7 +5,7 @@ import {
   type ExecutionGraphEdge,
   type ExecutionGraphNode,
   type WorkflowDslGraphNode,
-} from '../buildExecutionGraph.js'
+} from '../engine/buildExecutionGraph.js'
 
 export type ContainerKind = 'loop' | 'iteration'
 
