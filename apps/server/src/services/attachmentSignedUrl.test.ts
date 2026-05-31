@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto';
 
-import { env } from '../config/env.js';
+import { env } from '../core/config/env.js';
 import {
   ATTACHMENT_URL_TTL_SEC,
   buildSignedAttachmentPath,

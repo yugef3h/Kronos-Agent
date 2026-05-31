@@ -1,4 +1,4 @@
-import { env } from '../config/env.js';
+import { env } from '../core/config/env.js';
 
 /** `self`（默认）| `langchain` — 大小写不敏感；`langchain` 用 LC 向量；`RAG_LC_MULTI_QUERY` 对两引擎均生效（改写问句条数见 `query_variants`）。 */
 export type RagEngineMode = 'self' | 'langchain';

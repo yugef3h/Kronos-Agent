@@ -1,6 +1,6 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { getEncoding } from 'js-tiktoken';
-import { env } from '../config/env.js';
+import { env } from '../core/config/env.js';
 import { getActiveModelCredentials } from '../ai/gateway/resolveDefaultGatewayModel.js';
 import { type ProjectionMethod, projectVectorsTo2D } from './vectorProjection.js';
 

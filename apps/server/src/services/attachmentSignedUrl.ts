@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 
-import { env } from '../config/env.js';
+import { env } from '../core/config/env.js';
 
 /** 与 dev JWT 同量级；`<img>` 直链在有效期内可重复访问 */
 export const ATTACHMENT_URL_TTL_SEC = 7 * 24 * 3600;

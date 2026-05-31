@@ -1,4 +1,4 @@
-import { env } from '../config/env.js';
+import { env } from '../core/config/env.js';
 
 const IMGBB_UPLOAD_URL = 'https://api.imgbb.com/1/upload';
 
