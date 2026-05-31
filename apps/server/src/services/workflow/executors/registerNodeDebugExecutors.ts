@@ -3,7 +3,7 @@ import { executeKnowledgeRetrievalNodeDebug } from '../debug/knowledgeRetrievalN
 import { executeIfElseNodeDebug } from '../debug/ifElseNodeDebugExecutor.js'
 import { executeLlmNodeDebug } from '../debug/llmNodeDebugExecutor.js'
 import { executeStartNodeDebug } from '../debug/startNodeDebugExecutor.js'
-import { registerNodeDebugExecutor } from '../executors/nodeDebugExecutors.js'
+import { registerNodeDebugExecutor } from './nodeDebugExecutors.js'
 
 let hasRegisteredBuiltInExecutors = false
 
