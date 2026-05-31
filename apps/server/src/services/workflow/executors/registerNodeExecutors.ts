@@ -1,5 +1,5 @@
 import { registerNodeExecutor } from '../executors/nodeExecutors.js'
-import { executeEndNode } from './executors/endNodeExecutor.js'
+import { executeEndNode } from '../executors/endNodeExecutor.js'
 import { executeIfElseNode } from './executors/ifElseNodeExecutor.js'
 import { executeIterationNode } from './executors/iterationNodeExecutor.js'
 import { executeLoopNode } from './executors/loopNodeExecutor.js'

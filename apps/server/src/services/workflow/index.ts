@@ -73,7 +73,7 @@ export { executeStartNode } from './executors/startNodeExecutor.js'
 export { executeLlmNode } from './executors/llmNodeExecutor.js'
 export { executeKnowledgeRetrievalNode } from './executors/knowledgeRetrievalNodeExecutor.js'
 export { executeIfElseNode } from './executors/ifElseNodeExecutor.js'
-export { executeEndNode } from './executors/endNodeExecutor.js'
+export { executeEndNode } from '../executors/endNodeExecutor.js'
 export {
   runWorkflowDraft,
   runWorkflowDraftGraph,

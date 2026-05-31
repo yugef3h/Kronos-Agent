@@ -16,7 +16,7 @@ import {
   runKnowledgeRetrievalQuery,
   updateKnowledgeDataset,
   updateKnowledgeDocumentBlockKeywords,
-} from '../../rag/knowledgeFacade.js';
+} from '../rag/knowledgeFacade.js';
 import { KnowledgeDocumentDuplicateError } from '../models/knowledgeDocumentDuplicate.js';
 import {
   indexingEstimateSchema,
@@ -27,7 +27,7 @@ import {
   knowledgeRetrievalCompareSchema,
   knowledgeRetrievalEvalSchema,
   knowledgeRetrievalQuerySchema,
-} from '../../rag/types.js';
+} from '../rag/types.js';
 import {
   appendSessionMessages,
   getSessionSnapshot,

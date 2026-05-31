@@ -1,7 +1,7 @@
 import { access, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { KnowledgeDatasetRecord } from '../../../models/knowledgeDatasetStore.js';
-import { getKnowledgeExamplesDir, isKnowledgeExampleDatasetId } from '../../../models/knowledgeDataPaths.js';
+import type { KnowledgeDatasetRecord } from '../../models/knowledgeDatasetStore.js';
+import { getKnowledgeExamplesDir, isKnowledgeExampleDatasetId } from '../../models/knowledgeDataPaths.js';
 
 export { isKnowledgeExampleDatasetId };
 
