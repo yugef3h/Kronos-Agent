@@ -5,7 +5,7 @@ import { RunContext } from '../../runner/runContext.js'
 import {
   toWorkflowDraftNodeRunRecord,
   workflowDraftNodeRunRecordFromDebug,
-} from '../nodeRunRecord.js'
+} from '../../engine/nodeRunRecord.js'
 import { NodeRunStatus } from '../../types/types.js'
 
 jest.mock('../../debug/llmNodeDebugExecutor.js', () => ({
