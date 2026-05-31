@@ -88,7 +88,7 @@ export type {
 export {
   toWorkflowDraftNodeRunRecord,
   workflowDraftNodeRunRecordFromDebug,
-} from '../engine/nodeRunRecord.js'
+} from './engine/nodeRunRecord.js'
 export { extractWorkflowDraftDslGraph } from '../engine/workflowDsl.js'
 export type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../engine/workflowDsl.js'
 export {

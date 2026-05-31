@@ -1,4 +1,4 @@
-import { getRedisClient } from '../../../infra/redisClient.js';
+import { getRedisClient } from '../../infra/redisClient.js';
 import type { AiTaskEventStore } from './aiTaskEventStore.js';
 import { memoryAiTaskEventStore } from './memoryAiTaskEventStore.js';
 import { createRedisAiTaskEventStore } from './redisAiTaskEventStore.js';
