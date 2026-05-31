@@ -21,12 +21,12 @@ import {
 import type {
   KnowledgeDocumentChunkOptions,
   KnowledgeDocumentPreprocessingRules,
-} from '../services/knowledgeChunkingService.js';
-import type { KnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
-import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } from '../services/knowledgeRetrievalService.js';
+} from '../services/knowledge/knowledgeChunkingService.js';
+import type { KnowledgeRetrievalQuery } from '../services/knowledge/knowledgeRetrievalService.js';
+import { runKnowledgeRetrievalQuery as selfHostedRunKnowledgeRetrievalQuery } from '../services/knowledge/knowledgeRetrievalService.js';
 import { computeKnowledgeDocumentContentHash } from '../models/knowledgeContentHash.js';
 import { assertNoDuplicateDocument } from '../models/knowledgeDocumentDuplicate.js';
-import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
+import { resolveImportPreprocessingRules } from '../services/knowledge/knowledgeImportPreprocessing.js';
 import { getRagEngineMode } from './engine.js';
 import { buildKnowledgeDocumentChunksWithLangChain } from './langchain/buildChunksWithLangChain.js';
 import { createRagEmbeddings } from './langchain/ragEmbeddings.js';
@@ -45,13 +45,13 @@ export {
   listKnowledgeDocuments,
   updateKnowledgeDocumentBlockKeywords,
 } from '../models/knowledgeDocumentStore.js';
-export { runKnowledgeIndexingEstimate } from '../services/knowledgeIndexingEstimateService.js';
+export { runKnowledgeIndexingEstimate } from '../services/knowledge/knowledgeIndexingEstimateService.js';
 export { getRagEngineMode, type RagEngineMode } from './engine.js';
 export type {
   KnowledgeRetrievalQuery,
   KnowledgeRetrievalQueryResult,
   KnowledgeRetrievalResultItem,
-} from '../services/knowledgeRetrievalService.js';
+} from '../services/knowledge/knowledgeRetrievalService.js';
 
 /** 知识库检索 API 与 Chatbot 编排共用的实现；输出 Top-K chunk，不含生成式答案。 */
 export async function runKnowledgeRetrievalQuery(query: KnowledgeRetrievalQuery) {

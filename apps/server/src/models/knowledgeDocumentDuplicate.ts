@@ -10,8 +10,8 @@ import { readKnowledgeDocumentsIndex, type KnowledgeDocumentRecord } from './kno
 import {
   preprocessDocumentText,
   type KnowledgeDocumentPreprocessingRules,
-} from '../services/knowledgeChunkingService.js';
-import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
+} from '../services/knowledge/knowledgeChunkingService.js';
+import { resolveImportPreprocessingRules } from '../services/knowledge/knowledgeImportPreprocessing.js';
 import type { KnowledgeDatasetRecord } from './knowledgeDatasetStore.js';
 
 export class KnowledgeDocumentDuplicateError extends Error {

@@ -7,20 +7,20 @@ import {
   resolveKnowledgeDatasetDataDir,
   resolveKnowledgeStoredPath,
 } from './knowledgeDataPaths.js';
-import { deleteKnowledgeExampleDataset } from '../services/knowledgeExampleStore.js';
+import { deleteKnowledgeExampleDataset } from '../services/knowledge/knowledgeExampleStore.js';
 import {
   buildKnowledgeDocumentChunks,
   type KnowledgeChunkPreview,
   type KnowledgeDocumentChunkOptions,
   type KnowledgeDocumentPreprocessingRules,
-} from '../services/knowledgeChunkingService.js';
+} from '../services/knowledge/knowledgeChunkingService.js';
 import {
   extractKnowledgeKeywords,
   normalizeKeywords,
 } from '../services/knowledgeKeywordService.js';
 import { computeKnowledgeDocumentContentHash, generateKnowledgeTextHash } from './knowledgeContentHash.js';
 import { assertNoDuplicateDocument } from './knowledgeDocumentDuplicate.js';
-import { resolveImportPreprocessingRules } from '../services/knowledgeImportPreprocessing.js';
+import { resolveImportPreprocessingRules } from '../services/knowledge/knowledgeImportPreprocessing.js';
 import {
   attachContentHashToDocuments,
   registerContentHashIndexEntry,

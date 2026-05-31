@@ -67,7 +67,7 @@ import { workflowDraftRunRoutes } from './workflowDraftRunRoutes.js';
 import { workflowNodeDebugRoutes } from './workflowNodeDebugRoutes.js';
 import '../workflow/registerNodeDebugExecutors.js';
 import { join } from 'path';
-import { computeKnowledgeDatasetHealth } from '../services/knowledgeDatasetHealthService.js';
+import { computeKnowledgeDatasetHealth } from '../services/knowledge/knowledgeDatasetHealthService.js';
 import {
   createKnowledgeDatasetSnapshot,
   listKnowledgeDatasetSnapshots,
