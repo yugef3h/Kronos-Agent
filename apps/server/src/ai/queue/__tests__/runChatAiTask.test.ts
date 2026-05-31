@@ -4,7 +4,7 @@ jest.mock('../../../services/agent/agentStreamRouter.js', () => ({
   }),
 }));
 
-jest.mock('../../domain/sessionStore.js', () => ({
+jest.mock('../../../models/sessionStore.js', () => ({
   appendSessionMessages: jest.fn().mockResolvedValue(undefined),
 }));
 
