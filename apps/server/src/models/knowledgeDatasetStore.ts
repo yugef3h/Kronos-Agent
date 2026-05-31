@@ -8,7 +8,7 @@ import {
   listKnowledgeExampleDatasets,
   saveKnowledgeExampleDataset,
 } from '../services/knowledge/knowledgeExampleStore.js';
-import { assertKnowledgeDatasetNotUsedByWorkflow } from '../services/workflowKnowledgeDependencies.js';
+import { assertKnowledgeDatasetNotUsedByWorkflow } from '../services/workflow/workflowKnowledgeDependencies.js';
 
 export type KnowledgeMetadataField = {
   key: string;
