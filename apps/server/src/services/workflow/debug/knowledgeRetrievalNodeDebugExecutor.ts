@@ -6,7 +6,7 @@ import {
   type NodeDebugRequest,
   type NodeDebugResult,
   type RunError,
-} from '../types.js'
+} from '../../types/types.js'
 
 type KnowledgeRetrievalMode = 'oneWay' | 'multiWay'
 

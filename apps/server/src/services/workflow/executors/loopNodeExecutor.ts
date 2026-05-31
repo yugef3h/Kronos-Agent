@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../types.js'
+import { NodeRunStatus } from '../../types/types.js'
 import { runLoopSandbox } from '../container/loopSandbox.js'
 import type { NodeExecutor } from '../nodeExecutors.js'
 

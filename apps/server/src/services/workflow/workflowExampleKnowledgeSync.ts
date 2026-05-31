@@ -13,7 +13,7 @@ import {
   isInLocalKnowledgeDatasetIndex,
   isKnowledgeExampleDatasetId,
 } from '../../models/knowledgeDataPaths.js';
-import { getKnowledgeExampleDataset, saveKnowledgeExampleDataset } from './knowledgeExampleStore.js';
+import { getKnowledgeExampleDataset, saveKnowledgeExampleDataset } from '../knowledgeExampleStore.js';
 import { collectDatasetIdsFromWorkflowApp } from './workflowKnowledgeDependencies.js';
 import { listWorkflowExampleApps, type WorkflowExampleAppRecord } from './workflowExampleStore.js';
 

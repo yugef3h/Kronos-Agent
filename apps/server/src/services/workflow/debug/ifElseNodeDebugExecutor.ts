@@ -4,7 +4,7 @@ import {
   type NodeDebugRequest,
   type NodeDebugResult,
   type RunError,
-} from '../types.js'
+} from '../../types/types.js'
 
 export const DEFAULT_IF_CASE_ID = 'true'
 export const ELSE_BRANCH_ID = 'false'

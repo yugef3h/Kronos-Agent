@@ -1,5 +1,5 @@
 import { NodeRunStatus } from '../../types/types.js'
-import { registerBuiltInNodeExecutors } from '../registerNodeExecutors.js'
+import { registerBuiltInNodeExecutors } from '../../executors/registerNodeExecutors.js'
 import { workflowRunStore } from '../../store/workflowRunStore.js'
 import { runWorkflowDraftGraph } from '../../runner/workflowDraftRunner.js'
 import { buildExecutionGraph } from '../../engine/buildExecutionGraph.js'

@@ -4,7 +4,7 @@ import {
   type NodeDebugRequest,
   type NodeDebugResult,
   type RunError,
-} from '../types.js'
+} from '../../types/types.js'
 
 type EndOutputValueMode = 'variable' | 'constant'
 type EndOutputConstantType = 'string' | 'number' | 'boolean' | 'json'

@@ -7,7 +7,7 @@ import {
   type NodeDebugRequest,
   type NodeDebugResult,
   type RunError,
-} from '../types.js'
+} from '../../types/types.js'
 
 const WORKFLOW_VARIABLE_PLACEHOLDER_RE = /\{\{#([\w-]+(?:\.[\w-]+)*)#\}\}/g
 const DEFAULT_LLM_DEBUG_TIMEOUT_MS = 30_000
