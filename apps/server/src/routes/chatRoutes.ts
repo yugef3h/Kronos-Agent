@@ -42,12 +42,12 @@ import { analyzeTakeoutIntent } from '../services/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeoutSimulationService.js';
 import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
-import { uploadImageToImgbb } from '../services/imgbbUploadService.js';
-import { recognizeImageByDoubao } from '../services/imageRecognitionService.js';
-import { analyzeFileByDoubao } from '../services/fileAnalysisService.js';
-import { generateHotTopics } from '../services/hotTopicService.js';
-import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachmentService.js';
-import { verifyAttachmentAccess } from '../services/attachmentSignedUrl.js';
+import { uploadImageToImgbb } from '../services/image/imgbbUploadService.js';
+import { recognizeImageByDoubao } from '../services/image/imageRecognitionService.js';
+import { analyzeFileByDoubao } from '../services/file/fileAnalysisService.js';
+import { generateHotTopics } from '../services/hotTopic/hotTopicService.js';
+import { ATTACHMENTS_DIR, loadAttachmentMeta, saveImageAttachment } from '../services/attachment/attachmentService.js';
+import { verifyAttachmentAccess } from '../services/attachment/attachmentSignedUrl.js';
 import {
   normalizeWorkflowAppId,
   readWorkflowDraftPreviewIfExists,
