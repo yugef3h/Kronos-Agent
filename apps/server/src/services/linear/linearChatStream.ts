@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import type { Message } from '../../domain/sessionStore.js';
-import { env } from '../../config/env.js';
+import { env } from '../../core/config/env.js';
 import { buildUserHumanMessage } from '../chat/buildUserHumanMessage.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';

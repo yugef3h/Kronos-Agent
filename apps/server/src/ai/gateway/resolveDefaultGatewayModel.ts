@@ -1,4 +1,4 @@
-import { env } from '../../config/env.js';
+import { env } from '../../core/config/env.js';
 import type { GatewayModelConfig } from '../types/gatewayModelConfig.js';
 import type { ModelProviderId } from '../types/modelProvider.js';
 import type { ModelRouteIntent } from '../types/modelRouteIntent.js';
