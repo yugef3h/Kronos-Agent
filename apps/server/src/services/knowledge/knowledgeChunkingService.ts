@@ -1,7 +1,7 @@
 import { rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { extname, join } from 'path';
-import { extractDocumentText } from './documentTextExtractor.js';
+import { extractDocumentText } from '../file/documentTextExtractor.js';
 import { parseFileDataUrl } from './fileAnalysisHelpers.js';
 
 export type KnowledgeChunkPreview = {
