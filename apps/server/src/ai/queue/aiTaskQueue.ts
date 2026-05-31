@@ -1,6 +1,6 @@
 import { Queue, Worker } from 'bullmq';
 import { runChatAiTask } from './runChatAiTask.js';
-import { getRedisClient } from '../../infra/redisClient.js';
+import { getRedisClient } from '../../../infra/redisClient.js';
 import type { AiTaskRecord } from '../types/aiTaskRecord.js';
 import { buildAiTaskJobId } from './buildAiTaskJobId.js';
 import { getAiTaskStore } from './getAiTaskStore.js';
