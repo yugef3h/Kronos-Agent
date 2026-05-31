@@ -1,9 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 import { allowedOrigins, env, isLocalDevOrigin } from './core/config/env.js';
-import { initKnowledgeDatasetStore } from './domain/knowledgeDatasetStore.js';
+import { initKnowledgeDatasetStore } from './models/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
-import { initSessionStore, resolveSessionStoreMode } from './domain/sessionStore.js';
+import { initSessionStore, resolveSessionStoreMode } from './models/sessionStore.js';
 import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
 import { publicAssetGuard } from './middleware/publicAssetGuard.js';
 import { getRagEngineMode } from './rag/engine.js';
