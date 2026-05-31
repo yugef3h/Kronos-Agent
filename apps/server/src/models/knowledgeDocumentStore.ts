@@ -17,7 +17,7 @@ import {
 import {
   extractKnowledgeKeywords,
   normalizeKeywords,
-} from '../services/knowledgeKeywordService.js';
+} from '../services/knowledge/knowledgeKeywordService.js';
 import { computeKnowledgeDocumentContentHash, generateKnowledgeTextHash } from './knowledgeContentHash.js';
 import { assertNoDuplicateDocument } from './knowledgeDocumentDuplicate.js';
 import { resolveImportPreprocessingRules } from '../services/knowledge/knowledgeImportPreprocessing.js';

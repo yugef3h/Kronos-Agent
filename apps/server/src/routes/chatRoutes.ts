@@ -72,9 +72,9 @@ import {
   createKnowledgeDatasetSnapshot,
   listKnowledgeDatasetSnapshots,
   readKnowledgeDatasetSnapshot,
-} from '../services/knowledgeDatasetSnapshotService.js';
-import { compareKnowledgeRetrievalQueries } from '../services/knowledgeRetrievalCompareService.js';
-import { evaluateKnowledgeRetrievalRun } from '../services/knowledgeRetrievalEvalService.js';
+} from '../services/knowledge/knowledgeDatasetSnapshotService.js';
+import { compareKnowledgeRetrievalQueries } from '../services/knowledge/knowledgeRetrievalCompareService.js';
+import { evaluateKnowledgeRetrievalRun } from '../services/knowledge/knowledgeRetrievalEvalService.js';
 import { warmDatasetChunks } from '../ai/rag/warmDatasetChunks.js';
 import { attachGatewayContext, type RequestWithGatewayContext } from '../ai/middleware/attachGatewayContext.js';
 import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
