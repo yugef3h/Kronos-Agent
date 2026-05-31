@@ -2,7 +2,7 @@ import { rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { extname, join } from 'path';
 import { extractDocumentText } from '../file/documentTextExtractor.js';
-import { parseFileDataUrl } from './fileAnalysisHelpers.js';
+import { parseFileDataUrl } from '../chat/fileAnalysisHelpers.js';
 
 export type KnowledgeChunkPreview = {
   id: string;

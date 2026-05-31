@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { AIMessage } from '@langchain/core/messages';
-import { extractModelToolCalls } from '../toolCallExtractor';
+import { extractModelToolCalls } from '../../tools/toolCallExtractor';
 import { runPlanningStep } from '../planningStep';
 
 describe('extractModelToolCalls', () => {

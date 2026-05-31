@@ -4,7 +4,7 @@ import {
   parseFileDataUrl,
 } from '../chat/fileAnalysisHelpers.js';
 import { extractDocumentText } from './documentTextExtractor.js';
-import { readDoubaoChatStreamReply } from './doubaoChatHelpers.js';
+import { readDoubaoChatStreamReply } from '../chat/doubaoChatHelpers.js';
 
 const FILE_TEXT_PREVIEW_LIMIT = 16_000;
 const FILE_REPLY_MAX_TOKENS = 1_200;

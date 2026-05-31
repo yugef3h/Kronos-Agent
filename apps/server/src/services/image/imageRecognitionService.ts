@@ -2,7 +2,7 @@ import { getActiveModelCredentials } from '../../ai/gateway/resolveDefaultGatewa
 import {
   extractDoubaoChatReply,
   readDoubaoChatStreamReply,
-} from './doubaoChatHelpers.js';
+} from '../chat/doubaoChatHelpers.js';
 
 type DoubaoContentPart =
   | { type: 'text'; text: string }
