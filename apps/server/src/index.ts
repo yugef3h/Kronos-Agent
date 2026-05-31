@@ -10,7 +10,7 @@ import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
 import { startWorkflowDraftWorker } from './workflow/workflowDraftQueue.js';
 import { chatRoutes } from './routes/chatRoutes.js';
-import { createDevToken, isDevTokenRouteEnabled } from './services/devTokenService.js';
+import { createDevToken, isDevTokenRouteEnabled } from './services/auth/devTokenService.js';
 
 const app = express();
 app.set('trust proxy', 1);
