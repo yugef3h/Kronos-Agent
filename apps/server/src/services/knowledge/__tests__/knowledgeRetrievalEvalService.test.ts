@@ -5,7 +5,7 @@ const mockRunKnowledgeRetrievalQuery = jest.fn<
   (query: KnowledgeRetrievalQuery) => Promise<KnowledgeRetrievalQueryResult>
 >();
 
-jest.mock('../rag/knowledgeFacade.js', () => ({
+jest.mock('../../../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: (query: KnowledgeRetrievalQuery) => mockRunKnowledgeRetrievalQuery(query),
 }));
 import {

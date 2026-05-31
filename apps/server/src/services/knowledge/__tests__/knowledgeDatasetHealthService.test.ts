@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 const mockListDocuments = jest.fn();
 const mockListChunks = jest.fn();
 
-jest.mock('../models/knowledgeDocumentStore.js', () => ({
+jest.mock('../../../models/knowledgeDocumentStore.js', () => ({
   listKnowledgeDocuments: (...args: unknown[]) => mockListDocuments(...args),
   listKnowledgeDatasetChunks: (...args: unknown[]) => mockListChunks(...args),
 }));

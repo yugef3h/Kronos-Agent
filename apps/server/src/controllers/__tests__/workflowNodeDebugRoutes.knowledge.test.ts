@@ -6,7 +6,7 @@ import { invokeWorkflowNodeDebugNodePost } from '../workflowNodeDebugRoutes.test
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 
-jest.mock('../rag/knowledgeFacade.js', () => ({
+jest.mock('../../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: (...args: unknown[]) => mockRunKnowledgeRetrievalQuery(...args),
 }))
 
