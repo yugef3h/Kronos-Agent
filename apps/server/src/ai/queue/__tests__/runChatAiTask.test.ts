@@ -1,4 +1,4 @@
-jest.mock('../../services/agent/agentStreamRouter.js', () => ({
+jest.mock('../../../services/agent/agentStreamRouter.js', () => ({
   streamPlaygroundAgentReply: jest.fn(async function* () {
     yield { type: 'content', content: 'hello' };
   }),

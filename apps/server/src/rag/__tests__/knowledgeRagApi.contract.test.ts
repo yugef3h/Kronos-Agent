@@ -14,9 +14,9 @@ import { runKnowledgeRetrievalQuery } from '../../services/knowledge/knowledgeRe
 import {
   assertKnowledgePreviewItemContract,
   assertKnowledgeRetrievalQueryResultContract,
-} from '../../contract/knowledgeRagApiContract.js';
-import * as ragEmbeddings from '../../langchain/ragEmbeddings.js';
-import { runLangchainVectorRetrievalQuery } from '../../langchain/vectorRetrieval.js';
+} from '../contract/knowledgeRagApiContract.js';
+import * as ragEmbeddings from '../langchain/ragEmbeddings.js';
+import { runLangchainVectorRetrievalQuery } from '../langchain/vectorRetrieval.js';
 
 const toDataUrl = (mimeType: string, value: string) => {
   return `data:${mimeType};base64,${Buffer.from(value, 'utf8').toString('base64')}`;
