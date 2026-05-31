@@ -37,7 +37,7 @@ import {
   SessionStreamLockBusyError,
 } from '../models/sessionStore.js';
 import { generateTakeoutCatalog } from '../services/takeout/takeoutCatalogService.js';
-import { streamChat } from '../services/streamService.js';
+import { streamChat } from '../services/streaming/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeout/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeout/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeout/takeoutSimulationService.js';
