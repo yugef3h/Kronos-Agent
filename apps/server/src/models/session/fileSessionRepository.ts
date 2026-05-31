@@ -3,7 +3,7 @@ import { join } from 'path';
 import { SessionConflictError } from './sessionConflictError.js';
 import { createEmptySession, normalizeSession, parseStoredSession } from './normalizeSession.js';
 import { SESSION_DATA_DIR } from './sessionPaths.js';
-import { sessionFilePath, writeSessionFile } from './writeSessionFile.js';
+import { writeSessionFile } from './writeSessionFile.js';
 import type { SaveSessionOptions, SessionRepository } from './sessionRepository.js';
 import type { Session } from './types.js';
 
