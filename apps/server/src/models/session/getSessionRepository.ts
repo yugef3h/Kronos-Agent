@@ -1,4 +1,4 @@
-import { closeRedisClient, duplicateRedisClient, getRedisClient } from '../infra/redisClient.js';
+import { closeRedisClient, duplicateRedisClient, getRedisClient } from '../../infra/redisClient.js';
 import { FileSessionRepository } from './fileSessionRepository.js';
 import { RedisSessionRepository } from './redisSessionRepository.js';
 import type { SessionRepository } from './sessionRepository.js';

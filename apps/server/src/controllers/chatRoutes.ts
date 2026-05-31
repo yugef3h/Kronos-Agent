@@ -41,7 +41,7 @@ import { streamChat } from '../services/streaming/streamService.js';
 import { analyzeTakeoutIntent } from '../services/takeout/takeoutIntentService.js';
 import { orchestrateTakeoutPrompt } from '../services/takeout/takeoutOrchestratorService.js';
 import { simulateTakeoutReply } from '../services/takeout/takeoutSimulationService.js';
-import { analyzeTokenAndEmbedding } from '../services/tokenEmbeddingService.js';
+import { analyzeTokenAndEmbedding } from '../services/embedding/tokenEmbeddingService.js';
 import { uploadImageToImgbb } from '../services/image/imgbbUploadService.js';
 import { recognizeImageByDoubao } from '../services/image/imageRecognitionService.js';
 import { analyzeFileByDoubao } from '../services/file/fileAnalysisService.js';
@@ -61,11 +61,11 @@ import {
   saveWorkflowExampleApp,
   saveWorkflowExamplePreviewJpeg,
   type WorkflowExampleAppRecord,
-} from '../services/workflowExampleStore.js';
-import { KnowledgeDatasetInUseByWorkflowError } from '../services/workflowKnowledgeDependencies.js';
+} from '../services/workflow/workflowExampleStore.js';
+import { KnowledgeDatasetInUseByWorkflowError } from '../services/workflow/workflowKnowledgeDependencies.js';
 import { workflowDraftRunRoutes } from './workflowDraftRunRoutes.js';
 import { workflowNodeDebugRoutes } from './workflowNodeDebugRoutes.js';
-import '../workflow/registerNodeDebugExecutors.js';
+import '../services/workflow/executors/registerNodeDebugExecutors.js';
 import { join } from 'path';
 import { computeKnowledgeDatasetHealth } from '../services/knowledge/knowledgeDatasetHealthService.js';
 import {

@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { allowedOrigins, env, isLocalDevOrigin } from './core/config/env.js';
 import { initKnowledgeDatasetStore } from './models/knowledgeDatasetStore.js';
-import { reconcileAllWorkflowExampleKnowledge } from './services/workflowExampleKnowledgeSync.js';
+import { reconcileAllWorkflowExampleKnowledge } from './services/workflow/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './models/sessionStore.js';
 import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
 import { publicAssetGuard } from './middleware/publicAssetGuard.js';
