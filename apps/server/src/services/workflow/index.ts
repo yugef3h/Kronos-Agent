@@ -5,7 +5,7 @@ export {
   WorkflowRunStatus,
   isTerminalNodeRunStatus,
   isTerminalWorkflowRunStatus,
-} from '../types/types.js'
+} from './types/types.js'
 export type {
   CreateWorkflowRunInput,
   NodeDebugBlockKind,
@@ -21,7 +21,7 @@ export type {
   WorkflowRunKind,
   WorkflowRunRecord,
   WorkflowRunSummary,
-} from '../types/types.js'
+} from './types/types.js'
 export { nodeRunStatusToWorkflowRunStatus, toWorkflowRunSummary } from '../runner/workflowRunSummary.js'
 export {
   WorkflowFsmTransitionError,

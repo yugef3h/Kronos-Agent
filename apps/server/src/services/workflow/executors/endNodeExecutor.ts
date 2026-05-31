@@ -3,7 +3,7 @@ import {
   applyNodeExecutionToRunContext,
   fromNodeDebugResult,
   toNodeDebugRequest,
-} from '../executorBridge.js'
+} from '../runner/executorBridge.js'
 import type { NodeExecutor } from '../nodeExecutors.js'
 
 export const executeEndNode: NodeExecutor = async (request) => {
