@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../../types/types.js'
+import { NodeRunStatus } from '../types/types.js'
 import type { RunContext } from '../runContext.js'
 import type { WorkflowDraftDslGraph } from '../workflowDsl.js'
 import type { WorkflowDraftNodeRunRecord } from '../workflowDraftRunner.js'

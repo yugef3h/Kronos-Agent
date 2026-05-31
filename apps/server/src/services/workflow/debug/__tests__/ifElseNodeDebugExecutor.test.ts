@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../../types/types.js'
+import { NodeRunStatus } from '../types/types.js'
 import {
   ELSE_BRANCH_ID,
   evaluateIfElseCondition,

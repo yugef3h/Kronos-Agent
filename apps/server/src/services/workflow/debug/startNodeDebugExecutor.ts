@@ -4,7 +4,7 @@ import {
   type NodeDebugRequest,
   type NodeDebugResult,
   type RunError,
-} from '../../types/types.js'
+} from '../types/types.js'
 
 type StartVariableType =
   | 'text-input'

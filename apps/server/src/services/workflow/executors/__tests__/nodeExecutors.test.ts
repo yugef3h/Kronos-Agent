@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../../types/types.js'
+import { NodeRunStatus } from '../types/types.js'
 import type { NodeExecutionRequest } from '../../executors/nodeExecutors.js'
 import {
   NodeExecutorNotFoundError,

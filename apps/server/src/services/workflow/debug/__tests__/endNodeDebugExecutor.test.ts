@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../../types/types.js'
+import { NodeRunStatus } from '../types/types.js'
 import { executeEndNodeDebug } from '../endNodeDebugExecutor.js'
 
 describe('executeEndNodeDebug', () => {

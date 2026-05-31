@@ -5,7 +5,7 @@ import {
 } from '../nodeExecutors.js'
 import type { WorkflowNodeBlockKind, WorkflowNodePayload } from '../nodeExecutors.js'
 import type { RunContext } from '../runContext.js'
-import { NodeRunStatus, type RunError } from '../../types/types.js'
+import { NodeRunStatus, type RunError } from '../types/types.js'
 import type { WorkflowDraftDslGraph, WorkflowDraftDslNode } from '../workflowDsl.js'
 import type { WorkflowDraftNodeRunRecord } from '../workflowDraftRunner.js'
 import { getExecutionGraphSuccessors } from '../buildExecutionGraph.js'
