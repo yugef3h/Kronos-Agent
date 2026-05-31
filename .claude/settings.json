@@ -2,5 +2,16 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "superpowers@superpowers-marketplace": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(pnpm *)",
+      "Bash(npx tsc *)"
+    ]
   }
 }
