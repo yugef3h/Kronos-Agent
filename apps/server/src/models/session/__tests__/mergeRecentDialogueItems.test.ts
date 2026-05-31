@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { mergeRecentDialogueItems } from '../../../listRecentDialoguesFromRedis.js';
-import type { RecentDialogueItem } from '../../../types.js';
+import { mergeRecentDialogueItems } from '../../listRecentDialoguesFromRedis.js';
+import type { RecentDialogueItem } from '../../types.js';
 
 const item = (
   sessionId: string,

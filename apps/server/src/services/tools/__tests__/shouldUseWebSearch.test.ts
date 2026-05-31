@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { shouldUseWebSearch } from '../../../shouldUseWebSearch';
+import { shouldUseWebSearch } from '../../shouldUseWebSearch';
 
 describe('shouldUseWebSearch', () => {
   it('returns true for freshness keywords', () => {

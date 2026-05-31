@@ -1,4 +1,4 @@
-import { projectVectorsTo2D } from '../../../vectorProjection';
+import { projectVectorsTo2D } from '../../vectorProjection';
 
 describe('projectVectorsTo2D', () => {
   it('should produce deterministic projection values', async () => {

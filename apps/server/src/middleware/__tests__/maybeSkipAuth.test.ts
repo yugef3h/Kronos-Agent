@@ -1,4 +1,4 @@
-import { shouldSkipApiAuth } from '../../../maybeSkipAuth.js';
+import { shouldSkipApiAuth } from '../../maybeSkipAuth.js';
 
 const req = (params: {
   method?: string;

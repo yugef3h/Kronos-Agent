@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import type { LangChainStreamEvent } from '../../../chat/streamEventTypes.js';
+import type { LangChainStreamEvent } from '../../chat/streamEventTypes.js';
 
 const linearEvents: LangChainStreamEvent[] = [
   { type: 'timeline', stage: 'plan', status: 'start', message: 'linear', timestamp: 1 },
@@ -32,7 +32,7 @@ jest.mock('../../config/env.js', () => ({
   },
 }));
 
-import { streamPlaygroundAgentReply } from '../../../agentStreamRouter.js';
+import { streamPlaygroundAgentReply } from '../../agentStreamRouter.js';
 
 describe('streamPlaygroundAgentReply', () => {
   it('falls back to linear when langgraph throws', async () => {

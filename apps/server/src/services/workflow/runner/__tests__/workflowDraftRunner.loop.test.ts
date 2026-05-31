@@ -13,12 +13,12 @@ jest.mock('./debug/llmNodeDebugExecutor.js', () => ({
   })),
 }))
 
-import { NodeRunStatus } from '../../../types.js'
-import { registerBuiltInNodeExecutors } from '../../../registerNodeExecutors.js'
-import { workflowRunStore } from '../../../workflowRunStore.js'
-import { runWorkflowDraftGraph } from '../../../workflowDraftRunner.js'
-import { buildExecutionGraph } from '../../../buildExecutionGraph.js'
-import type { WorkflowDraftDslGraph } from '../../../workflowDsl.js'
+import { NodeRunStatus } from '../../types.js'
+import { registerBuiltInNodeExecutors } from '../../registerNodeExecutors.js'
+import { workflowRunStore } from '../../workflowRunStore.js'
+import { runWorkflowDraftGraph } from '../../workflowDraftRunner.js'
+import { buildExecutionGraph } from '../../buildExecutionGraph.js'
+import type { WorkflowDraftDslGraph } from '../../workflowDsl.js'
 
 const createLoopGraph = (): WorkflowDraftDslGraph => {
   const nodes = [

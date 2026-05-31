@@ -1,10 +1,10 @@
-import { NodeRunStatus } from '../../../types.js'
+import { NodeRunStatus } from '../../types.js'
 import {
   ELSE_BRANCH_ID,
   evaluateIfElseCondition,
   executeIfElseNodeDebug,
   resolveMatchedIfElseBranch,
-} from '../../../ifElseNodeDebugExecutor.js'
+} from '../../ifElseNodeDebugExecutor.js'
 
 describe('ifElseNodeDebugExecutor', () => {
   it('evaluates numeric greater_than', () => {

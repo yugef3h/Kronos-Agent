@@ -1,4 +1,4 @@
-import { clearMemoryCacheStore, memoryCacheStore } from '../../../memoryCacheStore.js';
+import { clearMemoryCacheStore, memoryCacheStore } from '../../memoryCacheStore.js';
 
 describe('memoryCacheStore', () => {
   beforeEach(() => {

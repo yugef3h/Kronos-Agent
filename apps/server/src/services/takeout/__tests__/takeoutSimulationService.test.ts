@@ -1,4 +1,4 @@
-import { simulateTakeoutReply } from '../../../takeoutSimulationService';
+import { simulateTakeoutReply } from '../../takeoutSimulationService';
 
 describe('takeoutSimulationService', () => {
   it('returns intent acknowledgement text', () => {

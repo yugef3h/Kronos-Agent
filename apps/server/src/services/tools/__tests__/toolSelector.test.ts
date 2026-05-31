@@ -1,4 +1,4 @@
-import { selectToolNamesFromPrompt } from '../../../toolSelector';
+import { selectToolNamesFromPrompt } from '../../toolSelector';
 
 describe('selectToolNamesFromPrompt', () => {
   it('should include token estimator for token-like prompts', () => {

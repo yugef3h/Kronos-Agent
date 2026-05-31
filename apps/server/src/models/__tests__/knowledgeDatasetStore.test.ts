@@ -8,7 +8,7 @@ import {
   listKnowledgeDatasets,
   resetKnowledgeDatasetStoreForTests,
   updateKnowledgeDataset,
-} from '../../../knowledgeDatasetStore.js';
+} from '../../knowledgeDatasetStore.js';
 
 describe('knowledgeDatasetStore', () => {
   let tempDir = '';

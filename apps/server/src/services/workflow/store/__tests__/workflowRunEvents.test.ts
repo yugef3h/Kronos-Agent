@@ -1,10 +1,10 @@
-import { NodeRunStatus, WorkflowRunStatus } from '../../../types.js'
+import { NodeRunStatus, WorkflowRunStatus } from '../../types.js'
 import {
   appendWorkflowRunEvent,
   clearWorkflowRunEvents,
   formatWorkflowRunEventSse,
   listWorkflowRunEvents,
-} from '../../../workflowRunEvents.js'
+} from '../../workflowRunEvents.js'
 
 describe('workflowRunEvents', () => {
   beforeEach(async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { SessionConflictError } from '../../../sessionConflictError.js';
-import { FileSessionRepository } from '../../../fileSessionRepository.js';
+import { SessionConflictError } from '../../sessionConflictError.js';
+import { FileSessionRepository } from '../../fileSessionRepository.js';
 
 describe('FileSessionRepository', () => {
   it('increments version on save', async () => {

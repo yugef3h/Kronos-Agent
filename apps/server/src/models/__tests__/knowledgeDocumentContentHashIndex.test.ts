@@ -2,9 +2,9 @@ import { mkdtemp, readFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-import { createKnowledgeDataset } from '../../../knowledgeDatasetStore.js';
-import { getKnowledgeContentHashIndexPath } from '../../../knowledgeDocumentContentHashIndex.js';
-import { importKnowledgeDocument } from '../../../knowledgeDocumentStore.js';
+import { createKnowledgeDataset } from '../../knowledgeDatasetStore.js';
+import { getKnowledgeContentHashIndexPath } from '../../knowledgeDocumentContentHashIndex.js';
+import { importKnowledgeDocument } from '../../knowledgeDocumentStore.js';
 
 const toDataUrl = (mimeType: string, text: string) =>
   `data:${mimeType};base64,${Buffer.from(text, 'utf-8').toString('base64')}`;

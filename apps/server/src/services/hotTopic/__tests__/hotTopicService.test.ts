@@ -1,4 +1,4 @@
-import { FALLBACK_HOT_TOPICS, generateHotTopics, parseHotTopicsOutput } from '../../../hotTopic/hotTopicService';
+import { FALLBACK_HOT_TOPICS, generateHotTopics, parseHotTopicsOutput } from '../../hotTopic/hotTopicService';
 
 describe('hotTopicService', () => {
   const previousEnv = {

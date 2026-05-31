@@ -1,17 +1,17 @@
 import { describe, expect, it } from '@jest/globals';
 import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { HOT_TOPICS_TASK, hotTopicsChatPrompt } from '../../../hotTopicsPrompt.js';
-import { takeoutCatalogChatPrompt } from '../../../takeoutCatalogPrompt.js';
+import { HOT_TOPICS_TASK, hotTopicsChatPrompt } from '../../hotTopicsPrompt.js';
+import { takeoutCatalogChatPrompt } from '../../takeoutCatalogPrompt.js';
 import {
   buildTakeoutOrchestrationHistory,
   formatTakeoutOrchestrationMessages,
-} from '../../../takeoutOrchestrationPrompt.js';
+} from '../../takeoutOrchestrationPrompt.js';
 import {
   TAKEOUT_ORCHESTRATION_FEW_SHOT_EXAMPLES,
   takeoutOrchestrationFewShotPrompt,
-} from '../../../takeoutOrchestrationFewShots.js';
+} from '../../takeoutOrchestrationFewShots.js';
 import { FewShotChatMessagePromptTemplate } from '@langchain/core/prompts';
-import { ragQueryExpansionChatPrompt } from '../../../ragQueryExpansionPrompt.js';
+import { ragQueryExpansionChatPrompt } from '../../ragQueryExpansionPrompt.js';
 
 describe('ChatPromptTemplate (P0)', () => {
   it('formats hot topics messages', async () => {

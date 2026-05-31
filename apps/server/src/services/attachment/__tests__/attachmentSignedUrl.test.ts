@@ -1,12 +1,12 @@
 import { createHmac } from 'crypto';
 
-import { env } from '../../../../core/config/env.js';
+import { env } from '../../../core/config/env.js';
 import {
   ATTACHMENT_URL_TTL_SEC,
   buildSignedAttachmentPath,
   signAttachmentAccess,
   verifyAttachmentAccess,
-} from '../../../attachmentSignedUrl.js';
+} from '../../attachmentSignedUrl.js';
 
 describe('attachmentSignedUrl', () => {
   const attachmentId = '550e8400-e29b-41d4-a716-446655440000';

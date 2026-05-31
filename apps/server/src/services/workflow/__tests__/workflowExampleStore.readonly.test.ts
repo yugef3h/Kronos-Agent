@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { saveWorkflowExampleApp } from '../../../workflowExampleStore.js';
+import { saveWorkflowExampleApp } from '../../workflowExampleStore.js';
 
 describe('workflowExampleStore readonly', () => {
   it('rejects save when WORKFLOW_EXAMPLES_WRITABLE is unset', async () => {

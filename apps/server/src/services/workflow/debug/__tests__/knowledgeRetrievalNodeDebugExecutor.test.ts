@@ -1,4 +1,4 @@
-import { NodeRunStatus } from '../../../types.js'
+import { NodeRunStatus } from '../../types.js'
 
 const mockRunKnowledgeRetrievalQuery = jest.fn()
 
@@ -9,7 +9,7 @@ jest.mock('../../rag/knowledgeFacade.js', () => ({
 import {
   executeKnowledgeRetrievalNodeDebug,
   resolveKnowledgeDebugQuery,
-} from '../../../knowledgeRetrievalNodeDebugExecutor.js'
+} from '../../knowledgeRetrievalNodeDebugExecutor.js'
 
 describe('knowledgeRetrievalNodeDebugExecutor', () => {
   beforeEach(() => {
