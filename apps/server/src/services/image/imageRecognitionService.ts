@@ -1,4 +1,4 @@
-import { getActiveModelCredentials } from '../ai/gateway/resolveDefaultGatewayModel.js';
+import { getActiveModelCredentials } from '../../ai/gateway/resolveDefaultGatewayModel.js';
 import {
   extractDoubaoChatReply,
   readDoubaoChatStreamReply,

@@ -1,7 +1,7 @@
 import {
   listKnowledgeDatasetChunks,
   listKnowledgeDocuments,
-} from '../models/knowledgeDocumentStore.js';
+} from '../../models/knowledgeDocumentStore.js';
 
 const TINY_CHUNK_CHARS = 80;
 const NEAR_DICE_THRESHOLD = 0.9;
