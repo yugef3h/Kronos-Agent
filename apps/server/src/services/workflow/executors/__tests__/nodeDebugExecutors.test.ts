@@ -1,9 +1,9 @@
-import { NodeRunStatus } from './types.js'
-import type { NodeDebugRequest } from './types.js'
+import { NodeRunStatus } from '../../../types.js'
+import type { NodeDebugRequest } from '../../../types.js'
 import {
   NodeDebugExecutorNotFoundError,
   NodeDebugExecutorRegistry,
-} from './nodeDebugExecutors.js'
+} from '../../../nodeDebugExecutors.js'
 
 const createRequest = (type: NodeDebugRequest['node']['type']): NodeDebugRequest => ({
   appId: 'wf_test',

@@ -1,4 +1,4 @@
-import { normalizeStreamDelta } from './streamDelta';
+import { normalizeStreamDelta } from '../../../streamDelta';
 
 describe('normalizeStreamDelta', () => {
   it('returns only the incremental suffix when provider sends cumulative chunks', () => {

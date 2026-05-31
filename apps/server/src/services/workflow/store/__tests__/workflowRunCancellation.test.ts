@@ -1,4 +1,4 @@
-import { MemoryWorkflowRunCancellation } from './memoryWorkflowRunCancellation.js'
+import { MemoryWorkflowRunCancellation } from '../../../memoryWorkflowRunCancellation.js'
 
 describe('MemoryWorkflowRunCancellation', () => {
   it('marks, checks and clears cancellation', async () => {

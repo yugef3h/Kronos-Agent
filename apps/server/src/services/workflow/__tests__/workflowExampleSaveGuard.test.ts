@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   getWorkflowExampleGraphStats,
   isWorkflowExampleDestructiveDowngrade,
-} from './workflowExampleSaveGuard.js';
+} from '../../../workflowExampleSaveGuard.js';
 
 const dslWithGraph = (nodes: number, edges: number, onlyStart = false) => ({
   workflow: {

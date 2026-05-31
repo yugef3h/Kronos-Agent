@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import type { KnowledgeRetrievalQuery, KnowledgeRetrievalQueryResult } from './knowledgeRetrievalService.js';
+import type { KnowledgeRetrievalQuery, KnowledgeRetrievalQueryResult } from '../../../knowledgeRetrievalService.js';
 
 const mockRunKnowledgeRetrievalQuery = jest.fn<
   (query: KnowledgeRetrievalQuery) => Promise<KnowledgeRetrievalQueryResult>
@@ -13,7 +13,7 @@ import {
   evaluateKnowledgeRetrievalRun,
   exactMatchAnswer,
   hallucinationCharMissRate,
-} from './knowledgeRetrievalEvalService.js';
+} from '../../../knowledgeRetrievalEvalService.js';
 
 const minimalItem = (overrides: Partial<{ chunk_id: string; text: string }> = {}) => ({
   dataset_id: 'ds',

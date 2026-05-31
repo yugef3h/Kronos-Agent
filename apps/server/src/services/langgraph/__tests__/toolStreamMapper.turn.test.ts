@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { findCurrentTurnAssistantText, findLatestAssistantText } from './toolStreamMapper';
+import { findCurrentTurnAssistantText, findLatestAssistantText } from '../../../toolStreamMapper';
 
 describe('findCurrentTurnAssistantText', () => {
   it('returns only assistant text after the last human message', () => {

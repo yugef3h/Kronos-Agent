@@ -1,4 +1,4 @@
-import { extractKnowledgeKeywords, normalizeKeywords } from './knowledgeKeywordService'
+import { extractKnowledgeKeywords, normalizeKeywords } from '../../../knowledgeKeywordService'
 
 describe('knowledgeKeywordService', () => {
   it('extracts stable keywords from mixed Chinese and English text', () => {

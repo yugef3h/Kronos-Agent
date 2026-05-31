@@ -8,7 +8,7 @@ jest.mock('@tavily/core', () => ({
   }),
 }));
 
-import { createTavilyWebSearchTool } from './tavilyWebSearchTool.js';
+import { createTavilyWebSearchTool } from '../../../tavilyWebSearchTool.js';
 
 describe('createTavilyWebSearchTool', () => {
   it('returns formatted search output', async () => {

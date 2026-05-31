@@ -2,12 +2,12 @@ jest.mock('../rag/knowledgeFacade.js', () => ({
   runKnowledgeRetrievalQuery: jest.fn(),
 }))
 
-import { WorkflowRunStatus } from './types.js'
-import { registerBuiltInNodeExecutors } from './registerNodeExecutors.js'
-import { workflowRunStore } from './workflowRunStore.js'
-import { runWorkflowDraftGraph } from './workflowDraftRunner.js'
-import { buildExecutionGraph } from './buildExecutionGraph.js'
-import type { WorkflowDraftDslGraph } from './workflowDsl.js'
+import { WorkflowRunStatus } from '../../../types.js'
+import { registerBuiltInNodeExecutors } from '../../../registerNodeExecutors.js'
+import { workflowRunStore } from '../../../workflowRunStore.js'
+import { runWorkflowDraftGraph } from '../../../workflowDraftRunner.js'
+import { buildExecutionGraph } from '../../../buildExecutionGraph.js'
+import type { WorkflowDraftDslGraph } from '../../../workflowDsl.js'
 
 const createStartEndGraph = (): WorkflowDraftDslGraph => {
   const nodes = [

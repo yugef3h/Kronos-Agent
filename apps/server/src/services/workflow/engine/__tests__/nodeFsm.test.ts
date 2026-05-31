@@ -1,10 +1,10 @@
-import { NodeRunStatus } from './types.js'
+import { NodeRunStatus } from '../../../types.js'
 import {
   NodeFsmTransitionError,
   canTransitionNodeRun,
   isNodeRunActive,
   transitionNodeRun,
-} from './nodeFsm.js'
+} from '../../../nodeFsm.js'
 
 describe('nodeFsm', () => {
   it('allows not-start to waiting to running', () => {

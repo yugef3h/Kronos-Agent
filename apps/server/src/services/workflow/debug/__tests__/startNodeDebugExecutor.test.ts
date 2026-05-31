@@ -1,5 +1,5 @@
-import { NodeRunStatus } from '../types.js'
-import { executeStartNodeDebug } from './startNodeDebugExecutor.js'
+import { NodeRunStatus } from '../../../types.js'
+import { executeStartNodeDebug } from '../../../startNodeDebugExecutor.js'
 
 describe('executeStartNodeDebug', () => {
   it('normalizes start outputs and injects system variables', async () => {

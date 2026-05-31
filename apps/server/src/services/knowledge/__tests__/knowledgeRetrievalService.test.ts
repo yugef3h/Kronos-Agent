@@ -6,11 +6,11 @@ import {
   initKnowledgeDatasetStore,
   resetKnowledgeDatasetStoreForTests,
   updateKnowledgeDataset,
-} from '../../models/knowledgeDatasetStore';
+} from '../../../../models/knowledgeDatasetStore';
 import {
   importKnowledgeDocument,
-} from '../../models/knowledgeDocumentStore';
-import { runKnowledgeRetrievalQuery } from './knowledgeRetrievalService';
+} from '../../../../models/knowledgeDocumentStore';
+import { runKnowledgeRetrievalQuery } from '../../../knowledgeRetrievalService';
 
 const toDataUrl = (mimeType: string, value: string) => {
   return `data:${mimeType};base64,${Buffer.from(value, 'utf8').toString('base64')}`;

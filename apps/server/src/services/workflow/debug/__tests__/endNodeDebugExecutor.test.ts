@@ -1,5 +1,5 @@
-import { NodeRunStatus } from '../types.js'
-import { executeEndNodeDebug } from './endNodeDebugExecutor.js'
+import { NodeRunStatus } from '../../../types.js'
+import { executeEndNodeDebug } from '../../../endNodeDebugExecutor.js'
 
 describe('executeEndNodeDebug', () => {
   it('resolves constant outputs', async () => {

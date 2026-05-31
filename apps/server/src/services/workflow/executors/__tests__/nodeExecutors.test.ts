@@ -1,10 +1,10 @@
-import { NodeRunStatus } from './types.js'
-import type { NodeExecutionRequest } from './nodeExecutors.js'
+import { NodeRunStatus } from '../../../types.js'
+import type { NodeExecutionRequest } from '../../../nodeExecutors.js'
 import {
   NodeExecutorNotFoundError,
   NodeExecutorRegistry,
-} from './nodeExecutors.js'
-import { RunContext } from './runContext.js'
+} from '../../../nodeExecutors.js'
+import { RunContext } from '../../../runContext.js'
 
 const createRequest = (type: NodeExecutionRequest['node']['type']): NodeExecutionRequest => ({
   runId: 'run_test',
