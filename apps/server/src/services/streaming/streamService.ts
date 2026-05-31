@@ -9,7 +9,7 @@ import {
   waitForSessionPersist,
 } from '../../models/sessionStore.js';
 import { acquireSessionStreamLock } from '../../models/session/sessionStreamLock.js';
-import { streamPlaygroundAgentReply } from './agent/agentStreamRouter.js';
+import { streamPlaygroundAgentReply } from '../agent/agentStreamRouter.js';
 import { createMemoryPlan } from '../../memory/index.js';
 import { getActiveModelName } from '../../ai/gateway/resolveDefaultGatewayModel.js';
 import { recordTokenUsage } from '../../ai/cost/tokenUsageStore.js';
