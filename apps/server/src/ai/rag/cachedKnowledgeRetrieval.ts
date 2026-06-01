@@ -4,10 +4,24 @@ import type {
 } from '../../services/knowledge/knowledgeRetrievalService.js';
 import { buildRetrievalCacheKey } from '../cache/buildRetrievalCacheKey.js';
 import { getCacheStore } from '../cache/getCacheStore.js';
+import { getKnowledgeDatasetVersion } from '../../models/knowledgeDatasetStore.js';
 
 const RETRIEVAL_CACHE_TTL_MS = 5 * 60 * 1000;
 
-/** 检索结果缓存包装 */
+/** 批量获取知识库版本号，单个失败不影响整体 */
+const resolveDatasetVersions = async (datasetIds: string[]): Promise<Record<string, number>> => {
+  const versions: Record<string, number> = {};
+  for (const id of datasetIds) {
+    try {
+      versions[id] = await getKnowledgeDatasetVersion(id);
+    } catch {
+      versions[id] = 0;
+    }
+  }
+  return versions;
+};
+
+/** 检索结果缓存包装（含知识库版本化失效） */
 export const withRetrievalCache = async (
   query: KnowledgeRetrievalQuery,
   invoke: (q: KnowledgeRetrievalQuery) => Promise<KnowledgeRetrievalQueryResult>,
@@ -21,11 +35,14 @@ export const withRetrievalCache = async (
     ? query.single_retrieval_config.top_k
     : query.multiple_retrieval_config.top_k;
 
+  const datasetVersions = await resolveDatasetVersions(query.dataset_ids);
+
   const cacheKey = buildRetrievalCacheKey({
     query: query.query,
     datasetIds: query.dataset_ids,
     searchMethod: 'hybrid_search',
     topK,
+    datasetVersions,
   });
 
   const store = getCacheStore();

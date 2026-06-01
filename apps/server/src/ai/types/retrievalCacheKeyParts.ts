@@ -6,4 +6,6 @@ export type RetrievalCacheKeyParts = {
   datasetIds: string[];
   searchMethod: KnowledgeSearchMethod;
   topK: number;
+  /** 各知识库当前版本号，用于版本化缓存失效 */
+  datasetVersions: Record<string, number>;
 };
