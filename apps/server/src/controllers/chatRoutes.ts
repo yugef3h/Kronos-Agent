@@ -88,6 +88,7 @@ import { releaseConcurrentSessionOnFinish } from '../ai/middleware/releaseConcur
 import { createMemoryPlan } from '../memory/index.js';
 import { aiHealthRoutes } from './aiHealthRoutes.js';
 import { aiTaskRoutes } from './aiTaskRoutes.js';
+import { cacheStatsRoutes } from './cacheStatsRoutes.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -173,6 +174,7 @@ export const chatRoutes = Router();
 
 chatRoutes.use(aiTaskRoutes);
 chatRoutes.use(aiHealthRoutes);
+chatRoutes.use(cacheStatsRoutes);
 
 const sendValidationError = (response: Response, error: z.ZodError) => {
   const flattened = error.flatten();
