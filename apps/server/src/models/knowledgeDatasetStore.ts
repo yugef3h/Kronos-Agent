@@ -150,6 +150,8 @@ export type KnowledgeDatasetRecord = {
   doc_language: string;
   documentCount: number;
   chunkCount: number;
+  /** 知识库内容版本号，文档导入/删除时自增，用于缓存失效 */
+  version: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -366,6 +368,9 @@ const normalizeDatasetRecord = (value: unknown): KnowledgeDatasetRecord | null =
     chunkCount: typeof raw.chunkCount === 'number' && Number.isFinite(raw.chunkCount)
       ? Math.max(0, Math.floor(raw.chunkCount))
       : 0,
+    version: typeof raw.version === 'number' && Number.isFinite(raw.version) && raw.version >= 1
+      ? Math.max(1, Math.floor(raw.version))
+      : 1,
     createdAt: typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt)
       ? raw.createdAt
       : Date.now(),
@@ -485,6 +490,7 @@ export const createKnowledgeDataset = async (input: KnowledgeDatasetInput): Prom
     doc_language: input.doc_language?.trim() || 'Chinese Simplified',
     documentCount: 0,
     chunkCount: 0,
+    version: 1,
     createdAt: now,
     updatedAt: now,
   };
@@ -610,4 +616,42 @@ export const resetKnowledgeDatasetStoreForTests = () => {
   datasets.clear();
   initialized = false;
   persistQueue = Promise.resolve();
+};
+
+/** 知识库内容变更时自增版本号，触发关联缓存失效 */
+export const bumpKnowledgeDatasetVersion = async (datasetId: string): Promise<number> => {
+  await ensureInitialized();
+
+  const existing = datasets.get(datasetId);
+  if (!existing) {
+    throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
+  }
+
+  const nextVersion = existing.version + 1;
+  const updated: KnowledgeDatasetRecord = {
+    ...existing,
+    version: nextVersion,
+    updatedAt: Date.now(),
+  };
+
+  datasets.set(datasetId, updated);
+  await enqueuePersist();
+  return nextVersion;
+};
+
+/** 读取知识库当前版本号（用于构建缓存键） */
+export const getKnowledgeDatasetVersion = async (datasetId: string): Promise<number> => {
+  await ensureInitialized();
+
+  const existing = datasets.get(datasetId);
+  if (existing) {
+    return existing.version;
+  }
+
+  const example = await getKnowledgeExampleDataset(datasetId);
+  if (example) {
+    return example.version;
+  }
+
+  throw new Error('KNOWLEDGE_DATASET_NOT_FOUND');
 };

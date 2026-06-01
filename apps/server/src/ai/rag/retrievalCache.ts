@@ -7,7 +7,7 @@ import { getCacheStore } from '../cache/getCacheStore.js';
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
-/** 检索缓存读 */
+/** 检索缓存读（调用方负责提供知识库版本号） */
 export const getCachedRetrieval = async (
   parts: RetrievalCacheKeyParts,
 ): Promise<KnowledgeRetrievalQueryResult | null> => {
@@ -15,7 +15,7 @@ export const getCachedRetrieval = async (
   return (entry?.value as KnowledgeRetrievalQueryResult | undefined) ?? null;
 };
 
-/** 检索缓存写 */
+/** 检索缓存写（调用方负责提供知识库版本号） */
 export const setCachedRetrieval = async (
   parts: RetrievalCacheKeyParts,
   value: KnowledgeRetrievalQueryResult,

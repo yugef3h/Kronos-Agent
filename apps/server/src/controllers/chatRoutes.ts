@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import type { AttachmentMeta } from '../models/sessionStore.js';
 import {
+  bumpKnowledgeDatasetVersion,
   createKnowledgeDataset,
   deleteKnowledgeDataset,
   deleteKnowledgeDatasetFiles,
@@ -87,6 +88,7 @@ import { releaseConcurrentSessionOnFinish } from '../ai/middleware/releaseConcur
 import { createMemoryPlan } from '../memory/index.js';
 import { aiHealthRoutes } from './aiHealthRoutes.js';
 import { aiTaskRoutes } from './aiTaskRoutes.js';
+import { cacheStatsRoutes } from './cacheStatsRoutes.js';
 
 const chatSchema = z.object({
   prompt: z.string().min(1),
@@ -172,6 +174,7 @@ export const chatRoutes = Router();
 
 chatRoutes.use(aiTaskRoutes);
 chatRoutes.use(aiHealthRoutes);
+chatRoutes.use(cacheStatsRoutes);
 
 const sendValidationError = (response: Response, error: z.ZodError) => {
   const flattened = error.flatten();
@@ -417,6 +420,9 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
     const datasetId = String(request.params.datasetId || '');
     await deleteKnowledgeDataset(datasetId);
     await deleteKnowledgeDatasetFiles(datasetId);
+    void bumpKnowledgeDatasetVersion(datasetId).catch((error) => {
+      console.warn(`[chatRoutes] bumpKnowledgeDatasetVersion failed for ${datasetId}: ${error instanceof Error ? error.message : 'unknown'}`);
+    });
     response.status(204).end();
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';

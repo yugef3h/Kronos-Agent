@@ -1,6 +1,7 @@
 import { buildModelResultCacheKey } from '../../ai/cache/buildModelResultCacheKey.js';
 import { buildPromptCacheKey } from '../../ai/cache/buildPromptCacheKey.js';
 import { getCacheStore } from '../../ai/cache/getCacheStore.js';
+import { querySemanticCache, writeSemanticCache } from '../../ai/cache/semanticCacheStore.js';
 import { streamCachedPromptReply } from '../../ai/cache/streamCachedPromptReply.js';
 import {
   loadSession,
@@ -86,6 +87,23 @@ async function* streamChatBody(params: {
       eventId,
       timestamp: Date.now(),
     })}\nid: ${eventId}\n\n`;
+  }
+
+  // L1 语义缓存：嵌入余弦相似度匹配
+  const semanticAnswer = await querySemanticCache(prompt);
+  if (semanticAnswer) {
+    for (const chunk of streamCachedPromptReply(semanticAnswer, sessionId, lastEventId)) {
+      yield chunk;
+    }
+
+    session.messages.push({ role: 'assistant', content: semanticAnswer, timestamp: Date.now() });
+    session.lastId = eventId + 2;
+    persistSession(sessionId, session);
+    const semanticPersistIssue = await waitForSessionPersistSafe(sessionId);
+    if (semanticPersistIssue) {
+      console.warn(`[streamChat] ${semanticPersistIssue}`);
+    }
+    return;
   }
 
   const modelResultKey = buildModelResultCacheKey(prompt, getActiveModelName(), 'playground');
@@ -216,6 +234,9 @@ async function* streamChatBody(params: {
   if (assistantText.trim().length > 0) {
     await getCacheStore().set(promptCacheKey, assistantText, 60 * 60 * 1000);
     await getCacheStore().set(modelResultKey, assistantText, 30 * 60 * 1000);
+    void writeSemanticCache(prompt, assistantText).catch((error) => {
+      console.warn(`[streamChat] writeSemanticCache failed: ${error instanceof Error ? error.message : 'unknown'}`);
+    });
   }
 
   recordTokenUsage(params.userId ?? 'anonymous', {

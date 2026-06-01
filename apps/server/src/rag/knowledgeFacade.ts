@@ -11,7 +11,7 @@
  * Step4：`langchain` 时入库后把 chunk 向量写入 jsonl；检索走 `runLangchainVectorRetrievalQuery`。
  * `self` 时检索/入库仍委托 `knowledgeRetrievalService` / `knowledgeDocumentStore`。
  */
-import { getKnowledgeDatasetById } from '../models/knowledgeDatasetStore.js';
+import { bumpKnowledgeDatasetVersion, getKnowledgeDatasetById } from '../models/knowledgeDatasetStore.js';
 import {
   importKnowledgeDocument as selfHostedImportKnowledgeDocument,
   mergeEmbeddingsIntoChunkFile,
@@ -34,8 +34,10 @@ import { withRetrievalCache } from '../ai/rag/cachedKnowledgeRetrieval.js';
 import { runLangchainVectorRetrievalQuery } from './langchain/vectorRetrieval.js';
 
 export {
+  bumpKnowledgeDatasetVersion,
   createKnowledgeDataset,
   deleteKnowledgeDataset,
+  getKnowledgeDatasetVersion,
   listKnowledgeDatasets,
   updateKnowledgeDataset,
 } from '../models/knowledgeDatasetStore.js';
@@ -102,7 +104,11 @@ export async function importKnowledgeDocument(params: {
   metadata?: Record<string, string>;
 }) {
   if (getRagEngineMode() !== 'langchain') {
-    return selfHostedImportKnowledgeDocument(params);
+    const result = await selfHostedImportKnowledgeDocument(params);
+    void bumpKnowledgeDatasetVersion(params.datasetId).catch((error) => {
+      console.warn(`[rag] bumpKnowledgeDatasetVersion failed for ${params.datasetId}: ${error instanceof Error ? error.message : 'unknown'}`);
+    });
+    return result;
   }
 
   const dataset = await getKnowledgeDatasetById(params.datasetId);
@@ -156,6 +162,10 @@ export async function importKnowledgeDocument(params: {
     const message = error instanceof Error ? error.message : 'unknown';
     console.warn(`[rag/langchain] chunk embedding persist failed (retrieval will embed on-the-fly): ${message}`);
   }
+
+  void bumpKnowledgeDatasetVersion(params.datasetId).catch((error) => {
+    console.warn(`[rag] bumpKnowledgeDatasetVersion failed for ${params.datasetId}: ${error instanceof Error ? error.message : 'unknown'}`);
+  });
 
   return {
     document: persisted.record,

@@ -12,6 +12,8 @@ import { createTimelineEvent } from '../chat/timelineEvents.js';
 import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/index.js';
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
+import { wrapToolsWithCache } from '../../ai/rag/agentStateCache.js';
+import { checkPrefixCache } from '../../ai/cache/promptPrefixCache.js';
 import {
   findCurrentTurnAssistantText,
   mapLangGraphUpdateToTimelineEvents,
@@ -62,9 +64,11 @@ export async function* streamLangGraphChatReply(params: {
     maxTokens: degradePolicy.maxOutputTokens,
   });
 
+  const cachedTools = wrapToolsWithCache(tools);
+
   const agent = createReactAgent({
     llm: model,
-    tools,
+    tools: cachedTools,
   });
 
   const initialMessages: BaseMessage[] = [
@@ -76,6 +80,20 @@ export async function* streamLangGraphChatReply(params: {
     ...params.history.map(toLangChainMessage),
     buildUserHumanMessage(params.prompt, params.imageDataUrls),
   ];
+
+  // L4 前缀缓存：计算 system prompt + history 的稳定哈希
+  const prefixSegments = initialMessages.slice(0, -1).map((msg) => {
+    const role = msg.getType?.() ?? (msg as { _getType?: () => string })._getType?.() ?? 'system';
+    return { role: role as 'system' | 'user' | 'assistant', content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) };
+  });
+  const prefixInfo = checkPrefixCache(prefixSegments);
+  if (prefixInfo.cached) {
+    yield createTimelineEvent(
+      'plan',
+      'info',
+      `L4 前缀缓存命中 (hash=${prefixInfo.prefixHash.slice(0, 8)}…, saved≈${prefixInfo.estimatedTokens} tokens). Prefill 可复用 KV Cache。`,
+    );
+  }
 
   yield createTimelineEvent('plan', 'info', `LangGraph 已启动（已注册 ${tools.length} 个工具）。`);
   yield createTimelineEvent('reason', 'start', 'LangGraph 推理开始。');
