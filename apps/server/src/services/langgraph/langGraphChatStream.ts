@@ -12,6 +12,7 @@ import { createTimelineEvent } from '../chat/timelineEvents.js';
 import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/index.js';
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
+import { wrapToolsWithCache } from '../../ai/rag/agentStateCache.js';
 import {
   findCurrentTurnAssistantText,
   mapLangGraphUpdateToTimelineEvents,
@@ -62,9 +63,11 @@ export async function* streamLangGraphChatReply(params: {
     maxTokens: degradePolicy.maxOutputTokens,
   });
 
+  const cachedTools = wrapToolsWithCache(tools);
+
   const agent = createReactAgent({
     llm: model,
-    tools,
+    tools: cachedTools,
   });
 
   const initialMessages: BaseMessage[] = [
