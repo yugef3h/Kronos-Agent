@@ -117,9 +117,13 @@ export const wrapToolWithCache = (
     return tool;
   }
 
-  const originalInvoke = tool.invoke.bind(tool);
+  type ToolInvoke = StructuredToolInterface['invoke'];
+  const originalInvoke: ToolInvoke = tool.invoke.bind(tool);
 
-  const cachedInvoke = async (input: unknown, config?: unknown): Promise<unknown> => {
+  const cachedInvoke: ToolInvoke = async (
+    input: Parameters<ToolInvoke>[0],
+    config?: Parameters<ToolInvoke>[1],
+  ): Promise<unknown> => {
     const cached = await getCachedAgentToolResult(store, tool.name, input);
     if (cached?.output) {
       return cached.output;
