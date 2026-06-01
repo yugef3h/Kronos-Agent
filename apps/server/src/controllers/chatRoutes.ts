@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createReadStream } from 'fs';
 import type { AttachmentMeta } from '../models/sessionStore.js';
 import {
+  bumpKnowledgeDatasetVersion,
   createKnowledgeDataset,
   deleteKnowledgeDataset,
   deleteKnowledgeDatasetFiles,
@@ -417,6 +418,9 @@ chatRoutes.delete('/workflow/knowledge-datasets/:datasetId', async (request: Req
     const datasetId = String(request.params.datasetId || '');
     await deleteKnowledgeDataset(datasetId);
     await deleteKnowledgeDatasetFiles(datasetId);
+    void bumpKnowledgeDatasetVersion(datasetId).catch((error) => {
+      console.warn(`[chatRoutes] bumpKnowledgeDatasetVersion failed for ${datasetId}: ${error instanceof Error ? error.message : 'unknown'}`);
+    });
     response.status(204).end();
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'unknown error';
