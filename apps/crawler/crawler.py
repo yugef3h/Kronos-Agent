@@ -232,3 +232,24 @@ async def crawl(
 
     await page.close()
     return all_posts
+
+
+# ---------------------------------------------------------------------------
+# 持久化
+# ---------------------------------------------------------------------------
+
+DATA_DIR = Path(__file__).parent / "data"
+
+
+def save(posts: list[dict], uid: str, output_path: str | None = None) -> Path:
+    """将帖子列表保存为 JSON 文件。"""
+    DATA_DIR.mkdir(exist_ok=True)
+
+    if output_path:
+        path = Path(output_path)
+    else:
+        today = datetime.now(CHINA_TZ).strftime("%Y-%m-%d")
+        path = DATA_DIR / f"{uid}_{today}.json"
+
+    path.write_text(json.dumps(posts, ensure_ascii=False, indent=2))
+    return path
