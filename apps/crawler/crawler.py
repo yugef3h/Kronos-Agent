@@ -58,3 +58,37 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.pages = 1  # 默认爬 1 页
 
     return args
+
+
+# ---------------------------------------------------------------------------
+# 浏览器
+# ---------------------------------------------------------------------------
+
+import asyncio
+import json
+import re
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+from playwright.async_api import async_playwright, BrowserContext, Page
+
+
+PROFILE_DIR = Path(__file__).parent / ".browser_profile"
+
+
+async def init_browser(headless: bool = False) -> BrowserContext:
+    """启动持久化浏览器上下文，自动复用已保存的 cookie。"""
+    PROFILE_DIR.mkdir(exist_ok=True)
+
+    playwright = await async_playwright().start()
+    context = await playwright.chromium.launch_persistent_context(
+        user_data_dir=str(PROFILE_DIR),
+        headless=headless,
+        viewport={"width": 430, "height": 932},
+        user_agent=(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 "
+            "Mobile/15E148 Safari/604.1"
+        ),
+    )
+    return context
