@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     session_file_mirror: str = Field(default="true", alias="SESSION_FILE_MIRROR")
     session_stream_lock: str = Field(default="true", alias="SESSION_STREAM_LOCK")
     session_stream_lock_ttl_sec: int = Field(default=120, alias="SESSION_STREAM_LOCK_TTL_SEC")
+    sentry_dsn: Optional[str] = Field(default=None, alias="SENTRY_DSN")
+    langfuse_public_key: Optional[str] = Field(default=None, alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_secret_key: Optional[str] = Field(default=None, alias="LANGFUSE_SECRET_KEY")
+    langfuse_base_url: Optional[str] = Field(default=None, alias="LANGFUSE_BASE_URL")
 
     @field_validator("session_store", mode="before")
     @classmethod
