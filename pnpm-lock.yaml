@@ -66,6 +66,12 @@ importers:
       '@langchain/textsplitters':
         specifier: ^1.0.1
         version: 1.0.1(@langchain/core@1.1.46(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.38.0(zod@3.25.76)))
+      '@langfuse/core':
+        specifier: ^5.4.1
+        version: 5.4.1(@opentelemetry/api@1.9.1)
+      '@langfuse/langchain':
+        specifier: ^5.4.1
+        version: 5.4.1(@langchain/core@1.1.46(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.38.0(zod@3.25.76)))(@opentelemetry/api@1.9.1)
       '@sentry/node':
         specifier: ^10.55.0
         version: 10.55.0
@@ -955,6 +961,23 @@ packages:
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': ^1.0.0
+
+  '@langfuse/core@5.4.1':
+    resolution: {integrity: sha512-TjaRTr9fGqaWuyYKFSezKxN4DWAaK/lq//hRMw8rQKFkZUs6vTgUODxqZTFTR6np5VnLVw+eZLlnHROPKbXqdg==}
+    peerDependencies:
+      '@opentelemetry/api': ^1.9.0
+
+  '@langfuse/langchain@5.4.1':
+    resolution: {integrity: sha512-cCGrOLAhxK5L45nYxr4qrO1bWGV11PkTweg03W+eBJoSKbpzjDSjVEZm5CG4dXRwJbj2CHQoVuyQ8F5u/XeBIg==}
+    peerDependencies:
+      '@langchain/core': '>=0.3.8'
+      '@opentelemetry/api': ^1.9.0
+
+  '@langfuse/tracing@5.4.1':
+    resolution: {integrity: sha512-nPyoPXXNMaJgaUZgIE0haWI/hrT7l4r/irp0o/FGaBYR2V07EFNvSKFcqOsX1pQvVvB6HyfNlYQm7AoQJj+fqQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@opentelemetry/api': ^1.9.0
 
   '@microsoft/fetch-event-source@2.0.1':
     resolution: {integrity: sha512-W6CLUJ2eBMw3Rec70qrsEW0jOm/3twwJv21mrmj2yORiaVmVYGS4sSS5yUwvQc1ZlDLYGPnClVWmUUMagKNsfA==}
@@ -5288,6 +5311,22 @@ snapshots:
     dependencies:
       '@langchain/core': 1.1.46(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.38.0(zod@3.25.76))
       js-tiktoken: 1.0.21
+
+  '@langfuse/core@5.4.1(@opentelemetry/api@1.9.1)':
+    dependencies:
+      '@opentelemetry/api': 1.9.1
+
+  '@langfuse/langchain@5.4.1(@langchain/core@1.1.46(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.38.0(zod@3.25.76)))(@opentelemetry/api@1.9.1)':
+    dependencies:
+      '@langchain/core': 1.1.46(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.38.0(zod@3.25.76))
+      '@langfuse/core': 5.4.1(@opentelemetry/api@1.9.1)
+      '@langfuse/tracing': 5.4.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/api': 1.9.1
+
+  '@langfuse/tracing@5.4.1(@opentelemetry/api@1.9.1)':
+    dependencies:
+      '@langfuse/core': 5.4.1(@opentelemetry/api@1.9.1)
+      '@opentelemetry/api': 1.9.1
 
   '@microsoft/fetch-event-source@2.0.1': {}
 
