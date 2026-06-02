@@ -20,8 +20,8 @@ pnpm crawl -- --uid 1727858283 --since 2025-06-01
 # 换账号
 pnpm crawl -- --uid 其他UID --pages 5
 
-# 无头模式（不显示浏览器窗口）
-pnpm crawl -- --uid 1727858283 --pages 3 --headless
+# 显示浏览器窗口（用于首次登录）
+pnpm crawl -- --uid 1727858283 --pages 3 --show
 ```
 
 结果保存在 `data/{uid}_{日期}.json`。
@@ -45,7 +45,7 @@ pnpm crawl -- --uid 1727858283 --pages 3 --headless
 
 ## 首次使用
 
-首次运行时建议不加 `--headless`，浏览器窗口会打开。如果账号需要登录，在浏览器中扫码登录即可，之后 cookie 自动保存，下次可无头运行。
+首次运行时加 `--show` 打开浏览器窗口。如果账号需要登录，在浏览器中扫码登录后 cookie 自动保存，后续无需 `--show`。
 
 ## 如何获取 UID
 

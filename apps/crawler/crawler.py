@@ -27,7 +27,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 示例:
     python crawler.py --uid 1727858283 --pages 5
     python crawler.py --uid 1727858283 --since 2025-01-01
-    python crawler.py --uid 1727858283 --pages 3 --headless
+    python crawler.py --uid 1727858283 --pages 3 --show
         """,
     )
     parser.add_argument("--uid", required=True, help="微博用户 UID")
@@ -44,10 +44,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="起始日期 YYYY-MM-DD，爬取该日期之后的帖子（与 --pages 互斥）",
     )
     parser.add_argument(
-        "--headless",
+        "--show",
         action="store_true",
         default=False,
-        help="无头模式（首次使用建议不加此参数，以便手动登录）",
+        help="显示浏览器窗口（用于首次登录）",
     )
     parser.add_argument(
         "--output",
@@ -266,7 +266,7 @@ async def main(argv: list[str] | None = None) -> None:
     """命令行入口。"""
     args = parse_args(argv)
 
-    context = await init_browser(headless=args.headless)
+    context = await init_browser(headless=not args.show)
 
     posts = await crawl(
         context,
