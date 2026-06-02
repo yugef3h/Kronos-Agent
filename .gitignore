@@ -21,4 +21,7 @@ apps/server/data/workflow-draft-previews/
 __pycache__/
 *.pyc
 apps/server_py/.venv/
+apps/crawler/.venv/
+apps/crawler/.browser_profile/
+apps/crawler/data/
 .pnpm-store/.pnpm-store/
