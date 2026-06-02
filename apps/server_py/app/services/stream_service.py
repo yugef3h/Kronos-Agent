@@ -111,6 +111,7 @@ async def _stream_chat_body(
             prompt=prompt,
             history=memory_plan.history,
             memory_summary=memory_plan.memorySummary,
+            session_id=session_id,
         ):
             event_id += 1
             if event_id <= last_event_id:
