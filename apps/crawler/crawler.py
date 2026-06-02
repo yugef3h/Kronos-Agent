@@ -166,3 +166,69 @@ def _parse_time(raw: str) -> str:
         except ValueError:
             continue
     return raw  # 解析失败原样返回
+
+
+# ---------------------------------------------------------------------------
+# 主爬取循环
+# ---------------------------------------------------------------------------
+
+async def crawl(
+    context: BrowserContext,
+    uid: str,
+    *,
+    max_pages: int | None = None,
+    since: str | None = None,
+) -> list[dict]:
+    """爬取微博用户帖子，返回帖子列表。
+
+    参数:
+        context: Playwright 浏览器上下文。
+        uid: 微博用户 UID。
+        max_pages: 最大爬取页数（与 since 二选一）。
+        since: 起始日期 ISO 字符串，只保留此日期之后的帖子。
+
+    返回:
+        帖子列表，按时间倒序。
+    """
+    page = await context.new_page()
+    all_posts: list[dict] = []
+
+    since_dt: datetime | None = None
+    if since:
+        since_dt = datetime.strptime(since, "%Y-%m-%d").replace(tzinfo=CHINA_TZ)
+        max_pages = max_pages or 100  # since 模式下安全上限
+
+    page_num = 1
+    while True:
+        if max_pages is not None and page_num > max_pages:
+            break
+
+        print(f"抓取第 {page_num} 页 ...", end=" ")
+
+        try:
+            posts = await fetch_page(page, uid, page_num)
+        except Exception as exc:
+            print(f"失败: {exc}")
+            break
+
+        if not posts:
+            print("无帖子，结束")
+            break
+
+        print(f"{len(posts)} 条")
+
+        for post in posts:
+            # 时间过滤
+            if since_dt:
+                post_dt = datetime.fromisoformat(post["created_at"])
+                if post_dt < since_dt:
+                    # 帖子已早于 since，结束全部爬取
+                    await page.close()
+                    return all_posts
+            all_posts.append(post)
+
+        page_num += 1
+        await asyncio.sleep(1.5)  # 请求间隔防封
+
+    await page.close()
+    return all_posts
