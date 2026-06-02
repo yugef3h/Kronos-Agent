@@ -106,7 +106,7 @@ async def fetch_page(page: Page, uid: str, page_num: int) -> list[dict]:
     result = await page.evaluate(
         """
         async ([uid, page]) => {
-            const url = '/api/container/getIndex?type=uid&value=' + uid +
+            const url = 'https://m.weibo.cn/api/container/getIndex?type=uid&value=' + uid +
                 '&containerid=107603' + uid + '&page=' + page;
             const resp = await fetch(url, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
