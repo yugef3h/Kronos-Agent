@@ -1,5 +1,6 @@
 import type { AIMessageChunk } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
+import type { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { recordCircuitFailure, recordCircuitSuccess } from '../circuit/circuitBreaker.js';
 import { invokeWithRetry } from '../circuit/invokeWithRetry.js';
 import { fallbackReplyText } from '../circuit/fallbackReplyText.js';
@@ -10,11 +11,13 @@ export type GatewayInvokeOptions = {
   backoffMs?: number;
   /** bindTools 后的 Runnable 无 `.model` 时由调用方传入 */
   modelName?: string;
+  /** LangFuse 等可观测性回调 */
+  callbacks?: BaseCallbackHandler[];
 };
 
 type GatewayInvokableModel = {
   model?: string;
-  invoke: (messages: BaseMessage[]) => Promise<AIMessageChunk>;
+  invoke: (messages: BaseMessage[], options?: { callbacks?: BaseCallbackHandler[] }) => Promise<AIMessageChunk>;
 };
 
 /** 对 ChatOpenAI（或 bindTools 后的 Runnable）做熔断 + 重试 invoke */
@@ -30,7 +33,7 @@ export const invokeGatewayLlm = async (
 
   try {
     const response = await invokeWithRetry(
-      () => model.invoke(messages),
+      () => model.invoke(messages, { callbacks: options.callbacks }),
       { maxAttempts: options.maxAttempts ?? 2, backoffMs: options.backoffMs ?? 400 },
     );
     recordCircuitSuccess(circuitName);
