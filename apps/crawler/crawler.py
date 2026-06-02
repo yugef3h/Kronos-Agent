@@ -8,7 +8,14 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+import json
+import re
 import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+from playwright.async_api import async_playwright, BrowserContext, Page
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -63,15 +70,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # 浏览器
 # ---------------------------------------------------------------------------
-
-import asyncio
-import json
-import re
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-
-from playwright.async_api import async_playwright, BrowserContext, Page
-
 
 PROFILE_DIR = Path(__file__).parent / ".browser_profile"
 
@@ -253,3 +251,31 @@ def save(posts: list[dict], uid: str, output_path: str | None = None) -> Path:
 
     path.write_text(json.dumps(posts, ensure_ascii=False, indent=2))
     return path
+
+
+# ---------------------------------------------------------------------------
+# 入口
+# ---------------------------------------------------------------------------
+
+async def main(argv: list[str] | None = None) -> None:
+    """命令行入口。"""
+    args = parse_args(argv)
+
+    context = await init_browser(headless=args.headless)
+
+    posts = await crawl(
+        context,
+        args.uid,
+        max_pages=args.pages,
+        since=args.since,
+    )
+
+    path = save(posts, args.uid, args.output)
+    print(f"\n共 {len(posts)} 条帖子，已保存到 {path}")
+
+    # 关闭浏览器
+    await context.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
