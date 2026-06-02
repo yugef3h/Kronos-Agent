@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { allowedOrigins, env, isLocalDevOrigin } from './core/config/env.js';
+import { initSentry, setupSentryErrorHandler } from './infra/sentry.js';
 import { initKnowledgeDatasetStore } from './models/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflow/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './models/sessionStore.js';
@@ -14,6 +15,8 @@ import { createDevToken, isDevTokenRouteEnabled } from './services/auth/devToken
 
 const app = express();
 app.set('trust proxy', 1);
+
+initSentry(app);
 
 app.use(
   cors({
@@ -49,6 +52,8 @@ app.get('/api/dev/token', (_req, res) => {
 
 // 附件 / dev 缩略图 / 示例只读 GET 可跳过 JWT；其余走 authenticateJwt（见 maybeSkipAuth.ts）
 app.use('/api', maybeSkipAuth, publicAssetGuard, chatRoutes);
+
+setupSentryErrorHandler(app);
 
 // 启动前加载持久化 session（ESM 顶层 await）
 await initSessionStore();

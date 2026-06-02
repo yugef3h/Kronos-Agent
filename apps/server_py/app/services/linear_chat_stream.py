@@ -4,6 +4,7 @@ import time
 from typing import AsyncIterator, List, Optional
 
 from app.domain.session_store import Message
+from app.infra.langfuse_init import create_langfuse_handler
 from app.prompts.linear_chat_prompt import format_linear_chat_messages
 from app.services.chat_model import get_chat_model
 
@@ -26,12 +27,22 @@ async def stream_linear_chat_reply(
     prompt: str,
     history: List[Message],
     memory_summary: Optional[str] = None,
+    session_id: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> AsyncIterator[dict]:
     model = get_chat_model()
     messages = format_linear_chat_messages(
         prompt=prompt,
         history=history,
         memory_summary=memory_summary,
+    )
+
+    langfuse_handler = create_langfuse_handler(
+        session_id=session_id,
+        user_id=user_id,
+    )
+    invoke_config = (
+        {"callbacks": [langfuse_handler]} if langfuse_handler else {}
     )
 
     yield {
@@ -50,7 +61,7 @@ async def stream_linear_chat_reply(
         "timestamp": int(time.time() * 1000),
     }
 
-    async for chunk in model.astream(messages):
+    async for chunk in model.astream(messages, config=invoke_config):
         text = _read_chunk_text(chunk.content)
         if text:
             yield {"type": "content", "content": text}

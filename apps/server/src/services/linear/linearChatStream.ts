@@ -6,6 +6,7 @@ import { DEFAULT_SYSTEM_PROMPT } from '../chat/defaultSystemPrompt.js';
 import { getPlaygroundChatModel } from '../../ai/gateway/getPlaygroundChatModel.js';
 import { invokeGatewayLlm } from '../../ai/gateway/invokeGatewayLlm.js';
 import { streamGatewayLlm } from '../../ai/gateway/streamGatewayLlm.js';
+import { createLangfuseHandler } from '../../infra/langfuse.js';
 import type { ChatOpenAI } from '@langchain/openai';
 import { safeStringify } from '../chat/safeStringify.js';
 import type { LangChainStreamEvent } from '../chat/streamEventTypes.js';
@@ -88,6 +89,11 @@ export async function* streamLinearChatReply(params: {
 }): AsyncGenerator<LangChainStreamEvent> {
   const registry = params.registry ?? playgroundToolRegistry;
   const sessionId = params.sessionId ?? 'session';
+  const langfuseHandler = createLangfuseHandler({
+    sessionId,
+    userId: params.userId,
+  });
+
   const baseModel = getPlaygroundChatModel(
     {
       userId: params.userId,
@@ -113,7 +119,11 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const planningStep = await runPlanningStep({
-    invokePlanning: () => invokeGatewayLlm(toolEnabledModel, planningMessages, { modelName: baseModel.model }),
+    invokePlanning: () =>
+      invokeGatewayLlm(toolEnabledModel, planningMessages, {
+        modelName: baseModel.model,
+        callbacks: langfuseHandler ? [langfuseHandler] : undefined,
+      }),
     timeoutMs: env.DOUBAO_PLAN_TIMEOUT_MS,
   });
   let modelToolCalls: ModelToolCall[] = planningStep.modelToolCalls;
@@ -208,7 +218,9 @@ export async function* streamLinearChatReply(params: {
   ];
 
   const requestStartedAt = Date.now();
-  const stream = await streamGatewayLlm(baseModel, messages);
+  const stream = await streamGatewayLlm(baseModel, messages, {
+    callbacks: langfuseHandler ? [langfuseHandler] : undefined,
+  });
   const requestSetupElapsedMs = Date.now() - requestStartedAt;
 
   yield createTimelineEvent('reason', 'info', createReasonRequestInfoMessage(requestSetupElapsedMs));

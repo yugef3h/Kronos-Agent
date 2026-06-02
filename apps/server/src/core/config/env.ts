@@ -67,6 +67,12 @@ const envSchema = z.object({
   AI_TASK_STORE_REDIS: z.coerce.boolean().default(false),
   /** 单用户日 Token 预算，0=不限制 */
   AI_USER_TOKEN_BUDGET_PER_DAY: z.coerce.number().int().nonnegative().default(0),
+  /** Sentry DSN，不设置则不启用 Sentry */
+  SENTRY_DSN: z.string().url().optional(),
+  /** LangFuse 配置，三项都填才会启用 */
+  LANGFUSE_PUBLIC_KEY: z.string().optional(),
+  LANGFUSE_SECRET_KEY: z.string().optional(),
+  LANGFUSE_BASE_URL: z.string().url().optional(),
 }).superRefine((value, ctx) => {
   const provider = value.AI_PROVIDER?.trim().toLowerCase();
   const useDoubao = !provider || provider === 'doubao';

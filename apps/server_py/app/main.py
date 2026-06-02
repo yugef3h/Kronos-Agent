@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.domain.session_store import init_session_store, resolve_session_store_mode
+from app.infra.sentry_init import init_sentry
 from app.middleware.auth import JwtAuthMiddleware
 from app.routes.dev_token import router as dev_token_router
 from app.routes.chat import router as chat_router
@@ -24,6 +25,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="kronos-server-py", version="0.1.0", lifespan=lifespan)
+
+init_sentry(app)
 
 app.add_middleware(
     CORSMiddleware,
