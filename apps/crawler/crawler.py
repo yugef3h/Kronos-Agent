@@ -92,3 +92,77 @@ async def init_browser(headless: bool = False) -> BrowserContext:
         ),
     )
     return context
+
+
+# ---------------------------------------------------------------------------
+# 抓取
+# ---------------------------------------------------------------------------
+
+CHINA_TZ = timezone(timedelta(hours=8))
+
+
+async def fetch_page(page: Page, uid: str, page_num: int) -> list[dict]:
+    """抓取单页帖子列表。
+    API: m.weibo.cn /api/container/getIndex
+    """
+    result = await page.evaluate(
+        """
+        async ([uid, page]) => {
+            const url = '/api/container/getIndex?type=uid&value=' + uid +
+                '&containerid=107603' + uid + '&page=' + page;
+            const resp = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            return await resp.json();
+        }
+        """,
+        [uid, page_num],
+    )
+
+    data = result.get("data", {})
+    cards = data.get("cards", []) if isinstance(data, dict) else []
+
+    posts: list[dict] = []
+    for card in cards:
+        mblog = card.get("mblog")
+        if mblog is None:
+            continue
+        posts.append(
+            {
+                "id": mblog.get("id", ""),
+                "mid": mblog.get("mid", ""),
+                "text": _clean_text(mblog.get("text", "")),
+                "created_at": _parse_time(mblog.get("created_at", "")),
+                "source": mblog.get("source", ""),
+                "reposts_count": mblog.get("reposts_count", 0),
+                "comments_count": mblog.get("comments_count", 0),
+                "attitudes_count": mblog.get("attitudes_count", 0),
+            }
+        )
+
+    return posts
+
+
+def _clean_text(raw: str) -> str:
+    """去除 HTML 标签和多余空白。"""
+    text = re.sub(r"<[^>]+>", "", raw)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def _parse_time(raw: str) -> str:
+    """解析微博时间格式为 ISO-8601。"""
+    if not raw:
+        return ""
+    for fmt in (
+        "%a %b %d %H:%M:%S %z %Y",   # Tue Jun 02 14:27:10 +0800 2026
+        "%a %b %d %H:%M:%S %Y",       # fallback: no timezone
+    ):
+        try:
+            dt = datetime.strptime(raw, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=CHINA_TZ)
+            return dt.astimezone(CHINA_TZ).isoformat(timespec="seconds")
+        except ValueError:
+            continue
+    return raw  # 解析失败原样返回
