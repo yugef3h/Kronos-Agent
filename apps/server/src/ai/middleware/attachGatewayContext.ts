@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import type { RequestWithContext } from '../../middleware/requestContext.js';
 import type { GatewayRequestContext } from '../types/gatewayRequestContext.js';
 import type { ModelRouteIntent } from '../types/modelRouteIntent.js';
 import { isModelRouteIntent } from '../types/modelRouteIntent.js';
@@ -32,7 +32,7 @@ export const attachGatewayContext = (defaultIntent: ModelRouteIntent = 'chat') =
     userId: resolveUserId(request),
     sessionId: sessionId || undefined,
     intent,
-    traceId: request.header('x-kronos-trace-id')?.trim() || randomUUID(),
+    traceId: (request as RequestWithContext).traceId,
   };
 
   next();
