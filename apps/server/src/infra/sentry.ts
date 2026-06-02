@@ -5,7 +5,7 @@ import { env } from '../core/config/env.js';
 let initialized = false;
 
 /** 初始化 Sentry —— 必须在其他中间件之前调用。不配置 SENTRY_DSN 则跳过。 */
-export function initSentry(app: Express): void {
+export function initSentry(_app: Express): void {
   const dsn = env.SENTRY_DSN?.trim();
   if (!dsn) {
     return;
