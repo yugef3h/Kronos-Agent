@@ -189,6 +189,11 @@ async def crawl(
         帖子列表，按时间倒序。
     """
     page = await context.new_page()
+    # 必须先导航到 m.weibo.cn，否则 fetch 会被 CORS 拦截
+    print(f"初始化页面 ...")
+    await page.goto(f"https://m.weibo.cn/u/{uid}", wait_until="domcontentloaded")
+    await asyncio.sleep(1)
+
     all_posts: list[dict] = []
 
     since_dt: datetime | None = None
