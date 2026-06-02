@@ -5,8 +5,11 @@ import { initSentry, setupSentryErrorHandler } from './infra/sentry.js';
 import { initKnowledgeDatasetStore } from './models/knowledgeDatasetStore.js';
 import { reconcileAllWorkflowExampleKnowledge } from './services/workflow/workflowExampleKnowledgeSync.js';
 import { initSessionStore, resolveSessionStoreMode } from './models/sessionStore.js';
+import { globalHeaders } from './middleware/globalHeaders.js';
 import { maybeSkipAuth } from './middleware/maybeSkipAuth.js';
 import { publicAssetGuard } from './middleware/publicAssetGuard.js';
+import { requestContext } from './middleware/requestContext.js';
+import { requestLogger } from './middleware/requestLogger.js';
 import { getRagEngineMode } from './rag/engine.js';
 import { isAiTaskQueueEnabled, startAiTaskWorker } from './ai/queue/aiTaskQueue.js';
 import { startWorkflowDraftWorker } from './services/workflow/runner/workflowDraftQueue.js';
@@ -35,6 +38,9 @@ app.use(
     },
   }),
 );
+app.use(requestContext);
+app.use(requestLogger);
+app.use(globalHeaders);
 app.use(express.json({ limit: '15mb' }));
 
 app.get('/healthz', (_req, res) => {
