@@ -14,6 +14,7 @@ from app.middleware.auth import JwtAuthMiddleware
 from app.routes.dev_token import router as dev_token_router
 from app.routes.chat import router as chat_router
 from app.routes.session import router as session_router
+from app.routes.tools import router as tools_router
 
 settings = get_settings()
 
@@ -42,6 +43,7 @@ app.add_middleware(JwtAuthMiddleware, settings=settings)
 app.include_router(dev_token_router)
 app.include_router(session_router)
 app.include_router(chat_router)
+app.include_router(tools_router)
 
 
 @app.get("/healthz")
