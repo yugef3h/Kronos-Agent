@@ -41,9 +41,15 @@ export type AssistantInvocationSummary = {
   modalities: PlaygroundModality[];
 };
 
+export type MessageSendStatus = 'pending' | 'sent' | 'failed';
+
 export type LocalChatMessage = TakeoutChatMessage & {
   /** 客户端稳定 key，用于列表渲染 */
   clientMessageId?: string;
+  /** 用户消息发送状态（乐观更新） */
+  sendStatus?: MessageSendStatus;
+  /** 占位 assistant，等待 SSE 接管 */
+  isOptimistic?: boolean;
   imagePreviewUrl?: string;
   imageName?: string;
   fileName?: string;
