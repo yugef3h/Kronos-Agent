@@ -7,12 +7,12 @@
 ```bash
 pnpm install
 cp apps/.env.example apps/.env   # 填写 JWT、豆包等
-pnpm dev                         # 前端 + Python 服务（默认）
+pnpm dev                         # 前端 + Node 服务（默认）
 ```
 
 - 仅前端：`pnpm dev:web`
-- Python 服务：`pnpm dev` / `pnpm dev:server:py`（需先 `pnpm install:server-py`）
-- Node 服务（兼容）：`pnpm dev:server:node`
+- Node 服务：`pnpm dev` / `pnpm dev:server:node`
+- Python 服务：`pnpm dev:server:py`（需先 `pnpm install:server-py`）
 - Python 测试：`pnpm test:py`
 - 更多脚本见根目录 `package.json` 与 [README.md](./README.md)
 
