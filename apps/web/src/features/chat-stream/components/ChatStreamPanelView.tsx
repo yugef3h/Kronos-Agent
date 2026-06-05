@@ -280,7 +280,15 @@ export const ChatStreamPanelView = () => {
                         isStreaming={Boolean(message.isStreamingText)}
                       />
                     ) : (
-                      renderPlainMessageContent(message)
+                      <div className="space-y-1">
+                        {renderPlainMessageContent(message)}
+                        {message.role === 'user' && message.sendStatus === 'pending' ? (
+                          <p className="text-[11px] text-slate-400">发送中…</p>
+                        ) : null}
+                        {message.role === 'user' && message.sendStatus === 'failed' ? (
+                          <p className="text-[11px] text-rose-500">发送失败，请重试</p>
+                        ) : null}
+                      </div>
                     )}
                   </article>
                 </div>
