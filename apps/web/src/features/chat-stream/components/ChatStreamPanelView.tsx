@@ -315,13 +315,13 @@ export const ChatStreamPanelView = () => {
         </div>
 
         <div className="mt-3 w-full self-center space-y-2">
-          {/* <ChatTimelineFold
+          <ChatTimelineFold
             timelineEvents={timelineEvents}
             currentTimelineEvent={currentTimelineEvent}
             stageLabelMap={stageLabelMap}
             statusLabelMap={statusLabelMap}
             isActive={isStreaming || isOrchestrating}
-          /> */}
+          />
           <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
             <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleDocumentFileChange} />
             <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFileChange} />
