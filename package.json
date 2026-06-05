@@ -10,6 +10,7 @@
     "dev:server:node": "pnpm --filter @kronos/server dev",
     "dev:server:py": "KRONOS_SERVER_RUNTIME=py node apps/server_py/dev-server.mjs",
     "install:server-py": "python3 -m venv apps/server_py/.venv && apps/server_py/.venv/bin/pip install -r apps/server_py/requirements.txt",
+    "test:py": "apps/server_py/.venv/bin/pytest apps/server_py/tests -q",
     "dev:attention-py": "python3 -m uvicorn apps.attention_py.app:app --host 127.0.0.1 --port 8008 --reload",
     "install:attention-py": "python3 -m pip install -r apps/attention_py/requirements.txt",
     "install:crawler": "python3 -m venv apps/crawler/.venv && apps/crawler/.venv/bin/pip install -r apps/crawler/requirements.txt && apps/crawler/.venv/bin/python3 -m playwright install chromium",
