@@ -178,16 +178,26 @@ export const useAssistantTypewriter = ({
 
   const startStreamingAssistantMessage = useCallback((assistantInvocation?: LocalChatMessage['assistantInvocation']) => {
     resetAssistantStreamingState();
-    setMessages((prev) => [
-      ...prev,
-      withClientMessageId({
+    setMessages((prev) => {
+      const optimisticIndex = prev.findLastIndex((message) => message.isOptimistic);
+      const streamingAssistant = withClientMessageId({
         role: 'assistant',
         content: '',
         isStreamingText: true,
         isIncomplete: false,
         assistantInvocation,
-      }),
-    ]);
+      });
+
+      if (optimisticIndex < 0) {
+        return [...prev, streamingAssistant];
+      }
+
+      return prev.map((message, index) => (
+        index === optimisticIndex
+          ? { ...streamingAssistant, clientMessageId: message.clientMessageId ?? streamingAssistant.clientMessageId }
+          : message
+      ));
+    });
     setIsStreaming(true);
   }, [resetAssistantStreamingState, setIsStreaming, setMessages]);
 
