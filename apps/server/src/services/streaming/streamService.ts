@@ -16,7 +16,7 @@ import { getActiveModelName } from '../../ai/gateway/resolveDefaultGatewayModel.
 import { recordTokenUsage } from '../../ai/cost/tokenUsageStore.js';
 import { estimateTextTokens } from '../../memory/tokenEstimate.js';
 import { streamMockReply } from './mockReplyService.js';
-import { checkInputGuardrail } from '../guardrail/index.js';
+import { checkInputGuardrail, checkOutputGuardrail } from '../guardrail/index.js';
 
 const waitForSessionPersistSafe = async (sessionId: string): Promise<string | null> => {
   try {
@@ -265,6 +265,23 @@ async function* streamChatBody(params: {
         content: token,
         sessionId,
         eventId,
+      })}\nid: ${eventId}\n\n`;
+    }
+  }
+
+  const outputGuardrail = checkOutputGuardrail(assistantText);
+  if (outputGuardrail.blocked) {
+    assistantText = '抱歉，模型输出未通过安全校验，已拦截。';
+    eventId += 1;
+    if (eventId > lastEventId) {
+      yield `data: ${JSON.stringify({
+        type: 'timeline',
+        stage: 'reason',
+        status: 'info',
+        message: `Guardrail 输出拦截：${outputGuardrail.reason}`,
+        sessionId,
+        eventId,
+        timestamp: Date.now(),
       })}\nid: ${eventId}\n\n`;
     }
   }
