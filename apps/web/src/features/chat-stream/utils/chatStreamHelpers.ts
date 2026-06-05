@@ -12,6 +12,19 @@ export const withClientMessageId = (
   clientMessageId: message.clientMessageId ?? createClientMessageId(),
 });
 
+export const findLastIndexCompat = <T>(
+  items: readonly T[],
+  predicate: (item: T, index: number) => boolean,
+): number => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index]!, index)) {
+      return index;
+    }
+  }
+
+  return -1;
+};
+
 export const createOptimisticAssistantPlaceholder = (): LocalChatMessage => withClientMessageId({
   role: 'assistant',
   content: '',
@@ -24,7 +37,7 @@ export const markLastUserMessageStatus = (
   messages: LocalChatMessage[],
   status: NonNullable<LocalChatMessage['sendStatus']>,
 ): LocalChatMessage[] => {
-  const lastUserIndex = messages.findLastIndex((message) => message.role === 'user');
+  const lastUserIndex = findLastIndexCompat(messages, (message) => message.role === 'user');
   if (lastUserIndex < 0) {
     return messages;
   }

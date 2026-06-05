@@ -3,7 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
 import { STREAM_TYPEWRITER_DELAY_MS } from '../constants';
 import type { AssistantTypewriterOptions, LocalChatMessage } from '../types';
-import { withClientMessageId } from '../utils/chatStreamHelpers';
+import { findLastIndexCompat, withClientMessageId } from '../utils/chatStreamHelpers';
 
 type UseAssistantTypewriterParams = {
   setMessages: Dispatch<SetStateAction<LocalChatMessage[]>>;
@@ -179,7 +179,7 @@ export const useAssistantTypewriter = ({
   const startStreamingAssistantMessage = useCallback((assistantInvocation?: LocalChatMessage['assistantInvocation']) => {
     resetAssistantStreamingState();
     setMessages((prev) => {
-      const optimisticIndex = prev.findLastIndex((message) => message.isOptimistic);
+      const optimisticIndex = findLastIndexCompat(prev, (message) => Boolean(message.isOptimistic));
       const streamingAssistant = withClientMessageId({
         role: 'assistant',
         content: '',
