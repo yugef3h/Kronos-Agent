@@ -42,7 +42,7 @@ const loadServerEnv = () => {
 
 loadServerEnv();
 
-const runtime = (process.env.KRONOS_SERVER_RUNTIME || 'node').toLowerCase();
+const runtime = (process.env.KRONOS_SERVER_RUNTIME || 'py').toLowerCase();
 const port = process.env.PORT || '3001';
 const venvPython = join(serverPyRoot, '.venv/bin/python3');
 const pythonBin = existsSync(venvPython) ? venvPython : 'python3';
