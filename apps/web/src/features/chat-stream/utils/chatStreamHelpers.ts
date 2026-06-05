@@ -12,6 +12,32 @@ export const withClientMessageId = (
   clientMessageId: message.clientMessageId ?? createClientMessageId(),
 });
 
+export const createOptimisticAssistantPlaceholder = (): LocalChatMessage => withClientMessageId({
+  role: 'assistant',
+  content: '',
+  isIncomplete: false,
+  isStreamingText: true,
+  isOptimistic: true,
+});
+
+export const markLastUserMessageStatus = (
+  messages: LocalChatMessage[],
+  status: NonNullable<LocalChatMessage['sendStatus']>,
+): LocalChatMessage[] => {
+  const lastUserIndex = messages.findLastIndex((message) => message.role === 'user');
+  if (lastUserIndex < 0) {
+    return messages;
+  }
+
+  return messages.map((message, index) => (
+    index === lastUserIndex ? { ...message, sendStatus: status } : message
+  ));
+};
+
+export const removeOptimisticAssistantMessages = (messages: LocalChatMessage[]): LocalChatMessage[] => (
+  messages.filter((message) => !message.isOptimistic)
+);
+
 export const getMessageListKey = (message: LocalChatMessage, index: number): string => {
   if (message.clientMessageId) {
     return message.clientMessageId;
