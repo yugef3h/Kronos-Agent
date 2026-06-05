@@ -13,7 +13,7 @@ export const wrapToolWithHarness = (tool: StructuredToolInterface): StructuredTo
   type ToolInvoke = StructuredToolInterface['invoke'];
   const harnessInvoke: ToolInvoke = async (
     input: Parameters<ToolInvoke>[0],
-    config?: Parameters<ToolInvoke>[1],
+    _config?: Parameters<ToolInvoke>[1],
   ): Promise<unknown> => {
     const normalizedInput = typeof input === 'object' && input !== null
       ? input as Record<string, unknown>

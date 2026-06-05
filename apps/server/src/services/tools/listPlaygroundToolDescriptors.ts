@@ -1,9 +1,8 @@
-import { buildToolRegistry } from './buildToolRegistry.js';
+import { buildToolRegistry, listRegistryTools } from './buildToolRegistry.js';
 import { describeRegistryTool } from './describeRegistryTool.js';
 import type { PlaygroundToolDescriptor } from './describeRegistryTool.js';
 import { playgroundToolRegistry } from './playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from './types.js';
-import { listRegistryTools } from './buildToolRegistry.js';
 
 export const listPlaygroundToolDescriptors = (
   registry: PlaygroundToolRegistry = playgroundToolRegistry,
