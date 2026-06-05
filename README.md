@@ -121,7 +121,7 @@
 apps/
   web/                # 前端：Playground、/rag、domains/workflow 编排
   server/             # 后端：chat-stream、memory、workflow debug/draft-runs、RAG
-  server_py/          # Python 后端（memory 等镜像实现）
+  server_py/          # Python 后端（默认运行时：chat/agent/guardrail/tools）
 packages/
   core/               # 共享领域层
 
@@ -133,10 +133,11 @@ DEBRIED_ISSUES.md     # 问题复盘记录
 
 ```bash
 pnpm install
+pnpm install:server-py
 pnpm dev
 ```
 
-复制 `apps/.env.example` 为 `apps/.env`，填写 JWT 与豆包模型参数。
+复制 `.env.example` 为 `apps/.env`，填写 JWT 与豆包模型参数。默认后端为 **Python**（`KRONOS_SERVER_RUNTIME=py`）；Node 兼容：`pnpm dev:server:node`。
 
 ## MVP 对应能力
 
