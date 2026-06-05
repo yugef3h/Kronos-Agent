@@ -121,7 +121,7 @@
 apps/
   web/                # 前端：Playground、/rag、domains/workflow 编排
   server/             # 后端：chat-stream、memory、workflow debug/draft-runs、RAG
-  server_py/          # Python 后端（memory 等镜像实现）
+  server_py/          # Python 后端镜像（可选：chat/agent/guardrail/tools）
 packages/
   core/               # 共享领域层
 
@@ -136,7 +136,7 @@ pnpm install
 pnpm dev
 ```
 
-复制 `apps/.env.example` 为 `apps/.env`，填写 JWT 与豆包模型参数。
+复制 `.env.example` 为 `apps/.env`，填写 JWT 与豆包模型参数。默认后端为 **Node**；Python：`pnpm dev:server:py`（`KRONOS_SERVER_RUNTIME=py`）。
 
 ## MVP 对应能力
 

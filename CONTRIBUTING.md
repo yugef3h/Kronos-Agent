@@ -11,8 +11,9 @@ pnpm dev                         # 前端 + Node 服务（默认）
 ```
 
 - 仅前端：`pnpm dev:web`
+- Node 服务：`pnpm dev` / `pnpm dev:server:node`
 - Python 服务：`pnpm dev:server:py`（需先 `pnpm install:server-py`）
-- Node 服务：`pnpm dev:server:node`（与 `pnpm dev` 后端相同）
+- Python 测试：`pnpm test:py`
 - 更多脚本见根目录 `package.json` 与 [README.md](./README.md)
 
 ## 提交前自检

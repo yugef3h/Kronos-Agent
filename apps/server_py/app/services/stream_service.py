@@ -12,9 +12,10 @@ from app.domain.session_store import (
     persist_session,
     wait_for_session_persist,
 )
+from app.agent.router import stream_playground_agent_reply
+from app.guardrail import check_input_guardrail, check_output_guardrail
 from app.memory.orchestrator import create_memory_plan
 from app.memory.types import SessionMemoryState
-from app.services.linear_chat_stream import stream_linear_chat_reply
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,40 @@ async def _stream_chat_body(
     session_user_content: Optional[str] = None,
     image_data_urls: Optional[List[str]] = None,
 ) -> AsyncIterator[str]:
+    input_guardrail = check_input_guardrail(prompt)
+    if input_guardrail["blocked"]:
+        refusal = "抱歉，该请求未通过安全校验，请修改后重试。"
+        event_id = 1
+        if event_id > last_event_id:
+            yield _format_sse(
+                {
+                    "type": "timeline",
+                    "stage": "plan",
+                    "status": "info",
+                    "message": f"Guardrail 拦截：{input_guardrail['reason']}",
+                    "sessionId": session_id,
+                    "eventId": event_id,
+                    "timestamp": int(time.time() * 1000),
+                },
+                event_id,
+            )
+            event_id += 1
+            if event_id > last_event_id:
+                yield _format_sse(
+                    {
+                        "type": "content",
+                        "content": refusal,
+                        "sessionId": session_id,
+                        "eventId": event_id,
+                    },
+                    event_id,
+                )
+        yield _format_sse(
+            {"type": "complete", "sessionId": session_id, "eventId": event_id + 1},
+            event_id + 1,
+        )
+        return
+
     session = await load_session(session_id)
     user_timestamp = int(time.time() * 1000)
     persisted_user_line = (
@@ -107,29 +142,31 @@ async def _stream_chat_body(
 
     try:
         logger.warning("[playground-chat] stream_chat agent pipeline start sessionId=%s", session_id)
-        async for event in stream_linear_chat_reply(
+        async for event in stream_playground_agent_reply(
             prompt=prompt,
             history=memory_plan.history,
             memory_summary=memory_plan.memorySummary,
             session_id=session_id,
+            image_data_urls=image_data_urls,
         ):
             event_id += 1
             if event_id <= last_event_id:
                 continue
 
             if event["type"] == "timeline":
-                yield _format_sse(
-                    {
-                        "type": "timeline",
-                        "stage": event["stage"],
-                        "status": event["status"],
-                        "message": event["message"],
-                        "timestamp": event.get("timestamp", int(time.time() * 1000)),
-                        "sessionId": session_id,
-                        "eventId": event_id,
-                    },
-                    event_id,
-                )
+                payload = {
+                    "type": "timeline",
+                    "stage": event["stage"],
+                    "status": event["status"],
+                    "message": event["message"],
+                    "timestamp": event.get("timestamp", int(time.time() * 1000)),
+                    "sessionId": session_id,
+                    "eventId": event_id,
+                }
+                for key in ("toolName", "toolInput", "toolOutput", "toolError"):
+                    if key in event:
+                        payload[key] = event[key]
+                yield _format_sse(payload, event_id)
                 continue
 
             assistant_text += event["content"]
@@ -180,6 +217,35 @@ async def _stream_chat_body(
                 },
                 event_id,
             )
+
+    output_guardrail = check_output_guardrail(assistant_text)
+    if output_guardrail["blocked"]:
+        assistant_text = "抱歉，生成的回复未通过安全校验。"
+        event_id += 1
+        if event_id > last_event_id:
+            yield _format_sse(
+                {
+                    "type": "timeline",
+                    "stage": "reason",
+                    "status": "info",
+                    "message": f"Guardrail 输出拦截：{output_guardrail['reason']}",
+                    "sessionId": session_id,
+                    "eventId": event_id,
+                    "timestamp": int(time.time() * 1000),
+                },
+                event_id,
+            )
+            event_id += 1
+            if event_id > last_event_id:
+                yield _format_sse(
+                    {
+                        "type": "content",
+                        "content": assistant_text,
+                        "sessionId": session_id,
+                        "eventId": event_id,
+                    },
+                    event_id,
+                )
 
     session.messages.append(
         Message(
