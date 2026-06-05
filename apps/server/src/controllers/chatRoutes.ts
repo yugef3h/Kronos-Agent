@@ -76,6 +76,7 @@ import {
 } from '../services/knowledge/knowledgeDatasetSnapshotService.js';
 import { compareKnowledgeRetrievalQueries } from '../services/knowledge/knowledgeRetrievalCompareService.js';
 import { evaluateKnowledgeRetrievalRun } from '../services/knowledge/knowledgeRetrievalEvalService.js';
+import { listConfiguredPlaygroundToolDescriptors } from '../services/tools/listPlaygroundToolDescriptors.js';
 import { warmDatasetChunks } from '../ai/rag/warmDatasetChunks.js';
 import { attachGatewayContext, type RequestWithGatewayContext } from '../ai/middleware/attachGatewayContext.js';
 import { aiRateLimitMiddleware } from '../ai/middleware/aiRateLimitMiddleware.js';
@@ -333,6 +334,11 @@ chatRoutes.post(
   }
 },
 );
+
+chatRoutes.get('/playground/tools', async (_request: Request, response: Response) => {
+  const payload = listConfiguredPlaygroundToolDescriptors();
+  response.json(payload);
+});
 
 chatRoutes.get('/session/:sessionId', async (request: Request, response: Response) => {
   const sessionId = String(request.params.sessionId || '');
