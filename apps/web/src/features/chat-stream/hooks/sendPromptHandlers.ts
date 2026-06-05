@@ -17,7 +17,12 @@ import type { FileSelectionResult } from '../../agent-tools/file';
 import { resolveImageUrlForBackend, type ImageSelectionResult } from '../../agent-tools/image';
 import { isTakeoutIntentPrompt } from '../../agent-tools/takeout';
 import type { LocalChatMessage } from '../types';
-import { withClientMessageId } from '../utils/chatStreamHelpers';
+import {
+  createOptimisticAssistantPlaceholder,
+  markLastUserMessageStatus,
+  removeOptimisticAssistantMessages,
+  withClientMessageId,
+} from '../utils/chatStreamHelpers';
 import {
   beginPlaygroundStreamRequest,
   interruptActivePlaygroundStream,
@@ -277,7 +282,11 @@ export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: s
     streamRefs, authToken,
   } = ctx;
 
-  ctx.setMessages((prev) => [...prev, withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false })]);
+  ctx.setMessages((prev) => [
+    ...prev,
+    withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false, sendStatus: 'pending' }),
+    createOptimisticAssistantPlaceholder(),
+  ]);
   ctx.setPrompt('');
   ctx.setLatestUserQuestion(userPrompt);
 
