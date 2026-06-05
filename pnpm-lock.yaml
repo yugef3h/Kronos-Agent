@@ -120,6 +120,9 @@ importers:
       zod:
         specifier: ^3.24.2
         version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.25.1
+        version: 3.25.1(zod@3.25.76)
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17
@@ -9706,7 +9709,6 @@ snapshots:
   zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:
       zod: 3.25.76
-    optional: true
 
   zod@3.25.76: {}
 
