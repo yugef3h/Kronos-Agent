@@ -17,7 +17,12 @@ import type { FileSelectionResult } from '../../agent-tools/file';
 import { resolveImageUrlForBackend, type ImageSelectionResult } from '../../agent-tools/image';
 import { isTakeoutIntentPrompt } from '../../agent-tools/takeout';
 import type { LocalChatMessage } from '../types';
-import { withClientMessageId } from '../utils/chatStreamHelpers';
+import {
+  createOptimisticAssistantPlaceholder,
+  markLastUserMessageStatus,
+  removeOptimisticAssistantMessages,
+  withClientMessageId,
+} from '../utils/chatStreamHelpers';
 import {
   beginPlaygroundStreamRequest,
   interruptActivePlaygroundStream,
@@ -277,7 +282,11 @@ export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: s
     streamRefs, authToken,
   } = ctx;
 
-  ctx.setMessages((prev) => [...prev, withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false })]);
+  ctx.setMessages((prev) => [
+    ...prev,
+    withClientMessageId({ role: 'user', content: userPrompt, isIncomplete: false, sendStatus: 'pending' }),
+    createOptimisticAssistantPlaceholder(),
+  ]);
   ctx.setPrompt('');
   ctx.setLatestUserQuestion(userPrompt);
 
@@ -295,9 +304,12 @@ export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: s
   }
 
   if (!resolvedAuthToken) {
-    ctx.startAssistantTypewriter('发送前需要先准备 JWT。');
+    ctx.setMessages((prev) => removeOptimisticAssistantMessages(markLastUserMessageStatus(prev, 'failed')));
+    ctx.startAssistantTypewriter('发送前需要先准备 JWT。', { replaceLastAssistant: true });
     return;
   }
+
+  ctx.setMessages((prev) => markLastUserMessageStatus(prev, 'sent'));
 
   interruptActivePlaygroundStream(streamRefs, {
     flushRemainingAssistantBuffer: ctx.flushRemainingAssistantBuffer,
@@ -319,6 +331,7 @@ export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: s
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'RAG 应用检索失败，请稍后重试';
+      ctx.setMessages((prev) => markLastUserMessageStatus(removeOptimisticAssistantMessages(prev), 'failed'));
       ctx.abortStreamingAssistantMessage();
       ctx.startAssistantTypewriter(message, { replaceLastAssistant: true });
       ctx.setIsStreaming(false);
@@ -338,6 +351,9 @@ export async function handleSendTextPrompt(ctx: SendPromptContext, userPrompt: s
   } catch {
     const isInterruptedRequest = streamRefs.interruptedRequestIdsRef.current.has(requestId) || controller.signal.aborted;
     if (requestId === streamRefs.activeRequestIdRef.current) {
+      if (!isInterruptedRequest) {
+        ctx.setMessages((prev) => markLastUserMessageStatus(removeOptimisticAssistantMessages(prev), 'failed'));
+      }
       ctx.abortStreamingAssistantMessage();
       ctx.markLastAssistantIncomplete();
       ctx.setIsStreaming(false);

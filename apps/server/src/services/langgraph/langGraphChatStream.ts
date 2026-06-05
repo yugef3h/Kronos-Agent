@@ -13,6 +13,7 @@ import { buildPlaygroundAgentSystemHint, listRegistryTools } from '../tools/inde
 import { playgroundToolRegistry } from '../tools/playgroundToolRegistry.js';
 import type { PlaygroundToolRegistry } from '../tools/types.js';
 import { wrapToolsWithCache } from '../../ai/rag/agentStateCache.js';
+import { wrapToolsWithHarness } from '../tools/wrapToolWithHarness.js';
 import { checkPrefixCache } from '../../ai/cache/promptPrefixCache.js';
 import {
   findCurrentTurnAssistantText,
@@ -64,7 +65,7 @@ export async function* streamLangGraphChatReply(params: {
     maxTokens: degradePolicy.maxOutputTokens,
   });
 
-  const cachedTools = wrapToolsWithCache(tools);
+  const cachedTools = wrapToolsWithHarness(wrapToolsWithCache(tools));
 
   const agent = createReactAgent({
     llm: model,

@@ -8,5 +8,10 @@ export {
 } from './planningSystemHint.js';
 export { shouldUseWebSearch } from './shouldUseWebSearch.js';
 export { getRegistryTool, invokePlaygroundTool } from './registryAccess.js';
+export { invokePlaygroundToolWithHarness } from './toolHarness.js';
+export { wrapToolWithHarness, wrapToolsWithHarness } from './wrapToolWithHarness.js';
+export { describeRegistryTool } from './describeRegistryTool.js';
+export type { PlaygroundToolDescriptor } from './describeRegistryTool.js';
+export { listPlaygroundToolDescriptors, listConfiguredPlaygroundToolDescriptors } from './listPlaygroundToolDescriptors.js';
 export { isPlaygroundToolName, PLAYGROUND_TOOL_NAMES } from './toolNames.js';
 export type { PlaygroundToolName, PlaygroundToolRegistry } from './types.js';

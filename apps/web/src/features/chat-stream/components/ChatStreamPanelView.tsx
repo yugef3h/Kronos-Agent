@@ -8,7 +8,8 @@ import {
   TakeoutToolModals,
   isTakeoutWideCardMessage,
 } from '../../agent-tools/takeout';
-// import { ChatTimelineFold } from './ChatTimelineFold';
+import { ChatTimelineFold } from './ChatTimelineFold';
+import { ToolRegistryPanel } from './ToolRegistryPanel';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import { useChatStreamContext } from '../ChatStreamContext';
 import VariableSelect from '../../../components/form/variable-select';
@@ -23,7 +24,7 @@ import {
 export const ChatStreamPanelView = () => {
   const {
     canSend,
-    // currentTimelineEvent,
+    currentTimelineEvent,
     fileInputRef,
     formatTimestamp,
     handleDocumentFileChange,
@@ -74,8 +75,8 @@ export const ChatStreamPanelView = () => {
     scrollToBottom,
     sendPrompt,
     sessionId,
-    // stageLabelMap,
-    // statusLabelMap,
+    stageLabelMap,
+    statusLabelMap,
     setPendingFile,
     setPendingImage,
     setPrompt,
@@ -85,7 +86,7 @@ export const ChatStreamPanelView = () => {
     takeoutFlowState,
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
-    // timelineEvents,
+    timelineEvents,
     toggleHistoryPanel,
     publishedChatbotWorkflowAppId,
     publishedChatbotRagValueSelector,
@@ -280,7 +281,15 @@ export const ChatStreamPanelView = () => {
                         isStreaming={Boolean(message.isStreamingText)}
                       />
                     ) : (
-                      renderPlainMessageContent(message)
+                      <div className="space-y-1">
+                        {renderPlainMessageContent(message)}
+                        {message.role === 'user' && message.sendStatus === 'pending' ? (
+                          <p className="text-[11px] text-slate-400">发送中…</p>
+                        ) : null}
+                        {message.role === 'user' && message.sendStatus === 'failed' ? (
+                          <p className="text-[11px] text-rose-500">发送失败，请重试</p>
+                        ) : null}
+                      </div>
                     )}
                   </article>
                 </div>
@@ -315,13 +324,14 @@ export const ChatStreamPanelView = () => {
         </div>
 
         <div className="mt-3 w-full self-center space-y-2">
-          {/* <ChatTimelineFold
+          <ChatTimelineFold
             timelineEvents={timelineEvents}
             currentTimelineEvent={currentTimelineEvent}
             stageLabelMap={stageLabelMap}
             statusLabelMap={statusLabelMap}
             isActive={isStreaming || isOrchestrating}
-          /> */}
+          />
+          <ToolRegistryPanel />
           <div className="relative w-full rounded-2xl border border-slate-300 bg-white px-3 pb-12 pt-2 shadow-[0_8px_24px_-12px_rgba(14,116,144,0.18),inset_0_1px_0_rgba(255,255,255,0.8)] transition focus-within:border-cyan-300 focus-within:ring-2 focus-within:ring-cyan-200/70">
             <input ref={fileInputRef} type="file" accept={FILE_INPUT_ACCEPT} className="hidden" onChange={handleDocumentFileChange} />
             <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFileChange} />

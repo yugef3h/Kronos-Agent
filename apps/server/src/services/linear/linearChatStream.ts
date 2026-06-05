@@ -23,7 +23,7 @@ import { normalizeStreamDelta } from '../streaming/streamDelta.js';
 import {
   buildPlanningSystemHint,
   getRegistryTool,
-  invokePlaygroundTool,
+  invokePlaygroundToolWithHarness,
   listRegistryTools,
   resolveToolInvokeInput,
   shouldUseWebSearch,
@@ -171,7 +171,7 @@ export async function* streamLinearChatReply(params: {
     );
 
     try {
-      const output = await invokePlaygroundTool(selectedTool, normalizedInput);
+      const output = await invokePlaygroundToolWithHarness(selectedTool, normalizedInput);
       const serializedOutput = safeStringify(output);
       toolOutputs.push(`${toolCall.name}: ${serializedOutput}`);
       yield createTimelineEvent(

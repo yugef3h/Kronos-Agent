@@ -16,6 +16,7 @@ import { getActiveModelName } from '../../ai/gateway/resolveDefaultGatewayModel.
 import { recordTokenUsage } from '../../ai/cost/tokenUsageStore.js';
 import { estimateTextTokens } from '../../memory/tokenEstimate.js';
 import { streamMockReply } from './mockReplyService.js';
+import { checkInputGuardrail, checkOutputGuardrail } from '../guardrail/index.js';
 
 const waitForSessionPersistSafe = async (sessionId: string): Promise<string | null> => {
   try {
@@ -41,6 +42,45 @@ async function* streamChatBody(params: {
 }): AsyncGenerator<string> {
   const { prompt, sessionUserContent, sessionId, lastEventId, imageDataUrls } = params;
   let session = await loadSession(sessionId);
+  const inputGuardrail = checkInputGuardrail(prompt);
+
+  if (inputGuardrail.blocked) {
+    const refusal = '抱歉，该请求未通过安全校验，请修改后重试。';
+    let blockedEventId = 0;
+
+    blockedEventId += 1;
+    if (blockedEventId > lastEventId) {
+      yield `data: ${JSON.stringify({
+        type: 'timeline',
+        stage: 'plan',
+        status: 'info',
+        message: `Guardrail 拦截：${inputGuardrail.reason}`,
+        sessionId,
+        eventId: blockedEventId,
+        timestamp: Date.now(),
+      })}\nid: ${blockedEventId}\n\n`;
+    }
+
+    blockedEventId += 1;
+    if (blockedEventId > lastEventId) {
+      yield `data: ${JSON.stringify({
+        type: 'content',
+        content: refusal,
+        sessionId,
+        eventId: blockedEventId,
+      })}\nid: ${blockedEventId}\n\n`;
+    }
+
+    const completeId = blockedEventId + 1;
+    session.messages.push({ role: 'user', content: prompt, timestamp: Date.now() });
+    session.messages.push({ role: 'assistant', content: refusal, timestamp: Date.now() });
+    session.lastId = completeId;
+    persistSession(sessionId, session);
+    await waitForSessionPersistSafe(sessionId);
+    yield `data: ${JSON.stringify({ type: 'complete', sessionId, eventId: completeId })}\nid: ${completeId}\n\n`;
+    return;
+  }
+
   const userMessageTimestamp = Date.now();
 
   const persistedUserLine =
@@ -225,6 +265,23 @@ async function* streamChatBody(params: {
         content: token,
         sessionId,
         eventId,
+      })}\nid: ${eventId}\n\n`;
+    }
+  }
+
+  const outputGuardrail = checkOutputGuardrail(assistantText);
+  if (outputGuardrail.blocked) {
+    assistantText = '抱歉，模型输出未通过安全校验，已拦截。';
+    eventId += 1;
+    if (eventId > lastEventId) {
+      yield `data: ${JSON.stringify({
+        type: 'timeline',
+        stage: 'reason',
+        status: 'info',
+        message: `Guardrail 输出拦截：${outputGuardrail.reason}`,
+        sessionId,
+        eventId,
+        timestamp: Date.now(),
       })}\nid: ${eventId}\n\n`;
     }
   }

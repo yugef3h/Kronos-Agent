@@ -1,6 +1,15 @@
 # Kronos Agent
 
-探索 LLM 原理与 Agent Workflow 的前端主导项目，目标是让前端工程师能用可视化手段掌握并落地 AI Agent 系统（对标 Dify 类平台的产品形态）。
+**全栈 AI Agent 开源工作台**：流式对话、Workflow 编排、RAG 评测与多模型网关，把 Context Engineering 与工具调用做成可观测、可调试的 playground。
+
+| JD 域 | 已落地 | 缺口（优先级） |
+| --- | --- | --- |
+| 全栈交互 | Playground SSE、Workflow 编排、外卖 Agent UI | 编排服务端持久化、实时协作 |
+| Agent 系统 | LangGraph + Function Calling、Context 记忆 | **MCP**、**多 Agent 协作**、Harness |
+| 外部数据 | 向量 RAG、web_search、检索 Eval | 知识图谱、结构化 API 节点 |
+| 质量基建 | RAG Eval、Sentry、限流熔断 | **Tracing**、**Guardrail**、Prompt Eval UI |
+| 智能路由 | 多模型网关、异步队列、缓存 | 子任务拆解、模态/复杂度路由 |
+| 新模型能力 | 长上下文、工具调用、识图、推理输出 | 推理链 UI、Structured Output 节点 |
 
 ---
 
@@ -131,12 +140,16 @@ pnpm dev
 
 ## MVP 对应能力
 
-| 域 | 能力 |
-| --- | --- |
-| **对话** | SSE Chat、服务端会话落盘、滚动摘要与 token 预算、Playground 记忆面板 |
-| **知识库** | 数据集 CRUD、检索、工作流知识节点、Chatbot RAG 拼接 |
-| **编排** | Workflow 列表/草稿/Chatbot 配置、DSL 自动保存、缩略图、内置示例、假发布 |
-| **运行** | 单节点调试 API、整图 draft-run SSE、画布运行态与「上次运行」 |
+> agent 代办清单：
+
+| 域 | 能力 | 缺口 |
+| --- | --- | --- |
+| **对话** | SSE Chat、会话落盘、滚动摘要与 token 预算、Playground 记忆面板、LangGraph Agent | 多 Agent、MCP 工具 |
+| **知识库** | 数据集 CRUD、混合检索、Workflow 知识节点、Chatbot RAG、compare/evaluate | Eval 前端面板、知识图谱 |
+| **编排** | Workflow 列表/草稿/Chatbot 配置、DSL 自动保存、内置示例、假发布 | 服务端持久化、协作编辑 |
+| **运行** | 单节点调试 API、整图 draft-run SSE、画布运行态与「上次运行」 | Harness 运行时约束 |
+| **路由** | 多模型网关、异步长任务、缓存与限流 | 子任务拆解、模态路由 |
+| **基建** | Sentry、JWT 鉴权 | Tracing、Guardrail、Prompt Eval |
 
 ## AI 高并发开关（`apps/server/src/ai`）
 

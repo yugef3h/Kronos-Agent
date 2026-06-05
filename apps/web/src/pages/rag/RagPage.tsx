@@ -22,6 +22,7 @@ import type {
   LocalImportPreview,
   PendingImportConfig,
 } from './types';
+import { RagEvalPanel } from './components/rag-eval-panel';
 import { KnowledgeDatasetCardMenu } from './components/knowledge-dataset-card-menu';
 import { KnowledgeDatasetEditDialog } from './components/knowledge-dataset-edit-dialog';
 import {
@@ -975,6 +976,14 @@ export const RagPage = () => {
         {successMessage ? (
           <p className="mt-4 text-sm text-emerald-700">{successMessage}</p>
         ) : null}
+
+        <RagEvalPanel
+          datasets={datasets}
+          selectedDatasetId={selectedDatasetId}
+          onSelectDataset={(datasetId) => {
+            handleDatasetSelection(datasetId);
+          }}
+        />
 
         <input
           ref={fileInputRef}
