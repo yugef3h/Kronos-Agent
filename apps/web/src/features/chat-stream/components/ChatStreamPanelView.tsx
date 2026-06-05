@@ -8,7 +8,7 @@ import {
   TakeoutToolModals,
   isTakeoutWideCardMessage,
 } from '../../agent-tools/takeout';
-// import { ChatTimelineFold } from './ChatTimelineFold';
+import { ChatTimelineFold } from './ChatTimelineFold';
 import { HistorySwitchConfirmDialog } from './HistorySwitchConfirmDialog';
 import { useChatStreamContext } from '../ChatStreamContext';
 import VariableSelect from '../../../components/form/variable-select';
