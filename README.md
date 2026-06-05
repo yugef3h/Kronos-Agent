@@ -1,6 +1,6 @@
 # Kronos Agent
 
-**AI 原生工程师向的全栈 Agent 工作台** — 用可视化手段落地对话、编排、RAG、工具调用与模型路由（对标 Dify 类产品形态）。
+**全栈 AI Agent 开源工作台**：流式对话、Workflow 编排、RAG 评测与多模型网关，把 Context Engineering 与工具调用做成可观测、可调试的 playground。
 
 | JD 域 | 已落地 | 缺口（优先级） |
 | --- | --- | --- |
