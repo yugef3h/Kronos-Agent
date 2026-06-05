@@ -23,7 +23,7 @@ import {
 export const ChatStreamPanelView = () => {
   const {
     canSend,
-    // currentTimelineEvent,
+    currentTimelineEvent,
     fileInputRef,
     formatTimestamp,
     handleDocumentFileChange,
@@ -74,8 +74,8 @@ export const ChatStreamPanelView = () => {
     scrollToBottom,
     sendPrompt,
     sessionId,
-    // stageLabelMap,
-    // statusLabelMap,
+    stageLabelMap,
+    statusLabelMap,
     setPendingFile,
     setPendingImage,
     setPrompt,
@@ -85,7 +85,7 @@ export const ChatStreamPanelView = () => {
     takeoutFlowState,
     takeoutFoodsScrollerRef,
     takeoutLoadingLabel,
-    // timelineEvents,
+    timelineEvents,
     toggleHistoryPanel,
     publishedChatbotWorkflowAppId,
     publishedChatbotRagValueSelector,
