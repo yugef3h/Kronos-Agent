@@ -19,6 +19,13 @@ from app.routes.tools import router as tools_router
 settings = get_settings()
 
 
+def _register_optional_routers(app: FastAPI) -> None:
+    if get_settings().rag_routes_enabled:
+        from app.routes.knowledge import router as knowledge_router
+
+        app.include_router(knowledge_router)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await init_session_store()
@@ -44,6 +51,7 @@ app.include_router(dev_token_router)
 app.include_router(session_router)
 app.include_router(chat_router)
 app.include_router(tools_router)
+_register_optional_routers(app)
 
 
 @app.get("/healthz")
