@@ -23,7 +23,8 @@
     "format:check": "prettier --check .",
     "export:workflow-examples": "python3 apps/server/devtools/export-workflow-examples.py",
     "lockfile:check": "pnpm install --frozen-lockfile",
-    "verify": "pnpm lockfile:check && pnpm lint && pnpm test && pnpm build"
+    "verify": "pnpm lockfile:check && pnpm lint && pnpm test && pnpm build",
+    "verify:py": "pnpm test:py"
   },
   "keywords": [],
   "author": "yugef3h",
