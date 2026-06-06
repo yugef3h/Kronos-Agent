@@ -1,0 +1,5 @@
+from app.rag.contract import assert_knowledge_retrieval_query_result_contract
+
+
+def test_sample_retrieval_result_fixture(sample_retrieval_result):
+    assert_knowledge_retrieval_query_result_contract(sample_retrieval_result)
