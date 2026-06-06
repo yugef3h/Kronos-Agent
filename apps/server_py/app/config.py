@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     )
     attention_py_timeout_ms: int = Field(default=1200, alias="ATTENTION_PY_TIMEOUT_MS")
     rag_engine_mode: Optional[str] = Field(default=None, alias="RAG_ENGINE_MODE")
+    knowledge_datasets_dir: Optional[str] = Field(default=None, alias="KNOWLEDGE_DATASETS_DIR")
+    rag_routes_enabled: bool = Field(default=False, alias="RAG_ROUTES_ENABLED")
     node_env: Optional[str] = Field(default=None, alias="NODE_ENV")
     kronos_server_runtime: Literal["node", "py"] = Field(
         default="node",
