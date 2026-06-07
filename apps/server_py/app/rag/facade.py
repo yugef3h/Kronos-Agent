@@ -8,7 +8,7 @@ from typing import Optional
 from app.rag.dataset_store import list_knowledge_datasets
 from app.rag.document_store import list_dataset_chunks
 from app.rag.engine import bm25_search, hybrid_search, semantic_search
-from app.rag.metadata_filter import evaluate_metadata_filter
+from app.rag.metadata_filter import matches_metadata_filter
 from app.rag.query_types import (
     KnowledgeMetadataCondition,
     KnowledgeMultiRetrievalConfig,
@@ -57,7 +57,7 @@ def _collect_chunks_for_datasets(
         if metadata_conditions:
             chunks = [
                 c for c in chunks
-                if evaluate_metadata_filter(c.get("metadata", {}), metadata_conditions)
+                if matches_metadata_filter(c.get("metadata", {}), metadata_conditions)
             ]
         all_chunks.extend(chunks)
     return all_chunks

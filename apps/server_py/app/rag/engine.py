@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.rag.scoring import tokenize_for_bm25, cosine_similarity, merge_hybrid_scores
 from app.rag.document_store import list_dataset_chunks
-from app.rag.metadata_filter import evaluate_metadata_filter
+from app.rag.metadata_filter import matches_metadata_filter
 
 
 def resolve_rag_engine_mode() -> str:

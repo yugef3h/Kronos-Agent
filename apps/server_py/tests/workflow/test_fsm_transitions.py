@@ -62,6 +62,7 @@ class TestWorkflowState:
     def test_active_nodes_returns_pending_and_running(self):
         state = create_workflow_state("wf1", ["n1", "n2", "n3"], {"n1": "start", "n2": "llm", "n3": "end"})
         assert len(state.active_nodes()) == 3
+        state.get_node("n1").transition_to("RUNNING")
         state.get_node("n1").transition_to("SUCCESS")
         assert len(state.active_nodes()) == 2
 
