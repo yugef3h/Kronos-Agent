@@ -136,12 +136,18 @@ async def get_session_snapshot(session_id: str) -> SessionSnapshot:
     )
 
 
+# Safety cap: max messages allowed in a single append call.
+MAX_APPEND_MESSAGES = 500
+
+
 async def append_session_messages(session_id: str, messages: List[SessionAppendMessage]) -> None:
     session = await load_session(session_id)
     now = int(time.time() * 1000)
     next_messages: List[Message] = []
 
-    for index, message in enumerate(messages):
+    # Truncate oversized bulk appends to prevent DoS
+    effective = messages[:MAX_APPEND_MESSAGES]
+    for index, message in enumerate(effective):
         content = message.content.strip()
         attachments = message.attachments
         if not content and not attachments:

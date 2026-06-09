@@ -1,4 +1,16 @@
-"""PII detection for guardrail — phone numbers, ID cards, emails, IPs."""
+r"""PII detection for guardrail — phone numbers, ID cards, emails, IPs.
+
+Pattern sources:
+  - Phone: China mobile (1[3-9]\d{9}), landline (0\d{2,3}-\d{7,8}), 400 numbers
+  - ID card: 18-digit with date-of-birth segment verification (no checksum)
+  - Email / IP: standard RFC-style patterns
+  - Credit card: simplified prefix-based (Visa/Mastercard), no Luhn check
+
+Limitations:
+  - Regex-based only — no ML/NER. False positives possible on numbers/URLs.
+  - ID card does not validate checksum digit (lightweight by design).
+  - Credit card detection is off by default.
+"""
 
 from __future__ import annotations
 
@@ -77,8 +89,11 @@ def detect_pii(
         for match in IP_PATTERN.finditer(text):
             ip_str = match.group()
             parts = ip_str.split(".")
-            if all(0 <= int(p) <= 255 for p in parts):
-                hits.append(PIIHit(type="ip", value=ip_str, position=match.start()))
+            try:
+                if all(0 <= int(p) <= 255 for p in parts):
+                    hits.append(PIIHit(type="ip", value=ip_str, position=match.start()))
+            except ValueError:
+                continue  # Skip malformed IP-like strings
 
     if check_credit_card:
         for match in CREDIT_CARD_PATTERN.finditer(text):

@@ -5,9 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+import time
 from typing import Callable
 
 logger = logging.getLogger(__name__)
+
+# Max seconds allowed for the full shutdown sequence before forced exit.
+SHUTDOWN_TIMEOUT_SEC = 10
 
 _shutdown_hooks: list[Callable[[], None]] = []
 _cleanup_tasks: list[Callable[[], None]] = []
@@ -24,10 +28,15 @@ def register_cleanup_task(task: Callable[[], None]) -> None:
 
 
 def _run_shutdown() -> None:
-    """Execute all shutdown hooks and cleanup tasks."""
-    logger.info("Starting graceful shutdown...")
+    """Execute all shutdown hooks and cleanup tasks with a time limit."""
+    logger.info("Starting graceful shutdown (timeout=%ds)...", SHUTDOWN_TIMEOUT_SEC)
+
+    deadline = time.time() + SHUTDOWN_TIMEOUT_SEC
 
     for hook in _shutdown_hooks:
+        if time.time() >= deadline:
+            logger.warning("Shutdown timeout reached, skipping remaining hooks")
+            break
         try:
             hook()
             logger.debug("Shutdown hook completed: %s", hook.__name__)
@@ -35,6 +44,9 @@ def _run_shutdown() -> None:
             logger.warning("Shutdown hook failed: %s", exc)
 
     for task in _cleanup_tasks:
+        if time.time() >= deadline:
+            logger.warning("Shutdown timeout reached, skipping remaining tasks")
+            break
         try:
             task()
             logger.debug("Cleanup task completed: %s", task.__name__)

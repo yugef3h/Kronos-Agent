@@ -12,11 +12,14 @@ from app.services.linear_chat_stream import stream_linear_chat_reply
 logger = logging.getLogger(__name__)
 PLAYGROUND_CHAT_LOG_PREFIX = "[playground-chat]"
 
+# Truncation limit for error messages surfaced in timeline events.
+_ERROR_REASON_MAX_CHARS = 180
+
 
 def _safe_error_text(error: Exception) -> str:
     message = error.args[0] if error.args else ""
     if isinstance(message, str) and message.strip():
-        return message.strip()[:180]
+        return message.strip()[:_ERROR_REASON_MAX_CHARS]
     return "unknown upstream error"
 
 
@@ -28,6 +31,15 @@ async def stream_playground_agent_reply(
     user_id: Optional[str] = None,
     image_data_urls: Optional[List[str]] = None,
 ) -> AsyncIterator[dict]:
+    """Stream the playground agent reply with automatic fallback chain.
+
+    Path A (linear): Used when LANGGRAPH_ENABLED=false.
+        Simple LLM call without tools — fastest, no external dependencies.
+
+    Path B (langgraph): Used when LANGGRAPH_ENABLED=true (default).
+        ReAct agent with tool calling. On failure, falls back to Path A
+        automatically so the user always gets a reply.
+    """
     settings = get_settings()
 
     if not settings.langgraph_enabled:

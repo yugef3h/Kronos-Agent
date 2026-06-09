@@ -16,6 +16,11 @@ from app.memory.token_estimate import estimate_text_tokens
 from app.memory.types import MemoryDiagnostics, MemoryPlan, SessionMemoryState
 
 
+def _compute_budget_tokens() -> int:
+    """Compute the token budget available for input (prompt + history + summary)."""
+    return _compute_budget_tokens()
+
+
 def _trim_to_max_chars(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
@@ -56,6 +61,17 @@ def create_memory_plan(
     messages: List[Message],
     memory_state: SessionMemoryState,
 ) -> MemoryPlan:
+    """Build a memory plan: rolling summary + token-budgeted history selection.
+
+    When the message count exceeds SUMMARY_TRIGGER_MESSAGE_COUNT, older
+    messages (beyond RECENT_MESSAGES_TO_KEEP) are merged into a rolling
+    summary string. Recent messages are then selected in reverse order
+    until the token budget is exhausted, ensuring the prompt fits within
+    the model's context window.
+
+    Returns a MemoryPlan with the selected history subset, updated summary,
+    and diagnostic token counts.
+    """
     summary = memory_state.summary or ""
     summary_updated_at = memory_state.summaryUpdatedAt
     summary_updated = False
@@ -74,7 +90,7 @@ def create_memory_plan(
 
     prompt_tokens = estimate_text_tokens(prompt)
     summary_tokens = estimate_text_tokens(summary)
-    budget_tokens = int(CONTEXT_WINDOW_TOKENS * INPUT_BUDGET_RATIO) - RESERVED_OUTPUT_TOKENS
+    budget_tokens = _compute_budget_tokens()
     max_history_budget = max(0, budget_tokens - prompt_tokens - summary_tokens)
 
     recent_history = messages[-RECENT_MESSAGES_TO_KEEP :]

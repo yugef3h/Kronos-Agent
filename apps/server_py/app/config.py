@@ -15,11 +15,10 @@ LEGACY_ENV_FILE = APPS_ROOT / "server" / ".env"
 
 def resolve_env_file() -> Optional[Path]:
     """Node / Python 共用：优先 apps/.env，兼容旧版 apps/server/.env。"""
-    if SHARED_ENV_FILE.exists():
-        return SHARED_ENV_FILE
-    if LEGACY_ENV_FILE.exists():
-        return LEGACY_ENV_FILE
-    return None
+    return next(
+        (p for p in (SHARED_ENV_FILE, LEGACY_ENV_FILE) if p.exists()),
+        None,
+    )
 
 LOCAL_DEV_ORIGINS = (
     "http://localhost:5173",

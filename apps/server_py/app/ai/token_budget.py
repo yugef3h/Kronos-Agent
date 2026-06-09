@@ -1,4 +1,13 @@
-"""Token budget rate limiter — mirrors checkTokenBudgetRateLimit.ts."""
+"""Token budget rate limiter — mirrors checkTokenBudgetRateLimit.ts.
+
+Design decisions:
+  - In-memory dict store: simple, fast, but NOT shared across workers.
+    For multi-process deployments, swap to Redis-backed counters.
+  - Per-session budgets reset hourly (3600s TTL). Stale budgets are
+    cleaned up lazily on access or explicitly via cleanup_stale_budgets().
+  - Estimated tokens (not actual): input tokens are estimated via
+    simplified char counting, not precise tokenization.
+"""
 
 from __future__ import annotations
 
@@ -50,14 +59,23 @@ def get_or_create_budget(
     max_tokens: int = 100_000,
     ttl_seconds: float = 3600,
 ) -> TokenBudget:
-    """Get or create a token budget for a session."""
+    """Get or create a token budget for a session.
+
+    Note: _budget_store is an in-memory dict — not safe across
+    multiple processes. Use Redis-backed storage for multi-worker deployments.
+    """
+    now = time.time()
     if session_id not in _budget_store:
         _budget_store[session_id] = TokenBudget(
             session_id=session_id,
             max_tokens=max_tokens,
-            reset_at=time.time() + ttl_seconds,
+            reset_at=now + ttl_seconds,
         )
     budget = _budget_store[session_id]
+    # Lazy cleanup: if the budget expired long ago, recreate it
+    if now >= budget.reset_at + ttl_seconds:
+        del _budget_store[session_id]
+        return get_or_create_budget(session_id, max_tokens=max_tokens, ttl_seconds=ttl_seconds)
     budget.reset_if_stale()
     return budget
 

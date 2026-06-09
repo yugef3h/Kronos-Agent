@@ -1,4 +1,8 @@
-"""Request cost estimation for token usage tracking."""
+"""Request cost estimation for token usage tracking.
+
+Pricing tuples are (input_price, output_price) per 1M tokens in USD.
+These are approximate — update from provider pricing pages for accuracy.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,7 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# Approximate pricing per 1M tokens (USD) — update from provider pricing pages
+# Approximate pricing per 1M tokens (USD) — (input, output)
 PRICING_PER_1M: dict[str, tuple[float, float]] = {
     "doubao-pro-256k": (0.80, 2.00),
     "doubao-pro-128k": (0.50, 1.50),

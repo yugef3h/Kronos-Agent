@@ -1,3 +1,17 @@
+"""Chat stream orchestration — guardrail, memory, agent pipeline, SSE formatting.
+
+This module is the central orchestrator for the playground chat flow:
+1. Input guardrail check → block or proceed
+2. Load session, append user message
+3. Run memory orchestrator (rolling summary + token budget)
+4. Stream agent reply (LangGraph or linear fallback)
+5. Output guardrail check
+6. Persist final session state
+
+SSE events follow the contract: timeline events carry stage/status/message;
+content events carry incremental text chunks; complete signals end-of-stream.
+"""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +33,9 @@ from app.memory.types import SessionMemoryState
 
 logger = logging.getLogger(__name__)
 
+# Max chars retained when an error message is surfaced in a timeline event.
+_FALLBACK_REASON_MAX_CHARS = 180
+
 
 async def _stream_mock_reply(prompt: str) -> AsyncIterator[str]:
     mock_text = (
@@ -34,6 +51,28 @@ def _format_sse(payload: dict, event_id: int) -> str:
     return f"data: {body}\nid: {event_id}\n\n"
 
 
+def _make_timeline(
+    stage: str,
+    status: str,
+    message: str,
+    session_id: str,
+    event_id: int,
+    **extra: object,
+) -> dict:
+    """Build a timeline SSE payload dict with standard fields."""
+    payload: dict = {
+        "type": "timeline",
+        "stage": stage,
+        "status": status,
+        "message": message,
+        "sessionId": session_id,
+        "eventId": event_id,
+        "timestamp": int(time.time() * 1000),
+    }
+    payload.update(extra)
+    return payload
+
+
 async def _wait_for_session_persist_safe(session_id: str) -> str | None:
     try:
         await wait_for_session_persist(session_id)
@@ -41,7 +80,7 @@ async def _wait_for_session_persist_safe(session_id: str) -> str | None:
     except SessionConflictError:
         return f"会话版本冲突（{session_id}），请刷新后重试。"
     except Exception as error:
-        reason = str(error)[:180] if str(error) else "unknown error"
+        reason = str(error)[:_FALLBACK_REASON_MAX_CHARS] if str(error) else "unknown error"
         return f"会话落盘失败：{reason}"
 
 
@@ -93,6 +132,10 @@ async def _stream_chat_body(
         if isinstance(session_user_content, str) and session_user_content.strip()
         else prompt
     )
+    # Guard against completely empty user input (no prompt text and no images)
+    if not persisted_user_line.strip() and not image_data_urls:
+        persisted_user_line = "(empty message)"
+
     user_content = (
         f"{persisted_user_line}\n[附图×{len(image_data_urls)}]"
         if image_data_urls
@@ -181,7 +224,7 @@ async def _stream_chat_body(
             )
     except Exception as error:
         assistant_text = ""
-        fallback_reason = str(error)[:180] if str(error) else "unknown upstream error"
+        fallback_reason = str(error)[:_FALLBACK_REASON_MAX_CHARS] if str(error) else "unknown upstream error"
         logger.warning(
             "[stream_chat] fallback enabled for session %s. reason: %s",
             session_id,
