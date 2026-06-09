@@ -1,4 +1,16 @@
-"""PII detection for guardrail — phone numbers, ID cards, emails, IPs."""
+"""PII detection for guardrail — phone numbers, ID cards, emails, IPs.
+
+Pattern sources:
+  - Phone: China mobile (1[3-9]\d{9}), landline (0\d{2,3}-\d{7,8}), 400 numbers
+  - ID card: 18-digit with date-of-birth segment verification (no checksum)
+  - Email / IP: standard RFC-style patterns
+  - Credit card: simplified prefix-based (Visa/Mastercard), no Luhn check
+
+Limitations:
+  - Regex-based only — no ML/NER. False positives possible on numbers/URLs.
+  - ID card does not validate checksum digit (lightweight by design).
+  - Credit card detection is off by default.
+"""
 
 from __future__ import annotations
 
