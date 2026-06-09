@@ -31,6 +31,15 @@ async def stream_playground_agent_reply(
     user_id: Optional[str] = None,
     image_data_urls: Optional[List[str]] = None,
 ) -> AsyncIterator[dict]:
+    """Stream the playground agent reply with automatic fallback chain.
+
+    Path A (linear): Used when LANGGRAPH_ENABLED=false.
+        Simple LLM call without tools — fastest, no external dependencies.
+
+    Path B (langgraph): Used when LANGGRAPH_ENABLED=true (default).
+        ReAct agent with tool calling. On failure, falls back to Path A
+        automatically so the user always gets a reply.
+    """
     settings = get_settings()
 
     if not settings.langgraph_enabled:
