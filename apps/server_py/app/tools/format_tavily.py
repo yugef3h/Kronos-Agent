@@ -4,6 +4,8 @@ from typing import TypedDict
 
 # Max characters retained per search snippet to avoid overflowing LLM context.
 SNIPPET_MAX_CHARS = 400
+# Max results rendered in the formatted string to keep prompt size bounded.
+MAX_RESULTS = 10
 
 
 class TavilySearchHit(TypedDict, total=False):
@@ -18,7 +20,8 @@ def format_tavily_results_for_llm(query: str, results: list[TavilySearchHit]) ->
         return f"No web results found for query: {query}"
 
     lines: list[str] = []
-    for index, item in enumerate(results):
+    capped = results[:MAX_RESULTS]
+    for index, item in enumerate(capped):
         title = (item.get("title") or "").strip() or "Untitled"
         url = (item.get("url") or "").strip()
         snippet = (item.get("content") or "").strip()[:SNIPPET_MAX_CHARS]
