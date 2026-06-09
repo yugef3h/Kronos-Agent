@@ -50,14 +50,23 @@ def get_or_create_budget(
     max_tokens: int = 100_000,
     ttl_seconds: float = 3600,
 ) -> TokenBudget:
-    """Get or create a token budget for a session."""
+    """Get or create a token budget for a session.
+
+    Note: _budget_store is an in-memory dict — not safe across
+    multiple processes. Use Redis-backed storage for multi-worker deployments.
+    """
+    now = time.time()
     if session_id not in _budget_store:
         _budget_store[session_id] = TokenBudget(
             session_id=session_id,
             max_tokens=max_tokens,
-            reset_at=time.time() + ttl_seconds,
+            reset_at=now + ttl_seconds,
         )
     budget = _budget_store[session_id]
+    # Lazy cleanup: if the budget expired long ago, recreate it
+    if now >= budget.reset_at + ttl_seconds:
+        del _budget_store[session_id]
+        return get_or_create_budget(session_id, max_tokens=max_tokens, ttl_seconds=ttl_seconds)
     budget.reset_if_stale()
     return budget
 
