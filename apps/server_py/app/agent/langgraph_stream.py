@@ -26,6 +26,12 @@ def _to_langchain_message(message: Message) -> HumanMessage | AIMessage:
 
 
 def _is_stream_tuple(chunk: Any) -> bool:
+    """Detect LangGraph's (mode, payload) stream tuples.
+
+    LangGraph's astream() with stream_mode=['updates', 'values'] emits
+    tuples where chunk[0] is the mode name ('updates' or 'values') and
+    chunk[1] is the state payload dict.
+    """
     return (
         isinstance(chunk, tuple)
         and len(chunk) == 2
