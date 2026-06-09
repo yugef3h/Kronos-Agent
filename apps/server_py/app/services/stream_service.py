@@ -132,6 +132,10 @@ async def _stream_chat_body(
         if isinstance(session_user_content, str) and session_user_content.strip()
         else prompt
     )
+    # Guard against completely empty user input (no prompt text and no images)
+    if not persisted_user_line.strip() and not image_data_urls:
+        persisted_user_line = "(empty message)"
+
     user_content = (
         f"{persisted_user_line}\n[附图×{len(image_data_urls)}]"
         if image_data_urls
