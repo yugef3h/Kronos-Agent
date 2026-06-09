@@ -86,12 +86,13 @@ def check_sensitive_words(
         return {"blocked": False, "rule_profile": "off", "hits": [], "matched_words": []}
 
     patterns = get_sensitive_patterns()
+    words = load_sensitive_words()  # Cache locally to avoid repeated calls in loop
     hits: list[dict] = []
     matched_words: list[str] = []
 
     for i, pattern in enumerate(patterns):
         for match in pattern.finditer(text):
-            word = load_sensitive_words()[i] if i < len(load_sensitive_words()) else pattern.pattern
+            word = words[i] if i < len(words) else pattern.pattern
             hits.append({
                 "word": word,
                 "position": match.start(),
