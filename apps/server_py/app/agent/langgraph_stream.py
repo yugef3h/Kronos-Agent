@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from typing import Any, AsyncIterator, List, Optional
 
@@ -10,6 +9,7 @@ from langgraph.prebuilt import create_react_agent
 from app.agent.messages import find_current_turn_assistant_text
 from app.agent.timeline import TimelineEvent, create_timeline_event
 from app.agent.tool_stream_mapper import map_langgraph_update_to_timeline_events
+from app.ai.degrade import resolve_load_percent
 from app.config import get_settings
 from app.domain.session_store import Message
 from app.infra.langfuse_init import create_langfuse_handler
@@ -43,13 +43,11 @@ def _resolve_recursion_limit() -> int:
     """Choose the agent recursion limit based on current system load.
 
     Reduces tool-calling depth when the AI service reports high load,
-    trading capability for reliability.
+    trading capability for reliability. Delegates load resolution to
+    the shared resolve_load_percent() helper.
     """
     settings = get_settings()
-    try:
-        load_percent = int(os.getenv("AI_LOAD_PERCENT", "0") or "0")
-    except ValueError:
-        load_percent = 0
+    load_percent = resolve_load_percent()
 
     if load_percent >= 95:
         degrade_steps = 2
