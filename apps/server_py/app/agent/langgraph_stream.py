@@ -34,9 +34,23 @@ def _is_stream_tuple(chunk: Any) -> bool:
 
 
 def _resolve_recursion_limit() -> int:
+    """Choose the agent recursion limit based on current system load.
+
+    Reduces tool-calling depth when the AI service reports high load,
+    trading capability for reliability.
+    """
     settings = get_settings()
-    load_percent = int(os.getenv("AI_LOAD_PERCENT", "0") or "0")
-    degrade_steps = 8 if load_percent < 80 else 4 if load_percent < 95 else 2
+    try:
+        load_percent = int(os.getenv("AI_LOAD_PERCENT", "0") or "0")
+    except ValueError:
+        load_percent = 0
+
+    if load_percent >= 95:
+        degrade_steps = 2
+    elif load_percent >= 80:
+        degrade_steps = 4
+    else:
+        degrade_steps = 8
     return min(settings.langgraph_max_tool_steps, degrade_steps)
 
 
