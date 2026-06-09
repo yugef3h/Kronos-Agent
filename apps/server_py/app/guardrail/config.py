@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from functools import lru_cache
 
 DEFAULT_BLOCK_PATTERNS = (
     r"password\s*[:=]",
@@ -14,7 +15,9 @@ def is_guardrail_enabled() -> bool:
     return os.getenv("GUARDRAIL_ENABLED", "false").strip().lower() == "true"
 
 
+@lru_cache(maxsize=1)
 def get_guardrail_block_patterns() -> list[re.Pattern[str]]:
+    """Return compiled block regex patterns. Cached after first call."""
     raw = os.getenv("GUARDRAIL_BLOCK_PATTERNS", "").strip()
     patterns = (
         [item.strip() for item in raw.split(",") if item.strip()]
