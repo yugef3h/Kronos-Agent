@@ -19,6 +19,9 @@ from app.memory.types import SessionMemoryState
 
 logger = logging.getLogger(__name__)
 
+# Max chars retained when an error message is surfaced in a timeline event.
+_FALLBACK_REASON_MAX_CHARS = 180
+
 
 async def _stream_mock_reply(prompt: str) -> AsyncIterator[str]:
     mock_text = (
@@ -41,7 +44,7 @@ async def _wait_for_session_persist_safe(session_id: str) -> str | None:
     except SessionConflictError:
         return f"会话版本冲突（{session_id}），请刷新后重试。"
     except Exception as error:
-        reason = str(error)[:180] if str(error) else "unknown error"
+        reason = str(error)[:_FALLBACK_REASON_MAX_CHARS] if str(error) else "unknown error"
         return f"会话落盘失败：{reason}"
 
 
@@ -181,7 +184,7 @@ async def _stream_chat_body(
             )
     except Exception as error:
         assistant_text = ""
-        fallback_reason = str(error)[:180] if str(error) else "unknown upstream error"
+        fallback_reason = str(error)[:_FALLBACK_REASON_MAX_CHARS] if str(error) else "unknown upstream error"
         logger.warning(
             "[stream_chat] fallback enabled for session %s. reason: %s",
             session_id,
