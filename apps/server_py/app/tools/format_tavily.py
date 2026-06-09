@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+# Max characters retained per search snippet to avoid overflowing LLM context.
+SNIPPET_MAX_CHARS = 400
+
 
 class TavilySearchHit(TypedDict, total=False):
     title: str
@@ -18,7 +21,7 @@ def format_tavily_results_for_llm(query: str, results: list[TavilySearchHit]) ->
     for index, item in enumerate(results):
         title = (item.get("title") or "").strip() or "Untitled"
         url = (item.get("url") or "").strip()
-        snippet = (item.get("content") or "").strip()[:400]
+        snippet = (item.get("content") or "").strip()[:SNIPPET_MAX_CHARS]
         block = [f"[{index + 1}] {title}"]
         if url:
             block.append(f"URL: {url}")
