@@ -77,8 +77,11 @@ def detect_pii(
         for match in IP_PATTERN.finditer(text):
             ip_str = match.group()
             parts = ip_str.split(".")
-            if all(0 <= int(p) <= 255 for p in parts):
-                hits.append(PIIHit(type="ip", value=ip_str, position=match.start()))
+            try:
+                if all(0 <= int(p) <= 255 for p in parts):
+                    hits.append(PIIHit(type="ip", value=ip_str, position=match.start()))
+            except ValueError:
+                continue  # Skip malformed IP-like strings
 
     if check_credit_card:
         for match in CREDIT_CARD_PATTERN.finditer(text):
