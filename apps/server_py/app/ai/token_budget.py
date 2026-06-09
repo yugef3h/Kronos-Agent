@@ -1,4 +1,13 @@
-"""Token budget rate limiter — mirrors checkTokenBudgetRateLimit.ts."""
+"""Token budget rate limiter — mirrors checkTokenBudgetRateLimit.ts.
+
+Design decisions:
+  - In-memory dict store: simple, fast, but NOT shared across workers.
+    For multi-process deployments, swap to Redis-backed counters.
+  - Per-session budgets reset hourly (3600s TTL). Stale budgets are
+    cleaned up lazily on access or explicitly via cleanup_stale_budgets().
+  - Estimated tokens (not actual): input tokens are estimated via
+    simplified char counting, not precise tokenization.
+"""
 
 from __future__ import annotations
 
