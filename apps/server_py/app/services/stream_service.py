@@ -37,6 +37,28 @@ def _format_sse(payload: dict, event_id: int) -> str:
     return f"data: {body}\nid: {event_id}\n\n"
 
 
+def _make_timeline(
+    stage: str,
+    status: str,
+    message: str,
+    session_id: str,
+    event_id: int,
+    **extra: object,
+) -> dict:
+    """Build a timeline SSE payload dict with standard fields."""
+    payload: dict = {
+        "type": "timeline",
+        "stage": stage,
+        "status": status,
+        "message": message,
+        "sessionId": session_id,
+        "eventId": event_id,
+        "timestamp": int(time.time() * 1000),
+    }
+    payload.update(extra)
+    return payload
+
+
 async def _wait_for_session_persist_safe(session_id: str) -> str | None:
     try:
         await wait_for_session_persist(session_id)
