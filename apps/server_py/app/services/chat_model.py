@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from langchain_openai import ChatOpenAI
 
@@ -6,7 +7,7 @@ from app.config import get_settings
 
 
 @lru_cache
-def get_chat_model(model_name: str | None = None) -> ChatOpenAI:
+def get_chat_model(model_name: Optional[str] = None) -> ChatOpenAI:
     """Return a configured ChatOpenAI instance.
 
     Args:

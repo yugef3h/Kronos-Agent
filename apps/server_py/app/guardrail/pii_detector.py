@@ -1,4 +1,4 @@
-"""PII detection for guardrail — phone numbers, ID cards, emails, IPs.
+r"""PII detection for guardrail — phone numbers, ID cards, emails, IPs.
 
 Pattern sources:
   - Phone: China mobile (1[3-9]\d{9}), landline (0\d{2,3}-\d{7,8}), 400 numbers
