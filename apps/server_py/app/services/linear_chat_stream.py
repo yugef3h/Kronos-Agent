@@ -10,6 +10,13 @@ from app.services.chat_model import get_chat_model
 
 
 def _read_chunk_text(content: object) -> str:
+    """Extract text from LangChain chunk content, handling multiple shapes.
+
+    LangChain chunk.content can be: str, list[str|dict], or other.
+    Returns empty string for unrecognized shapes (including None).
+    """
+    if content is None:
+        return ""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -17,8 +24,10 @@ def _read_chunk_text(content: object) -> str:
         for item in content:
             if isinstance(item, str):
                 parts.append(item)
-            elif isinstance(item, dict) and isinstance(item.get("text"), str):
-                parts.append(item["text"])
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
         return "".join(parts)
     return ""
 
