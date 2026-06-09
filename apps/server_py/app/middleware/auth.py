@@ -33,16 +33,22 @@ def should_skip_auth(path: str, method: str = "GET") -> bool:
     return False
 
 
-def verify_bearer_token(authorization: Optional[str], jwt_secret: str) -> Optional[JSONResponse]:
+def _extract_bearer_token(authorization: Optional[str]) -> Optional[str]:
+    """Extract the raw token from a Bearer authorization header."""
     if not authorization or not authorization.startswith("Bearer "):
-        return JSONResponse(status_code=401, content={"error": "Missing bearer token"})
+        return None
+    token = authorization[len("Bearer "):].strip()
+    return token or None
 
-    token = authorization[len("Bearer ") :]
+
+def verify_bearer_token(authorization: Optional[str], jwt_secret: str) -> Optional[JSONResponse]:
+    token = _extract_bearer_token(authorization)
+    if not token:
+        return JSONResponse(status_code=401, content={"error": "Missing bearer token"})
     try:
         jwt.decode(token, jwt_secret, algorithms=["HS256"])
     except jwt.PyJWTError:
         return JSONResponse(status_code=401, content={"error": "Invalid JWT token"})
-
     return None
 
 
