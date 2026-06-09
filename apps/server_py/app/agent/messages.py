@@ -53,14 +53,18 @@ def is_assistant_message(message: Any) -> bool:
 
 
 def find_current_turn_assistant_text(messages: list[Any]) -> str:
-    last_human_index = -1
-    for index in range(len(messages) - 1, -1, -1):
-        if is_human_message(messages[index]):
-            last_human_index = index
-            break
+    """Return the text content of the last assistant message in the current turn.
 
-    after_human = messages[last_human_index + 1 :]
-    turn_assistants = [msg for msg in after_human if is_assistant_message(msg)]
-    if not turn_assistants:
-        return ""
-    return read_message_text(turn_assistants[-1])
+    A turn starts after the most recent human message. Returns empty string
+    if no assistant message follows the last human message.
+    """
+    # Find the last human message index
+    last_human = next(
+        (i for i in range(len(messages) - 1, -1, -1) if is_human_message(messages[i])),
+        -1,
+    )
+    # Find the last assistant message after the human message
+    for msg in reversed(messages[last_human + 1:]):
+        if is_assistant_message(msg):
+            return read_message_text(msg)
+    return ""
