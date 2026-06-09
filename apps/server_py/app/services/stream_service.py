@@ -1,3 +1,17 @@
+"""Chat stream orchestration — guardrail, memory, agent pipeline, SSE formatting.
+
+This module is the central orchestrator for the playground chat flow:
+1. Input guardrail check → block or proceed
+2. Load session, append user message
+3. Run memory orchestrator (rolling summary + token budget)
+4. Stream agent reply (LangGraph or linear fallback)
+5. Output guardrail check
+6. Persist final session state
+
+SSE events follow the contract: timeline events carry stage/status/message;
+content events carry incremental text chunks; complete signals end-of-stream.
+"""
+
 from __future__ import annotations
 
 import json
