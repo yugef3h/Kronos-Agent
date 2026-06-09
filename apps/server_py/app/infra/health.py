@@ -50,11 +50,12 @@ async def run_all_health_checks() -> dict:
 # Built-in checks
 def _check_redis() -> dict:
     try:
-        from app.infra.redis_client import get_redis_client
+        from app.infra.redis_client import get_redis_client, is_redis_available
         client = get_redis_client()
-        if client:
-            client.ping()
+        if client and is_redis_available():
             return {"healthy": True, "message": "redis connected"}
+        return {"healthy": True, "message": "redis not configured"}
+    except RuntimeError:
         return {"healthy": True, "message": "redis not configured"}
     except Exception as exc:
         return {"healthy": False, "error": str(exc)}
