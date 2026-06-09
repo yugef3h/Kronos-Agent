@@ -50,10 +50,11 @@ app.add_middleware(
 )
 app.add_middleware(JwtAuthMiddleware, settings=settings)
 app.add_middleware(RequestGuardMiddleware)
-app.include_router(dev_token_router)
-app.include_router(session_router)
-app.include_router(chat_router)
-app.include_router(tools_router)
+
+# Register core routers
+for router in (dev_token_router, session_router, chat_router, tools_router):
+    app.include_router(router)
+
 _register_optional_routers(app)
 
 
