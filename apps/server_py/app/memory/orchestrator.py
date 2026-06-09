@@ -61,6 +61,17 @@ def create_memory_plan(
     messages: List[Message],
     memory_state: SessionMemoryState,
 ) -> MemoryPlan:
+    """Build a memory plan: rolling summary + token-budgeted history selection.
+
+    When the message count exceeds SUMMARY_TRIGGER_MESSAGE_COUNT, older
+    messages (beyond RECENT_MESSAGES_TO_KEEP) are merged into a rolling
+    summary string. Recent messages are then selected in reverse order
+    until the token budget is exhausted, ensuring the prompt fits within
+    the model's context window.
+
+    Returns a MemoryPlan with the selected history subset, updated summary,
+    and diagnostic token counts.
+    """
     summary = memory_state.summary or ""
     summary_updated_at = memory_state.summaryUpdatedAt
     summary_updated = False
