@@ -15,6 +15,8 @@
     "install:attention-py": "python3 -m pip install -r apps/attention_py/requirements.txt",
     "install:crawler": "python3 -m venv apps/crawler/.venv && apps/crawler/.venv/bin/pip install -r apps/crawler/requirements.txt && apps/crawler/.venv/bin/python3 -m playwright install chromium",
     "crawl": "apps/crawler/.venv/bin/python3 apps/crawler/crawler.py",
+    "crawl:gmail": "apps/crawler/.venv/bin/python3 apps/crawler/gmail_crawler.py",
+    "crawl:merge": "apps/crawler/.venv/bin/python3 apps/crawler/merge_daily.py",
     "build": "pnpm --filter @kronos/core build && pnpm --filter @kronos/server build && pnpm --filter @kronos/web build",
     "cd": "pnpm lint && node scripts/git-commit-date.mjs",
     "test": "jest --runInBand",
